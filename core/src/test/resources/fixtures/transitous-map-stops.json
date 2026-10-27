@@ -1,0 +1,52 @@
+[
+ {
+  "name": "Cais do Sodre",
+  "stopId": "pt-Comboios-de-Portugal(CP)_94_69005",
+  "importance": 0.0029563060961663723,
+  "lat": 38.70614200000001,
+  "lon": -9.145372999999998,
+  "tz": "Europe/Lisbon",
+  "vertexType": "TRANSIT",
+  "modes": [
+   "SUBURBAN"
+  ]
+ },
+ {
+  "name": "Cais Sodré",
+  "stopId": "pt-Carris_3803",
+  "importance": 0.0029563060961663723,
+  "lat": 38.706245,
+  "lon": -9.145019,
+  "tz": "Europe/Lisbon",
+  "stopCode": "3803",
+  "vertexType": "TRANSIT",
+  "modes": [
+   "BUS"
+  ]
+ },
+ {
+  "name": "Cais do Sodré (Terminal)",
+  "stopId": "pt-Carris-Metropolitana_360419",
+  "importance": 1.8923733478004579e-06,
+  "lat": 38.705837,
+  "lon": -9.143121999999998,
+  "tz": "Europe/Lisbon",
+  "stopCode": "360419",
+  "vertexType": "TRANSIT",
+  "modes": [
+   "BUS"
+  ]
+ },
+ {
+  "name": "Cais do Sodré",
+  "stopId": "pt-Metro-Lisboa_CS",
+  "importance": 0.0029563060961663723,
+  "lat": 38.706154000000005,
+  "lon": -9.145029,
+  "tz": "Europe/Lisbon",
+  "vertexType": "TRANSIT",
+  "modes": [
+   "SUBWAY"
+  ]
+ }
+]

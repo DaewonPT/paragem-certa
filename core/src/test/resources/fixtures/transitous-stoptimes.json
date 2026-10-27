@@ -1,0 +1,183 @@
+{
+ "stopTimes": [
+  {
+   "place": {
+    "name": "Cais Sodré",
+    "stopId": "pt-Carris_3803",
+    "importance": 0.0029563060961663723,
+    "lat": 38.706245,
+    "lon": -9.145019,
+    "tz": "Europe/Lisbon",
+    "arrival": "2026-10-27T01:54:00Z",
+    "departure": "2026-10-27T01:54:00Z",
+    "scheduledArrival": "2026-10-27T01:54:00Z",
+    "scheduledDeparture": "2026-10-27T01:54:00Z",
+    "stopCode": "3803",
+    "vertexType": "TRANSIT",
+    "pickupType": "NORMAL",
+    "dropoffType": "NORMAL",
+    "cancelled": false,
+    "arrivalTimestampReason": "NO_RT_DATA",
+    "departureTimestampReason": "NO_RT_DATA",
+    "modes": [
+     "SUBURBAN",
+     "SUBWAY",
+     "BUS"
+    ]
+   },
+   "mode": "BUS",
+   "realTime": false,
+   "headsign": "Cais Sodré",
+   "tripFrom": {
+    "name": "Linda-a-Velha",
+    "stopId": "pt-Carris_94903",
+    "importance": 4.355503915576264e-05,
+    "lat": 38.715836,
+    "lon": -9.23565,
+    "tz": "Europe/Lisbon",
+    "stopCode": "94903",
+    "vertexType": "TRANSIT",
+    "pickupType": "NORMAL",
+    "dropoffType": "NORMAL",
+    "cancelled": false,
+    "departureTimestampReason": "NO_RT_DATA",
+    "modes": [
+     "BUS"
+    ]
+   },
+   "tripTo": {
+    "name": "Cais Sodré",
+    "stopId": "pt-Carris_3812",
+    "importance": 0.0029563060961663723,
+    "lat": 38.70563500000001,
+    "lon": -9.143969999999998,
+    "tz": "Europe/Lisbon",
+    "stopCode": "3812",
+    "vertexType": "TRANSIT",
+    "pickupType": "NORMAL",
+    "dropoffType": "NORMAL",
+    "cancelled": false,
+    "arrivalTimestampReason": "NO_RT_DATA",
+    "modes": [
+     "SUBURBAN",
+     "SUBWAY",
+     "BUS"
+    ]
+   },
+   "agencyId": "1",
+   "agencyName": "Carris",
+   "agencyUrl": "http://www.carris.pt",
+   "routeId": "pt-Carris_60_0",
+   "routeUrl": "",
+   "directionId": "1",
+   "tripId": "20261027_01:30_pt-Carris_12657_20260606_60_0_3",
+   "routeType": 3,
+   "routeShortName": "201",
+   "routeLongName": "Cais Sodré - Linda-a-Velha",
+   "tripShortName": "",
+   "displayName": "201",
+   "pickupDropoffType": "NORMAL",
+   "cancelled": false,
+   "tripCancelled": false,
+   "bikesAllowed": false,
+   "wheelchairAccessible": "NOT_ACCESSIBLE",
+   "reservation": "NONE",
+   "source": "pt_Carris.gtfs.zip/stop_times.txt:485559:485590"
+  },
+  {
+   "place": {
+    "name": "Cais Sodré",
+    "stopId": "pt-Carris_3801",
+    "importance": 0.0029563060961663723,
+    "lat": 38.70599000000001,
+    "lon": -9.143114999999998,
+    "tz": "Europe/Lisbon",
+    "departure": "2026-10-27T02:00:00Z",
+    "scheduledDeparture": "2026-10-27T02:00:00Z",
+    "stopCode": "3801",
+    "vertexType": "TRANSIT",
+    "pickupType": "NORMAL",
+    "dropoffType": "NORMAL",
+    "cancelled": false,
+    "departureTimestampReason": "NO_RT_DATA",
+    "modes": [
+     "SUBURBAN",
+     "SUBWAY",
+     "BUS"
+    ]
+   },
+   "mode": "BUS",
+   "realTime": false,
+   "headsign": "Odivelas (B. Dr. Lima Pimentel)",
+   "tripFrom": {
+    "name": "Cais Sodré",
+    "stopId": "pt-Carris_3801",
+    "importance": 0.0029563060961663723,
+    "lat": 38.70599000000001,
+    "lon": -9.143114999999998,
+    "tz": "Europe/Lisbon",
+    "stopCode": "3801",
+    "vertexType": "TRANSIT",
+    "pickupType": "NORMAL",
+    "dropoffType": "NORMAL",
+    "cancelled": false,
+    "departureTimestampReason": "NO_RT_DATA",
+    "modes": [
+     "SUBURBAN",
+     "SUBWAY",
+     "BUS"
+    ]
+   },
+   "tripTo": {
+    "name": "Odivelas (B. Dr. Lima Pimentel)",
+    "stopId": "pt-Carris_15101",
+    "importance": 3.078840745729394e-05,
+    "lat": 38.78610200000001,
+    "lon": -9.183205,
+    "tz": "Europe/Lisbon",
+    "stopCode": "15101",
+    "vertexType": "TRANSIT",
+    "pickupType": "NORMAL",
+    "dropoffType": "NORMAL",
+    "cancelled": false,
+    "arrivalTimestampReason": "NO_RT_DATA",
+    "modes": [
+     "BUS"
+    ]
+   },
+   "agencyId": "1",
+   "agencyName": "Carris",
+   "agencyUrl": "http://www.carris.pt",
+   "routeId": "pt-Carris_136_0",
+   "routeUrl": "",
+   "directionId": "0",
+   "tripId": "20261027_02:00_pt-Carris_12944_20260606_136_0_2",
+   "routeType": 3,
+   "routeShortName": "206",
+   "routeLongName": "Cais Sodré - Odivelas",
+   "tripShortName": "",
+   "displayName": "206",
+   "pickupDropoffType": "NORMAL",
+   "cancelled": false,
+   "tripCancelled": false,
+   "bikesAllowed": false,
+   "wheelchairAccessible": "NOT_ACCESSIBLE",
+   "reservation": "NONE",
+   "source": "pt_Carris.gtfs.zip/stop_times.txt:494734:494786"
+  }
+ ],
+ "place": {
+  "name": "Cais do Sodre",
+  "stopId": "pt-Comboios-de-Portugal(CP)_94_69005",
+  "importance": 0.0029563060961663723,
+  "lat": 38.70614200000001,
+  "lon": -9.145372999999998,
+  "tz": "Europe/Lisbon",
+  "vertexType": "TRANSIT",
+  "modes": [
+   "SUBURBAN",
+   "SUBWAY",
+   "BUS"
+  ]
+ }
+}

@@ -638,7 +638,8 @@ Esta é a parte mais importante.
 **Mínimos:**
 
 - Android 8.0 ou superior (minSdk 26);
-- compileSdk e targetSdk 36 (Android 16) nas duas variantes, como a Play exige desde 31/08/2026.
+- targetSdk 36 (Android 16) nas duas variantes, como a Play exige desde 31/08/2026;
+- compileSdk 37, porque as versões estáveis atuais das bibliotecas do Android (Compose 1.12, Lifecycle 2.11, Navigation 2.10) o exigem.
 
 **Caminho com espaços:** se o Gradle se queixar dos espaços no caminho, cria-se um atalho de pasta sem espaços (junção), `C:\dev\paragem-certa`, que aponta para a pasta real.
 

@@ -1,0 +1,111 @@
+[
+ {
+  "active_period": [
+   {
+    "end": 1797638399,
+    "start": 1793034000
+   }
+  ],
+  "cause": "CONSTRUCTION",
+  "description_text": {
+   "translation": [
+    {
+     "language": "pt",
+     "text": "A partir do dia 26 de outubro, e durante aproximadamente 2 meses, a linha 1625 | Cascais (Terminal) – Portela Sintra (Estação Sul) via Rua Fisgas irá ter alteração de percurso devido a obras de repavimentação na Rua das Fisgas, em Alcoitão. Assim, passa a efetuar percurso conforme imagem abaixo, de forma a continuar a servir a Rua das Fisgas."
+    }
+   ]
+  },
+  "effect": "DETOUR",
+  "header_text": {
+   "translation": [
+    {
+     "language": "pt",
+     "text": "Cascais | 1625: Desvio de percurso Alcoitão"
+    }
+   ]
+  },
+  "image": {
+   "localized_image": [
+    {
+     "language": "pt",
+     "media_type": "image/png",
+     "url": "https://objectstorage.eu-frankfurt-1.oraclecloud.com/p/Bb1aJbNi-xRIIfOOSp-fxUMozQ3y8dHGpHsaE-JFdKGDN64vkZ73YL0MioG-vH_i/n/frdvdrigd38a/b/tmlmobilidade-sae-production/o/alerts/EGP1Z/LEJ8F.png"
+    }
+   ]
+  },
+  "informed_entity": [
+   {
+    "agency_id": "LA77N",
+    "route_id": "[LA77N]1625_0"
+   }
+  ]
+ },
+ {
+  "active_period": [
+   {
+    "end": 1794585600,
+    "start": 1792998600
+   }
+  ],
+  "cause": "CONSTRUCTION",
+  "description_text": {
+   "translation": [
+    {
+     "language": "pt",
+     "text": "Entre os dias 26 de outubro e 13 de novembro, das 10h00 às 16h00, a Avenida Tenente-Coronel Melo Antunes, em Carcavelos será cortada ao trânsito devido a obras de repavimentação. Assim, as linhas 1604, 1612, 1614, 1615, 1618, 1619 e 1622 efetuarão desvio de percurso via R. Dr. José Joaquim de Almeida » R. Fonte da Aldeia » Praça Dr. Manuel Rebello de Andrade (Mercado de Carcavelos) » Passeio Padre Aleixo Cordeiro."
+    }
+   ]
+  },
+  "effect": "DETOUR",
+  "header_text": {
+   "translation": [
+    {
+     "language": "pt",
+     "text": "Cascais | 1604, 1612, 1614, 1615, 1618, 1619 e 1622: Desvio de percurso Carcavelos"
+    }
+   ]
+  },
+  "informed_entity": [
+   {
+    "agency_id": "LA77N",
+    "route_id": "[LA77N]1604_0"
+   },
+   {
+    "agency_id": "LA77N",
+    "route_id": "[LA77N]1612_0"
+   },
+   {
+    "agency_id": "LA77N",
+    "route_id": "[LA77N]1612_1"
+   },
+   {
+    "agency_id": "LA77N",
+    "route_id": "[LA77N]1614_0"
+   },
+   {
+    "agency_id": "LA77N",
+    "route_id": "[LA77N]1614_2"
+   },
+   {
+    "agency_id": "LA77N",
+    "route_id": "[LA77N]1615_0"
+   },
+   {
+    "agency_id": "LA77N",
+    "route_id": "[LA77N]1615_2"
+   },
+   {
+    "agency_id": "LA77N",
+    "route_id": "[LA77N]1618_0"
+   },
+   {
+    "agency_id": "LA77N",
+    "route_id": "[LA77N]1619_0"
+   },
+   {
+    "agency_id": "LA77N",
+    "route_id": "[LA77N]1622_0"
+   }
+  ]
+ }
+]

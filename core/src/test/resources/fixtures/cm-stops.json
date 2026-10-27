@@ -1,0 +1,78 @@
+[
+ {
+  "district_id": "11",
+  "district_name": null,
+  "facilities": [],
+  "id": "060419",
+  "lat": 38.705839,
+  "line_ids": [
+   "3708"
+  ],
+  "locality_id": "022406",
+  "locality_name": null,
+  "lon": -9.143122,
+  "long_name": "Cais do Sodré (Terminal)",
+  "municipality_id": "1106",
+  "municipality_name": null,
+  "parish_id": "110661",
+  "parish_name": null,
+  "pattern_ids": [
+   "3708_0_1",
+   "3708_0_2"
+  ],
+  "route_ids": [
+   "3708_0"
+  ],
+  "short_name": null,
+  "tts_name": "Cais Do Sodré ( Terminal )",
+  "wheelchair_boarding": false
+ },
+ {
+  "district_id": "11",
+  "district_name": null,
+  "facilities": [],
+  "id": "060451",
+  "lat": 38.70624,
+  "line_ids": [
+   "3708"
+  ],
+  "locality_id": "022406",
+  "locality_name": null,
+  "lon": -9.145047,
+  "long_name": "Cais do Sodré (Metro)",
+  "municipality_id": "1106",
+  "municipality_name": null,
+  "parish_id": "110661",
+  "parish_name": null,
+  "pattern_ids": [
+   "3708_0_1"
+  ],
+  "route_ids": [
+   "3708_0"
+  ],
+  "short_name": null,
+  "tts_name": "Cais Do Sodré ( Metro )",
+  "wheelchair_boarding": false
+ },
+ {
+  "district_id": "11",
+  "district_name": null,
+  "facilities": [],
+  "id": "062000",
+  "lat": 38.70533,
+  "line_ids": [],
+  "locality_id": "022406",
+  "locality_name": null,
+  "lon": -9.14394,
+  "long_name": "Cais do Sodré",
+  "municipality_id": "1106",
+  "municipality_name": null,
+  "parish_id": "110661",
+  "parish_name": null,
+  "pattern_ids": [],
+  "route_ids": [],
+  "short_name": null,
+  "tts_name": "Cais Do Sodré",
+  "wheelchair_boarding": false
+ }
+]

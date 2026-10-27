@@ -1,0 +1,50 @@
+[
+ {
+  "estimated_arrival": "05:29:00",
+  "estimated_arrival_unix": 1792992540,
+  "headsign": "Lisboa (C. Sodré)",
+  "line_id": "[YA15B]3708",
+  "observed_arrival": null,
+  "observed_arrival_unix": null,
+  "pattern_id": "[YA15B]3708_0_1",
+  "related_trip_ids": null,
+  "route_id": "[YA15B]3708_0",
+  "scheduled_arrival": "05:25:00",
+  "scheduled_arrival_unix": 1792992300,
+  "stop_sequence": 54,
+  "trip_id": "3708_0_1|1|0525",
+  "vehicle_id": "[YA15B]2261"
+ },
+ {
+  "estimated_arrival": null,
+  "estimated_arrival_unix": null,
+  "headsign": "Costa da Caparica (Terminal)",
+  "line_id": "[YA15B]3708",
+  "observed_arrival": null,
+  "observed_arrival_unix": null,
+  "pattern_id": "[YA15B]3708_0_2",
+  "related_trip_ids": null,
+  "route_id": "[YA15B]3708_0",
+  "scheduled_arrival": "05:30:00",
+  "scheduled_arrival_unix": 1792992600,
+  "stop_sequence": 1,
+  "trip_id": null,
+  "vehicle_id": null
+ },
+ {
+  "estimated_arrival": null,
+  "estimated_arrival_unix": null,
+  "headsign": "Lisboa (C. Sodré)",
+  "line_id": "[YA15B]3708",
+  "observed_arrival": null,
+  "observed_arrival_unix": null,
+  "pattern_id": "[YA15B]3708_0_1",
+  "related_trip_ids": null,
+  "route_id": "[YA15B]3708_0",
+  "scheduled_arrival": "06:25:00",
+  "scheduled_arrival_unix": 1792995900,
+  "stop_sequence": 54,
+  "trip_id": null,
+  "vehicle_id": null
+ }
+]
