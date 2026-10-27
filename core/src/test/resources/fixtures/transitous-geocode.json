@@ -1,0 +1,310 @@
+[
+ {
+  "type": "STOP",
+  "tokens": [
+   [
+    0.0,
+    4.0
+   ],
+   [
+    5.0,
+    2.0
+   ],
+   [
+    8.0,
+    6.0
+   ]
+  ],
+  "name": "Cais do Sodre",
+  "id": "pt-Comboios-de-Portugal(CP)_94_69005",
+  "lat": 38.70614200000001,
+  "lon": -9.145372999999998,
+  "country": "PT",
+  "tz": "Europe/Lisbon",
+  "areas": [
+   {
+    "name": "Portugal",
+    "adminLevel": 2.0,
+    "matched": false,
+    "unique": false,
+    "default": false
+   },
+   {
+    "name": "Lisboa",
+    "adminLevel": 6.0,
+    "matched": false,
+    "unique": false,
+    "default": false
+   },
+   {
+    "name": "Lisboa",
+    "adminLevel": 7.0,
+    "matched": false,
+    "unique": false,
+    "default": false
+   },
+   {
+    "name": "Misericórdia",
+    "adminLevel": 8.0,
+    "matched": false,
+    "unique": true,
+    "default": true
+   }
+  ],
+  "score": -25.708948135375977,
+  "modes": [
+   "SUBURBAN",
+   "SUBWAY",
+   "BUS"
+  ],
+  "importance": 0.0029563060961663723
+ },
+ {
+  "type": "STOP",
+  "tokens": [
+   [
+    0.0,
+    4.0
+   ],
+   [
+    5.0,
+    2.0
+   ],
+   [
+    8.0,
+    6.0
+   ]
+  ],
+  "name": "Cais do Sodré",
+  "id": "pt-Transtejo-Soflusa_5",
+  "lat": 38.705000000000005,
+  "lon": -9.1455,
+  "country": "PT",
+  "tz": "Europe/Lisbon",
+  "areas": [
+   {
+    "name": "Portugal",
+    "adminLevel": 2.0,
+    "matched": false,
+    "unique": false,
+    "default": false
+   },
+   {
+    "name": "Lisboa",
+    "adminLevel": 6.0,
+    "matched": false,
+    "unique": false,
+    "default": false
+   },
+   {
+    "name": "Lisboa",
+    "adminLevel": 7.0,
+    "matched": false,
+    "unique": false,
+    "default": false
+   },
+   {
+    "name": "Misericórdia",
+    "adminLevel": 8.0,
+    "matched": false,
+    "unique": true,
+    "default": true
+   }
+  ],
+  "score": -24.87268829345703,
+  "modes": [
+   "FERRY"
+  ],
+  "importance": 0.0006592347053810954
+ },
+ {
+  "type": "STOP",
+  "tokens": [
+   [
+    0.0,
+    4.0
+   ],
+   [
+    5.0,
+    2.0
+   ],
+   [
+    8.0,
+    6.0
+   ]
+  ],
+  "name": "Cais do Sodré (Metro)",
+  "id": "pt-Carris-Metropolitana_360451",
+  "lat": 38.70624,
+  "lon": -9.145047,
+  "country": "PT",
+  "tz": "Europe/Lisbon",
+  "areas": [
+   {
+    "name": "Portugal",
+    "adminLevel": 2.0,
+    "matched": false,
+    "unique": false,
+    "default": false
+   },
+   {
+    "name": "Lisboa",
+    "adminLevel": 6.0,
+    "matched": false,
+    "unique": false,
+    "default": false
+   },
+   {
+    "name": "Lisboa",
+    "adminLevel": 7.0,
+    "matched": false,
+    "unique": false,
+    "default": false
+   },
+   {
+    "name": "Misericórdia",
+    "adminLevel": 8.0,
+    "matched": false,
+    "unique": true,
+    "default": true
+   }
+  ],
+  "score": -22.600000381469727,
+  "modes": [
+   "BUS"
+  ],
+  "importance": 3.7847466956009157e-06
+ },
+ {
+  "type": "STOP",
+  "tokens": [
+   [
+    0.0,
+    4.0
+   ],
+   [
+    5.0,
+    2.0
+   ],
+   [
+    8.0,
+    6.0
+   ]
+  ],
+  "name": "Cais do Sodré (Terminal)",
+  "id": "pt-Carris-Metropolitana_360419",
+  "lat": 38.705837,
+  "lon": -9.143121999999998,
+  "country": "PT",
+  "tz": "Europe/Lisbon",
+  "areas": [
+   {
+    "name": "Portugal",
+    "adminLevel": 2.0,
+    "matched": false,
+    "unique": false,
+    "default": false
+   },
+   {
+    "name": "Lisboa",
+    "adminLevel": 6.0,
+    "matched": false,
+    "unique": false,
+    "default": false
+   },
+   {
+    "name": "Lisboa",
+    "adminLevel": 7.0,
+    "matched": false,
+    "unique": false,
+    "default": false
+   },
+   {
+    "name": "Misericórdia",
+    "adminLevel": 8.0,
+    "matched": false,
+    "unique": true,
+    "default": true
+   }
+  ],
+  "score": -21.850000381469727,
+  "modes": [
+   "BUS"
+  ],
+  "importance": 1.8923733478004579e-06
+ },
+ {
+  "type": "STOP",
+  "tokens": [
+   [
+    0.0,
+    4.0
+   ],
+   [
+    5.0,
+    2.0
+   ],
+   [
+    8.0,
+    6.0
+   ]
+  ],
+  "name": "CAICEDO YUSO",
+  "id": "es-Alavabus_418",
+  "lat": 42.751599999999996,
+  "lon": -2.9979999999999998,
+  "level": 0.0,
+  "country": "ES",
+  "zip": "01213",
+  "tz": "Europe/Madrid",
+  "areas": [
+   {
+    "name": "España",
+    "adminLevel": 2.0,
+    "matched": false,
+    "unique": false,
+    "default": false
+   },
+   {
+    "name": "Euskadi",
+    "adminLevel": 4.0,
+    "matched": false,
+    "unique": false,
+    "default": false
+   },
+   {
+    "name": "Araba / Álava",
+    "adminLevel": 6.0,
+    "matched": false,
+    "unique": false,
+    "default": false
+   },
+   {
+    "name": "Añanako kuadrilla",
+    "adminLevel": 7.0,
+    "matched": false,
+    "unique": false,
+    "default": false
+   },
+   {
+    "name": "Lantarón",
+    "adminLevel": 8.0,
+    "matched": false,
+    "unique": true,
+    "default": true
+   },
+   {
+    "name": "Caicedo Yuso",
+    "adminLevel": 9.0,
+    "matched": false,
+    "unique": false,
+    "default": false
+   }
+  ],
+  "score": -1.600000023841858,
+  "modes": [
+   "BUS"
+  ],
+  "importance": 1.1470247045508586e-06
+ }
+]
