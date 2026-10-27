@@ -23,4 +23,14 @@
     <string name="veiculo_destino">para %1$s</string>
     <string name="veiculo_sinal">último sinal há %1$d s</string>
     <string name="fechar">Fechar</string>
+
+    <!-- Painel do início -->
+    <string name="painel_perto">Perto de ti</string>
+    <string name="painel_sem_favoritas">Toca na ★ de uma paragem para a veres aqui</string>
+    <string name="painel_procura">Procura uma paragem</string>
+    <string name="sem_chegadas">Não há chegadas nas próximas 2 horas</string>
+    <string name="sem_ligacao">Sem ligação — atualizado há %1$d min</string>
+    <string name="sem_ligacao_nada">Sem ligação — ainda não há dados guardados</string>
+    <string name="tempo_real_indisponivel">Tempo real indisponível</string>
+    <string name="acessivel">Acessível a cadeira de rodas</string>
 </resources>

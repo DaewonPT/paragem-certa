@@ -13,11 +13,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -44,6 +47,7 @@ import pt.pixellusitano.paragemcerta.ui.tema.LocalEscuro
 import java.time.Duration
 import java.time.Instant
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InicioEcra(
     repositorio: Repositorio,
@@ -69,6 +73,13 @@ fun InicioEcra(
         if (repositorio.redeEmFalta()) repositorio.atualizarRede()
     }
 
+    val folha = rememberBottomSheetScaffoldState()
+    BottomSheetScaffold(
+        scaffoldState = folha,
+        sheetPeekHeight = 260.dp,
+        sheetContainerColor = MaterialTheme.colorScheme.surface,
+        sheetContent = { painel(posicao) },
+    ) { _ ->
     Box(Modifier.fillMaxSize()) {
         Mapa(
             paragens = paragens,
@@ -82,7 +93,6 @@ fun InicioEcra(
             modifier = Modifier.fillMaxSize(),
         )
         escolhido?.let { CartaoVeiculo(it, cores[it.linhaId], aoFechar = { vm.escolherVeiculo(null) }) }
-        painel(posicao)
         if (explicar) {
             PedidoLocalizacao(
                 aoAceitar = {
@@ -96,6 +106,7 @@ fun InicioEcra(
                 },
             )
         }
+    }
     }
 }
 

@@ -165,6 +165,8 @@ class Repositorio(
 
     suspend fun linhaCm(id: String): Linha? = bd.linhas().porId(id)?.paraLinha()
 
+    suspend fun linhasCm(): Map<String, Linha> = bd.linhas().todas().associate { it.id to it.paraLinha() }
+
     suspend fun coresDasLinhasCm(): Map<String, String> =
         bd.linhas().todas().mapNotNull { l -> l.cor?.let { l.id to it } }.toMap()
 
