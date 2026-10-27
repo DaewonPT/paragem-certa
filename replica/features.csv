@@ -1,0 +1,132 @@
+feature,area,priority,original,clone,notes
+Pesquisar destino e obter percursos a partir da localização atual,planeador,must,yes,no,"Ciclo central. Origem por omissão = GPS. R25, R15."
+Escolher outra origem (partir de outro sítio),planeador,must,yes,no,Campo de partida editável no ecrã seguinte. R25.
+"Lista de percursos com duração, tempo a pé, transbordos, hora de saída e 1.ª paragem",planeador,must,yes,no,"Onde há tempo real, mostra a chegada ao vivo da 1.ª linha. R25."
+Escolher hora de partida (agora ou data e hora futuras),planeador,must,yes,no,"Botão Depart Now. R25, R21."
+Chegar a uma hora marcada (chegar às),planeador,should,por confirmar,no,O Centro de Ajuda só documenta a partida; só há uma citação indireta na página de funcionalidades. Muito útil para compromissos. R07.
+Primeiro e último serviço do dia,planeador,should,partial,no,Etiqueta Last Departure nos Trip Insights (Moovit+). Calculável a partir do horário. R16.
+Filtrar percursos por tipo de transporte,planeador,must,yes,no,Botão Filter. R25.
+Modos preferidos e menos preferidos,planeador,should,yes,no,"Escolha no arranque e em Definições, Trip Plan. Pode sugerir modo menos preferido se não houver melhor. R26."
+Preferir menos caminhada,planeador,should,yes,no,Preferência least walking (FAQ de 2023). R21.
+Preferir menos transbordos,planeador,should,partial,no,"Filtro Fewest Transfers do Assistente (Moovit+, Android). Se existe na versão gratuita: por confirmar. R16, R48."
+Aceitar mais caminhada (opção Fit),planeador,could,partial,no,Filtro do Assistente (Moovit+). R16.
+"Percursos acessíveis (cadeira de rodas, carrinho de bebé)",planeador,should,yes,no,Onde se liga na app: por confirmar. Depende de dados de acessibilidade das paragens e dos veículos. R08.
+"Etiquetas de percurso (menos caminhada, direto, mais cedo, alta frequência, espera longa)",planeador,could,partial,no,"Trip Insights (Moovit+); calculáveis com regras simples, sem IA. R48."
+Alerta de transbordo apertado,planeador,should,yes,no,"Tight Transfer Alerts (Moovit+). Regra: folga curta entre chegada e partida. R01, R48."
+"Sugestão adaptada ao tempo (chuva, calor)",planeador,could,partial,no,Smart Weather (Moovit+). Precisa de fonte meteorológica. R48.
+Percurso personalizado pelo histórico (Best For You),planeador,could,partial,no,"Moovit+ com IA. Alternativa simples: preferências e recentes guardados no telemóvel. R01, R48."
+Comparar percursos no mapa,planeador,should,yes,no,Compare Routes (Moovit+): percursos em cores e cartões deslizáveis. R52.
+Custo estimado do percurso,planeador,could,partial,no,"Só cidades com tarifas; o tarifário português é complexo (passes e zonas). R21, R54."
+Pegada de carbono (CO2e) por percurso,planeador,could,partial,no,Regiões selecionadas; fatores de emissão públicos. R29.
+Rotas de bicicleta combinadas com transporte,planeador,could,yes,no,Só em áreas metropolitanas suportadas. R01.
+Itinerário em linha temporal (mapa e etapas coloridas),planeador,must,yes,no,"Por etapa: tempo real, duração, custo, nº de paragens, onde sair. R54."
+Foto e ID da paragem no itinerário,planeador,could,yes,no,"Ajuda a reconhecer a paragem; as fotos vêm de utilizadores. R59, R25."
+Partilhar direções (ligação ou texto),planeador,should,yes,no,O destinatário vê o percurso sem ter a app. R27.
+Pesquisa de moradas e pontos de interesse em Portugal,planeador,must,yes,no,Geocodificação para destino e favoritos; fontes a escolher na arquitetura. R25.
+Planeador entre regiões,planeador,should,partial,no,"Visto nos EUA (v5.139). Em Portugal: viagens CP e expressos entre cidades, por confirmar. R19."
+Próximas chegadas por paragem e por linha,tempo-real,must,yes,no,"Verde = tempo real; preto = horário. R20, R21."
+"Cores de fiabilidade da hora (verde, amarelo, vermelho, desvio, preto)",tempo-real,must,yes,no,"Dizer sempre a origem do dado (ao vivo, histórico, horário); nunca só pela cor. R23."
+Hora do último sinal do veículo,tempo-real,should,yes,no,Aparece no ecrã Live Location. R30.
+Hora exata quando falta mais de 1 hora,tempo-real,should,yes,no,R23.
+Veículo em movimento no mapa,tempo-real,should,yes,no,"Live Location; listada como Moovit+ (por confirmar se é grátis). Precisa de posições de veículos das operadoras. R30, R51."
+Estimativa por histórico quando não há GPS,tempo-real,could,yes,no,Atraso habitual da linha. Só com dados acumulados. R23.
+Lotação do veículo (3 níveis),tempo-real,could,yes,no,Só onde a operadora fornece dados. R56.
+Detetar veículo desviado do percurso,tempo-real,could,yes,no,Hora a vermelho com ponto de exclamação. R23.
+Integração de tempo real das operadoras portuguesas,tempo-real,must,yes,no,"Na Moovit: Carris Metropolitana e Metro de Lisboa confirmados; o resto por confirmar. A Paragem Certa precisa de feeds oficiais ou abertos. R13, R14, R78."
+Navegação ao vivo passo a passo (Live Directions),navegacao,must,yes,no,"A pé até à paragem, linha, espera, paragens que faltam, saída. R24, R25."
+Aviso para sair (aproximação e momento de sair),navegacao,must,yes,no,"Chega com o telemóvel bloqueado. R18, R24."
+Funcionar em segundo plano com localização contínua,navegacao,must,yes,no,"No Android: serviço em primeiro plano, permissão de localização sempre e bateria. R24."
+Cartões de instruções deslizáveis,navegacao,should,yes,no,Passo anterior e seguinte. R24.
+Desligar as notificações da viagem (sino),navegacao,should,yes,no,R24.
+Mostrar espera e paragens que faltam,navegacao,must,yes,no,"R01, R18."
+Reencaminhar durante a viagem,navegacao,could,yes,no,Moovit+. Requer tempo real e replaneamento contínuo. R48.
+Sugerir a melhor hora de saída,navegacao,could,yes,no,Moovit+ (Assistente). R48.
+Avisos de chegada de uma linha à paragem,navegacao,should,yes,no,"Arrival Updates (Moovit+; só uma linha de cada vez). Na Paragem Certa: várias linhas e grátis. R53, R11."
+Partilhar a viagem em curso com contactos de segurança (Safe Ride),navegacao,could,yes,no,Moovit+. Precisa de servidor e SMS ou ligação pública; sensível em privacidade. R50.
+Way Finder em realidade aumentada,navegacao,skip,yes,no,Só iPhone no original; custo alto e pouco ganho. R33.
+Vista panorâmica da paragem (Live View),navegacao,should,yes,no,"Moovit+. Paragem Certa (fase 3): fotos de rua abertas (Mapillary/Panoramax, CC BY-SA, onde houver) + bússola ""Encontrar a paragem"". Sem imagens licenciadas. R49."
+Pesquisar linhas por nome ou número,linhas-paragens,must,yes,no,R22.
+Listar linhas por tipo de transporte e por operadora,linhas-paragens,must,yes,no,R22.
+Lista de paragens da linha com horas de chegada,linhas-paragens,must,yes,no,R22.
+Mudar o sentido da linha,linhas-paragens,must,yes,no,"Change direction. R22, R21."
+Horário completo do dia por paragem,linhas-paragens,must,yes,no,Full Schedule. R22.
+Mapa do percurso da linha,linhas-paragens,must,yes,no,R22.
+Todas as linhas que passam numa paragem,linhas-paragens,must,yes,no,"R20, R37."
+Pesquisar paragens por nome ou código,linhas-paragens,must,yes,no,"R21, R57."
+Ícone de alerta junto às linhas,linhas-paragens,must,yes,no,Liga ao módulo de alertas. R32.
+Mensagens das operadoras no topo da lista de linhas,linhas-paragens,could,yes,no,"O original usa feeds do Twitter; alternativa: avisos oficiais no site das operadoras. R22, R32."
+Mapa com paragens e estações perto da localização atual,perto-de-mim,must,yes,no,Ponto azul = localização. R31.
+Lista perto de si com próximas chegadas,perto-de-mim,must,yes,no,Cartão NEARBY; arrastar para cima esconde o mapa. R31.
+Cartão de favoritos no mapa,perto-de-mim,should,yes,no,Cartão FAVORITES. R31.
+Pesquisar outra zona no mapa,perto-de-mim,should,yes,no,R57.
+Toque longo no mapa: direções de ou para e guardar local,perto-de-mim,should,yes,no,"Guardar favorito pelo toque longo: Android. R31, R57."
+Camadas do mapa (mostrar ou ocultar serviços partilhados),perto-de-mim,should,yes,no,R31.
+Foto da paragem (ver e tirar),perto-de-mim,could,yes,no,"O original usa fotos de utilizadores; sem comunidade, só fotos próprias. R59."
+Casa e Trabalho,favoritos,must,yes,no,R35.
+Outros locais favoritos com nome (editar e remover),favoritos,must,yes,no,"R35, R66."
+Linhas favoritas com paragem habitual,favoritos,must,yes,no,R36.
+Paragens favoritas,favoritos,must,yes,no,R37.
+Viagens recentes,favoritos,should,yes,no,"R25, R43."
+"Cartões inteligentes no início (casa, trabalho, recentes, paragem favorita, mais próxima, último percurso)",favoritos,should,yes,no,"Lógica local com regras, sem IA. R43."
+Sincronizar o calendário (eventos com morada),favoritos,could,yes,no,Só iPhone no original; no Android pelo calendário do sistema. R60.
+Copiar favoritos para outro telemóvel,conta,should,por confirmar,no,Decisão 2026-10-26: conta opcional (Google ou email com código) sincroniza favoritos (fase 4).
+"Ícones de gravidade (vermelho, amarelo, azul)",alertas,must,yes,no,R32.
+Detalhe do alerta de serviço,alertas,must,yes,no,"R32, R58."
+Alertas nos percursos sugeridos,alertas,must,yes,no,Ícone no número da linha. R25.
+Lista de alertas por operadora,alertas,must,yes,no,Agency Alerts. R32.
+Notificar alterações das linhas favoritas,alertas,must,yes,no,"R32, R36, R58."
+Alertas escritos por voluntários e alterações de curto prazo,alertas,skip,yes,no,Comunidade Mooviter. A Paragem Certa usa só fontes oficiais. R63.
+Mapa de linhas e estações,mapas-offline,must,yes,no,"Mapa base aberto (a decidir na arquitetura). R01, R07."
+"Mapas oficiais em PDF (metro, comboio)",mapas-offline,should,yes,no,"A ficha diz que existem; o ecrã é por confirmar. Usar PDF das operadoras só com autorização, nunca os da Moovit. R01, R07."
+Horários e linhas em cache sem rede,mapas-offline,should,por confirmar,no,Não documentado; muito útil no metro. R18.
+Definições do mapa (objetos a mostrar),mapas-offline,could,yes,no,R40.
+"Veículos partilhados no mapa (bicicletas, trotinetes, ciclomotores)",micromobilidade,could,yes,no,"O original tem 300+ empresas por parcerias. Alternativa: feeds abertos (GBFS) onde existam. R28, R31."
+Abrir a app do parceiro para desbloquear,micromobilidade,could,yes,no,Ligação profunda; não precisa de parceria. R28.
+Docas de bicicletas partilhadas em tempo real,micromobilidade,could,yes,no,Em Lisboa: Gira (dados abertos por confirmar). R01.
+Integração por parceria com fornecedores de micromobilidade,micromobilidade,skip,yes,no,Parcerias comerciais (300+ empresas). R28.
+Abrir a app de TVDE ou de táxi a partir da Paragem Certa,tvde-taxi,could,partial,no,Só ligação para a app instalada no telemóvel; sem parceria. R20.
+Pedir e acompanhar TVDE ou táxi dentro da app,tvde-taxi,skip,partial,no,Parcerias comerciais (Uber desde 2016; estado atual em Portugal por confirmar). R20.
+Comprar bilhetes de transporte urbano,bilhetes-pagamentos,skip,partial,no,"Só cidades selecionadas (Israel, Roma, Turim, São Paulo) e parceiros de pagamento. Em Portugal: por confirmar. R07, R61."
+Validar passe digital,bilhetes-pagamentos,skip,partial,no,Integra com operadoras; fora do alcance. R07.
+Perfis com desconto verificados,bilhetes-pagamentos,skip,partial,no,Exige verificação documental e acordos com autoridades. R61.
+"Carteira, histórico e faturas",bilhetes-pagamentos,skip,partial,no,"Conta de pagamentos regulada. R07, R61."
+Bilhetes de longa distância (Moovit Tickets),bilhetes-pagamentos,skip,yes,no,"Revenda com parceiro de reservas. R77, R62."
+Mostrar tarifas oficiais de bilhetes e passes,bilhetes-pagamentos,could,partial,no,"Só informação, a partir de fontes oficiais das operadoras. R21."
+Reportar lotação,comunidade,could,yes,no,Sem comunidade não há dados; por agora só mostrar lotação oficial quando existir. R55.
+Confirmar ou atualizar relatos de outros utilizadores,comunidade,skip,yes,no,Precisa de comunidade ativa. R55.
+"Reportar erro de dados (paragem mudou, horário errado)",comunidade,should,partial,no,Original tem relatos e editor; Paragem Certa: formulário simples para o autor. R07.
+Editor web de voluntários (Mooviters e Embaixadores),comunidade,skip,yes,no,Comunidade de utilizadores. R63.
+Editar nome e localização de paragens na app,comunidade,skip,yes,no,Comunidade e moderação. R07.
+Dados de utilizadores a melhorar a precisão do tempo real,comunidade,skip,yes,no,Requer base de utilizadores; dados próprios da Moovit. R64.
+Compatibilidade com TalkBack,acessibilidade,must,yes,no,R08.
+Texto grande e escala de fonte do sistema,acessibilidade,must,yes,no,R08.
+Cor nunca como única informação e bom contraste,acessibilidade,must,yes,no,"Importante nas cores de fiabilidade da hora. R08, R23."
+Alvos de toque grandes e ações principais em baixo,acessibilidade,must,yes,no,R08.
+Indicar paragens e linhas acessíveis,acessibilidade,should,yes,no,No original só em algumas cidades. R08.
+Escolher que notificações receber,notificacoes,should,yes,no,R41.
+Notificação persistente durante a viagem,notificacoes,should,partial,no,Faz parte da navegação ao vivo; no Android exige serviço em primeiro plano. R24.
+Widget de ecrã inicial com próximas chegadas dos favoritos,widgets,should,por confirmar,no,Sem documentação pública no original. Muito valor no uso diário.
+"Atalhos de aplicação (Casa, Trabalho)",widgets,could,por confirmar,no,Atalhos do Android; não documentado no original.
+Usar a app sem criar conta,conta,must,por confirmar,no,A app funciona toda sem conta; a conta é opcional (fase 4).
+"Início de sessão (Google, Apple, e-mail, telefone)",conta,should,por confirmar,no,Decisão 2026-10-26: Google ou email com código; sem Apple nem telefone (fase 4).
+Apagar os dados da app,conta,must,yes,no,"Apagar dados locais + ""Apagar conta"" na app e página web (regra da Play Store) (fase 4)."
+Política de privacidade e ficha de segurança de dados da Google Play,conta,must,yes,no,Obrigatórias para publicar; recolher o mínimo (localização). R03.
+Menu Mais e ecrã de Definições,definicoes,must,yes,no,R41.
+Escolher área ou cidade,definicoes,could,yes,no,O original muda de metro. Portugal pode ser uma só área. R38.
+Modo escuro que segue o sistema,definicoes,must,yes,no,R42.
+Feedback e contacto dentro da app,definicoes,should,yes,no,R44.
+Interface em português de Portugal,idiomas,must,yes,no,"O original segue o idioma do telemóvel. R39, R65."
+Outros idiomas (mais de 40),idiomas,skip,yes,no,Por desenho: só português de Portugal. R39.
+Subscrição Moovit+ (mensal e anual),moovit-plus,skip,yes,no,"Por desenho: sem subscrições. R45, R46."
+Restaurar ou cancelar a subscrição,moovit-plus,skip,yes,no,Por desenho. R47.
+Ecrã de planos (paywall),moovit-plus,skip,yes,no,Por desenho. R45.
+Banners e anúncios intersticiais,anuncios,skip,yes,no,"Por desenho: sem anúncios. R09, R10."
+Anúncios no mapa e segmentação por localização,anuncios,skip,yes,no,"Por desenho; também evita partilhar IDs com terceiros. R10, R03."
+Assistente de IA em linguagem natural (MoovitAI),outras,skip,yes,no,Decisão 2026-10-27: o utilizador não quer IA (custo mensal). R48.
+Web app e páginas web por linha e paragem,outras,skip,yes,no,"Produto web e SEO; a Paragem Certa é Android. R06, R70."
+"Apps de marca, APIs e análise de mobilidade (B2B)",outras,skip,yes,no,"Negócio B2B. R06, R12."
+Transporte a pedido (FlexiRide),outras,skip,yes,no,App separada. R01.
+Créditos de carbono e Low Carbon Commute,outras,skip,yes,no,Programa comercial. R29.
+Importar horários oficiais das operadoras,dados,must,yes,no,Base de tudo. Pistas: NAP Portugal e sites das operadoras (por confirmar). R64.
+Base global de linhas e horários curada por voluntários,dados,skip,yes,no,"Dados próprios da Moovit. R63, R64."
+Modelo próprio de previsão de chegadas,dados,skip,yes,no,Dados e modelo próprios da Moovit. R23.

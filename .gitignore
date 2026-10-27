@@ -1,0 +1,8 @@
+.superpowers/
+*.jks
+*.keystore
+local.properties
+.gradle/
+build/
+.idea/
+*.apk
