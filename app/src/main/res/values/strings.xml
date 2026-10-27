@@ -46,4 +46,10 @@
     <string name="gravidade_info">Informação</string>
     <string name="voltar">Voltar</string>
     <string name="mostrar_mais">Ver mais</string>
+
+    <!-- Pesquisa -->
+    <string name="pesquisa_dica">Para onde vais?</string>
+    <string name="pesquisa_campo">Procura uma paragem ou linha</string>
+    <string name="pesquisa_sem_resultados">Sem resultados. Experimenta outro nome ou o número da linha.</string>
+    <string name="pesquisa_linha">Linha %1$s</string>
 </resources>

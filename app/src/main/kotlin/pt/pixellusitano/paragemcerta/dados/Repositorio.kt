@@ -161,6 +161,17 @@ class Repositorio(
         return locais + outras
     }
 
+    private val paragensDasLinhas = mutableMapOf<String, List<Paragem>>()
+
+    /** Paragens de uma linha da Carris Metropolitana (todos os sentidos), guardadas só nesta sessão. */
+    suspend fun paragensDaLinha(linhaId: String): List<Paragem> = paragensDasLinhas.getOrPut(linhaId) {
+        val padroes = bd.linhas().porId(linhaId)?.padroes?.split(',')?.filter { it.isNotBlank() }.orEmpty()
+        val ids = padroes.flatMap { (cm.padrao(it) as? Resultado.Ok)?.valor.orEmpty() }.distinct()
+        if (ids.isEmpty()) return emptyList()
+        val porChave = bd.paragens().porChaves(ids.map { RefParagem(Fonte.CM, it).chave }).associateBy { it.id }
+        ids.mapNotNull { porChave[it]?.paraParagem() }
+    }
+
     suspend fun linhasCmComecadasPor(prefixo: String): List<Linha> = bd.linhas().comecadasPor(prefixo).map { it.paraLinha() }
 
     suspend fun linhaCm(id: String): Linha? = bd.linhas().porId(id)?.paraLinha()

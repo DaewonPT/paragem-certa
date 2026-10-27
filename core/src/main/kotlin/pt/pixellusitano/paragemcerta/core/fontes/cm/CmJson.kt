@@ -65,3 +65,10 @@ import kotlinx.serialization.Serializable
     val image: CmImagem? = null,
     @SerialName("informed_entity") val entidades: List<CmEntidade> = emptyList(),
 )
+
+@Serializable internal class CmPontoPercurso(
+    @SerialName("stop_id") val paragem: String,
+    @SerialName("stop_sequence") val ordem: Int = 0,
+)
+
+@Serializable internal class CmPadraoJson(val path: List<CmPontoPercurso> = emptyList())

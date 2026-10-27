@@ -48,6 +48,11 @@ object CmParser {
     fun padroesDasLinhas(json: String): Map<String, List<String>> =
         JSON.decodeFromString<List<CmLinhaJson>>(json).associate { it.id to it.padroes }
 
+    /** Ids das paragens de um percurso, pela ordem em que o autocarro passa. A API devolve uma lista com um percurso. */
+    fun padrao(json: String): List<String> =
+        JSON.decodeFromString<List<CmPadraoJson>>(json).firstOrNull()?.path.orEmpty()
+            .sortedBy { it.ordem }.map { cmIdLimpo(it.paragem) }
+
     fun veiculos(json: String): List<Veiculo> =
         JSON.decodeFromString<List<CmVeiculoJson>>(json).mapNotNull {
             Veiculo(
@@ -93,6 +98,8 @@ class CarrisMetropolitana(private val http: Http, private val base: String = "ht
 
     /** Devolve o corpo em bruto: o repositório tira daí as linhas e os ids dos percursos de cada uma. */
     suspend fun linhasJson(): Resultado<String> = http.pedir("${base}lines") { it }
+
+    suspend fun padrao(id: String): Resultado<List<String>> = http.pedir("${base}patterns/$id", CmParser::padrao)
 
     suspend fun veiculos(): Resultado<List<Veiculo>> = http.pedir("${base}vehicles", CmParser::veiculos)
 

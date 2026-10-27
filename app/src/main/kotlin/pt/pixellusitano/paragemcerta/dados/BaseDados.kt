@@ -76,6 +76,9 @@ interface ParagensDao {
     @Query("SELECT * FROM paragens WHERE fonte = 'CM' AND nomeNormalizado LIKE '%' || :texto || '%' LIMIT 30")
     suspend fun cmPorNome(texto: String): List<ParagemEntidade>
 
+    @Query("SELECT * FROM paragens WHERE chave IN (:chaves)")
+    suspend fun porChaves(chaves: List<String>): List<ParagemEntidade>
+
     @Query("SELECT COUNT(*) FROM paragens WHERE fonte = 'CM'")
     suspend fun contarCm(): Int
 }

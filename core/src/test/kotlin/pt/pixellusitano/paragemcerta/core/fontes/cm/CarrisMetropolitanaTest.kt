@@ -86,4 +86,8 @@ class CarrisMetropolitanaTest {
         assertEquals("https://api.carrismetropolitana.pt/v2/arrivals/by_stop/060419", http.pedidos.single())
         assertEquals(3, (r as Resultado.Ok).valor.size)
     }
+
+    @Test fun percursoOrdenadoPorSequencia() {
+        assertEquals(listOf("020735", "020002", "060419"), CmParser.padrao(fixture("cm-pattern-3708_0_1.json")))
+    }
 }

@@ -1,0 +1,36 @@
+[
+ {
+  "id": "3708_0_1",
+  "line_id": "3708",
+  "headsign": "Lisboa (C. Sodré)",
+  "direction_id": 0,
+  "color": "#C61D23",
+  "text_color": "#FFFFFF",
+  "path": [
+   {
+    "allow_drop_off": true,
+    "allow_pickup": true,
+    "distance": 27.5615,
+    "distance_delta": 0,
+    "stop_id": "060419",
+    "stop_sequence": 54
+   },
+   {
+    "allow_drop_off": true,
+    "allow_pickup": true,
+    "distance": 0.5512,
+    "distance_delta": 0,
+    "stop_id": "020002",
+    "stop_sequence": 2
+   },
+   {
+    "allow_drop_off": true,
+    "allow_pickup": true,
+    "distance": 0,
+    "distance_delta": 0,
+    "stop_id": "020735",
+    "stop_sequence": 1
+   }
+  ]
+ }
+]
