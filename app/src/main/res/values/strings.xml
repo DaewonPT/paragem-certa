@@ -74,4 +74,10 @@
     <string name="mais">Mais</string>
     <string name="linha_no_mapa">Linha %1$s no mapa</string>
     <string name="linha_proxima">Próxima chegada em %1$s</string>
+
+    <!-- Atualizações (variante pessoal) -->
+    <string name="atualizacao_titulo">Há uma versão nova (%1$s)</string>
+    <string name="atualizacao_atualizar">Atualizar</string>
+    <string name="atualizacao_agora_nao">Agora não</string>
+    <string name="atualizacao_falhou">Não foi possível descarregar a atualização. Tenta mais tarde.</string>
 </resources>

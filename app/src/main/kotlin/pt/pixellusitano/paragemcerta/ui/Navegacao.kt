@@ -5,7 +5,14 @@ import android.net.Uri
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import android.widget.Toast
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.setValue
+import kotlinx.coroutines.launch
+import pt.pixellusitano.paragemcerta.atualizar.Atualizacoes
+import pt.pixellusitano.paragemcerta.atualizar.NovaVersao
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -55,6 +62,8 @@ fun Navegacao(ligacoes: Ligacoes) {
         launchSingleTop = true
         restoreState = true
     }
+
+    AvisoAtualizacao()
 
     Scaffold(
         bottomBar = {
@@ -113,4 +122,30 @@ fun Navegacao(ligacoes: Ligacoes) {
             }
         }
     }
+}
+
+/** Na variante pessoal mostra, no máximo uma vez por dia, que há uma versão nova no GitHub. */
+@Composable
+private fun AvisoAtualizacao() {
+    val contexto = LocalContext.current
+    val escopo = androidx.compose.runtime.rememberCoroutineScope()
+    var nova by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<NovaVersao?>(null) }
+    androidx.compose.runtime.LaunchedEffect(Unit) { nova = runCatching { Atualizacoes.verificar(contexto) }.getOrNull() }
+    val n = nova ?: return
+    val falhou = stringResource(R.string.atualizacao_falhou)
+    AlertDialog(
+        onDismissRequest = { nova = null },
+        title = { Text(stringResource(R.string.atualizacao_titulo, n.tag.removePrefix("v"))) },
+        text = { Text(n.notas) },
+        confirmButton = {
+            TextButton(onClick = {
+                nova = null
+                escopo.launch {
+                    runCatching { Atualizacoes.instalar(contexto, n) }
+                        .onFailure { Toast.makeText(contexto, falhou, Toast.LENGTH_LONG).show() }
+                }
+            }) { Text(stringResource(R.string.atualizacao_atualizar)) }
+        },
+        dismissButton = { TextButton(onClick = { nova = null }) { Text(stringResource(R.string.atualizacao_agora_nao)) } },
+    )
 }

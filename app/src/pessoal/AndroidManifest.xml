@@ -1,3 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Permissões só da variante pessoal (o atualizador entra na Task 15). -->
-<manifest xmlns:android="http://schemas.android.com/apk/res/android" />
+<!-- Só a variante pessoal se atualiza sozinha; a da Play Store não tem esta permissão. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
+    <application>
+        <receiver
+            android:name=".atualizar.ResultadoInstalacao"
+            android:exported="false" />
+    </application>
+</manifest>
