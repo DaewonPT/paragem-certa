@@ -1,4 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Paragem Certa</string>
+
+    <!-- Sobre e fontes de dados -->
+    <string name="sobre_titulo">Sobre e fontes de dados</string>
+    <string name="sobre_versao">Versão %1$s</string>
+    <string name="sobre_autor">Feito pela Pixel Lusitano (Alize.On.Me)</string>
+    <string name="sobre_licenca">Código aberto sob a licença GPL-3.0</string>
+    <string name="sobre_fontes">Fontes de dados</string>
+    <string name="sobre_fonte_cm">Carris Metropolitana — dados abertos</string>
+    <string name="sobre_fonte_transitous">Transitous — horários e rotas</string>
+    <string name="sobre_fonte_openfreemap">OpenFreeMap</string>
+    <string name="sobre_fonte_osm">© OpenStreetMap contributors</string>
+    <string name="sobre_contacto">Contacto</string>
 </resources>
