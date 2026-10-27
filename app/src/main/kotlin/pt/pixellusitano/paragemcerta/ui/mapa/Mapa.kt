@@ -18,6 +18,8 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraPosition
+import org.maplibre.android.camera.CameraUpdateFactory
+import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
@@ -53,6 +55,7 @@ private val SINAL_ANTIGO: Duration = Duration.ofMinutes(2)
 @Composable
 fun Mapa(
     paragens: List<Paragem>,
+    enquadrar: List<Paragem>,
     veiculos: List<Veiculo>,
     coresLinhas: Map<String, String>,
     escuro: Boolean,
@@ -120,6 +123,13 @@ fun Mapa(
             prepararCamadas(estilo, escuro)
             estado.estilo = estilo
         }
+    }
+
+    LaunchedEffect(enquadrar, estado.mapa) {
+        val mapa = estado.mapa ?: return@LaunchedEffect
+        if (enquadrar.size < 2) return@LaunchedEffect
+        val limites = LatLngBounds.Builder().includes(enquadrar.map { LatLng(it.lat, it.lon) }).build()
+        mapa.easeCamera(CameraUpdateFactory.newLatLngBounds(limites, 120))
     }
 
     LaunchedEffect(paragens, estado.estilo) {

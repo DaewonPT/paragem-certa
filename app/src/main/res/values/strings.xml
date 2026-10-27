@@ -52,4 +52,26 @@
     <string name="pesquisa_campo">Procura uma paragem ou linha</string>
     <string name="pesquisa_sem_resultados">Sem resultados. Experimenta outro nome ou o número da linha.</string>
     <string name="pesquisa_linha">Linha %1$s</string>
+
+    <!-- Navegação e Eu -->
+    <string name="nav_inicio">Início</string>
+    <string name="nav_eu">Eu</string>
+    <string name="eu_favoritas">Paragens favoritas</string>
+    <string name="eu_sem_favoritas">Ainda não tens favoritas. Abre uma paragem e toca na ☆.</string>
+    <string name="eu_subir">Subir</string>
+    <string name="eu_remover">Remover</string>
+    <string name="eu_definicoes">Definições</string>
+    <string name="eu_modo">Aparência</string>
+    <string name="modo_sistema">Igual ao telemóvel</string>
+    <string name="modo_claro">Claro</string>
+    <string name="modo_escuro">Escuro</string>
+    <string name="eu_limites">Cores do atraso</string>
+    <string name="eu_limite_atrasado">Amarelo a partir de %1$d min</string>
+    <string name="eu_limite_muito">Vermelho acima de %1$d min</string>
+    <string name="eu_sobre">Sobre e fontes de dados</string>
+    <string name="eu_opiniao">Enviar opinião</string>
+    <string name="menos">Menos</string>
+    <string name="mais">Mais</string>
+    <string name="linha_no_mapa">Linha %1$s no mapa</string>
+    <string name="linha_proxima">Próxima chegada em %1$s</string>
 </resources>

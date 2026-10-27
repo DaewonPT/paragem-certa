@@ -4,6 +4,8 @@ import android.Manifest
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,6 +34,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
+import pt.pixellusitano.paragemcerta.core.regras.maisProximas
+import pt.pixellusitano.paragemcerta.ui.comum.LinhaChegada
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -52,6 +57,9 @@ import java.time.Instant
 fun InicioEcra(
     repositorio: Repositorio,
     aoAbrirParagem: (Paragem) -> Unit,
+    aoPesquisar: () -> Unit = {},
+    linhaId: String? = null,
+    aoLimparLinha: () -> Unit = {},
     painel: @Composable (posicao: Pair<Double, Double>?) -> Unit = {},
 ) {
     val contexto = LocalContext.current
@@ -68,6 +76,10 @@ fun InicioEcra(
         comLocalizacao = r.values.any { it }
     }
 
+    val paragensDaLinha by produceState<List<Paragem>?>(null, linhaId) {
+        value = linhaId?.let { repositorio.paragensDaLinha(it) }
+    }
+
     LaunchedEffect(Unit) {
         // Primeira utilização: as paragens da Carris Metropolitana ainda não estão na base local.
         if (repositorio.redeEmFalta()) repositorio.atualizarRede()
@@ -82,7 +94,8 @@ fun InicioEcra(
     ) { _ ->
     Box(Modifier.fillMaxSize()) {
         Mapa(
-            paragens = paragens,
+            paragens = paragensDaLinha ?: paragens,
+            enquadrar = paragensDaLinha.orEmpty(),
             veiculos = veiculos,
             coresLinhas = cores,
             escuro = LocalEscuro.current,
@@ -92,7 +105,13 @@ fun InicioEcra(
             aoTocarVeiculo = vm::escolherVeiculo,
             modifier = Modifier.fillMaxSize(),
         )
-        escolhido?.let { CartaoVeiculo(it, cores[it.linhaId], aoFechar = { vm.escolherVeiculo(null) }) }
+        Column(Modifier.statusBarsPadding().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            BarraPesquisa(aoPesquisar)
+            linhaId?.let { l ->
+                CartaoLinha(repositorio, l, paragensDaLinha.orEmpty(), posicao, aoLimparLinha)
+            }
+            escolhido?.let { CartaoVeiculo(it, aoFechar = { vm.escolherVeiculo(null) }) }
+        }
         if (explicar) {
             PedidoLocalizacao(
                 aoAceitar = {
@@ -111,10 +130,44 @@ fun InicioEcra(
 }
 
 @Composable
-private fun CartaoVeiculo(v: Veiculo, cor: String?, aoFechar: () -> Unit) {
+private fun BarraPesquisa(aoPesquisar: () -> Unit) {
+    Surface(
+        Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button, onClick = aoPesquisar),
+        shape = RoundedCornerShape(14.dp), shadowElevation = 6.dp,
+        border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.secondary),
+    ) {
+        Text("🔍  " + stringResource(R.string.pesquisa_dica), color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp))
+    }
+}
+
+/** Linha escolhida na pesquisa: as paragens dela estão no mapa e mostra-se a 1.ª chegada na paragem dela mais próxima. */
+@Composable
+private fun CartaoLinha(repositorio: Repositorio, linhaId: String, paragens: List<Paragem>, posicao: Pair<Double, Double>?, aoFechar: () -> Unit) {
+    val maisProxima = remember(paragens, posicao) {
+        posicao?.let { (lat, lon) -> maisProximas(paragens, lat, lon, limite = 1, raioMetros = Double.MAX_VALUE).firstOrNull() }
+            ?: paragens.firstOrNull()
+    }
+    val estado by remember(maisProxima) { maisProxima?.let { repositorio.chegadas(it.ref) } ?: kotlinx.coroutines.flow.emptyFlow() }
+        .collectAsStateWithLifecycle(initialValue = null)
+    val primeira = estado?.chegadas?.firstOrNull { it.linhaId == linhaId }
+    Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), shadowElevation = 6.dp) {
+        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.linha_no_mapa, linhaId), style = MaterialTheme.typography.titleMedium)
+                maisProxima?.let { Text(it.nome, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                primeira?.let { LinhaChegada(it, null, Instant.now()) }
+            }
+            TextButton(onClick = aoFechar) { Text(stringResource(R.string.fechar)) }
+        }
+    }
+}
+
+@Composable
+private fun CartaoVeiculo(v: Veiculo, aoFechar: () -> Unit) {
     val segundos = Duration.between(v.ultimoSinal, Instant.now()).seconds.coerceAtLeast(0)
     Surface(
-        Modifier.statusBarsPadding().padding(12.dp).fillMaxWidth(),
+        Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(14.dp), tonalElevation = 3.dp, shadowElevation = 6.dp,
     ) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {

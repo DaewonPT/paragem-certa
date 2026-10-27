@@ -141,6 +141,8 @@ class Repositorio(
         else dao.guardar(FavoritaEntidade(p.ref.chave, p.nome, dao.proximaOrdem(), p.lat, p.lon))
     }
 
+    suspend fun removerFavorita(ref: RefParagem) = bd.favoritas().apagar(ref.chave)
+
     suspend fun reordenarFavoritas(ordem: List<Favorita>) =
         bd.favoritas().guardarTodas(ordem.mapIndexed { i, f -> FavoritaEntidade(f.ref.chave, f.nome, i, f.lat, f.lon) })
 

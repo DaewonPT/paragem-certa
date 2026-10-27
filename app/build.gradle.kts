@@ -100,6 +100,8 @@ dependencies {
     implementation(libs.room.ktx)
     ksp(libs.room.compiler)
     implementation(libs.work.runtime)
+    implementation(libs.datastore.preferences)
+    implementation(libs.navigation.compose)
     implementation(libs.serialization.json)
     implementation(libs.coroutines.android)
     implementation(libs.okhttp)

@@ -38,6 +38,9 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 val LISBOA_FUSO: ZoneId = ZoneId.of("Europe/Lisbon")
+
+/** Limites de atraso escolhidos nas definições; chegam a todas as linhas de chegada sem passar por cada ecrã. */
+val LocalLimites = androidx.compose.runtime.staticCompositionLocalOf { Limites() }
 private val HORA = DateTimeFormatter.ofPattern("HH:mm")
 
 /** Cor neutra quando o operador não publica a cor da linha. */
@@ -92,7 +95,7 @@ fun SeloLinha(nome: String, cor: Color, corTexto: Color = Color.White) {
 }
 
 @Composable
-fun LinhaChegada(c: Chegada, linha: Linha?, agora: Instant, limites: Limites = Limites()) {
+fun LinhaChegada(c: Chegada, linha: Linha?, agora: Instant, limites: Limites = LocalLimites.current) {
     val cor = CoresAtraso.cor(estado(c, limites), LocalEscuro.current)
     val descricao = descricaoChegada(c, agora, limites)
     Row(
