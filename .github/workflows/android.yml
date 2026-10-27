@@ -3,7 +3,7 @@ name: Android
 
 on:
   push:
-    branches: [main, fase-0-1-chegadas]
+    branches: [main]
     tags: ['v*']
   pull_request:
   workflow_dispatch:
