@@ -13,4 +13,14 @@
     <string name="sobre_fonte_openfreemap">OpenFreeMap</string>
     <string name="sobre_fonte_osm">© OpenStreetMap contributors</string>
     <string name="sobre_contacto">Contacto</string>
+
+    <!-- Início e localização -->
+    <string name="loc_titulo">Paragens perto de ti</string>
+    <string name="loc_texto">A Paragem Certa usa a tua localização para mostrar as paragens e as chegadas mais próximas. A posição fica no telemóvel: só é usada enquanto a app está aberta.</string>
+    <string name="loc_aceitar">Permitir localização</string>
+    <string name="loc_recusar">Agora não</string>
+    <string name="veiculo_linha">Linha %1$s</string>
+    <string name="veiculo_destino">para %1$s</string>
+    <string name="veiculo_sinal">último sinal há %1$d s</string>
+    <string name="fechar">Fechar</string>
 </resources>
