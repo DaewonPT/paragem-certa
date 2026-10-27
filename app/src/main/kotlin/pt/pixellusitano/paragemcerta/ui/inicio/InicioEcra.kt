@@ -35,6 +35,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.lifecycle.compose.LifecycleResumeEffect
+import pt.pixellusitano.paragemcerta.core.atraso.aindaPorChegar
+import pt.pixellusitano.paragemcerta.ui.comum.FaixaEstado
 import pt.pixellusitano.paragemcerta.core.regras.maisProximas
 import pt.pixellusitano.paragemcerta.ui.comum.LinhaChegada
 import androidx.compose.ui.unit.dp
@@ -71,13 +77,22 @@ fun InicioEcra(
 
     var comLocalizacao by remember { mutableStateOf(temLocalizacao(contexto)) }
     var explicar by remember { mutableStateOf(!comLocalizacao && !localizacaoJaPerguntada(contexto)) }
-    val posicao = remember(comLocalizacao) { ultimaPosicao(contexto) }
+    var posicao by remember { mutableStateOf(ultimaPosicao(contexto)) }
     val pedir = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { r ->
         comLocalizacao = r.values.any { it }
     }
+    // A permissão pode ter sido dada nas definições do sistema: volta a ver sempre que se regressa à app.
+    LifecycleResumeEffect(Unit) {
+        comLocalizacao = temLocalizacao(contexto)
+        onPauseOrDispose { }
+    }
+    LaunchedEffect(comLocalizacao) {
+        if (comLocalizacao) pedirPosicaoAtual(contexto) { posicao = it }
+    }
 
+    var linhaFalhou by remember(linhaId) { mutableStateOf(false) }
     val paragensDaLinha by produceState<List<Paragem>?>(null, linhaId) {
-        value = linhaId?.let { repositorio.paragensDaLinha(it) }
+        value = linhaId?.let { l -> repositorio.paragensDaLinha(l).also { if (it == null) linhaFalhou = true } }
     }
 
     LaunchedEffect(Unit) {
@@ -86,6 +101,7 @@ fun InicioEcra(
     }
 
     val folha = rememberBottomSheetScaffoldState()
+    Box(Modifier.fillMaxSize()) {
     BottomSheetScaffold(
         scaffoldState = folha,
         sheetPeekHeight = 260.dp,
@@ -100,6 +116,8 @@ fun InicioEcra(
             coresLinhas = cores,
             escuro = LocalEscuro.current,
             centroInicial = posicao?.let { LatLng(it.first, it.second) } ?: LISBOA,
+            camaraInicial = vm.camara,
+            centrarEm = posicao?.let { LatLng(it.first, it.second) },
             aoMoverCamara = vm::aoMoverCamara,
             aoTocarParagem = aoAbrirParagem,
             aoTocarVeiculo = vm::escolherVeiculo,
@@ -108,10 +126,13 @@ fun InicioEcra(
         Column(Modifier.statusBarsPadding().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             BarraPesquisa(aoPesquisar)
             linhaId?.let { l ->
-                CartaoLinha(repositorio, l, paragensDaLinha.orEmpty(), posicao, aoLimparLinha)
+                CartaoLinha(repositorio, l, paragensDaLinha, linhaFalhou, posicao, aoLimparLinha)
             }
             escolhido?.let { CartaoVeiculo(it, aoFechar = { vm.escolherVeiculo(null) }) }
         }
+    }
+    }
+        // Fora do painel: se ficasse dentro, o painel tapava os botões.
         if (explicar) {
             PedidoLocalizacao(
                 aoAceitar = {
@@ -125,7 +146,6 @@ fun InicioEcra(
                 },
             )
         }
-    }
     }
 }
 
@@ -143,20 +163,42 @@ private fun BarraPesquisa(aoPesquisar: () -> Unit) {
 
 /** Linha escolhida na pesquisa: as paragens dela estão no mapa e mostra-se a 1.ª chegada na paragem dela mais próxima. */
 @Composable
-private fun CartaoLinha(repositorio: Repositorio, linhaId: String, paragens: List<Paragem>, posicao: Pair<Double, Double>?, aoFechar: () -> Unit) {
+private fun CartaoLinha(
+    repositorio: Repositorio,
+    linhaId: String,
+    paragens: List<Paragem>?,
+    falhou: Boolean,
+    posicao: Pair<Double, Double>?,
+    aoFechar: () -> Unit,
+) {
     val maisProxima = remember(paragens, posicao) {
-        posicao?.let { (lat, lon) -> maisProximas(paragens, lat, lon, limite = 1, raioMetros = Double.MAX_VALUE).firstOrNull() }
-            ?: paragens.firstOrNull()
+        val lista = paragens.orEmpty()
+        posicao?.let { (lat, lon) -> maisProximas(lista, lat, lon, limite = 1, raioMetros = Double.MAX_VALUE).firstOrNull() }
+            ?: lista.firstOrNull()
     }
     val estado by remember(maisProxima) { maisProxima?.let { repositorio.chegadas(it.ref) } ?: kotlinx.coroutines.flow.emptyFlow() }
         .collectAsStateWithLifecycle(initialValue = null)
-    val primeira = estado?.chegadas?.firstOrNull { it.linhaId == linhaId }
+    val agora = Instant.now()
+    val primeira = estado?.chegadas?.firstOrNull { it.linhaId == linhaId && aindaPorChegar(it, agora) }
     Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), shadowElevation = 6.dp) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(stringResource(R.string.linha_no_mapa, linhaId), style = MaterialTheme.typography.titleMedium)
-                maisProxima?.let { Text(it.nome, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                primeira?.let { LinhaChegada(it, null, Instant.now()) }
+                val e = estado
+                when {
+                    falhou -> Text(stringResource(R.string.linha_falhou), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    paragens == null || (maisProxima != null && e == null) ->
+                        Text(stringResource(R.string.a_carregar), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    else -> {
+                        maisProxima?.let { Text(it.nome, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                        e?.let { FaixaEstado(it, agora, Modifier.padding(vertical = 4.dp)) }
+                        when {
+                            primeira != null -> LinhaChegada(primeira, null, agora)
+                            e != null && !e.semLigacao && !e.tempoRealIndisponivel ->
+                                Text(stringResource(R.string.sem_chegadas), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                    }
+                }
             }
             TextButton(onClick = aoFechar) { Text(stringResource(R.string.fechar)) }
         }
@@ -182,9 +224,17 @@ private fun CartaoVeiculo(v: Veiculo, aoFechar: () -> Unit) {
 }
 
 @Composable
-private fun PedidoLocalizacao(aoAceitar: () -> Unit, aoRecusar: () -> Unit) {
-    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background.copy(alpha = 0.96f)), contentAlignment = Alignment.Center) {
-        Column(Modifier.padding(24.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+internal fun PedidoLocalizacao(aoAceitar: () -> Unit, aoRecusar: () -> Unit) {
+    Box(
+        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background.copy(alpha = 0.96f))
+            // Não deixa os toques passarem para o mapa por baixo.
+            .pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } } },
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            Modifier.verticalScroll(rememberScrollState()).statusBarsPadding().padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
             Text(stringResource(R.string.loc_titulo), style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
             FrisoAzulejo(Modifier.fillMaxWidth())
             Text(stringResource(R.string.loc_texto), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onBackground)

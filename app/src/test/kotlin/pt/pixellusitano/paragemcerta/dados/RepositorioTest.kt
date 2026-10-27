@@ -98,4 +98,30 @@ class RepositorioTest {
         assertTrue(r.pesquisar("sodre").any { it.nome == "Cais do Sodré (Terminal)" })
         assertEquals("#C61D23", r.linhaCm("3708")?.cor)
     }
+
+    @Test fun mostraOGuardadoAntesDeAPrimeiraRespostaChegar() = runTest {
+        val rapido = HttpPorUrl("arrivals" to listOf({ Resposta(200, fixture("cm-arrivals-060419.json")) }))
+        repo(rapido).chegadas(terminal).test { awaitItem(); cancelAndIgnoreRemainingEvents() }
+        val lento = object : Http {
+            override suspend fun get(url: String): Resposta { kotlinx.coroutines.delay(30_000); return Resposta(200, "[]") }
+        }
+        repo(lento).chegadas(terminal).test {
+            val primeira = awaitItem()
+            assertEquals(3, primeira.chegadas.size)
+            assertFalse(primeira.semLigacao)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun linhaQueFalhaNaoFicaGuardadaVazia() = runTest {
+        val http = HttpPorUrl(
+            "/stops" to listOf({ Resposta(200, fixture("cm-stops.json")) }),
+            "/lines" to listOf({ Resposta(200, fixture("cm-lines.json")) }),
+            "patterns" to listOf({ throw IOException("sem rede") }, { Resposta(200, fixture("cm-pattern-3708_0_1.json")) }),
+        )
+        val r = repo(http)
+        assertTrue(r.atualizarRede())
+        assertEquals(null, r.paragensDaLinha("3708"))
+        assertTrue(r.paragensDaLinha("3708")!!.any { it.ref.id == "060419" })
+    }
 }

@@ -86,7 +86,7 @@ fun Navegacao(ligacoes: Ligacoes) {
                         aoAbrirParagem = { nav.navigate(Paragem(it.ref.chave)) },
                         aoPesquisar = { nav.navigate(Pesquisa) },
                         linhaId = linha,
-                        aoLimparLinha = { nav.navigate(Inicio()) { popUpTo<Inicio> { inclusive = true } } },
+                        aoLimparLinha = { nav.popBackStack() },
                         painel = { posicao ->
                             Painel(repositorio, posicao, aoAbrirParagem = { nav.navigate(Paragem(it.chave)) }, aoPesquisar = { nav.navigate(Pesquisa) })
                         },
@@ -97,7 +97,8 @@ fun Navegacao(ligacoes: Ligacoes) {
                 PesquisaEcra(
                     repositorio = repositorio,
                     aoAbrirParagem = { nav.navigate(Paragem(it.ref.chave)) },
-                    aoAbrirLinha = { nav.navigate(Inicio(linha = it.id)) { popUpTo<Inicio> { inclusive = true } } },
+                    // Fica [Início, Início(linha)]: "voltar" regressa ao mapa normal em vez de fechar a app.
+                    aoAbrirLinha = { nav.navigate(Inicio(linha = it.id)) { popUpTo<Inicio>() } },
                     aoVoltar = { nav.popBackStack() },
                 )
             }

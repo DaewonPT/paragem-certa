@@ -22,6 +22,8 @@ fun FaixaEstado(e: EstadoChegadas, agora: Instant, modifier: Modifier = Modifier
         e.semLigacao && e.atualizadoEm != null ->
             stringResource(R.string.sem_ligacao, Duration.between(e.atualizadoEm, agora).toMinutes().coerceAtLeast(0))
         e.semLigacao -> stringResource(R.string.sem_ligacao_nada)
+        e.tempoRealIndisponivel && e.atualizadoEm != null ->
+            stringResource(R.string.tempo_real_indisponivel_ha, Duration.between(e.atualizadoEm, agora).toMinutes().coerceAtLeast(0))
         e.tempoRealIndisponivel -> stringResource(R.string.tempo_real_indisponivel)
         else -> return
     }

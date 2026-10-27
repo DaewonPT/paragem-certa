@@ -1,6 +1,8 @@
 package pt.pixellusitano.paragemcerta.ui.mapa
 
 import android.annotation.SuppressLint
+import android.view.Gravity
+import pt.pixellusitano.paragemcerta.ui.inicio.Zona
 import android.graphics.Color as CorAndroid
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -60,6 +62,8 @@ fun Mapa(
     coresLinhas: Map<String, String>,
     escuro: Boolean,
     centroInicial: LatLng,
+    camaraInicial: Zona?,
+    centrarEm: LatLng?,
     aoMoverCamara: (minLat: Double, minLon: Double, maxLat: Double, maxLon: Double, zoom: Double) -> Unit,
     aoTocarParagem: (Paragem) -> Unit,
     aoTocarVeiculo: (Veiculo) -> Unit,
@@ -80,8 +84,20 @@ fun Mapa(
             onCreate(null)
             getMapAsync { mapa ->
                 estado.mapa = mapa
-                mapa.cameraPosition = CameraPosition.Builder().target(centroInicial).zoom(15.5).build()
+                mapa.cameraPosition = camaraInicial?.let {
+                    CameraPosition.Builder().target(LatLng((it.minLat + it.maxLat) / 2, (it.minLon + it.maxLon) / 2)).zoom(it.zoom).build()
+                } ?: CameraPosition.Builder().target(centroInicial).zoom(15.5).build()
+                estado.utilizadorMexeu = camaraInicial != null
                 mapa.uiSettings.isRotateGesturesEnabled = false
+                // Por omissão ficam no canto de baixo, tapados pelo painel: passam para cima, por baixo da pesquisa.
+                val px = resources.displayMetrics.density
+                mapa.uiSettings.attributionGravity = Gravity.TOP or Gravity.END
+                mapa.uiSettings.setAttributionMargins(0, (120 * px).toInt(), (12 * px).toInt(), 0)
+                mapa.uiSettings.logoGravity = Gravity.TOP or Gravity.START
+                mapa.uiSettings.setLogoMargins((12 * px).toInt(), (120 * px).toInt(), 0, 0)
+                mapa.addOnCameraMoveStartedListener { razao ->
+                    if (razao == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) estado.utilizadorMexeu = true
+                }
                 mapa.addOnCameraIdleListener {
                     val b = mapa.projection.visibleRegion.latLngBounds
                     mover(b.latitudeSouth, b.longitudeWest, b.latitudeNorth, b.longitudeEast, mapa.cameraPosition.zoom)
@@ -125,6 +141,14 @@ fun Mapa(
         }
     }
 
+    // A primeira posição real chega depois do mapa: centra nela, a menos que a pessoa já tenha mexido no mapa.
+    LaunchedEffect(centrarEm, estado.mapa) {
+        val mapa = estado.mapa ?: return@LaunchedEffect
+        if (centrarEm != null && !estado.utilizadorMexeu && enquadrar.isEmpty()) {
+            mapa.easeCamera(CameraUpdateFactory.newLatLngZoom(centrarEm, 15.5))
+        }
+    }
+
     LaunchedEffect(enquadrar, estado.mapa) {
         val mapa = estado.mapa ?: return@LaunchedEffect
         if (enquadrar.size < 2) return@LaunchedEffect
@@ -158,6 +182,7 @@ fun Mapa(
 }
 
 private class EstadoMapa {
+    var utilizadorMexeu = false
     var mapa: MapLibreMap? by mutableStateOf(null)
     var estilo: Style? by mutableStateOf(null)
 }

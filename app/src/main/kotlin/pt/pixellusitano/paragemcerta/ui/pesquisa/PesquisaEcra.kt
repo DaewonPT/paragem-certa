@@ -32,6 +32,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.core.modelo.Linha
+import pt.pixellusitano.paragemcerta.core.fontes.transitous.operadorDe
+import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.Paragem
 import pt.pixellusitano.paragemcerta.dados.Repositorio
 import pt.pixellusitano.paragemcerta.ui.comum.SeloLinha
@@ -74,13 +76,22 @@ fun PesquisaEcra(
                     }
                     is ResultadoPesquisa.DeParagem -> Item(onClick = { aoAbrirParagem(r.p) }) {
                         Text("📍", color = MaterialTheme.colorScheme.primary)
-                        Text(r.p.nome, color = MaterialTheme.colorScheme.onBackground)
+                        Column {
+                            Text(r.p.nome, color = MaterialTheme.colorScheme.onBackground)
+                            Text(subtituloParagem(r.p), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                        }
                     }
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
         }
     }
+}
+
+/** "Carris Metropolitana · 060419", "CP · 69005": distingue paragens com o mesmo nome. */
+internal fun subtituloParagem(p: Paragem): String = when (p.ref.fonte) {
+    Fonte.CM -> "Carris Metropolitana · ${p.ref.id}"
+    Fonte.TRANSITOUS -> listOfNotNull(operadorDe(p.ref.id), p.ref.id.substringAfterLast('_')).joinToString(" · ")
 }
 
 @Composable

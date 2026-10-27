@@ -76,4 +76,9 @@
     <string name="atualizacao_atualizar">Atualizar</string>
     <string name="atualizacao_agora_nao">Agora não</string>
     <string name="atualizacao_falhou">Não foi possível descarregar a atualização. Tenta mais tarde.</string>
+
+    <!-- Correções da revisão final -->
+    <string name="a_carregar">A carregar…</string>
+    <string name="tempo_real_indisponivel_ha">Tempo real indisponível — atualizado há %1$d min</string>
+    <string name="linha_falhou">Não foi possível carregar a linha. Tenta outra vez mais tarde.</string>
 </resources>

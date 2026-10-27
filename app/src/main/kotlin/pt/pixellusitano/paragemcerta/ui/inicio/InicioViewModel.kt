@@ -46,8 +46,13 @@ class InicioViewModel(
             .launchIn(viewModelScope)
     }
 
+    /** Última zona vista: o mapa volta a ela quando se regressa ao Início (o MapView é recriado). */
+    var camara: Zona? = null
+        private set
+
     fun aoMoverCamara(minLat: Double, minLon: Double, maxLat: Double, maxLon: Double, zoom: Double) {
         zona.value = Zona(minLat, minLon, maxLat, maxLon, zoom)
+        camara = zona.value
         if (zoom < ZOOM_MINIMO_PARAGENS) _paragens.value = emptyList()
     }
 

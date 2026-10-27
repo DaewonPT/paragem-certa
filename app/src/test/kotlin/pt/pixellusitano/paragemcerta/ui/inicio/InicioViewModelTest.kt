@@ -52,4 +52,11 @@ class InicioViewModelTest {
         assertEquals(1, pedidos)
         assertEquals(listOf(cais), vm.paragens.value)
     }
+
+    @Test fun lembraACamaraAoVoltarAoMapa() = runTest(despachante) {
+        val vm = vm()
+        assertEquals(null, vm.camara)
+        vm.aoMoverCamara(38.70, -9.15, 38.72, -9.13, zoom = 16.0)
+        assertEquals(Zona(38.70, -9.15, 38.72, -9.13, 16.0), vm.camara)
+    }
 }

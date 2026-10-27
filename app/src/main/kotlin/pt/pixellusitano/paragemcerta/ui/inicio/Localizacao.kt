@@ -7,6 +7,7 @@ import android.content.pm.PackageManager
 import android.location.Location
 import android.location.LocationManager
 import androidx.core.content.ContextCompat
+import androidx.core.location.LocationManagerCompat
 
 fun temLocalizacao(contexto: Context): Boolean =
     ContextCompat.checkSelfPermission(contexto, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
@@ -21,6 +22,20 @@ fun ultimaPosicao(contexto: Context): Pair<Double, Double>? {
         .mapNotNull { runCatching { gestor.getLastKnownLocation(it) }.getOrNull() }
         .maxByOrNull(Location::getTime)
         ?.let { it.latitude to it.longitude }
+}
+
+/** Pede uma posição atual (a última conhecida pode ser de outro sítio, ou nem existir depois de reiniciar). */
+@SuppressLint("MissingPermission")
+fun pedirPosicaoAtual(contexto: Context, aoReceber: (Pair<Double, Double>) -> Unit) {
+    if (!temLocalizacao(contexto)) return
+    val gestor = contexto.getSystemService(LocationManager::class.java) ?: return
+    val fornecedor = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER, LocationManager.PASSIVE_PROVIDER)
+        .firstOrNull { runCatching { gestor.isProviderEnabled(it) }.getOrDefault(false) } ?: return
+    LocationManagerCompat.getCurrentLocation(
+        gestor, fornecedor, null as android.os.CancellationSignal?, ContextCompat.getMainExecutor(contexto),
+    ) { local: Location? ->
+        local?.let { aoReceber(it.latitude to it.longitude) }
+    }
 }
 
 private const val PREFS = "inicio"

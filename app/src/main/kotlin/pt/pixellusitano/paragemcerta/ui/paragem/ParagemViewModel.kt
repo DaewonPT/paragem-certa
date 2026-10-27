@@ -24,7 +24,10 @@ class ParagemViewModel(chegadas: Flow<EstadoChegadas>) : ViewModel() {
         _filtro.value = linhaId
     }
 
-    fun linhasPresentes(e: EstadoChegadas): List<String> = e.chegadas.map { it.linhaId }.distinct().sorted()
+    /** (id, nome) de cada linha presente, pelo nome que se vê (no Transitous o id é "pt-Carris_60_0" e o nome "201"). */
+    fun linhasPresentes(e: EstadoChegadas): List<Pair<String, String>> =
+        e.chegadas.distinctBy { it.linhaId }.map { it.linhaId to it.linhaNome.ifBlank { it.linhaId } }
+            .sortedWith(compareBy({ it.second.length }, { it.second }))
 
     fun aplicarFiltro(e: EstadoChegadas): EstadoChegadas {
         val f = _filtro.value ?: return e

@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 import pt.pixellusitano.paragemcerta.R
+import pt.pixellusitano.paragemcerta.core.atraso.aindaPorChegar
 import pt.pixellusitano.paragemcerta.core.modelo.Linha
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
 import pt.pixellusitano.paragemcerta.core.regras.favoritaPorOmissao
@@ -74,13 +75,19 @@ fun PainelConteudo(
 private fun Bloco(b: BlocoParagem, prefixo: String, linhas: Map<String, Linha>, agora: Instant, aoAbrir: (RefParagem) -> Unit) {
     Column(Modifier.fillMaxWidth().clickable(role = Role.Button) { aoAbrir(b.ref) }.padding(vertical = 6.dp)) {
         Text(prefixo + b.nome, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
-        b.estado?.let { e ->
+        val e = b.estado
+        if (e == null) {
+            Text(stringResource(R.string.a_carregar), color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 6.dp))
+        } else {
             FaixaEstado(e, agora, Modifier.padding(vertical = 4.dp))
-            if (e.chegadas.isEmpty()) {
+            // Filtra outra vez com o relógio do ecrã: sem rede, a próxima resposta pode demorar minutos.
+            val visiveis = e.chegadas.filter { aindaPorChegar(it, agora) }
+            if (visiveis.isEmpty() && !e.semLigacao && !e.tempoRealIndisponivel) {
                 Text(stringResource(R.string.sem_chegadas), color = MaterialTheme.colorScheme.onSurfaceVariant,
                     style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 6.dp))
             }
-            e.chegadas.take(b.maximo).forEach { LinhaChegada(it, linhas[it.linhaId], agora) }
+            visiveis.take(b.maximo).forEach { LinhaChegada(it, linhas[it.linhaId], agora) }
         }
         HorizontalDivider(Modifier.padding(top = 6.dp), color = MaterialTheme.colorScheme.outlineVariant)
     }

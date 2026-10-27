@@ -1,6 +1,8 @@
 package pt.pixellusitano.paragemcerta.dados
 
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
@@ -68,6 +70,10 @@ class Repositorio(
 ) {
     /** Consulta ao ritmo da fonte enquanto alguém recolhe o fluxo; sem rede ou com erro, emite o último resultado bom. */
     fun chegadas(ref: RefParagem): Flow<EstadoChegadas> = flow {
+        // Mostra logo o que está guardado, para não ficar em branco enquanto a rede responde (até 30 s com rede fraca).
+        guardadas(ref, relogio())?.takeIf { it.first.isNotEmpty() }?.let { (lista, em) ->
+            emit(EstadoChegadas(lista, em, semLigacao = false, tempoRealIndisponivel = false))
+        }
         var tentativa = 0
         while (true) {
             val agora = relogio()
@@ -84,20 +90,18 @@ class Repositorio(
                     delay(intervaloNormal(ref.fonte).toMillis())
                 }
                 is Resultado.Falha -> {
-                    val guardado = bd.chegadas().porChave(ref.chave)
-                    val anteriores = guardado?.let { g ->
-                        JSON.decodeFromString<List<ChegadaGuardada>>(g.json).map { it.paraChegada() }.filter { aindaPorChegar(it, agora) }
-                    }.orEmpty()
-                    emit(
-                        EstadoChegadas(
-                            anteriores, guardado?.guardadoEm?.let(Instant::ofEpochSecond),
-                            semLigacao = r.codigo == null, tempoRealIndisponivel = r.codigo != null,
-                        ),
-                    )
+                    val (anteriores, em) = guardadas(ref, agora) ?: (emptyList<Chegada>() to null)
+                    emit(EstadoChegadas(anteriores, em, semLigacao = r.codigo == null, tempoRealIndisponivel = r.codigo != null))
                     delay(pausaDepoisDeFalha(ref.fonte, tentativa++).toMillis())
                 }
             }
         }
+    }
+
+    private suspend fun guardadas(ref: RefParagem, agora: Instant): Pair<List<Chegada>, Instant>? {
+        val g = bd.chegadas().porChave(ref.chave) ?: return null
+        val lista = JSON.decodeFromString<List<ChegadaGuardada>>(g.json).map { it.paraChegada() }.filter { aindaPorChegar(it, agora) }
+        return lista to Instant.ofEpochSecond(g.guardadoEm)
     }
 
     /** Veículos da Carris Metropolitana a cada 15 s; numa falha mantém a última lista e espera mais. */
@@ -165,13 +169,16 @@ class Repositorio(
 
     private val paragensDasLinhas = mutableMapOf<String, List<Paragem>>()
 
-    /** Paragens de uma linha da Carris Metropolitana (todos os sentidos), guardadas só nesta sessão. */
-    suspend fun paragensDaLinha(linhaId: String): List<Paragem> = paragensDasLinhas.getOrPut(linhaId) {
+    /** Paragens de uma linha da Carris Metropolitana (todos os sentidos); null se não foi possível obtê-las.
+     *  Só se guarda (nesta sessão) um resultado completo, para uma falha não ficar presa. */
+    suspend fun paragensDaLinha(linhaId: String): List<Paragem>? {
+        paragensDasLinhas[linhaId]?.let { return it }
         val padroes = bd.linhas().porId(linhaId)?.padroes?.split(',')?.filter { it.isNotBlank() }.orEmpty()
-        val ids = padroes.flatMap { (cm.padrao(it) as? Resultado.Ok)?.valor.orEmpty() }.distinct()
-        if (ids.isEmpty()) return emptyList()
+        val resultados = padroes.map { cm.padrao(it) }
+        if (resultados.isEmpty() || resultados.any { it !is Resultado.Ok }) return null
+        val ids = resultados.flatMap { (it as Resultado.Ok).valor }.distinct()
         val porChave = bd.paragens().porChaves(ids.map { RefParagem(Fonte.CM, it).chave }).associateBy { it.id }
-        ids.mapNotNull { porChave[it]?.paraParagem() }
+        return ids.mapNotNull { porChave[it]?.paraParagem() }.also { paragensDasLinhas[linhaId] = it }
     }
 
     suspend fun linhasCmComecadasPor(prefixo: String): List<Linha> = bd.linhas().comecadasPor(prefixo).map { it.paraLinha() }
@@ -189,11 +196,14 @@ class Repositorio(
     suspend fun atualizarRede(): Boolean {
         val paragens = cm.paragens() as? Resultado.Ok ?: return false
         val linhasJson = cm.linhasJson() as? Resultado.Ok ?: return false
-        val padroes = CmParser.padroesDasLinhas(linhasJson.valor)
-        val linhas = CmParser.linhas(linhasJson.valor).map {
-            LinhaEntidade(it.id, it.nomeCurto, it.nomeLongo, it.cor, it.corTexto, padroes[it.id].orEmpty().joinToString(","))
+        // Milhares de paragens: converter fora da linha do ecrã.
+        val (linhas, entidades) = withContext(Dispatchers.Default) {
+            val padroes = CmParser.padroesDasLinhas(linhasJson.valor)
+            CmParser.linhas(linhasJson.valor).map {
+                LinhaEntidade(it.id, it.nomeCurto, it.nomeLongo, it.cor, it.corTexto, padroes[it.id].orEmpty().joinToString(","))
+            } to paragens.valor.map { it.paraEntidade() }
         }
-        bd.paragens().substituirFonte(Fonte.CM.name, paragens.valor.map { it.paraEntidade() })
+        bd.paragens().substituirFonte(Fonte.CM.name, entidades)
         bd.linhas().substituir(linhas)
         return true
     }

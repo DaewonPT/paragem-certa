@@ -10,6 +10,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
 import kotlinx.coroutines.flow.flowOf
+import androidx.compose.ui.test.onNodeWithText
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -43,12 +44,57 @@ class ParagemTest {
 
     @Test fun filtroPorLinha() {
         val vm = ParagemViewModel(flowOf(estado))
-        assertEquals(listOf("1001", "3708"), vm.linhasPresentes(estado))
+        assertEquals(listOf("1001" to "1001", "3708" to "3708"), vm.linhasPresentes(estado))
         vm.escolherFiltro("3708")
         assertTrue(vm.aplicarFiltro(estado).chegadas.all { it.linhaId == "3708" })
         assertEquals(2, vm.aplicarFiltro(estado).chegadas.size)
         vm.escolherFiltro(null)
         assertEquals(3, vm.aplicarFiltro(estado).chegadas.size)
+    }
+
+    @Test fun chipsComONomeDaLinhaNoTransitous() {
+        fun tr(id: String, nome: String) = Chegada(Fonte.TRANSITOUS, id, nome, "Cais Sodré", agora.plusSeconds(300), null, null, null, Modo.AUTOCARRO, null, null)
+        val e = estado.copy(chegadas = listOf(tr("pt-Carris_60_0", "201"), tr("pt-Carris_136_0", "206")))
+        assertEquals(listOf("pt-Carris_60_0" to "201", "pt-Carris_136_0" to "206"), ParagemViewModel(flowOf(e)).linhasPresentes(e))
+    }
+
+    @get:org.junit.Rule val regra = androidx.compose.ui.test.junit4.v2.createComposeRule()
+
+    @Test fun chegadaQueJaPassouNaoAparece() {
+        val passada = Chegada(Fonte.CM, "1625", "1625", "Rio de Mouro", agora.minusSeconds(180), agora.minusSeconds(120), null, null, Modo.AUTOCARRO, null, null)
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Ecra(estado.copy(chegadas = listOf(passada) + chegadas)) } }
+        regra.onNodeWithText("Rio de Mouro", substring = true, useUnmergedTree = true).assertDoesNotExist()
+        regra.onNodeWithText("Reboleira", substring = true, useUnmergedTree = true).assertExists()
+    }
+
+    @Test fun semRedeENadaGuardadoNaoDizQueNaoHaAutocarros() {
+        regra.setContent {
+            TemaParagemCerta(ModoTema.CLARO) { Ecra(EstadoChegadas(emptyList(), null, semLigacao = true, tempoRealIndisponivel = false), emptyList()) }
+        }
+        regra.onNodeWithText("Sem ligação — ainda não há dados guardados").assertExists()
+        regra.onNodeWithText("Não há chegadas nas próximas 2 horas").assertDoesNotExist()
+    }
+
+    @Test fun tempoRealIndisponivelDizAIdadeDosDados() {
+        regra.setContent {
+            TemaParagemCerta(ModoTema.CLARO) {
+                Ecra(estado.copy(atualizadoEm = agora.minusSeconds(240), tempoRealIndisponivel = true), emptyList())
+            }
+        }
+        regra.onNodeWithText("Tempo real indisponível — atualizado há 4 min").assertExists()
+    }
+
+    @Test fun aCarregarEnquantoNaoHaDados() {
+        regra.setContent {
+            TemaParagemCerta(ModoTema.CLARO) {
+                ParagemConteudo(
+                    nome = "Cais do Sodré", codigo = "060419", acessivel = null, favorita = false, estado = null, filtro = null,
+                    linhasPresentes = emptyList(), alertas = emptyList(), linhas = emptyMap(), agora = agora,
+                    aoFiltrar = {}, aoFavoritar = {}, aoReportar = {}, aoVoltar = {},
+                )
+            }
+        }
+        regra.onNodeWithText("A carregar…").assertExists()
     }
 
     @Test fun reportarErroPorEmail() {
@@ -62,7 +108,7 @@ class ParagemTest {
     @Composable
     private fun Ecra(e: EstadoChegadas, alertas: List<Alerta> = listOf(alerta)) = ParagemConteudo(
         nome = "Cais do Sodré (Terminal)", codigo = "060419", acessivel = true, favorita = true,
-        estado = e, filtro = null, linhasPresentes = listOf("1001", "3708"), alertas = alertas, linhas = emptyMap(),
+        estado = e, filtro = null, linhasPresentes = listOf("1001" to "1001", "3708" to "3708"), alertas = alertas, linhas = emptyMap(),
         agora = agora, aoFiltrar = {}, aoFavoritar = {}, aoReportar = {}, aoVoltar = {},
         modifier = Modifier.width(360.dp),
     )

@@ -42,6 +42,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import pt.pixellusitano.paragemcerta.BuildConfig
 import pt.pixellusitano.paragemcerta.R
+import pt.pixellusitano.paragemcerta.core.atraso.aindaPorChegar
 import pt.pixellusitano.paragemcerta.core.modelo.Alerta
 import pt.pixellusitano.paragemcerta.core.modelo.Gravidade
 import pt.pixellusitano.paragemcerta.core.modelo.Linha
@@ -69,7 +70,7 @@ fun ParagemEcra(ref: RefParagem, repositorio: Repositorio, aoVoltar: () -> Unit)
     val presentes = estado?.let(vm::linhasPresentes).orEmpty()
     val alertas by produceState(emptyList<Alerta>(), presentes) {
         favorita = repositorio.eFavorita(ref)
-        value = repositorio.alertasDaParagem(ref, presentes.toSet())
+        value = repositorio.alertasDaParagem(ref, presentes.map { it.first }.toSet())
     }
     val agora by produceState(Instant.now()) {
         while (true) {
@@ -112,7 +113,7 @@ fun ParagemConteudo(
     favorita: Boolean,
     estado: EstadoChegadas?,
     filtro: String?,
-    linhasPresentes: List<String>,
+    linhasPresentes: List<Pair<String, String>>,
     alertas: List<Alerta>,
     linhas: Map<String, Linha>,
     agora: Instant,
@@ -153,17 +154,21 @@ fun ParagemConteudo(
             if (linhasPresentes.size > 1) {
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(selected = filtro == null, onClick = { aoFiltrar(null) }, label = { Text(stringResource(R.string.paragem_todas)) })
-                    linhasPresentes.forEach { l ->
-                        FilterChip(selected = filtro == l, onClick = { aoFiltrar(l) }, label = { Text(linhas[l]?.nomeCurto ?: l) })
+                    linhasPresentes.forEach { (id, nome) ->
+                        FilterChip(selected = filtro == id, onClick = { aoFiltrar(id) }, label = { Text(nome) })
                     }
                 }
             }
             alertas.forEach { CartaoAlerta(it) }
+            // Filtra outra vez com o relógio do ecrã: sem rede, a próxima resposta pode demorar minutos.
+            val visiveis = estado?.chegadas?.filter { aindaPorChegar(it, agora) }
             when {
-                estado == null -> Unit
-                estado.chegadas.isEmpty() -> Text(stringResource(R.string.sem_chegadas), color = MaterialTheme.colorScheme.onSurfaceVariant,
+                estado == null -> Text(stringResource(R.string.a_carregar), color = MaterialTheme.colorScheme.onSurfaceVariant,
                     modifier = Modifier.padding(vertical = 16.dp))
-                else -> estado.chegadas.forEach { LinhaChegada(it, linhas[it.linhaId], agora) }
+                visiveis.isNullOrEmpty() && !estado.semLigacao && !estado.tempoRealIndisponivel ->
+                    Text(stringResource(R.string.sem_chegadas), color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(vertical = 16.dp))
+                else -> visiveis.orEmpty().forEach { LinhaChegada(it, linhas[it.linhaId], agora) }
             }
             OutlinedButton(onClick = aoReportar, modifier = Modifier.padding(top = 16.dp).fillMaxWidth()) {
                 Text(stringResource(R.string.paragem_reportar))
