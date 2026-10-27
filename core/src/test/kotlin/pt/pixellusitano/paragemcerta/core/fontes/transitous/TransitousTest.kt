@@ -35,6 +35,30 @@ class TransitousTest {
         assertTrue(TransitousParser.chegadas(cancelada, "pt-Carris_3803", agora).isEmpty())
     }
 
+    /** Muda o campo [campo] do 1.º item de stopTimes (não o do place) para true. */
+    private fun cancelarNoItem(campo: String): String {
+        val json = fixture("transitous-stoptimes.json")
+        val inicioItem = json.indexOf("\"pickupDropoffType\"")
+        val i = json.indexOf("\"$campo\": false", inicioItem)
+        return json.substring(0, i) + "\"$campo\": true" + json.substring(i + "\"$campo\": false".length)
+    }
+
+    @Test fun partidaCanceladaEDescartada() {
+        assertTrue(TransitousParser.chegadas(cancelarNoItem("cancelled"), "pt-Carris_3803", agora).isEmpty())
+    }
+
+    @Test fun viagemCanceladaEDescartada() {
+        assertTrue(TransitousParser.chegadas(cancelarNoItem("tripCancelled"), "pt-Carris_3803", agora).isEmpty())
+    }
+
+    @Test fun nomeDoOperador() {
+        assertEquals("CP", operadorDe("pt-Comboios-de-Portugal(CP)_94_69005"))
+        assertEquals("Transtejo", operadorDe("pt-Transtejo-Soflusa_5"))
+        assertEquals("Metro de Lisboa", operadorDe("pt-Metro-Lisboa_CS"))
+        assertEquals("Carris", operadorDe("pt-Carris_3803"))
+        assertNull(operadorDe("eu-FlixBus_123"))
+    }
+
     @Test fun tempoRealUsaAHoraPrevista() {
         val aoVivo = fixture("transitous-stoptimes.json")
             .replaceFirst("\"realTime\": false", "\"realTime\": true")
@@ -58,7 +82,8 @@ class TransitousTest {
         val http = HttpFalso({ Resposta(200, fixture("transitous-stoptimes.json")) })
         Transitous(http).chegadas("pt-Comboios-de-Portugal(CP)_94_69005", agora)
         assertEquals(
-            "https://api.transitous.org/api/v6/stoptimes?stopId=pt-Comboios-de-Portugal%28CP%29_94_69005&n=30",
+            // radius=0 + exactRadius=true: só a própria paragem (sem isto o Metro do Cais do Sodré trazia 1 em 10 partidas).
+            "https://api.transitous.org/api/v6/stoptimes?stopId=pt-Comboios-de-Portugal%28CP%29_94_69005&n=30&radius=0&exactRadius=true",
             http.pedidos.single(),
         )
     }

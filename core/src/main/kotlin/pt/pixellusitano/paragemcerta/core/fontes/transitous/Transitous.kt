@@ -62,6 +62,20 @@ private fun emPortugal(lat: Double, lon: Double) =
         (lat in 32.3..33.2 && lon in -17.4..-16.2) ||
         (lat in 36.8..39.8 && lon in -31.4..-24.9)
 
+/** Nome curto do operador a partir do prefixo do id do Transitous (para distinguir paragens com o mesmo nome). */
+fun operadorDe(id: String): String? = when {
+    id.startsWith("pt-Comboios-de-Portugal") -> "CP"
+    id.startsWith("pt-Transtejo") -> "Transtejo"
+    id.startsWith("pt-Metro-Lisboa") -> "Metro de Lisboa"
+    id.startsWith("pt-Metro-do-Porto") || id.startsWith("pt-Metro-Porto") -> "Metro do Porto"
+    id.startsWith("pt-Carris-Metropolitana") -> "Carris Metropolitana"
+    id.startsWith("pt-Carris_") -> "Carris"
+    id.startsWith("pt-Fertagus") -> "Fertagus"
+    id.startsWith("pt-MTS") || id.startsWith("pt-Metro-Transportes-do-Sul") -> "MTS"
+    id.startsWith("pt-STCP") -> "STCP"
+    else -> null
+}
+
 fun modoDe(mode: String): Modo = when (mode) {
     "BUS", "COACH" -> Modo.AUTOCARRO
     "TRAM", "CABLE_CAR", "FUNICULAR" -> Modo.ELETRICO
@@ -113,10 +127,11 @@ object TransitousParser {
 }
 
 class Transitous(private val http: Http, private val base: String = "https://api.transitous.org") {
-    private fun enc(s: String) = URLEncoder.encode(s, Charsets.UTF_8)
+    // Não usar URLEncoder.encode(String, Charset): só existe a partir do Android 13 e rebentava no Android 8-12.
+    private fun enc(s: String): String = URLEncoder.encode(s, "UTF-8")
 
     suspend fun chegadas(paragemId: String, agora: Instant): Resultado<List<Chegada>> =
-        http.pedir("$base/api/v6/stoptimes?stopId=${enc(paragemId)}&n=30") { TransitousParser.chegadas(it, paragemId, agora) }
+        http.pedir("$base/api/v6/stoptimes?stopId=${enc(paragemId)}&n=30&radius=0&exactRadius=true") { TransitousParser.chegadas(it, paragemId, agora) }
 
     suspend fun paragensNaZona(minLat: Double, minLon: Double, maxLat: Double, maxLon: Double): Resultado<List<Paragem>> =
         http.pedir("$base/api/v6/map/stops?min=$minLat,$minLon&max=$maxLat,$maxLon", TransitousParser::paragensNoMapa)

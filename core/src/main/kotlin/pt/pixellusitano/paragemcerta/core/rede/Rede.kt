@@ -1,5 +1,6 @@
 package pt.pixellusitano.paragemcerta.core.rede
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerializationException
@@ -44,10 +45,14 @@ suspend fun <T> Http.pedir(url: String, converter: (String) -> T): Resultado<T> 
     }
     if (r.codigo !in 200..299) return Resultado.Falha(r.codigo, limite = r.codigo == 429 || r.codigo == 503)
     return try {
-        Resultado.Ok(converter(r.corpo))
+        // A conversão de JSON grande (veículos, rede inteira) não pode correr na linha do ecrã.
+        Resultado.Ok(withContext(Dispatchers.Default) { converter(r.corpo) })
+    } catch (e: CancellationException) {
+        throw e // o cancelamento (sair do ecrã) tem de continuar a funcionar
     } catch (e: SerializationException) {
         Resultado.Falha(r.codigo, limite = false)
-    } catch (e: IllegalArgumentException) {
+    } catch (e: RuntimeException) {
+        // Dados estranhos do operador (datas noutro formato, campos em falta) nunca podem rebentar a app.
         Resultado.Falha(r.codigo, limite = false)
     }
 }
