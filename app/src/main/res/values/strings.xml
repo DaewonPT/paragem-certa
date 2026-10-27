@@ -3,7 +3,6 @@
     <string name="app_name">Paragem Certa</string>
 
     <!-- Sobre e fontes de dados -->
-    <string name="sobre_titulo">Sobre e fontes de dados</string>
     <string name="sobre_versao">Versão %1$s</string>
     <string name="sobre_autor">Feito pela Pixel Lusitano (Alize.On.Me)</string>
     <string name="sobre_licenca">Código aberto sob a licença GPL-3.0</string>
@@ -40,7 +39,6 @@
     <string name="paragem_favorita">Tirar das favoritas</string>
     <string name="paragem_nao_favorita">Juntar às favoritas</string>
     <string name="paragem_reportar">Reportar erro</string>
-    <string name="paragem_perturbacoes">Perturbações</string>
     <string name="gravidade_grave">Grave</string>
     <string name="gravidade_aviso">Aviso</string>
     <string name="gravidade_info">Informação</string>
@@ -51,7 +49,6 @@
     <string name="pesquisa_dica">Para onde vais?</string>
     <string name="pesquisa_campo">Procura uma paragem ou linha</string>
     <string name="pesquisa_sem_resultados">Sem resultados. Experimenta outro nome ou o número da linha.</string>
-    <string name="pesquisa_linha">Linha %1$s</string>
 
     <!-- Navegação e Eu -->
     <string name="nav_inicio">Início</string>
@@ -73,7 +70,6 @@
     <string name="menos">Menos</string>
     <string name="mais">Mais</string>
     <string name="linha_no_mapa">Linha %1$s no mapa</string>
-    <string name="linha_proxima">Próxima chegada em %1$s</string>
 
     <!-- Atualizações (variante pessoal) -->
     <string name="atualizacao_titulo">Há uma versão nova (%1$s)</string>
