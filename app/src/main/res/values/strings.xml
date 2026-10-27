@@ -33,4 +33,17 @@
     <string name="sem_ligacao_nada">Sem ligação — ainda não há dados guardados</string>
     <string name="tempo_real_indisponivel">Tempo real indisponível</string>
     <string name="acessivel">Acessível a cadeira de rodas</string>
+
+    <!-- Paragem -->
+    <string name="paragem_codigo">Paragem %1$s</string>
+    <string name="paragem_todas">Todas</string>
+    <string name="paragem_favorita">Tirar das favoritas</string>
+    <string name="paragem_nao_favorita">Juntar às favoritas</string>
+    <string name="paragem_reportar">Reportar erro</string>
+    <string name="paragem_perturbacoes">Perturbações</string>
+    <string name="gravidade_grave">Grave</string>
+    <string name="gravidade_aviso">Aviso</string>
+    <string name="gravidade_info">Informação</string>
+    <string name="voltar">Voltar</string>
+    <string name="mostrar_mais">Ver mais</string>
 </resources>
