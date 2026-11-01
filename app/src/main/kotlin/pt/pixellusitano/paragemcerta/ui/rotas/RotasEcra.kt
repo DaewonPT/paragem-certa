@@ -74,6 +74,7 @@ fun RotasEcra(
     preferencias: Preferencias,
     origem: Lugar?,
     destino: Lugar?,
+    aoAbrirViagem: () -> Unit,
 ) {
     val contexto = LocalContext.current
     val vm = viewModel {
@@ -108,6 +109,8 @@ fun RotasEcra(
             rota,
             de = pedido.origem?.nome ?: stringResource(R.string.rotas_minha_posicao),
             para = pedido.destino?.nome.orEmpty(),
+            preferencias = preferencias,
+            aoComecou = aoAbrirViagem,
             aoVoltar = { vm.abrir(null) },
         )
         null -> RotasConteudo(

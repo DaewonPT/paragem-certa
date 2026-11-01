@@ -14,7 +14,7 @@ import pt.pixellusitano.paragemcerta.core.modelo.Filtros
 import pt.pixellusitano.paragemcerta.core.modelo.Modo
 import pt.pixellusitano.paragemcerta.ui.tema.ModoTema
 
-/** Definições do utilizador (modo claro/escuro, limites de atraso e filtros das rotas), guardadas no telemóvel. */
+/** Definições do utilizador (modo claro/escuro, limites de atraso, filtros das rotas e avisos da viagem), guardadas no telemóvel. */
 class Preferencias(private val loja: DataStore<Preferences>) {
     val modo: Flow<ModoTema> = loja.data.map { p ->
         p[MODO]?.let { nome -> ModoTema.entries.firstOrNull { it.name == nome } } ?: ModoTema.SISTEMA
@@ -31,6 +31,25 @@ class Preferencias(private val loja: DataStore<Preferences>) {
             acessivel = p[ACESSIVEL] ?: false,
             modos = p[MODOS].orEmpty().mapNotNull { nome -> Modo.entries.firstOrNull { it.name == nome } }.toSet(),
         )
+    }
+
+    /** Se os avisos "Prepara-te" e "Sai agora" tocam e vibram (vão no plano da viagem: o serviço não lê as definições). */
+    val somAviso: Flow<Boolean> = loja.data.map { it[SOM_AVISO] ?: true }
+    val vibracaoAviso: Flow<Boolean> = loja.data.map { it[VIBRACAO_AVISO] ?: true }
+
+    /** Depois da primeira viagem já não se explica a poupança de bateria. */
+    val primeiraViagemFeita: Flow<Boolean> = loja.data.map { it[PRIMEIRA_VIAGEM_FEITA] ?: false }
+
+    suspend fun definirSomAviso(ligado: Boolean) {
+        loja.edit { it[SOM_AVISO] = ligado }
+    }
+
+    suspend fun definirVibracaoAviso(ligado: Boolean) {
+        loja.edit { it[VIBRACAO_AVISO] = ligado }
+    }
+
+    suspend fun marcarPrimeiraViagemFeita() {
+        loja.edit { it[PRIMEIRA_VIAGEM_FEITA] = true }
     }
 
     suspend fun definirFiltros(f: Filtros) {
@@ -63,5 +82,8 @@ class Preferencias(private val loja: DataStore<Preferences>) {
         val MENOS_TRANSBORDOS = booleanPreferencesKey("filtro_menos_transbordos")
         val ACESSIVEL = booleanPreferencesKey("filtro_acessivel")
         val MODOS = stringSetPreferencesKey("filtro_modos")
+        val SOM_AVISO = booleanPreferencesKey("som_aviso")
+        val VIBRACAO_AVISO = booleanPreferencesKey("vibracao_aviso")
+        val PRIMEIRA_VIAGEM_FEITA = booleanPreferencesKey("primeira_viagem_feita")
     }
 }

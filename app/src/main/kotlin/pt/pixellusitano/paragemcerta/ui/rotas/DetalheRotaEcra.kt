@@ -24,6 +24,10 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -39,6 +43,7 @@ import pt.pixellusitano.paragemcerta.core.atraso.estado
 import pt.pixellusitano.paragemcerta.core.atraso.rotuloAtraso
 import pt.pixellusitano.paragemcerta.core.modelo.Etapa
 import pt.pixellusitano.paragemcerta.core.modelo.Itinerario
+import pt.pixellusitano.paragemcerta.dados.Preferencias
 import pt.pixellusitano.paragemcerta.ui.comum.LISBOA_FUSO
 import pt.pixellusitano.paragemcerta.ui.comum.LocalLimites
 import pt.pixellusitano.paragemcerta.ui.comum.SeloLinha
@@ -48,6 +53,7 @@ import pt.pixellusitano.paragemcerta.ui.mapa.Mapa
 import pt.pixellusitano.paragemcerta.ui.mapa.Percurso
 import pt.pixellusitano.paragemcerta.ui.tema.CoresAtraso
 import pt.pixellusitano.paragemcerta.ui.tema.LocalEscuro
+import pt.pixellusitano.paragemcerta.ui.viagem.PreparacaoViagem
 import java.time.Duration
 
 /** Sem desenho da fonte, o troço vai em linha reta de uma ponta à outra. */
@@ -56,9 +62,10 @@ private fun Etapa.pontos() = desenho.ifEmpty { listOf(de.lat to de.lon, para.lat
 private fun hex(c: Color) = "#%06X".format(c.toArgb() and 0xFFFFFF)
 
 @Composable
-fun DetalheRotaEcra(it: Itinerario, de: String, para: String, aoVoltar: () -> Unit) {
+fun DetalheRotaEcra(it: Itinerario, de: String, para: String, preferencias: Preferencias, aoComecou: () -> Unit, aoVoltar: () -> Unit) {
     val contexto = LocalContext.current
     val escuro = LocalEscuro.current
+    var preparar by rememberSaveable { mutableStateOf(false) }
     DetalheRotaConteudo(
         it, de, para,
         mapa = {
@@ -72,6 +79,7 @@ fun DetalheRotaEcra(it: Itinerario, de: String, para: String, aoVoltar: () -> Un
             )
         },
         aoVoltar = aoVoltar,
+        aoComecar = { preparar = true },
         aoPartilhar = {
             val envio = Intent(Intent.ACTION_SEND).setType("text/plain")
                 .putExtra(Intent.EXTRA_TEXT, textoPartilha(it, de, para, LISBOA_FUSO))
@@ -86,6 +94,16 @@ fun DetalheRotaEcra(it: Itinerario, de: String, para: String, aoVoltar: () -> Un
             }
         },
     )
+    if (preparar) {
+        PreparacaoViagem(
+            it, preferencias,
+            aoComecou = {
+                preparar = false
+                aoComecou()
+            },
+            aoCancelar = { preparar = false },
+        )
+    }
 }
 
 @Composable
@@ -95,6 +113,7 @@ fun DetalheRotaConteudo(
     para: String,
     mapa: @Composable () -> Unit,
     aoVoltar: () -> Unit,
+    aoComecar: () -> Unit,
     aoPartilhar: () -> Unit,
     aoAbrirTvde: () -> Unit,
     modifier: Modifier = Modifier,
@@ -129,7 +148,8 @@ fun DetalheRotaConteudo(
             }
             item {
                 Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = aoPartilhar, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.detalhe_partilhar)) }
+                    Button(onClick = aoComecar, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.detalhe_comecar)) }
+                    OutlinedButton(onClick = aoPartilhar, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.detalhe_partilhar)) }
                     OutlinedButton(onClick = aoAbrirTvde, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.detalhe_tvde)) }
                 }
             }

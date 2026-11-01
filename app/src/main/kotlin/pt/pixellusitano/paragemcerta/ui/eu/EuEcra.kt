@@ -14,10 +14,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
@@ -67,11 +69,15 @@ fun EuEcra(
     val favoritas by remember { repositorio.favoritas() }.collectAsStateWithLifecycle(initialValue = emptyList())
     val modo by preferencias.modo.collectAsStateWithLifecycle(initialValue = ModoTema.SISTEMA)
     val limites by preferencias.limites.collectAsStateWithLifecycle(initialValue = Limites())
+    val somAviso by preferencias.somAviso.collectAsStateWithLifecycle(initialValue = true)
+    val vibracaoAviso by preferencias.vibracaoAviso.collectAsStateWithLifecycle(initialValue = true)
     val apagados = stringResource(R.string.eu_dados_apagados)
     EuConteudo(
         favoritas = favoritas,
         modo = modo,
         limites = limites,
+        somAviso = somAviso,
+        vibracaoAviso = vibracaoAviso,
         aoAbrirFavorita = aoAbrirFavorita,
         aoSubir = { f ->
             val i = favoritas.indexOf(f)
@@ -82,6 +88,8 @@ fun EuEcra(
         aoRemover = { f -> escopo.launch { repositorio.removerFavorita(f.ref) } },
         aoMudarModo = { escopo.launch { preferencias.definirModo(it) } },
         aoMudarLimites = { l -> escopo.launch { runCatching { preferencias.definirLimites(l) } } },
+        aoMudarSom = { escopo.launch { preferencias.definirSomAviso(it) } },
+        aoMudarVibracao = { escopo.launch { preferencias.definirVibracaoAviso(it) } },
         aoAbrirSobre = aoAbrirSobre,
         aoEnviarOpiniao = { runCatching { contexto.startActivity(intentOpiniao(BuildConfig.VERSION_NAME)) } },
         modifier = Modifier.fillMaxSize(),
@@ -98,11 +106,15 @@ fun EuConteudo(
     favoritas: List<Favorita>,
     modo: ModoTema,
     limites: Limites,
+    somAviso: Boolean,
+    vibracaoAviso: Boolean,
     aoAbrirFavorita: (Favorita) -> Unit,
     aoSubir: (Favorita) -> Unit,
     aoRemover: (Favorita) -> Unit,
     aoMudarModo: (ModoTema) -> Unit,
     aoMudarLimites: (Limites) -> Unit,
+    aoMudarSom: (Boolean) -> Unit,
+    aoMudarVibracao: (Boolean) -> Unit,
     aoAbrirSobre: () -> Unit,
     aoEnviarOpiniao: () -> Unit,
     modifier: Modifier = Modifier,
@@ -128,7 +140,10 @@ fun EuConteudo(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         }
 
-        Definicoes(modo, limites, aoMudarModo, aoMudarLimites, Modifier.padding(top = 24.dp))
+        Definicoes(
+            modo, limites, somAviso, vibracaoAviso, aoMudarModo, aoMudarLimites, aoMudarSom, aoMudarVibracao,
+            Modifier.padding(top = 24.dp),
+        )
 
         Privacidade(aoApagarDados, Modifier.padding(top = 24.dp))
 
@@ -178,8 +193,12 @@ private fun Ligacao(texto: String, aoTocar: () -> Unit, cor: Color = MaterialThe
 fun Definicoes(
     modo: ModoTema,
     limites: Limites,
+    somAviso: Boolean,
+    vibracaoAviso: Boolean,
     aoMudarModo: (ModoTema) -> Unit,
     aoMudarLimites: (Limites) -> Unit,
+    aoMudarSom: (Boolean) -> Unit,
+    aoMudarVibracao: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.background(MaterialTheme.colorScheme.background)) {
@@ -211,6 +230,21 @@ fun Definicoes(
             menos = { if (limites.muitoAtrasado - 1 > limites.atrasado) aoMudarLimites(limites.copy(muitoAtrasado = limites.muitoAtrasado - 1)) },
             mais = { if (limites.muitoAtrasado < 30) aoMudarLimites(limites.copy(muitoAtrasado = limites.muitoAtrasado + 1)) },
         )
+        Text(stringResource(R.string.eu_avisos), style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.padding(top = 16.dp))
+        Interruptor(stringResource(R.string.eu_som_aviso), somAviso, aoMudarSom)
+        Interruptor(stringResource(R.string.eu_vibracao_aviso), vibracaoAviso, aoMudarVibracao)
+    }
+}
+
+@Composable
+private fun Interruptor(texto: String, ligado: Boolean, aoMudar: (Boolean) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(value = ligado, role = Role.Switch, onValueChange = aoMudar),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(texto, color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.weight(1f))
+        Switch(checked = ligado, onCheckedChange = null)
     }
 }
 

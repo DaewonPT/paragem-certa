@@ -103,6 +103,7 @@ fun Navegacao(ligacoes: Ligacoes) {
                         linhaId = linha,
                         aoLimparLinha = { nav.popBackStack() },
                         aoIrPara = { nav.navigate(it) },
+                        aoAbrirViagem = { nav.navigate(Viagem) },
                         painel = { posicao ->
                             Painel(
                                 repositorio, posicao,
@@ -137,6 +138,7 @@ fun Navegacao(ligacoes: Ligacoes) {
                         preferencias = ligacoes.preferencias,
                         origem = r.origem?.let(::lugarDaRota),
                         destino = r.destino?.let(::lugarDaRota),
+                        aoAbrirViagem = { nav.navigate(Viagem) },
                     )
                 }
             }

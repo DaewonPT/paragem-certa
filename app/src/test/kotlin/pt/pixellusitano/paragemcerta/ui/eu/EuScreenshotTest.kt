@@ -3,11 +3,19 @@ package pt.pixellusitano.paragemcerta.ui.eu
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.assertIsOff
+import androidx.compose.ui.test.assertIsOn
+import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
+import org.junit.Assert.assertEquals
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import pt.pixellusitano.paragemcerta.core.atraso.Limites
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
@@ -24,11 +32,13 @@ class EuScreenshotTest {
         Favorita(RefParagem(Fonte.TRANSITOUS, "pt-Metro-Lisboa_CS"), "Cais do Sodré", 1, 38.7, -9.14),
     )
 
+    @get:Rule val regra = createComposeRule()
+
     @Composable
     private fun Eu() = EuConteudo(
-        favoritas = favoritas, modo = ModoTema.SISTEMA, limites = Limites(),
+        favoritas = favoritas, modo = ModoTema.SISTEMA, limites = Limites(), somAviso = true, vibracaoAviso = true,
         aoAbrirFavorita = {}, aoSubir = {}, aoRemover = {}, aoMudarModo = {}, aoMudarLimites = {},
-        aoAbrirSobre = {}, aoEnviarOpiniao = {}, modifier = Modifier.width(360.dp),
+        aoMudarSom = {}, aoMudarVibracao = {}, aoAbrirSobre = {}, aoEnviarOpiniao = {}, modifier = Modifier.width(360.dp),
     )
 
     @Test fun eu_claro() = captureRoboImage("src/test/screenshots/eu_claro.png") { TemaParagemCerta(ModoTema.CLARO) { Eu() } }
@@ -41,7 +51,29 @@ class EuScreenshotTest {
 
     @Test fun definicoes_claro() = captureRoboImage("src/test/screenshots/definicoes_claro.png") {
         TemaParagemCerta(ModoTema.CLARO) {
-            Definicoes(ModoTema.ESCURO, Limites(3, 8), aoMudarModo = {}, aoMudarLimites = {}, modifier = Modifier.width(360.dp))
+            Definicoes(
+                ModoTema.ESCURO, Limites(3, 8), somAviso = true, vibracaoAviso = false,
+                aoMudarModo = {}, aoMudarLimites = {}, aoMudarSom = {}, aoMudarVibracao = {}, modifier = Modifier.width(360.dp),
+            )
         }
+    }
+
+    @Test @Config(qualifiers = "w360dp-h780dp")
+    fun osInterruptoresDoAvisoMostramOEstadoEMudam() {
+        val mudancas = mutableListOf<String>()
+        regra.setContent {
+            TemaParagemCerta(ModoTema.CLARO) {
+                Definicoes(
+                    ModoTema.SISTEMA, Limites(), somAviso = true, vibracaoAviso = false,
+                    aoMudarModo = {}, aoMudarLimites = {},
+                    aoMudarSom = { mudancas += "som=$it" }, aoMudarVibracao = { mudancas += "vibracao=$it" },
+                )
+            }
+        }
+        regra.onNodeWithText("Som do aviso").assertIsOn()
+        regra.onNodeWithText("Vibração do aviso").assertIsOff()
+        regra.onNodeWithText("Som do aviso").performClick()
+        regra.onNodeWithText("Vibração do aviso").performClick()
+        assertEquals(listOf("som=false", "vibracao=true"), mudancas)
     }
 }

@@ -71,7 +71,12 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.res.stringResource
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import pt.pixellusitano.paragemcerta.ui.viagem.retomarViagem
+import pt.pixellusitano.paragemcerta.ui.viagem.viagemInterrompida
+import pt.pixellusitano.paragemcerta.viagem.FicheirosViagem
 import java.time.Duration
 import java.time.Instant
 
@@ -85,6 +90,7 @@ fun InicioEcra(
     aoLimparLinha: () -> Unit = {},
     painel: @Composable (posicao: Pair<Double, Double>?) -> Unit = {},
     aoIrPara: (Rotas) -> Unit = {},
+    aoAbrirViagem: () -> Unit = {},
 ) {
     val contexto = LocalContext.current
     val vm = viewModel { InicioViewModel(repositorio::paragensNaZona, repositorio::veiculos, repositorio::lugarEm) }
@@ -110,6 +116,14 @@ fun InicioEcra(
     }
     LaunchedEffect(comLocalizacao) {
         if (comLocalizacao) pedirPosicaoAtual(contexto) { posicao = it }
+    }
+
+    // O Android pode ter fechado o serviço da viagem enquanto a app esteve fora: vê-se sempre que se regressa.
+    var interrompida by remember { mutableStateOf(false) }
+    val naoRetomou = stringResource(R.string.viagem_nao_retomou)
+    LifecycleResumeEffect(Unit) {
+        val leitura = escopo.launch { interrompida = withContext(Dispatchers.IO) { viagemInterrompida(contexto) } }
+        onPauseOrDispose { leitura.cancel() }
     }
 
     var linhaFalhou by remember(linhaId) { mutableStateOf(false) }
@@ -150,6 +164,17 @@ fun InicioEcra(
         )
         Column(Modifier.statusBarsPadding().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             BarraPesquisa(aoPesquisar)
+            if (interrompida) {
+                AvisoViagemInterrompida(
+                    aoRetomar = {
+                        if (retomarViagem(contexto)) aoAbrirViagem() else Toast.makeText(contexto, naoRetomou, Toast.LENGTH_LONG).show()
+                    },
+                    aoDescartar = {
+                        FicheirosViagem.apagar(contexto)
+                        interrompida = false
+                    },
+                )
+            }
             linhaId?.let { l ->
                 CartaoLinha(repositorio, l, paragensDaLinha, linhaFalhou, posicao, aoLimparLinha)
             }
@@ -239,6 +264,24 @@ private fun BarraPesquisa(aoPesquisar: () -> Unit) {
     ) {
         Text("🔍  " + stringResource(R.string.pesquisa_dica), color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp))
+    }
+}
+
+/** Toca em qualquer ponto para retomar; "Descartar" apaga a viagem. */
+@Composable
+internal fun AvisoViagemInterrompida(aoRetomar: () -> Unit, aoDescartar: () -> Unit, modifier: Modifier = Modifier) {
+    Surface(
+        modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), shadowElevation = 6.dp,
+        color = MaterialTheme.colorScheme.secondaryContainer,
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text(
+                stringResource(R.string.viagem_interrompida),
+                Modifier.weight(1f).heightIn(min = 48.dp).clickable(role = Role.Button, onClick = aoRetomar).padding(start = 16.dp, top = 12.dp, bottom = 12.dp),
+                style = MaterialTheme.typography.titleSmall,
+            )
+            TextButton(onClick = aoDescartar) { Text(stringResource(R.string.viagem_descartar)) }
+        }
     }
 }
 

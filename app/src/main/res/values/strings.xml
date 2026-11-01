@@ -214,4 +214,31 @@
     <string name="viagem_partilhar">Partilhar chegada</string>
     <string name="viagem_silenciado">Silenciado</string>
     <string name="viagem_concluir">Concluir</string>
+
+    <!-- Começar viagem, primeira viagem e viagem interrompida -->
+    <string name="detalhe_comecar">Começar viagem</string>
+    <string name="viagem_interrompida">Viagem interrompida — toca para retomar</string>
+    <string name="viagem_descartar">Descartar</string>
+    <string name="viagem_nao_comecou">Não foi possível começar a viagem. Tenta outra vez.</string>
+    <string name="viagem_nao_retomou">Não foi possível retomar a viagem. Tenta outra vez.</string>
+    <string name="prep_continuar">Continuar</string>
+    <string name="prep_comecar_mesmo">Começar à mesma</string>
+    <string name="prep_abrir_definicoes">Abrir definições</string>
+    <string name="prep_localizacao_titulo">Localização precisa</string>
+    <string name="prep_localizacao_texto">Para te avisar na paragem certa, a Paragem Certa precisa de saber onde estás com precisão durante a viagem. A posição fica no telemóvel. Sem ela, os avisos seguem só o horário.</string>
+    <string name="prep_localizacao_permitir">Permitir localização precisa</string>
+    <string name="prep_localizacao_horario">Começar pelo horário</string>
+    <string name="prep_desligada_titulo">Localização desligada</string>
+    <string name="prep_desligada_texto">A localização do telemóvel está desligada. Liga-a para os avisos saberem onde estás; sem ela, seguem só o horário.</string>
+    <string name="prep_notificacoes_titulo">Avisos sem notificação</string>
+    <string name="prep_notificacoes_texto">Os avisos Prepara-te e Sai agora vão só tocar e vibrar, sem aparecer no ecrã.</string>
+    <string name="prep_bateria_titulo">Poupança de bateria</string>
+    <string name="prep_bateria_texto">Alguns telemóveis fecham as apps quando o ecrã está desligado e a viagem pára sem avisar. Tira a Paragem Certa da poupança de bateria para os avisos não falharem.</string>
+    <string name="prep_bateria_definicoes">Abrir definições da bateria</string>
+    <string name="prep_bateria_guia">Ver o guia para o teu telemóvel</string>
+    <string name="prep_volume_titulo">Volume do alarme a zero</string>
+    <string name="prep_volume_texto">Os avisos tocam com o volume do alarme, que está a zero. Sobe-o nas definições de som do telemóvel para os ouvires.</string>
+    <string name="eu_avisos">Avisos da viagem</string>
+    <string name="eu_som_aviso">Som do aviso</string>
+    <string name="eu_vibracao_aviso">Vibração do aviso</string>
 </resources>

@@ -8,7 +8,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import pt.pixellusitano.paragemcerta.core.atraso.Limites
 import pt.pixellusitano.paragemcerta.core.modelo.Filtros
@@ -46,6 +48,26 @@ class PreferenciasTest {
         assertEquals(Filtros(), p.filtros.first())
         p.definirFiltros(Filtros(acessivel = true, modos = setOf(Modo.METRO)))
         assertEquals(Filtros(acessivel = true, modos = setOf(Modo.METRO)), p.filtros.first())
+    }
+
+    @Test fun avisoComSomEVibracaoPorOmissao() = runTest {
+        val p = prefs()
+        assertTrue(p.somAviso.first())
+        assertTrue(p.vibracaoAviso.first())
+        assertFalse(p.primeiraViagemFeita.first())
+    }
+
+    @Test fun guardaSomVibracaoEPrimeiraViagem() = runTest {
+        val p = prefs()
+        p.definirSomAviso(false)
+        assertFalse(p.somAviso.first())
+        assertTrue(p.vibracaoAviso.first()) // cada interruptor é independente
+        p.definirVibracaoAviso(false)
+        p.marcarPrimeiraViagemFeita()
+        assertFalse(p.vibracaoAviso.first())
+        assertTrue(p.primeiraViagemFeita.first())
+        p.definirSomAviso(true)
+        assertTrue(p.somAviso.first())
     }
 
     @Test fun recusaLimitesImpossiveis() {
