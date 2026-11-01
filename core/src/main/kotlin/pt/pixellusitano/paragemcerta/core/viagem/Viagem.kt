@@ -43,6 +43,8 @@ private val ALTA_TEMPO = Duration.ofMinutes(3)
 private const val FIM_M = 30.0
 private val FIM_HORARIO = Duration.ofSeconds(60)
 private val GUARDA = Duration.ofMinutes(30)
+/** O atraso que a guarda conta no máximo: o mesmo teto do wake lock do serviço. */
+private val ATRASO_MAX_S = Duration.ofHours(2).seconds
 
 /** O que chega ao motor; cada entrada traz a sua hora, por isso o motor não lê o relógio. */
 sealed interface Entrada {
@@ -133,7 +135,7 @@ class Viagem(val plano: Itinerario) {
             val aBordo = novaEtapa.copy(fase = Fase.A_BORDO, progresso = p.ao, atrasoS = segundosEntre(seguinte.horaEm(p.ao), x.hora))
             return avaliar(aBordo, x.hora, jaSai = false, eventos)
         }
-        if (semGps(e, x.hora) && x.hora >= etapa.chegada) return fimDeEtapa(e, x.hora, emptyList())
+        if (semGps(e, x.hora) && x.hora >= etapa.chegada.plusSeconds(e.atrasoS)) return fimDeEtapa(e, x.hora, emptyList())
         return e to emptyList()
     }
 
@@ -223,7 +225,8 @@ class Viagem(val plano: Itinerario) {
         val percurso = percursos[i]
         val base = e.copy(etapa = i, velocidade = 0.0, avisados = emptySet(), altaPrecisao = false, avancou = false)
         if (percurso == null) {
-            return base.copy(fase = Fase.A_PE, atrasoS = 0, progresso = distanciaMetros(etapa.de.lat, etapa.de.lon, etapa.para.lat, etapa.para.lon))
+            // A pé o atraso que trazia continua: a caminhada começa (e acaba) tão tarde como a etapa anterior.
+            return base.copy(fase = Fase.A_PE, atrasoS = max(0, e.atrasoS), progresso = distanciaMetros(etapa.de.lat, etapa.de.lon, etapa.para.lat, etapa.para.lon))
         }
         return base.copy(
             fase = Fase.ESPERA, progresso = percurso.noPercurso[0], atrasoS = max(0, segundosEntre(paragens[i][0].hora, agora)),
@@ -234,8 +237,11 @@ class Viagem(val plano: Itinerario) {
     private fun semGps(e: EstadoViagem, agora: Instant) = e.ultimoGps == null || Duration.between(e.ultimoGps, agora) >= SEM_GPS
 }
 
-/** Até quando a viagem pode durar: a chegada prevista, mais o atraso conhecido (o adiantamento não conta), mais 30 min. */
-fun limiteDaViagem(plano: Itinerario, e: EstadoViagem): Instant = plano.chegada.plusSeconds(max(0, e.atrasoS)) + GUARDA
+/**
+ * Até quando a viagem pode durar: a chegada prevista, mais o atraso conhecido (o adiantamento não conta, e no máximo 2 h:
+ * parado em cima da linha o atraso sobe sem fim), mais 30 min.
+ */
+fun limiteDaViagem(plano: Itinerario, e: EstadoViagem): Instant = plano.chegada.plusSeconds(e.atrasoS.coerceIn(0, ATRASO_MAX_S)) + GUARDA
 
 /** As paragens da etapa; sem elas (a pé, ou a fonte não as deu), a origem e o destino. Pública: o ecrã lista as mesmas que o motor conta. */
 fun paragensDe(etapa: Etapa): List<ParagemEtapa> = etapa.paragens.takeIf { it.size >= 2 } ?: listOf(

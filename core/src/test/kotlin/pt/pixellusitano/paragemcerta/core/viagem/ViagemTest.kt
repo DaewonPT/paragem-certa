@@ -464,6 +464,60 @@ class ViagemTest {
         assertFalse(viagem.passo(adiantado, Entrada.Relogio(etapa.chegada.plus(Duration.ofMinutes(30)))).first.terminada)
     }
 
+    @Test fun guardaContaNoMaximoDuasHorasDeAtraso() {
+        // A bordo e parado em cima da linha (horas à espera, ou saiu e anda junto à linha sem carregar em Parar):
+        // as posições continuam aceites e o atraso sobe sem fim. A guarda só conta 2 h dele: acaba na chegada + 2 h 30 min.
+        val etapa = autocarro()
+        val viagem = Viagem(itinerario(etapa))
+        val limite = etapa.chegada.plus(Duration.ofMinutes(150))
+        val (lat, lon) = ponto(900.0, 0.0)
+        val aBordo = viagem.inicio(t0).copy(fase = Fase.A_BORDO, progresso = 900.0)
+        val posicoes = Tracos.parado(lat, lon, 200.0, Duration.between(t0, limite).seconds + 600.0)
+        val passos = Tracos.correr(viagem, t0, posicoes, estado = aBordo)
+        val fim = passos.last()
+        assertTrue(fim.depois.terminada)
+        assertEquals(Fase.TERMINADA, fim.depois.fase)
+        assertTrue(fim.eventos.isEmpty())
+        assertTrue(fim.antes.atrasoS > 2 * 3600)
+        assertTrue(fim.entrada.hora > limite)
+        assertTrue(fim.antes.atualizado <= limite)
+    }
+
+    // Autocarro 40 min atrasado e depois 5 min a pé até ao fim (300 s a 1,4 m/s).
+    private fun autocarroEAPe() = autocarro() to aPe(570.0, 3000.0 to 0.0, 3000.0 to 420.0)
+
+    @Test fun atrasoDoAutocarroPassaParaAPeFinalComGps() {
+        val (etapa, aPe) = autocarroEAPe()
+        val viagem = Viagem(itinerario(etapa, aPe))
+        val posicoes = tracoVeiculo(etapa, partidaS = 60.0 + 40 * 60) + Tracos.sintetico(aPe, 1.4, 0).mais(570.0 + 40 * 60)
+        val passos = Tracos.correr(viagem, t0, posicoes)
+        assertEquals(listOf(PREPARA_TE, SAI_AGORA, ETAPA_SEGUINTE, CHEGOU), eventos(passos))
+        val aPe1 = com(passos, ETAPA_SEGUINTE).depois
+        assertEquals(Fase.A_PE, aPe1.fase)
+        assertTrue(aPe1.atrasoS >= 39 * 60)
+        // Só chega pela posição, a 50 m do fim da caminhada.
+        val chegou = com(passos, CHEGOU)
+        assertTrue(chegou === passos.last())
+        val g = chegou.entrada as Entrada.Gps
+        assertTrue(distanciaMetros(g.lat, g.lon, aPe.para.lat, aPe.para.lon) <= 50.0)
+    }
+
+    @Test fun atrasoDoAutocarroPassaParaAPeFinalSemGps() {
+        val (etapa, aPe) = autocarroEAPe()
+        val viagem = Viagem(itinerario(etapa, aPe))
+        val posicoes = tracoVeiculo(etapa, partidaS = 60.0 + 40 * 60)
+        val passos = Tracos.correr(viagem, t0, posicoes, listOf(Entrada.Relogio(aPe.chegada.plus(Duration.ofMinutes(45)))))
+        assertEquals(listOf(PREPARA_TE, SAI_AGORA, ETAPA_SEGUINTE, CHEGOU), eventos(passos))
+        // Sem GPS acaba na hora prevista do fim da caminhada mais o atraso que trazia (Relogio a cada 5 s).
+        val chegou = com(passos, CHEGOU)
+        assertTrue(chegou === passos.last())
+        assertTrue(chegou.entrada is Entrada.Relogio)
+        val atraso = chegou.antes.atrasoS
+        assertTrue(atraso >= 39 * 60)
+        assertTrue(chegou.entrada.hora >= aPe.chegada.plusSeconds(atraso))
+        assertTrue(chegou.entrada.hora < aPe.chegada.plusSeconds(atraso + 5))
+    }
+
     @Test fun gravacoesReais() {
         // Paragem Certa/gravacoes, fora do repositório: só existe no PC do autor.
         val pasta = File(System.getProperty("user.dir"), "../../gravacoes").canonicalFile

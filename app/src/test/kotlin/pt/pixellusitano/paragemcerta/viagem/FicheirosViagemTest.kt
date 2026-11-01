@@ -79,6 +79,13 @@ class FicheirosViagemTest {
         assertNull(FicheirosViagem.lerEstado(c, rota.chegada.plus(Duration.ofMinutes(71))))
     }
 
+    @Test fun estadoComMaisDeDuasHorasDeAtrasoValeAteAChegadaMaisDuasHorasEMeia() {
+        FicheirosViagem.gravarPlano(c, plano)
+        FicheirosViagem.gravarEstado(c, estado.copy(atrasoS = 3 * 3600))
+        assertNotNull(FicheirosViagem.lerEstado(c, rota.chegada.plus(Duration.ofMinutes(149))))
+        assertNull(FicheirosViagem.lerEstado(c, rota.chegada.plus(Duration.ofMinutes(151))))
+    }
+
     @Test fun estadoSemPlanoNaoServeDeNada() {
         FicheirosViagem.gravarEstado(c, estado)
         assertNull(FicheirosViagem.lerEstado(c, rota.partida))

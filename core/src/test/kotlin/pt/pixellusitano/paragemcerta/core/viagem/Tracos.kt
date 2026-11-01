@@ -86,14 +86,14 @@ object Tracos {
 
     /**
      * Corre a viagem desde inicio com as posições, as entradas extra e um Relogio a cada 5 s, até ela terminar
-     * (no máximo até à guarda de chegada + 30 min, ou até à última posição, se for depois).
+     * (no máximo até à guarda de chegada + 30 min, ou até à última posição ou entrada extra, se for depois).
      */
     fun correr(
         viagem: Viagem, inicio: Instant, posicoes: List<Posicao>, extras: List<Entrada> = emptyList(),
         estado: EstadoViagem = viagem.inicio(inicio),
     ): List<Passo> {
         val gps = posicoes.map { Entrada.Gps(it.lat, it.lon, it.precisao, inicio.plusMillis((it.s * 1000).roundToLong())) }
-        val fim = maxOf(viagem.plano.chegada.plus(Duration.ofMinutes(31)), gps.lastOrNull()?.hora ?: inicio)
+        val fim = ((gps + extras).map { it.hora } + viagem.plano.chegada.plus(Duration.ofMinutes(31))).max()
         val relogio = generateSequence(inicio) { it.plusSeconds(INTERVALO_RELOGIO) }.takeWhile { it <= fim }.map { Entrada.Relogio(it) }
         var e = estado
         val passos = mutableListOf<Passo>()

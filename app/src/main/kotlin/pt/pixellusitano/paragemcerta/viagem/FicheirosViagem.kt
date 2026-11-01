@@ -40,7 +40,7 @@ object FicheirosViagem {
 
     fun lerPlano(c: Context): PlanoViagem? = ler(ficheiro(c, PLANO))
 
-    /** Um estado sem plano, ou depois da guarda do motor (chegada + atraso + 30 min), não serve para retomar: apaga os dois ficheiros e devolve null. */
+    /** Um estado sem plano, ou depois da guarda do motor (chegada + atraso até 2 h + 30 min), não serve para retomar: apaga os dois ficheiros e devolve null. */
     fun lerEstado(c: Context, agora: Instant = Instant.now()): EstadoViagem? {
         val estado = ler<EstadoViagem>(ficheiro(c, ESTADO)) ?: return null
         val plano = lerPlano(c)
