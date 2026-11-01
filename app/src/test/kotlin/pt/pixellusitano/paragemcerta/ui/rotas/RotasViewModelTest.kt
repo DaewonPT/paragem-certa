@@ -2,6 +2,8 @@ package pt.pixellusitano.paragemcerta.ui.rotas
 
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -36,11 +38,14 @@ class RotasViewModelTest {
     private val cais = Lugar("Cais do Sodré", 38.7058, -9.1431, TipoLugar.PARAGEM)
     private val oriente = Lugar("Oriente", 38.7678, -9.0990, TipoLugar.LOCAL)
 
-    private fun vm() = RotasViewModel(
-        planear = { de, para, _, _, _ -> pedidos += de to para; resposta },
-        registarRecente = { _, _ -> },
+    private val recentes = mutableListOf<Pair<Lugar, Lugar>>()
+    private val filtrosUsados = mutableListOf<Filtros>()
+
+    private fun vm(guardados: Flow<Filtros> = filtros) = RotasViewModel(
+        planear = { de, para, _, _, f -> pedidos += de to para; filtrosUsados += f; resposta },
+        registarRecente = { de, para -> recentes += de to para },
         linhasComAlerta = { emptySet() },
-        filtrosGuardados = filtros,
+        filtrosGuardados = guardados,
         guardarFiltros = { filtros.value = it },
         relogio = { Instant.parse("2026-11-01T09:00:00Z") },
     )
@@ -99,6 +104,44 @@ class RotasViewModelTest {
         assertEquals(EstadoRotas.Prontas(rotas, etiquetas(rotas)), vm.estado.value)
         assertEquals(3, rotas.size)
         assertEquals(1, pedidos.size)
+    }
+
+    @Test fun naoPlaneiaAntesDosFiltrosGuardados() = runTest(despachante) {
+        val guardados = MutableSharedFlow<Filtros>()
+        val vm = vm(guardados)
+        vm.definirOrigem(cais)
+        vm.definirDestino(oriente)
+        advanceUntilIdle()
+        assertTrue(pedidos.isEmpty())
+        assertEquals(EstadoRotas.ACarregar, vm.estado.value)
+        guardados.emit(Filtros(acessivel = true))
+        advanceUntilIdle()
+        assertEquals(1, pedidos.size)
+        assertEquals(Filtros(acessivel = true), filtrosUsados.single())
+    }
+
+    @Test fun posicaoNovaLongeVoltaAPlanear() = runTest(despachante) {
+        val vm = vm()
+        vm.definirDestino(oriente)
+        vm.definirPosicao(38.75 to -9.30) // o último ponto conhecido, de outra terra
+        advanceUntilIdle()
+        assertEquals(1, pedidos.size)
+        vm.definirPosicao(cais.lat to cais.lon) // o fix fresco
+        advanceUntilIdle()
+        assertEquals(2, pedidos.size)
+        assertEquals(cais.lat, pedidos.last().first.lat, 0.0)
+        vm.definirPosicao(cais.lat + 0.0002 to cais.lon) // uns 22 m: ruído do GPS
+        advanceUntilIdle()
+        assertEquals(2, pedidos.size)
+    }
+
+    @Test fun recenteDaMinhaPosicaoNaoGuardaCoordenadas() = runTest(despachante) {
+        val vm = vm()
+        vm.definirDestino(oriente)
+        vm.definirPosicao(cais.lat to cais.lon)
+        advanceUntilIdle()
+        assertEquals(Lugar(MINHA_POSICAO, 0.0, 0.0, TipoLugar.POSICAO), recentes.single().first)
+        assertEquals(cais.lat, pedidos.single().first.lat, 0.0)
     }
 
     private val lisboa = ZoneId.of("Europe/Lisbon")

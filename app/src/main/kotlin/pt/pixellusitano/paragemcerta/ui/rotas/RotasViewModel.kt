@@ -95,9 +95,13 @@ class RotasViewModel(
     private var posicao: Pair<Double, Double>? = null
     private var procura: Job? = null
 
+    /** Só depois dos filtros guardados chegarem é que se procura, para não pedir duas vezes ao abrir. */
+    private var filtrosChegaram = false
+
     init {
         filtrosGuardados.distinctUntilChanged().onEach {
             _filtros.value = it
+            filtrosChegaram = true
             procurar()
         }.launchIn(viewModelScope)
         viewModelScope.launch { _alertas.value = linhasComAlerta() }
@@ -118,11 +122,12 @@ class RotasViewModel(
         procurar()
     }
 
-    /** Só a primeira posição volta a procurar; as seguintes não repetem o pedido a cada passo. */
+    /** Volta a procurar na primeira posição e quando a nova está a mais de 100 m da anterior (o fix fresco depois da última conhecida); o ruído do GPS não repete o pedido. */
     fun definirPosicao(p: Pair<Double, Double>) {
-        val primeira = posicao == null
+        val anterior = posicao
         posicao = p
-        if (primeira && _pedido.value.origem == null) procurar()
+        val mudou = anterior == null || distanciaMetros(anterior.first, anterior.second, p.first, p.second) > PERTO_METROS
+        if (mudou && _pedido.value.origem == null) procurar()
     }
 
     fun mudarFiltros(f: Filtros) {
@@ -147,10 +152,12 @@ class RotasViewModel(
             origem == null -> _estado.value = EstadoRotas.Vazias(Motivo.SEM_ORIGEM)
             distanciaMetros(origem.lat, origem.lon, destino.lat, destino.lon) < PERTO_METROS ->
                 _estado.value = EstadoRotas.Vazias(Motivo.MUITO_PERTO)
+            !filtrosChegaram -> _estado.value = EstadoRotas.ACarregar
             else -> {
                 _estado.value = EstadoRotas.ACarregar
                 procura = viewModelScope.launch {
-                    registarRecente(origem, destino)
+                    // A posição atual guarda-se só pelo nome: GPS cru enchia os recentes de cópias.
+                    registarRecente(if (origem.tipo == TipoLugar.POSICAO) Lugar(MINHA_POSICAO, 0.0, 0.0, TipoLugar.POSICAO) else origem, destino)
                     val agora = relogio()
                     val hora = p.hora?.let { proximaOcorrencia(it, agora.atZone(LISBOA_FUSO)).toInstant() } ?: agora
                     _estado.value = when (val r = planear(origem, destino, hora, p.tipoHora == TipoHora.CHEGAR, _filtros.value)) {
