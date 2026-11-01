@@ -2,6 +2,13 @@
 
 A versão mais recente aparece primeiro.
 
+## 0.2.1 — Para onde vais?
+
+- "Para onde vais?" no início procura sítios, moradas e paragens e abre logo as rotas até lá.
+- Uma estação aparece uma só vez, sem a lista dos cais (P1, P2…).
+- O mapa mostra onde estás, com um botão para centrar.
+- Ícone novo: um autocarro sobre azulejo.
+
 ## 0.2.0 — Rotas
 
 Agora a Paragem Certa leva-te de um sítio a outro.
