@@ -71,6 +71,14 @@ class FicheirosViagemTest {
         assertFalse(File(pasta, "trip-state.json").exists())
     }
 
+    @Test fun estadoAtrasadoValeAteAChegadaMaisOAtraso() {
+        // Perdeu o autocarro e vai no seguinte, 40 min atrasado: o estado ainda serve para retomar.
+        FicheirosViagem.gravarPlano(c, plano)
+        FicheirosViagem.gravarEstado(c, estado.copy(atrasoS = 40 * 60))
+        assertNotNull(FicheirosViagem.lerEstado(c, rota.chegada.plus(Duration.ofMinutes(69))))
+        assertNull(FicheirosViagem.lerEstado(c, rota.chegada.plus(Duration.ofMinutes(71))))
+    }
+
     @Test fun estadoSemPlanoNaoServeDeNada() {
         FicheirosViagem.gravarEstado(c, estado)
         assertNull(FicheirosViagem.lerEstado(c, rota.partida))

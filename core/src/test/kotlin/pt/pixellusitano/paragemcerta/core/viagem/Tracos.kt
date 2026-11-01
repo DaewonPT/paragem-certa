@@ -36,13 +36,13 @@ object Tracos {
     }
 
     /**
-     * Posições a cada 2 s de quem faz a etapa a vMs, parado paragemS em cada paragem intermédia; s = 0 na primeira paragem.
+     * Posições a cada intervaloS (2 s) de quem faz a etapa a vMs, parado paragemS em cada paragem intermédia; s = 0 na primeira paragem.
      * ruidoM é o desvio padrão (por eixo) do erro; saltos a fração de posições atiradas 300 m ao lado; buraco os
      * segundos sem posição (túnel). A precisão anunciada acompanha o ruído.
      */
     fun sintetico(
         etapa: Etapa, vMs: Double = 7.0, paragemS: Int = 20, ruidoM: Double = 0.0, saltos: Double = 0.0,
-        buraco: IntRange? = null, semente: Int = 1,
+        buraco: IntRange? = null, semente: Int = 1, intervaloS: Double = INTERVALO_GPS,
     ): List<Posicao> {
         val paragens = paragensDe(etapa)
         val linha = etapa.desenho.ifEmpty { paragens.map { it.lat to it.lon } }
@@ -64,7 +64,7 @@ object Tracos {
         val acumulado = DoubleArray(linha.size).also { for (i in 1 until it.size) it[i] = it[i - 1] + hypot(xs[i] - xs[i - 1], ys[i] - ys[i - 1]) }
         val rnd = Random(semente.toLong())
         val precisao = maxOf(8.0, ruidoM * 1.5).toFloat()
-        return generateSequence(0.0) { it + INTERVALO_GPS }.takeWhile { it <= nos.last().first }.mapNotNull { s ->
+        return generateSequence(0.0) { it + intervaloS }.takeWhile { it <= nos.last().first }.mapNotNull { s ->
             val m = entre(nos, s)
             val i = (1 until linha.size).firstOrNull { m <= acumulado[it] } ?: linha.lastIndex
             val vao = acumulado[i] - acumulado[i - 1]
@@ -86,14 +86,14 @@ object Tracos {
 
     /**
      * Corre a viagem desde inicio com as posições, as entradas extra e um Relogio a cada 5 s, até ela terminar
-     * (no máximo até à guarda de chegada + 30 min).
+     * (no máximo até à guarda de chegada + 30 min, ou até à última posição, se for depois).
      */
     fun correr(
         viagem: Viagem, inicio: Instant, posicoes: List<Posicao>, extras: List<Entrada> = emptyList(),
         estado: EstadoViagem = viagem.inicio(inicio),
     ): List<Passo> {
-        val fim = viagem.plano.chegada.plus(Duration.ofMinutes(31))
         val gps = posicoes.map { Entrada.Gps(it.lat, it.lon, it.precisao, inicio.plusMillis((it.s * 1000).roundToLong())) }
+        val fim = maxOf(viagem.plano.chegada.plus(Duration.ofMinutes(31)), gps.lastOrNull()?.hora ?: inicio)
         val relogio = generateSequence(inicio) { it.plusSeconds(INTERVALO_RELOGIO) }.takeWhile { it <= fim }.map { Entrada.Relogio(it) }
         var e = estado
         val passos = mutableListOf<Passo>()

@@ -51,7 +51,7 @@ private const val RELOGIO_MS = 5_000L
 private const val GPS_POUPAR_MS = 10_000L
 private const val GPS_PRECISO_MS = 1_000L
 private const val SEM_PRECISAO = 999f
-private val GUARDA = Duration.ofMinutes(30)
+private val BLOQUEIO_MAX = Duration.ofHours(2)
 private val CM_INTERVALO = Duration.ofSeconds(30)
 private const val CM_TOLERANCIA_S = 90L
 
@@ -137,7 +137,8 @@ class ServicoViagem : Service() {
         }
         corrida = Corrida(plano, viagem, estado)
         // shortcut: wake lock durante a viagem toda, passar a alarmes exatos se a bateria se queixar.
-        val limite = Duration.between(agora(), plano.itinerario.chegada).plus(GUARDA).toMillis().coerceAtLeast(60_000L)
+        // O limite é só um teto: a viagem atrasada passa da chegada prevista e o motor é que diz quando acaba.
+        val limite = Duration.between(agora(), plano.itinerario.chegada).plus(BLOQUEIO_MAX).toMillis().coerceAtLeast(60_000L)
         bloqueio = getSystemService(PowerManager::class.java).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "ParagemCerta:viagem").apply {
             setReferenceCounted(false)
             acquire(limite)

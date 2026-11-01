@@ -6,12 +6,12 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import pt.pixellusitano.paragemcerta.core.viagem.EstadoViagem
 import pt.pixellusitano.paragemcerta.core.viagem.PlanoViagem
+import pt.pixellusitano.paragemcerta.core.viagem.limiteDaViagem
 import java.io.File
 import java.io.FileOutputStream
 import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
-import java.time.Duration
 import java.time.Instant
 
 /**
@@ -24,7 +24,6 @@ object FicheirosViagem {
 
     private const val PLANO = "trip-plan.json"
     private const val ESTADO = "trip-state.json"
-    private val GUARDA = Duration.ofMinutes(30)
     private val json = Json { ignoreUnknownKeys = true }
 
     private fun ficheiro(c: Context, nome: String) = File(File(c.filesDir, "viagem"), nome)
@@ -41,11 +40,11 @@ object FicheirosViagem {
 
     fun lerPlano(c: Context): PlanoViagem? = ler(ficheiro(c, PLANO))
 
-    /** Um estado sem plano, ou de mais de chegada + 30 min, não serve para retomar: apaga os dois ficheiros e devolve null. */
+    /** Um estado sem plano, ou depois da guarda do motor (chegada + atraso + 30 min), não serve para retomar: apaga os dois ficheiros e devolve null. */
     fun lerEstado(c: Context, agora: Instant = Instant.now()): EstadoViagem? {
         val estado = ler<EstadoViagem>(ficheiro(c, ESTADO)) ?: return null
         val plano = lerPlano(c)
-        if (plano == null || agora > plano.itinerario.chegada + GUARDA) {
+        if (plano == null || agora > limiteDaViagem(plano.itinerario, estado)) {
             apagar(c)
             return null
         }

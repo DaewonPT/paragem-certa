@@ -6,7 +6,7 @@
 
 **Architecture:** um motor puro no `:core` (`core/viagem/`) recebe posições GPS e o relógio e devolve o estado e os avisos; é testado no PC com viagens sintéticas e com as gravações reais do autor (fora do repositório). No `:app`, um serviço em primeiro plano do tipo localização, no processo `:trip`, alimenta o motor, toca o alarme e escreve `trip-state.json`; a app lê esse ficheiro e mostra o ecrã da viagem. Sem base de dados, definições nem tarefas no processo `:trip`.
 
-**Tech Stack:** Kotlin 2.4, kotlinx.serialization, Compose M3, `LocationManagerCompat`, `NotificationCompat`, `AtomicFile`, Robolectric 4.17 (`@Config(sdk = [36])`), Roborazzi.
+**Tech Stack:** Kotlin 2.4, kotlinx.serialization, Compose M3, `LocationManagerCompat`, `NotificationCompat`, temporário + `Files.move` atómico, Robolectric 4.17 (`@Config(sdk = [36])`), Roborazzi.
 
 **Spec:** `docs/superpowers/specs/2026-10-27-paragem-certa-design.md` — secções 3 (Fase 3), 5.2 (Viagem ao vivo), 7 (inteira), 9, 11. Desenho e pesquisa que fundamentam este plano (veredicto do advisor, relatórios das APIs e do Android): `../pesquisa-fase-3.md` (fora do repositório).
 
@@ -107,18 +107,18 @@ O estado de saída é exatamente o `trip-state.json`. `avisados` volta a vazio a
 - **Horário:** 60 s sem posição aceite em ESPERA ou A_BORDO → `origem = HORARIO`; em cada `Relogio`, `P = max(P, progressoEm(agora − atraso))`; `eta = hora[d] + atraso`. Uma posição aceite volta a `GPS`.
 - **ESPERA → A_BORDO:** 2 posições aceites com `P > A[0] + 60` e `v > 3 m/s`; ou em HORARIO quando `agora ≥ hora[0] + atraso`.
 - **PREPARA_TE:** `P > A[d − 2] + 30` (limitado a 0: numa etapa de 1 paragem dispara ao embarcar) ou `eta − agora ≤ 2 min`.
-- **SAI_AGORA:** `P > A[d − 1] + 30` e `A[d] − P ≤ max(150, v × 15)`; ou em HORARIO quando `eta − agora ≤ 60 s`. Se os dois forem devidos no mesmo passo: PREPARA_TE e depois SAI_AGORA.
+- **SAI_AGORA:** `P > A[d − 1] + 75` (a precisão máxima aceite: parado na penúltima, o ruído leva o P além de `A[d − 1] + 30`) e `A[d] − P ≤ max(150, v × 15)`; ou em HORARIO quando `eta − agora ≤ 60 s`. Se os dois forem devidos no mesmo passo: PREPARA_TE e depois SAI_AGORA.
 - **altaPrecisao:** `P > A[d − 2] + 30` ou `eta − agora ≤ 3 min` ou `d ≤ 2`; fica ligada até ao fim da etapa.
-- **Fim de etapa em veículo:** `P ≥ A[d] − 30`, ou `JaSai`, ou em HORARIO `agora ≥ eta + 60 s` → SAI_AGORA se ainda não tiver tocado, depois ETAPA_SEGUINTE (CHEGOU na última; `terminada`).
+- **Fim de etapa em veículo:** `P ≥ A[d] − 30`, ou em HORARIO `agora ≥ eta + 60 s` → SAI_AGORA se ainda não tiver tocado (numa etapa curta, com a penúltima a menos de ~105 m, é este que toca), depois ETAPA_SEGUINTE (CHEGOU na última; `terminada`). `JaSai` acaba a etapa sem tocar nada: só ETAPA_SEGUINTE (ou CHEGOU).
 - **Fim de etapa a pé:** posição a ≤ 50 m do destino da etapa; ou posição que projeta `> A[0] + 60` na etapa seguinte (já embarcou: salta a espera); ou sem GPS quando `agora ≥ etapa.chegada`.
-- **Guarda:** `agora > plano.chegada + 30 min` → TERMINADA. `Silenciar` só muda `silenciado`.
+- **Guarda:** `agora > plano.chegada + max(0, atrasoS) + 30 min` (`limiteDaViagem`) → TERMINADA; com o atraso conhecido, quem perde o autocarro e apanha o seguinte ainda recebe os avisos. `Silenciar` só muda `silenciado`.
 
-**Viagens de teste:** `Tracos.sintetico(percurso, vMs = 7.0, paragemS = 20, ruidoM = 0.0, saltos = 0.0, buraco: IntRange? = null, semente = 1)` gera posições a cada 2 s; `Tracos.correr(viagem, inicio, posicoes, extras)` junta um `Relogio` de 5 s. As gravações reais (`s,lat,lon,acc` por linha, `#` comentários, com o `-plano.json` ao lado) ficam em `Paragem Certa/gravacoes/`; o teste `gravacoesReais` corre-as se a pasta existir (`Assume.assumeTrue`) e é ignorado no CI.
+**Viagens de teste:** `Tracos.sintetico(percurso, vMs = 7.0, paragemS = 20, ruidoM = 0.0, saltos = 0.0, buraco: IntRange? = null, semente = 1, intervaloS = 2.0)` gera posições a cada `intervaloS`; `Tracos.correr(viagem, inicio, posicoes, extras)` junta um `Relogio` de 5 s (até à guarda, ou até à última posição se for depois). As gravações reais (`s,lat,lon,acc` por linha, `#` comentários, com o `-plano.json` ao lado) ficam em `Paragem Certa/gravacoes/`; o teste `gravacoesReais` corre-as se a pasta existir (`Assume.assumeTrue`) e é ignorado no CI.
 
 - [ ] **Step 1: testes** (`ViagemTest`), com o esperado tirado da própria viagem ("antes da penúltima" = primeira posição a 30 m da paragem d−1; "antes de parar" = primeira posição a 20 m de d):
   1. autocarro limpo: PREPARA_TE antes da penúltima, SAI_AGORA a ≤ 150 m e antes de parar, cada um uma vez;
   2. ruído σ 25 m e 5 % de saltos de 300 m: a contagem nunca anda para trás; SAI_AGORA nunca antes de sair da penúltima;
-  3. penúltima a 100 m do destino: SAI_AGORA só depois de sair dela;
+  3. penúltima a 100 m do destino: SAI_AGORA só depois de sair dela (vem com o fim da etapa, a `A[d] − 30`); paragens a 150 m, GPS a 1 s com σ 25 m e 20 a 30 s parado na penúltima: SAI_AGORA só depois de o autocarro sair dela e antes de parar no destino;
   4. posições com 150 m de precisão ignoradas;
   5. Metro sem posições: HORARIO aos 60 s, SAI_AGORA a eta − 60 s;
   6. túnel e depois GPS: volta a GPS, nada toca duas vezes;
@@ -131,7 +131,7 @@ O estado de saída é exatamente o `trip-state.json`. `avisados` volta a vazio a
   13. estado em JSON e de volta, continuar: nenhum aviso se repete;
   14. posição fora da linha ignorada;
   15. a passagem para altaPrecisao;
-  16. guarda a `chegada + 30 min`;
+  16. guarda a `chegada + 30 min`, mais o atraso conhecido; perder o autocarro e apanhar o seguinte, 40 min depois: PREPARA_TE e SAI_AGORA na mesma;
   17. `gravacoesReais` (só no PC).
 - [ ] **Step 2:** FAIL. **Step 3:** implementar `Viagem.kt` e `Tracos.kt`. **Step 4:** `gradle :core:test` → PASS. **Step 5:** commit `feat(core): live trip engine with get-off alerts`.
 
@@ -140,7 +140,7 @@ O estado de saída é exatamente o `trip-state.json`. `avisados` volta a vazio a
 **Files:** Create `app/.../viagem/FicheirosViagem.kt`, `app/.../viagem/Notificacoes.kt`, `app/.../viagem/Alarme.kt`, `strings.xml`; Test `app/src/test/.../viagem/FicheirosViagemTest.kt`, `NotificacoesTest.kt` (Robolectric, `@Config(sdk = [36])`)
 
 **Interfaces — Produces:**
-- `object FicheirosViagem { fun gravarPlano(c: Context, p: PlanoViagem); fun lerPlano(c): PlanoViagem?; fun gravarEstado(c, e: EstadoViagem); fun lerEstado(c): EstadoViagem?; fun apagar(c); fun emCurso(c): Boolean; const val ACAO_ESTADO = "pt.pixellusitano.paragemcerta.VIAGEM" }` — `filesDir/viagem/trip-plan.json` e `trip-state.json` com `AtomicFile`; `emCurso` = há um processo da app cujo nome acaba em `:trip` (`getRunningAppProcesses`); um estado com mais de `chegada + 30 min` apaga-se ao ler.
+- `object FicheirosViagem { fun gravarPlano(c: Context, p: PlanoViagem); fun lerPlano(c): PlanoViagem?; fun gravarEstado(c, e: EstadoViagem); fun lerEstado(c): EstadoViagem?; fun apagar(c); fun emCurso(c): Boolean; const val ACAO_ESTADO = "pt.pixellusitano.paragemcerta.VIAGEM" }` — `filesDir/viagem/trip-plan.json` e `trip-state.json` escritos num temporário da mesma pasta e trocados com `Files.move(ATOMIC_MOVE)` (não `AtomicFile`: ao ler, ele apaga o `.new` que o outro processo esteja a escrever); `emCurso` = há um processo da app cujo nome acaba em `:trip` (`getRunningAppProcesses`); um estado depois de `limiteDaViagem` (chegada + atraso + 30 min) apaga-se ao ler.
 - `object Notificacoes { fun criarCanais(c); fun progresso(c, plano, estado, viagem): Notification; fun aviso(c, evento, plano, estado, viagem): Notification }` — canal `viagem` (LOW, fixa, `setOnlyAlertOnce`, `FOREGROUND_SERVICE_IMMEDIATE`, botões "Silenciar", "Já saí", "Parar" como `PendingIntent.getService`) e canal `avisos` (HIGH, sem som próprio, sem vibração do canal, `CATEGORY_ALARM`).
 - `object Alarme { fun tocar(c, evento: Evento, som: Boolean, vibrar: Boolean) }` — `RingtoneManager` `TYPE_ALARM` (reserva `TYPE_NOTIFICATION`) com `USAGE_ALARM`, 3 s no Prepara-te e 6 s no Sai agora; vibração com `VibrationAttributes.USAGE_ALARM` (33+) ou `AudioAttributes` de alarme (26–32).
 
@@ -157,7 +157,7 @@ O estado de saída é exatamente o `trip-state.json`. `avisados` volta a vazio a
 - Manifesto: `<service android:name=".viagem.ServicoViagem" android:process=":trip" android:exported="false" android:foregroundServiceType="location" />`; permissões `FOREGROUND_SERVICE`, `FOREGROUND_SERVICE_LOCATION`, `POST_NOTIFICATIONS`, `VIBRATE`, `WAKE_LOCK`.
 - `AtualizacaoDiaria.agendar` passa de `ParagemCertaApp.onCreate` para `MainActivity.onCreate` (o `Application` corre também no `:trip`, que não pode tocar no WorkManager nem na base de dados).
 - Ações: `COMECAR` e `RETOMAR` (lêem `trip-plan.json` e, no retomar, `trip-state.json`), `SILENCIAR`, `JA_SAI`, `PARAR`. `startForeground(…, FOREGROUND_SERVICE_TYPE_LOCATION)` dentro de `try/catch`: se o Android recusar, `stopSelf` e o estado fica para "Viagem interrompida". `START_NOT_STICKY`.
-- Wake lock parcial do início ao CHEGOU/PARAR, com limite `chegada − agora + 30 min` (`shortcut: wake lock durante a viagem toda, passar a alarmes exatos se a bateria se queixar`).
+- Wake lock parcial do início ao CHEGOU/PARAR, com limite `chegada − agora + 2 h`, só um teto (o motor é que acaba a viagem atrasada) (`shortcut: wake lock durante a viagem toda, passar a alarmes exatos se a bateria se queixar`).
 - Localização: `LocationManagerCompat.requestLocationUpdates` no GPS, modo poupar (10 s) e modo preciso (1 s) conforme `altaPrecisao`; `onProviderDisabled` → notificação "Liga a localização para a Paragem Certa saber onde estás." Sem FINE, a viagem corre pelo horário.
 - `Relogio` a cada 5 s. Enquanto a fase é ESPERA numa etapa da Carris Metropolitana: chegadas da paragem de embarque a cada 30 s (`CarrisMetropolitana(OkHttpHttp(userAgent(...)))` criado no serviço; casar `linhaNome` e hora programada a ±90 s) → `Entrada.Partida`.
 - Depois de cada passo que muda o estado (ou a cada 5 s no máximo): `gravarEstado`, notificação de progresso, e `sendBroadcast(Intent(ACAO_ESTADO).setPackage(packageName))`. Em cada evento: notificação de aviso e, se não estiver silenciado, `Alarme.tocar` — sempre antes de `stopForeground`/`stopSelf`.

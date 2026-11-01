@@ -131,8 +131,37 @@ class ViagemTest {
         val passos = Tracos.correr(viagem, t0, posicoes)
         assertEquals(listOf(PREPARA_TE, SAI_AGORA, CHEGOU), eventos(passos))
         val sai = com(passos, SAI_AGORA)
-        assertEquals(listOf(SAI_AGORA), sai.eventos)
+        // A 100 m o P > A[d − 1] + 75 só chegava depois do fim da etapa (A[d] − 30): o Sai agora vem com ele, 30 m antes.
+        assertEquals(listOf(SAI_AGORA, CHEGOU), sai.eventos)
         assertTrue(sai.entrada.hora > etapa.paragens[2].hora)
+        verificarAvisos(viagem, passos, t0, posicoes)
+    }
+
+    @Test fun paradoNaPenultimaPertoDoDestinoNaoTocaSaiAgora() {
+        // Paragens a 150 m e GPS a cada 1 s com σ 25 m: parado 20 a 30 s na penúltima, o P (que só anda para a frente)
+        // passa de A[d − 1] + 30 com o ruído e o destino já fica a menos de 150 m.
+        val linha = listOf(0.0 to 0.0, 600.0 to 0.0)
+        for (paragemS in listOf(20, 30)) for (semente in 1..5) {
+            val etapa = veiculo(60.0, linha, listOf(0.0, 150.0, 300.0, 450.0, 600.0), paragemS = paragemS)
+            val viagem = Viagem(itinerario(etapa))
+            val posicoes = Tracos.parado(etapa.paragens[0].lat, etapa.paragens[0].lon, 0.0, 60.0) +
+                Tracos.sintetico(etapa, paragemS = paragemS, ruidoM = 25.0, semente = semente, intervaloS = 1.0).mais(60.0)
+            val sai = com(Tracos.correr(viagem, t0, posicoes), SAI_AGORA).entrada.hora
+            val d = etapa.paragens.lastIndex
+            // paragens[d − 1].hora é quando o autocarro sai da penúltima; paragens[d].hora quando pára no destino.
+            assertTrue("parado $paragemS s, semente $semente", sai > etapa.paragens[d - 1].hora)
+            assertTrue("parado $paragemS s, semente $semente", sai < etapa.paragens[d].hora)
+        }
+    }
+
+    @Test fun perdeOAutocarroEApanhaOSeguinte() {
+        // O autocarro do plano parte sem ela; o seguinte, 40 min depois, ainda vai a meio quando passa a chegada + 30 min.
+        val etapa = autocarro()
+        val viagem = Viagem(itinerario(etapa))
+        val posicoes = tracoVeiculo(etapa, partidaS = 60.0 + 40 * 60)
+        val passos = Tracos.correr(viagem, t0, posicoes)
+        assertEquals(listOf(PREPARA_TE, SAI_AGORA, CHEGOU), eventos(passos))
+        assertTrue(com(passos, SAI_AGORA).entrada.hora < etapa.chegada.plus(Duration.ofMinutes(40)))
         verificarAvisos(viagem, passos, t0, posicoes)
     }
 
@@ -416,6 +445,23 @@ class ViagemTest {
         assertEquals(Fase.TERMINADA, fim.fase)
         assertTrue(eventos.isEmpty())
         assertEquals(fim to emptyList<Evento>(), viagem.passo(fim, Entrada.Relogio(limite.plusSeconds(60))))
+    }
+
+    @Test fun guardaContaComOAtrasoConhecido() {
+        // A bordo com 40 min de atraso e depois sem avançar (largou a viagem perto da linha): a guarda é chegada + 40 + 30 min.
+        val etapa = autocarro()
+        val viagem = Viagem(itinerario(etapa))
+        val limite = etapa.chegada.plus(Duration.ofMinutes(70))
+        val aBordo = viagem.inicio(t0).copy(fase = Fase.A_BORDO, progresso = 900.0, atrasoS = 40 * 60, ultimoGps = limite.minusSeconds(30))
+        val (aindaNao, _) = viagem.passo(aBordo, Entrada.Relogio(limite))
+        assertFalse(aindaNao.terminada)
+        val (fim, eventos) = viagem.passo(aindaNao, Entrada.Relogio(limite.plusSeconds(1)))
+        assertTrue(fim.terminada)
+        assertEquals(Fase.TERMINADA, fim.fase)
+        assertTrue(eventos.isEmpty())
+        // Adiantado não encurta a guarda.
+        val adiantado = aBordo.copy(atrasoS = -120, ultimoGps = etapa.chegada.plus(Duration.ofMinutes(30)).minusSeconds(30))
+        assertFalse(viagem.passo(adiantado, Entrada.Relogio(etapa.chegada.plus(Duration.ofMinutes(30)))).first.terminada)
     }
 
     @Test fun gravacoesReais() {

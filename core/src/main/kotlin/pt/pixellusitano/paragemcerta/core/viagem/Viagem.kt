@@ -36,6 +36,7 @@ const val PREPARA_ANTES = 2
 private val PREPARA_TEMPO = Duration.ofMinutes(2)
 private const val SAI_M = 150.0
 private const val SAI_S = 15.0
+private const val SAI_MARGEM_M = PRECISAO_MAX_M.toDouble()
 private val SAI_TEMPO = Duration.ofSeconds(60)
 private const val ALTA_PARAGENS = 2
 private val ALTA_TEMPO = Duration.ofMinutes(3)
@@ -96,7 +97,7 @@ class Viagem(val plano: Itinerario) {
 
     fun passo(e: EstadoViagem, x: Entrada): Pair<EstadoViagem, List<Evento>> {
         if (e.terminada) return e to emptyList()
-        if (x.hora > plano.chegada + GUARDA) return e.copy(fase = Fase.TERMINADA, terminada = true, atualizado = x.hora) to emptyList()
+        if (x.hora > limiteDaViagem(plano, e)) return e.copy(fase = Fase.TERMINADA, terminada = true, atualizado = x.hora) to emptyList()
         if (x is Entrada.Silenciar) return e.copy(silenciado = true) to emptyList()
         val s = e.copy(atualizado = x.hora)
         return if (percursos[s.etapa] == null) passoAPe(s, x) else passoVeiculo(s, x)
@@ -198,7 +199,8 @@ class Viagem(val plano: Itinerario) {
         // Depois de "Já saí" não se toca nada: só se muda de etapa.
         if (s.fase == Fase.A_BORDO && !jaSai) {
             if (Evento.PREPARA_TE !in s.avisados && (saiu(d - PREPARA_ANTES) || falta <= PREPARA_TEMPO)) eventos += Evento.PREPARA_TE
-            val perto = saiu(d - 1) && a[d] - s.progresso <= max(SAI_M, s.velocidade * SAI_S)
+            // Mais margem que o saiu(): parado na penúltima, o ruído leva o P (que só anda para a frente) além de A[d − 1] + 30.
+            val perto = s.progresso > a[(d - 1).coerceAtLeast(0)] + SAI_MARGEM_M && a[d] - s.progresso <= max(SAI_M, s.velocidade * SAI_S)
             if (Evento.SAI_AGORA !in s.avisados && (perto || (horario && falta <= SAI_TEMPO))) eventos += Evento.SAI_AGORA
         }
         s = s.copy(avisados = s.avisados + eventos.filter { it == Evento.PREPARA_TE || it == Evento.SAI_AGORA })
@@ -231,6 +233,9 @@ class Viagem(val plano: Itinerario) {
 
     private fun semGps(e: EstadoViagem, agora: Instant) = e.ultimoGps == null || Duration.between(e.ultimoGps, agora) >= SEM_GPS
 }
+
+/** Até quando a viagem pode durar: a chegada prevista, mais o atraso conhecido (o adiantamento não conta), mais 30 min. */
+fun limiteDaViagem(plano: Itinerario, e: EstadoViagem): Instant = plano.chegada.plusSeconds(max(0, e.atrasoS)) + GUARDA
 
 /** As paragens da etapa; sem elas (a pé, ou a fonte não as deu), a origem e o destino. Pública: o ecrã lista as mesmas que o motor conta. */
 fun paragensDe(etapa: Etapa): List<ParagemEtapa> = etapa.paragens.takeIf { it.size >= 2 } ?: listOf(
