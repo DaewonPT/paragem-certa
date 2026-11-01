@@ -3,6 +3,8 @@ package pt.pixellusitano.paragemcerta.ui
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import android.widget.Toast
@@ -166,7 +168,8 @@ private fun AvisoAtualizacao() {
     AlertDialog(
         onDismissRequest = { nova = null },
         title = { Text(stringResource(R.string.atualizacao_titulo, n.tag.removePrefix("v"))) },
-        text = { Text(n.notas) },
+        // Notas longas rolam em vez de ficarem cortadas (o aviso não tem altura para tudo).
+        text = { Text(n.notas.trim(), Modifier.verticalScroll(rememberScrollState())) },
         confirmButton = {
             TextButton(onClick = {
                 nova = null
