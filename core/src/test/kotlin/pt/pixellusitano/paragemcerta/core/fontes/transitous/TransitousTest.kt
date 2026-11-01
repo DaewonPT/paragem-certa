@@ -65,7 +65,7 @@ class TransitousTest {
         val l = TransitousParser.lugares(fixture("transitous-geocode-morada.json"))
         assertEquals(6, l.size)
         assertTrue(l.take(4).all { it.tipo == TipoLugar.PARAGEM })
-        assertEquals(Lugar("Avenida da Liberdade", l[4].lat, l[4].lon, TipoLugar.LOCAL, "Lisboa"), l[4])
+        assertEquals(Lugar("Avenida da Liberdade", l[4].lat, l[4].lon, TipoLugar.LOCAL, "Santo António · Lisboa"), l[4])
         assertEquals(TipoLugar.LOCAL, l[5].tipo)
     }
 
@@ -75,13 +75,52 @@ class TransitousTest {
         assertEquals("https://api.transitous.org/api/v1/geocode?text=Avenida+da+Liberdade", http.pedidos.single())
     }
 
-    @Test fun lugaresTrazemOConcelho() {
+    @Test fun lugaresTrazemAFreguesiaEOConcelho() {
         val l = TransitousParser.lugares(fixture("transitous-geocode-goa.json"))
         assertEquals("São João da Madeira", l[0].zona)
-        assertEquals("Setúbal", l[2].zona)
-        // Os que vêm sem área de concelho (adminLevel 7) ficam sem zona.
+        assertEquals("Setúbal (São Julião, Nossa Senhora da Anunciada e Santa Maria da Graça)", l[2].zona)
+        assertEquals("Pinhal Novo · Palmela", l[6].zona)
+        assertEquals(
+            listOf(
+                "São João da Madeira", "Vila Real", "Setúbal (São Julião, Nossa Senhora da Anunciada e Santa Maria da Graça)",
+                "Reguengos de Monsaraz", "Estremoz (Santa Maria e Santo André)", "Marinha Grande", "Pinhal Novo · Palmela",
+                "Coruche", "São João Baptista · Entroncamento", "Abrantes (São Vicente e São João) e Alferrarede",
+            ),
+            l.map { it.zona },
+        )
+        // Só concelho (adminLevel 7) ou só freguesia (8): fica a que houver.
+        assertEquals("Lisboa", TransitousParser.lugares("""[{"type":"ADDRESS","name":"Rua A","lat":38.7,"lon":-9.1,"areas":[{"name":"Lisboa","adminLevel":7.0}]}]""").single().zona)
+        assertEquals("Alvalade", TransitousParser.lugares("""[{"type":"ADDRESS","name":"Rua A","lat":38.7,"lon":-9.1,"areas":[{"name":"Alvalade","adminLevel":8.0}]}]""").single().zona)
+        // Sem área de concelho nem de freguesia ficam sem zona.
         assertNull(TransitousParser.lugares("""[{"type":"ADDRESS","name":"Rua A","lat":38.7,"lon":-9.1,"areas":[{"name":"Portugal","adminLevel":2}]}]""").single().zona)
         assertNull(TransitousParser.lugares("""[{"type":"ADDRESS","name":"Rua A","lat":38.7,"lon":-9.1}]""").single().zona)
+    }
+
+    @Test fun zonaJuntaFreguesiaEConcelho() {
+        assertEquals("Pinhal Novo · Palmela", zonaDe("Pinhal Novo", "Palmela"))
+        assertEquals("Santo António · Lisboa", zonaDe("Santo António", "Lisboa"))
+    }
+
+    @Test fun zonaNaoRepeteOConcelho() {
+        assertEquals("São João da Madeira", zonaDe("São João da Madeira", "São João da Madeira"))
+        assertEquals("lisboa", zonaDe("lisboa", "Lisboa"))
+        val longa = "Setúbal (São Julião, Nossa Senhora da Anunciada e Santa Maria da Graça)"
+        assertEquals(longa, zonaDe(longa, "Setúbal"))
+        assertEquals(longa, zonaDe(longa, "SETÚBAL"))
+        // Só conta como "já diz o concelho" quando o nome dele acaba numa palavra inteira.
+        assertEquals("Moravia · Mora", zonaDe("Moravia", "Mora"))
+    }
+
+    @Test fun zonaComUmaPeca() {
+        assertEquals("Palmela", zonaDe(null, "Palmela"))
+        assertEquals("Pinhal Novo", zonaDe("Pinhal Novo", null))
+        assertEquals("Palmela", zonaDe("", "Palmela"))
+        assertEquals("Pinhal Novo", zonaDe("Pinhal Novo", " "))
+    }
+
+    @Test fun zonaSemNadaEhNula() {
+        assertNull(zonaDe(null, null))
+        assertNull(zonaDe("", " "))
     }
 
     @Test fun pesquisaPertoUsaAPosicao() = runTest {

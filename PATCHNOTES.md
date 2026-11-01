@@ -10,6 +10,11 @@ A versão mais recente aparece primeiro.
 - Se o Android fechar a viagem, o início mostra "Viagem interrompida — toca para retomar".
 - "Partilhar chegada" envia a hora prevista. Eu → Definições: "Som do aviso" e "Vibração do aviso".
 
+## 0.2.4 — Freguesia e concelho
+
+- Por baixo de cada rua ou sítio da pesquisa aparece a freguesia e o concelho.
+- Os pedaços da mesma rua passam a aparecer uma só vez.
+
 ## 0.2.3 — Atualiza-se sozinha
 
 - A partir desta versão, a app atualiza-se sozinha em segundo plano, com Wi-Fi e quando não a estás a usar.

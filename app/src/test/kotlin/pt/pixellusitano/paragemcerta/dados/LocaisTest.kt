@@ -100,6 +100,34 @@ class LocaisTest {
         assertEquals(listOf("São João da Madeira", "Setúbal"), repoGoa.pesquisarLugares("rua de goa")!!.map { it.zona })
     }
 
+    private suspend fun pesquisarGoa(vararg ruas: String): List<Lugar> {
+        val resposta = ruas.joinToString(prefix = "[", postfix = "]")
+        val r = Repositorio(
+            bd, CarrisMetropolitana(http), Transitous(HttpPorUrl("geocode" to listOf({ Resposta(200, resposta) }))), relogio = { agora },
+        )
+        return r.pesquisarLugares("rua de goa")!!
+    }
+
+    private fun ruaGoa(lat: Double, freguesia: String, concelho: String = "Oeiras") =
+        """{"type":"ADDRESS","name":"Rua de Goa","lat":$lat,"lon":-9.3,"areas":[{"name":"$concelho","adminLevel":7.0},{"name":"$freguesia","adminLevel":8.0}]}"""
+
+    @Test fun pedacosDaMesmaRuaNaMesmaZonaFicamUm() = runTest {
+        // 0.008 graus de latitude = cerca de 890 m: acima dos 400 m de antes, abaixo dos 2 km dos pedaços da mesma rua.
+        val l = pesquisarGoa(ruaGoa(38.70, "Barcarena"), ruaGoa(38.708, "Barcarena"), ruaGoa(38.716, "Barcarena"))
+        assertEquals(listOf(38.70), l.map { it.lat })
+        assertEquals(listOf("Barcarena · Oeiras"), l.map { it.zona })
+    }
+
+    @Test fun ruasComOMesmoNomeEmFreguesiasDiferentesFicamSeparadas() = runTest {
+        val l = pesquisarGoa(ruaGoa(38.70, "Barcarena"), ruaGoa(38.708, "Carnaxide e Queijas"))
+        assertEquals(listOf("Barcarena · Oeiras", "Carnaxide e Queijas · Oeiras"), l.map { it.zona })
+    }
+
+    @Test fun pedacosDaMesmaZonaMuitoLongeFicamSeparados() = runTest {
+        // 0.03 graus = cerca de 3,3 km: já passa dos 2 km.
+        assertEquals(2, pesquisarGoa(ruaGoa(38.70, "Barcarena"), ruaGoa(38.73, "Barcarena")).size)
+    }
+
     @Test fun apagarDadosDoTelemovel() = runTest {
         repo.guardarLocal("Casa", lugar("Rua A"), "CASA")
         repo.registarRecente(lugar("A"), lugar("B"))
