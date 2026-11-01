@@ -47,8 +47,16 @@
 
     <!-- Pesquisa -->
     <string name="pesquisa_dica">Para onde vais?</string>
-    <string name="pesquisa_campo">Procura uma paragem ou linha</string>
-    <string name="pesquisa_sem_resultados">Sem resultados. Experimenta outro nome ou o número da linha.</string>
+    <string name="pesquisa_campo">Para onde vais?</string>
+    <string name="pesquisa_sem_resultados">Sem resultados. Experimenta o nome de uma rua, de um sítio ou de uma paragem, ou o número da linha.</string>
+    <string name="pesquisa_sitios">Sítios e moradas</string>
+    <string name="pesquisa_paragens">Paragens</string>
+    <string name="pesquisa_chegadas">Chegadas</string>
+    <plurals name="pesquisa_n_paragens">
+        <item quantity="one">%1$d paragem</item>
+        <item quantity="other">%1$d paragens</item>
+    </plurals>
+    <string name="pesquisa_sem_rede">Sem ligação: os sítios e moradas aparecem quando houver rede.</string>
 
     <!-- Navegação e Eu -->
     <string name="nav_inicio">Início</string>

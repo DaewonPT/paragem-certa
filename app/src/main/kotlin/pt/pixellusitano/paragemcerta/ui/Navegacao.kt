@@ -43,6 +43,7 @@ import pt.pixellusitano.paragemcerta.ui.paragem.ParagemEcra
 import pt.pixellusitano.paragemcerta.ui.pesquisa.PesquisaEcra
 import pt.pixellusitano.paragemcerta.ui.rotas.RotasEcra
 import pt.pixellusitano.paragemcerta.ui.rotas.lugarDaRota
+import pt.pixellusitano.paragemcerta.ui.rotas.paraRota
 import pt.pixellusitano.paragemcerta.ui.sobre.SobreEcra
 
 @Serializable data class Inicio(val linha: String? = null)
@@ -117,6 +118,8 @@ fun Navegacao(ligacoes: Ligacoes) {
                     aoAbrirParagem = { nav.navigate(Paragem(it.ref.chave)) },
                     // Fica [Início, Início(linha)]: "voltar" regressa ao mapa normal em vez de fechar a app.
                     aoAbrirLinha = { nav.navigate(Inicio(linha = it.id)) { popUpTo<Inicio>() } },
+                    // Também sai da pesquisa: "voltar" das rotas regressa ao mapa.
+                    aoIrPara = { nav.navigate(Rotas(destino = it.paraRota())) { popUpTo<Inicio>() } },
                     aoVoltar = { nav.popBackStack() },
                 )
             }

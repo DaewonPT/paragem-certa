@@ -1,9 +1,11 @@
 package pt.pixellusitano.paragemcerta.ui.pesquisa
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -21,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -29,7 +32,9 @@ import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.core.modelo.Linha
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.operadorDe
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
+import pt.pixellusitano.paragemcerta.core.modelo.Lugar
 import pt.pixellusitano.paragemcerta.core.modelo.Paragem
+import pt.pixellusitano.paragemcerta.core.modelo.TipoLugar
 import pt.pixellusitano.paragemcerta.dados.Repositorio
 import pt.pixellusitano.paragemcerta.ui.comum.ItemLista
 import pt.pixellusitano.paragemcerta.ui.comum.SeloLinha
@@ -40,20 +45,41 @@ fun PesquisaEcra(
     repositorio: Repositorio,
     aoAbrirParagem: (Paragem) -> Unit,
     aoAbrirLinha: (Linha) -> Unit,
+    aoIrPara: (Lugar) -> Unit,
     aoVoltar: () -> Unit,
 ) {
-    val vm = viewModel { PesquisaViewModel(repositorio::pesquisar, repositorio::linhasCmComecadasPor) }
+    val vm = viewModel { PesquisaViewModel(repositorio::pesquisar, repositorio::linhasCmComecadasPor, repositorio::pesquisarLugares) }
     val texto by vm.texto.collectAsStateWithLifecycle()
     val resultados by vm.resultados.collectAsStateWithLifecycle()
+    val semRede by vm.semRede.collectAsStateWithLifecycle()
+    PesquisaConteudo(texto, resultados, semRede, vm::escrever, aoAbrirLinha, aoIrPara, aoAbrirParagem, aoVoltar)
+}
+
+/** "Para onde vais?": linhas, depois sítios e moradas, depois estações e paragens. Tocar num sítio ou estação escolhe o destino. */
+@Composable
+fun PesquisaConteudo(
+    texto: String,
+    resultados: List<ResultadoPesquisa>,
+    semRede: Boolean,
+    aoEscrever: (String) -> Unit,
+    aoAbrirLinha: (Linha) -> Unit,
+    aoIrPara: (Lugar) -> Unit,
+    aoAbrirParagem: (Paragem) -> Unit,
+    aoVoltar: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
     val foco = remember { FocusRequester() }
     LaunchedEffect(Unit) { foco.requestFocus() }
+    val linhas = resultados.filterIsInstance<ResultadoPesquisa.DeLinha>()
+    val sitios = resultados.filterIsInstance<ResultadoPesquisa.DeLugar>()
+    val estacoes = resultados.filterIsInstance<ResultadoPesquisa.DeEstacao>()
 
-    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding()) {
+    Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding()) {
         Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
             TextButton(onClick = aoVoltar) { Text("←") }
             OutlinedTextField(
                 value = texto,
-                onValueChange = vm::escrever,
+                onValueChange = aoEscrever,
                 singleLine = true,
                 placeholder = { Text(stringResource(R.string.pesquisa_campo)) },
                 modifier = Modifier.weight(1f).focusRequester(foco),
@@ -64,24 +90,64 @@ fun PesquisaEcra(
                 modifier = Modifier.padding(16.dp))
         }
         LazyColumn {
-            items(resultados) { r ->
-                when (r) {
-                    is ResultadoPesquisa.DeLinha -> ItemLista(onClick = { aoAbrirLinha(r.l) }) {
-                        SeloLinha(r.l.nomeCurto, corDaLinha(r.l.cor, r.l.modo))
-                        Text(r.l.nomeLongo, color = MaterialTheme.colorScheme.onBackground)
-                    }
-                    is ResultadoPesquisa.DeParagem -> ItemLista(onClick = { aoAbrirParagem(r.p) }) {
-                        Text("📍", color = MaterialTheme.colorScheme.primary)
-                        Column {
-                            Text(r.p.nome, color = MaterialTheme.colorScheme.onBackground)
-                            Text(subtituloParagem(r.p), color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
-                        }
-                    }
+            items(linhas) { r ->
+                ItemLista(onClick = { aoAbrirLinha(r.l) }) {
+                    SeloLinha(r.l.nomeCurto, corDaLinha(r.l.cor, r.l.modo))
+                    Text(r.l.nomeLongo, color = MaterialTheme.colorScheme.onBackground)
                 }
                 HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
+            if (sitios.isNotEmpty()) {
+                item { Cabecalho(stringResource(R.string.pesquisa_sitios)) }
+                items(sitios) { r ->
+                    ItemLista(onClick = { aoIrPara(r.l) }) {
+                        Text("📍", color = MaterialTheme.colorScheme.primary)
+                        Text(r.l.nome, color = MaterialTheme.colorScheme.onBackground)
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                }
+            }
+            if (estacoes.isNotEmpty()) {
+                item { Cabecalho(stringResource(R.string.pesquisa_paragens)) }
+                items(estacoes) { r ->
+                    val g = r.g
+                    val unica = g.itens.singleOrNull()
+                    // O botão é irmão da linha, não filho: assim cada um tem o seu alvo (e o seu foco no TalkBack).
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.weight(1f)) {
+                            ItemLista(onClick = { aoIrPara(Lugar(g.nome, g.lat, g.lon, TipoLugar.PARAGEM)) }) {
+                                Text("🚏", color = MaterialTheme.colorScheme.primary)
+                                Column {
+                                    Text(g.nome, color = MaterialTheme.colorScheme.onBackground)
+                                    Text(
+                                        if (unica != null) subtituloParagem(unica)
+                                        else pluralStringResource(R.plurals.pesquisa_n_paragens, g.itens.size, g.itens.size),
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall,
+                                    )
+                                }
+                            }
+                        }
+                        if (unica != null) TextButton(onClick = { aoAbrirParagem(unica) }) { Text(stringResource(R.string.pesquisa_chegadas)) }
+                    }
+                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                }
+            }
+            if (semRede) {
+                item {
+                    Text(stringResource(R.string.pesquisa_sem_rede), color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(16.dp))
+                }
+            }
         }
     }
+}
+
+@Composable
+private fun Cabecalho(texto: String) {
+    Text(
+        texto, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelLarge,
+        modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp),
+    )
 }
 
 /** "Carris Metropolitana · 060419", "CP · 69005": distingue paragens com o mesmo nome. */
