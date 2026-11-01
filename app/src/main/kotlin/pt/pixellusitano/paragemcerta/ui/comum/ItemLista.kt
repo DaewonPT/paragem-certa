@@ -14,9 +14,9 @@ import androidx.compose.ui.unit.dp
 
 /** Linha tocável de uma lista de resultados (pesquisa, escolha de lugar). */
 @Composable
-fun ItemLista(onClick: () -> Unit, conteudo: @Composable () -> Unit) {
+fun ItemLista(onClick: () -> Unit, modifier: Modifier = Modifier, conteudo: @Composable () -> Unit) {
     Row(
-        Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button, onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp),
+        modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button, onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) { conteudo() }

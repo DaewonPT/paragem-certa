@@ -10,6 +10,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -59,7 +60,20 @@ class LocaisTest {
 
     @Test fun pesquisaComecaPelosLocais() = runTest {
         repo.guardarLocal("Trabalho", lugar("Av. da República"), "TRABALHO")
-        assertEquals("Trabalho", repo.pesquisarLugares("trab").first().nome)
+        assertEquals("Trabalho", repo.pesquisarLugares("trab")!!.first().nome)
+    }
+
+    private val semRede = Repositorio(
+        bd, CarrisMetropolitana(http), Transitous(HttpPorUrl("geocode" to listOf({ Resposta(503, "") }))), relogio = { agora },
+    )
+
+    @Test fun pesquisaSemRedeSemLocaisDevolveNull() = runTest {
+        assertNull(semRede.pesquisarLugares("trab"))
+    }
+
+    @Test fun pesquisaSemRedeMostraLocais() = runTest {
+        semRede.guardarLocal("Trabalho", lugar("Av. da República"), "TRABALHO")
+        assertEquals(listOf("Trabalho"), semRede.pesquisarLugares("trab")!!.map { it.nome })
     }
 
     @Test fun apagarDadosDoTelemovel() = runTest {

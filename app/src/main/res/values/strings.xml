@@ -125,6 +125,7 @@
     <string name="escolher_procura">Morada, sítio ou paragem</string>
     <string name="escolher_recentes">Recentes</string>
     <string name="escolher_sem_resultados">Sem resultados. Experimenta escrever a rua ou o nome do sítio.</string>
+    <string name="escolher_sem_rede">Não foi possível procurar agora. Verifica a ligação e tenta outra vez.</string>
     <string name="detalhe_a_pe">A pé %1$d min</string>
     <string name="detalhe_ate">até %1$s</string>
     <string name="detalhe_sai_em">sai em %1$s</string>

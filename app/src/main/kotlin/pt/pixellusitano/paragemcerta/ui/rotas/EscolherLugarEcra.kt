@@ -61,22 +61,26 @@ fun EscolherLugarEcra(
     comPosicao: Boolean,
     locais: List<LocalGuardado>,
     recentes: List<Lugar>,
-    pesquisar: suspend (String) -> List<Lugar>,
+    pesquisar: suspend (String) -> List<Lugar>?,
     aoEscolher: (Lugar?) -> Unit,
     aoVoltar: () -> Unit,
     aoGuardar: (Lugar, tipo: String) -> Unit = { _, _ -> },
 ) {
     var texto by rememberSaveable { mutableStateOf("") }
     var resultados by remember { mutableStateOf<List<Lugar>?>(null) }
+    var semRede by remember { mutableStateOf(false) }
     val foco = remember { FocusRequester() }
     LaunchedEffect(Unit) { foco.requestFocus() }
     // Cada letra nova cancela a espera anterior: só se pesquisa quando se pára de escrever 300 ms.
     LaunchedEffect(texto) {
         resultados = null
+        semRede = false
         val t = texto.trim()
         if (t.length < 2) return@LaunchedEffect
         delay(300)
-        resultados = pesquisar(t)
+        val r = pesquisar(t)
+        resultados = r
+        semRede = r == null
     }
     val cores = MaterialTheme.colorScheme
 
@@ -107,7 +111,9 @@ fun EscolherLugarEcra(
                 }
             } else {
                 val r = resultados
-                if (r != null && r.isEmpty()) {
+                if (semRede) {
+                    item { Text(stringResource(R.string.escolher_sem_rede), color = cores.onSurfaceVariant, modifier = Modifier.padding(16.dp)) }
+                } else if (r != null && r.isEmpty()) {
                     item { Text(stringResource(R.string.escolher_sem_resultados), color = cores.onSurfaceVariant, modifier = Modifier.padding(16.dp)) }
                 }
                 items(r.orEmpty()) { l -> OpcaoGuardavel(l, aoEscolher = { aoEscolher(l) }, aoGuardar = { tipo -> aoGuardar(l, tipo) }) }
@@ -135,14 +141,15 @@ private fun OpcaoGuardavel(l: Lugar, aoEscolher: () -> Unit, aoGuardar: (String)
         "OUTRO" to stringResource(R.string.guardar_como_local),
     )
     val maisOpcoes = stringResource(R.string.mais_opcoes)
-    Row(
-        Modifier.fillMaxWidth().semantics {
-            customActions = acoes.map { (tipo, texto) -> CustomAccessibilityAction(texto) { aoGuardar(tipo); true } }
-        },
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
+    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.weight(1f)) {
-            ItemLista(onClick = aoEscolher) {
+            // As ações vão no próprio ItemLista: é o nó clicável que o TalkBack foca, não esta linha.
+            ItemLista(
+                onClick = aoEscolher,
+                modifier = Modifier.semantics {
+                    customActions = acoes.map { (tipo, texto) -> CustomAccessibilityAction(texto) { aoGuardar(tipo); true } }
+                },
+            ) {
                 Text(simboloLugar(l.tipo), color = MaterialTheme.colorScheme.primary)
                 Text(l.nome, color = MaterialTheme.colorScheme.onBackground)
             }

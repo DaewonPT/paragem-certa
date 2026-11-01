@@ -227,12 +227,13 @@ class Repositorio(
     suspend fun planear(de: Lugar, para: Lugar, hora: Instant, chegarAs: Boolean, f: Filtros): Resultado<List<Itinerario>> =
         transitous.planear(de, para, hora, chegarAs, f)
 
-    /** Primeiro os locais guardados cujo nome tem o texto (sem ligar a acentos), depois moradas e sítios do Transitous. */
-    suspend fun pesquisarLugares(texto: String): List<Lugar> {
+    /** Primeiro os locais guardados cujo nome tem o texto (sem ligar a acentos), depois moradas e sítios do Transitous.
+     *  null = o Transitous falhou e não há nenhum local guardado que sirva (sem ligação, não "sem resultados"). */
+    suspend fun pesquisarLugares(texto: String): List<Lugar>? {
         val procura = normalizar(texto)
         val meus = bd.locais().lista().filter { normalizar(it.nome).contains(procura) }.map { it.lugar() }
-        val outros = (transitous.pesquisarLugares(texto) as? Resultado.Ok)?.valor.orEmpty()
-        return meus + outros
+        val outros = (transitous.pesquisarLugares(texto) as? Resultado.Ok)?.valor
+        return if (outros == null && meus.isEmpty()) null else meus + outros.orEmpty()
     }
 
     suspend fun lugarEm(lat: Double, lon: Double): Lugar? = (transitous.lugarEm(lat, lon) as? Resultado.Ok)?.valor
