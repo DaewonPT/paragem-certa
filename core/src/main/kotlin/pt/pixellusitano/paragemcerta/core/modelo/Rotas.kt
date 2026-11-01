@@ -5,7 +5,7 @@ import java.time.Instant
 
 enum class TipoLugar { MORADA, LOCAL, PARAGEM, POSICAO }
 
-/** zona = o concelho, só para mostrar (distingue várias ruas com o mesmo nome). */
+/** zona = a freguesia e o concelho, só para mostrar (distingue várias ruas com o mesmo nome). */
 data class Lugar(val nome: String, val lat: Double, val lon: Double, val tipo: TipoLugar, val zona: String? = null)
 
 /** Uma parte da viagem: a pé (aPe) ou num veículo (modo, linha, destino); distancia em metros, quando a fonte a dá. */

@@ -68,6 +68,18 @@ private val JSON = Json { ignoreUnknownKeys = true; coerceInputValues = true }
 )
 
 private const val NIVEL_CONCELHO = 7.0
+private const val NIVEL_FREGUESIA = 8.0
+
+/** A freguesia e o concelho para mostrar juntos; só a freguesia quando já começa pelo nome do concelho ("Setúbal (São Julião, …)"). */
+fun zonaDe(freguesia: String?, concelho: String?): String? {
+    val f = freguesia?.trim()?.takeIf { it.isNotEmpty() }
+    val c = concelho?.trim()?.takeIf { it.isNotEmpty() }
+    return when {
+        f == null -> c
+        c == null || f.startsWith(c, ignoreCase = true) -> f
+        else -> "$f · $c"
+    }
+}
 
 /** Portugal continental, Madeira e Açores (o geocoder devolve resultados do mundo inteiro). */
 private fun emPortugal(lat: Double, lon: Double) =
@@ -219,7 +231,11 @@ object TransitousParser {
                 "STOP" -> TipoLugar.PARAGEM
                 else -> return@mapNotNull null
             }
-            Lugar(l.name, l.lat, l.lon, tipo, l.areas.firstOrNull { it.adminLevel == NIVEL_CONCELHO }?.name).takeIf { emPortugal(l.lat, l.lon) }
+            val zona = zonaDe(
+                l.areas.firstOrNull { it.adminLevel == NIVEL_FREGUESIA }?.name,
+                l.areas.firstOrNull { it.adminLevel == NIVEL_CONCELHO }?.name,
+            )
+            Lugar(l.name, l.lat, l.lon, tipo, zona).takeIf { emPortugal(l.lat, l.lon) }
         }
 
     /** Nome para um ponto tocado no mapa: a 1.ª morada; sem ela, a paragem mais próxima.

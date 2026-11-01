@@ -33,6 +33,7 @@ import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import pt.pixellusitano.paragemcerta.R
@@ -154,7 +155,10 @@ private fun OpcaoGuardavel(l: Lugar, aoEscolher: () -> Unit, aoGuardar: (String)
                 Column {
                     Text(l.nome, color = MaterialTheme.colorScheme.onBackground)
                     l.zona?.let {
-                        Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                        Text(
+                            it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall,
+                            maxLines = 2, overflow = TextOverflow.Ellipsis,
+                        )
                     }
                 }
             }

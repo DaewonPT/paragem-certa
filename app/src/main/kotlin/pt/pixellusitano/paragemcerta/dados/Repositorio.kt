@@ -242,8 +242,12 @@ class Repositorio(
         return if (outros == null && meus.isEmpty()) null else meus + outros.orEmpty()
     }
 
-    private fun Lugar.repetidoDe(o: Lugar) =
-        tipo == o.tipo && nome.equals(o.nome, ignoreCase = true) && distanciaMetros(lat, lon, o.lat, o.lon) < RAIO_REPETIDOS_METROS
+    /** Mesmo tipo e nome e muito perto; ou, na mesma zona, até 2 km (a mesma rua aos bocados no OpenStreetMap). */
+    private fun Lugar.repetidoDe(o: Lugar): Boolean {
+        if (tipo != o.tipo || !nome.equals(o.nome, ignoreCase = true)) return false
+        val metros = distanciaMetros(lat, lon, o.lat, o.lon)
+        return metros < RAIO_REPETIDOS_METROS || (zona != null && zona == o.zona && metros < RAIO_PEDACOS_METROS)
+    }
 
     suspend fun lugarEm(lat: Double, lon: Double): Lugar? = (transitous.lugarEm(lat, lon) as? Resultado.Ok)?.valor
 
@@ -287,5 +291,6 @@ class Repositorio(
         val INTERVALO_VEICULOS: Duration = Duration.ofSeconds(15)
         val VALIDADE_ALERTAS: Duration = Duration.ofMinutes(5)
         const val RAIO_REPETIDOS_METROS = 400.0
+        const val RAIO_PEDACOS_METROS = 2000.0
     }
 }
