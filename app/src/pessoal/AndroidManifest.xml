@@ -1,8 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Só a variante pessoal se atualiza sozinha; a da Play Store não tem esta permissão. -->
+<!-- Só a variante pessoal se atualiza sozinha; a da Play Store não tem estas permissões. -->
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+    <!-- Android 12+: deixa a app atualizar-se a si própria sem pedir confirmação. -->
+    <uses-permission android:name="android.permission.UPDATE_PACKAGES_WITHOUT_USER_ACTION" />
+    <!-- Android 13+: para avisar quando a atualização ficou pronta e precisa de um toque. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 
     <application>
         <receiver

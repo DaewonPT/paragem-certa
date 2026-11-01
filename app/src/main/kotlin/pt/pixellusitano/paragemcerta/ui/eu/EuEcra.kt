@@ -14,10 +14,12 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
@@ -41,6 +43,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import pt.pixellusitano.paragemcerta.BuildConfig
 import pt.pixellusitano.paragemcerta.R
+import pt.pixellusitano.paragemcerta.atualizar.Atualizacoes
 import pt.pixellusitano.paragemcerta.core.atraso.Limites
 import pt.pixellusitano.paragemcerta.core.regras.Favorita
 import pt.pixellusitano.paragemcerta.dados.Preferencias
@@ -90,6 +93,27 @@ fun EuEcra(
             escopo.launch { repositorio.apagarDadosDoTelemovel() }
             Toast.makeText(contexto, apagados, Toast.LENGTH_SHORT).show()
         },
+        secaoAtualizacoes = { modificador ->
+            if (Atualizacoes.disponivel) {
+                var sozinha by remember { mutableStateOf(Atualizacoes.atualizarSozinha(contexto)) }
+                var dadosMoveis by remember { mutableStateOf(Atualizacoes.usarDadosMoveis(contexto)) }
+                SecaoAtualizacoes(
+                    sozinha = sozinha,
+                    dadosMoveis = dadosMoveis,
+                    aoMudarSozinha = {
+                        sozinha = it
+                        Atualizacoes.definirAtualizarSozinha(contexto, it)
+                        Atualizacoes.agendar(contexto)
+                    },
+                    aoMudarDadosMoveis = {
+                        dadosMoveis = it
+                        Atualizacoes.definirUsarDadosMoveis(contexto, it)
+                        Atualizacoes.agendar(contexto)
+                    },
+                    modifier = modificador,
+                )
+            }
+        },
     )
 }
 
@@ -108,6 +132,8 @@ fun EuConteudo(
     modifier: Modifier = Modifier,
     aoAbrirLocais: () -> Unit = {},
     aoApagarDados: () -> Unit = {},
+    /** Só a variante pessoal tem esta secção (as atualizações da Play Store vêm pela loja). */
+    secaoAtualizacoes: @Composable (Modifier) -> Unit = {},
 ) {
     Column(modifier.background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState()).statusBarsPadding().padding(16.dp)) {
         Text(stringResource(R.string.eu_favoritas), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
@@ -130,6 +156,8 @@ fun EuConteudo(
 
         Definicoes(modo, limites, aoMudarModo, aoMudarLimites, Modifier.padding(top = 24.dp))
 
+        secaoAtualizacoes(Modifier.padding(top = 24.dp))
+
         Privacidade(aoApagarDados, Modifier.padding(top = 24.dp))
 
         Column(Modifier.padding(top = 24.dp)) {
@@ -137,6 +165,38 @@ fun EuConteudo(
             Ligacao(stringResource(R.string.eu_sobre), aoAbrirSobre)
             Ligacao(stringResource(R.string.eu_opiniao), aoEnviarOpiniao)
         }
+    }
+}
+
+/** Atualizar sozinha (instala as versões novas em segundo plano) e se pode gastar dados móveis; sem o primeiro, o segundo não conta. */
+@Composable
+fun SecaoAtualizacoes(
+    sozinha: Boolean,
+    dadosMoveis: Boolean,
+    aoMudarSozinha: (Boolean) -> Unit,
+    aoMudarDadosMoveis: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier.background(MaterialTheme.colorScheme.background)) {
+        Text(stringResource(R.string.eu_atualizacoes), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
+        FrisoAzulejo(Modifier.fillMaxWidth().padding(vertical = 8.dp))
+        Interruptor(stringResource(R.string.eu_atualizar_sozinha), sozinha, true, aoMudarSozinha)
+        Interruptor(stringResource(R.string.eu_atualizar_dados_moveis), dadosMoveis, sozinha, aoMudarDadosMoveis)
+    }
+}
+
+@Composable
+private fun Interruptor(texto: String, ligado: Boolean, ativo: Boolean, aoMudar: (Boolean) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(value = ligado, enabled = ativo, role = Role.Switch, onValueChange = aoMudar),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            texto,
+            color = if (ativo) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        Switch(checked = ligado, onCheckedChange = null, enabled = ativo)
     }
 }
 

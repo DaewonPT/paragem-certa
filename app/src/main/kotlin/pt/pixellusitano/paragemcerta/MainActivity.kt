@@ -11,6 +11,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import pt.pixellusitano.paragemcerta.atualizar.Atualizacoes
 import pt.pixellusitano.paragemcerta.core.atraso.Limites
 import pt.pixellusitano.paragemcerta.ui.Navegacao
 import pt.pixellusitano.paragemcerta.ui.comum.LocalLimites
@@ -20,6 +21,8 @@ import pt.pixellusitano.paragemcerta.ui.tema.TemaParagemCerta
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Aqui e não na Application: se um dia houver outro processo, o WorkManager não deve arrancar lá.
+        Atualizacoes.agendar(this)
         enableEdgeToEdge()
         val ligacoes = (application as ParagemCertaApp).ligacoes
         setContent {

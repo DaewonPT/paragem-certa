@@ -20,6 +20,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -74,7 +76,9 @@ fun Navegacao(ligacoes: Ligacoes) {
         restoreState = true
     }
 
-    AvisoAtualizacao()
+    // Com "Atualizar sozinha" ligado a app trata disto em segundo plano; só quem o desligou recebe o aviso para confirmar.
+    if (!remember { Atualizacoes.atualizarSozinha(contexto) }) AvisoAtualizacao()
+    AvisoNovidades()
 
     Scaffold(
         bottomBar = {
@@ -159,7 +163,25 @@ fun Navegacao(ligacoes: Ligacoes) {
     }
 }
 
-/** Na variante pessoal mostra, no máximo uma vez por dia, que há uma versão nova no GitHub. */
+/** Depois de uma atualização, mostra uma só vez o que mudou. */
+@Composable
+private fun AvisoNovidades() {
+    val contexto = LocalContext.current
+    var novidades by remember { mutableStateOf(Atualizacoes.novidadesPorMostrar(contexto)) }
+    val n = novidades ?: return
+    val fechar = {
+        Atualizacoes.marcarNovidadesVistas(contexto)
+        novidades = null
+    }
+    AlertDialog(
+        onDismissRequest = fechar,
+        title = { Text(stringResource(R.string.atualizacao_novidades_titulo, n.tag.removePrefix("v"))) },
+        text = { Text(n.notas.trim(), Modifier.verticalScroll(rememberScrollState())) },
+        confirmButton = { TextButton(onClick = fechar) { Text(stringResource(R.string.ok)) } },
+    )
+}
+
+/** Para quem desligou "Atualizar sozinha": mostra, no máximo uma vez por dia, que há uma versão nova no GitHub. */
 @Composable
 private fun AvisoAtualizacao() {
     val contexto = LocalContext.current
