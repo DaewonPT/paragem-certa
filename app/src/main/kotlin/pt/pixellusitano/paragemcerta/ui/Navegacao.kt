@@ -33,6 +33,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.compose.NavHost
@@ -69,6 +70,15 @@ import pt.pixellusitano.paragemcerta.viagem.FicheirosViagem
 /** origem e destino codificados como "nome|lat|lon" (ver paraRota); origem null = "A minha posição". */
 @Serializable data class Rotas(val origem: String? = null, val destino: String? = null)
 
+/** Troca de separador na barra de baixo: guarda o que estava aberto no separador que se deixa e repõe o do separador escolhido. */
+fun NavController.irParaSeparador(rota: Any) = navigate(rota) {
+    popUpTo(graph.findStartDestination().id) { saveState = true }
+    launchSingleTop = true
+    // O Início é o destino de partida: o Android guarda debaixo dele o que estava por cima (as rotas abertas pela
+    // pesquisa) e repô-lo trazia as rotas de volta a cada toque. O Início abre-se sempre limpo.
+    restoreState = rota !is Inicio
+}
+
 /**
  * Ecrãs com a barra de baixo. "Linhas" (fase 4) entra quando existir. abrirViagem: a notificação da viagem foi tocada, por isso
  * abre-se o ecrã da viagem e avisa-se (aoAbrirViagem) para o pedido não se repetir.
@@ -90,11 +100,7 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
     val nasRotas = destino?.hasRoute(Rotas::class) == true
     val repositorio = ligacoes.repositorio
 
-    fun separador(rota: Any) = nav.navigate(rota) {
-        popUpTo(nav.graph.findStartDestination().id) { saveState = true }
-        launchSingleTop = true
-        restoreState = true
-    }
+    fun separador(rota: Any) = nav.irParaSeparador(rota)
 
     // Uma atualização descarregada que o sistema ainda quer confirmar mostra-se sempre, tenha ou não "Atualizar sozinha" ligado.
     // Sem ela: com "Atualizar sozinha" ligado a app trata disto em segundo plano; só quem o desligou recebe o aviso para confirmar.
