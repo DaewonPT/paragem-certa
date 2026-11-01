@@ -60,6 +60,9 @@ object FicheirosViagem {
         ficheiro(c, ESTADO).delete()
     }
 
+    /** Há uma viagem por acabar: o estado existe, é de agora (ver lerEstado) e não terminou; o serviço pode estar vivo ou não. */
+    fun porAcabar(c: Context, agora: Instant = Instant.now()): Boolean = lerEstado(c, agora)?.terminada == false
+
     /** O serviço está vivo se a app tiver um processo cujo nome acaba em ":trip". */
     fun emCurso(c: Context): Boolean =
         c.getSystemService(ActivityManager::class.java).runningAppProcesses.orEmpty().any { it.processName.endsWith(":trip") }

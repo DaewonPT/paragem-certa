@@ -1,7 +1,9 @@
 package pt.pixellusitano.paragemcerta.ui.viagem
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class PrimeiraViagemTest {
@@ -59,6 +61,26 @@ class PrimeiraViagemTest {
         assertEquals(listOf(Passo.VOLUME), passos(mudo, primeiraViagem = false, comSom = true))
         assertEquals(emptyList<Passo>(), passos(mudo, primeiraViagem = false, comSom = false))
         assertEquals(emptyList<Passo>(), passos(tudoBem.copy(volumeAlarme = 1), primeiraViagem = true))
+    }
+
+    @Test fun doAndroid14ParaCimaOServicoPedeAlgumaLocalizacao() {
+        assertFalse(servicoPodeArrancar(34, precisa = false, aproximada = false))
+        assertFalse(servicoPodeArrancar(36, precisa = false, aproximada = false))
+        assertTrue(servicoPodeArrancar(34, precisa = true, aproximada = false))
+        assertTrue(servicoPodeArrancar(34, precisa = false, aproximada = true))
+        assertTrue(servicoPodeArrancar(36, precisa = true, aproximada = true))
+        // Antes do 14 o serviço arranca sem localização: a viagem corre pelo horário.
+        assertTrue(servicoPodeArrancar(33, precisa = false, aproximada = false))
+        assertTrue(servicoPodeArrancar(26, precisa = false, aproximada = false))
+    }
+
+    @Test fun semNenhumaLocalizacaoNoAndroid14ExplicaAntesDeComecar() {
+        val semServico = tudoBem.copy(localizacaoPrecisa = false, servicoPode = false)
+        // Primeiro o pedido da precisa; se foi recusado, o Android pede pelo menos a aproximada.
+        assertEquals(listOf(Passo.LOCALIZACAO, Passo.LOCALIZACAO_SERVICO), passos(semServico, primeiraViagem = false))
+        assertEquals(Passo.LOCALIZACAO_SERVICO, proximoPasso(semServico, setOf(Passo.LOCALIZACAO), primeiraViagem = false, comSom = true))
+        // Com a aproximada o serviço arranca: não há passo a mais.
+        assertEquals(listOf(Passo.LOCALIZACAO), passos(tudoBem.copy(localizacaoPrecisa = false), primeiraViagem = false))
     }
 
     @Test fun guiaDoFabricante() {

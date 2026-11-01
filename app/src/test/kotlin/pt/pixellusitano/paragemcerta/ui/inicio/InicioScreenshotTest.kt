@@ -22,6 +22,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.ui.tema.ModoTema
 import pt.pixellusitano.paragemcerta.ui.tema.TemaParagemCerta
 
@@ -34,7 +35,7 @@ class InicioScreenshotTest {
     // O banner fica por cima do mapa, que o Robolectric não desenha: no lugar dele fica um retângulo.
     @Composable
     private fun Banner(aoRetomar: () -> Unit = {}, aoDescartar: () -> Unit = {}) {
-        Box(Modifier.width(360.dp).background(Color(0xFFDDE5F0)).padding(12.dp)) { AvisoViagemInterrompida(aoRetomar, aoDescartar) }
+        Box(Modifier.width(360.dp).background(Color(0xFFDDE5F0)).padding(12.dp)) { AvisoViagem(R.string.viagem_interrompida, aoRetomar, aoDescartar = aoDescartar) }
     }
 
     @Test fun inicio_interrompida() = captureRoboImage("src/test/screenshots/inicio_interrompida.png") {
@@ -49,6 +50,16 @@ class InicioScreenshotTest {
         regra.onNodeWithText("Viagem interrompida — toca para retomar").performClick()
         regra.onNodeWithText("Descartar").performClick()
         assertEquals(listOf("retomar", "descartar"), pedidos)
+    }
+
+    @Test fun viagemEmCursoAbreESemDescartar() {
+        var abriu = 0
+        regra.setContent {
+            TemaParagemCerta(ModoTema.CLARO) { AvisoViagem(R.string.viagem_em_curso, aoAbrir = { abriu++ }) }
+        }
+        regra.onNodeWithText("Viagem em curso — toca para ver").performClick()
+        regra.onNodeWithText("Descartar").assertDoesNotExist()
+        assertEquals(1, abriu)
     }
 
     @Test fun comLetraA200AindaSeVeEToca() {

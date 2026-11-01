@@ -103,6 +103,17 @@ class FicheirosViagemTest {
         assertTrue(File(pasta, "gps.csv").exists())
     }
 
+    @Test fun porAcabarSoComEstadoQueNaoTerminouNemPassouDaGuarda() {
+        assertFalse(FicheirosViagem.porAcabar(c, rota.partida)) // nada gravado
+        FicheirosViagem.gravarPlano(c, plano)
+        FicheirosViagem.gravarEstado(c, estado)
+        assertTrue(FicheirosViagem.porAcabar(c, rota.partida)) // com o serviço vivo ou não: o que conta é a viagem
+        FicheirosViagem.gravarEstado(c, estado.copy(terminada = true))
+        assertFalse(FicheirosViagem.porAcabar(c, rota.partida))
+        FicheirosViagem.gravarEstado(c, estado)
+        assertFalse(FicheirosViagem.porAcabar(c, rota.chegada.plus(Duration.ofMinutes(31)))) // já ninguém a retoma
+    }
+
     @Test fun emCursoQuandoHaProcessoTrip() {
         val gestor = c.getSystemService(ActivityManager::class.java)
         fun processo(nome: String) = RunningAppProcessInfo(nome, 1, emptyArray())

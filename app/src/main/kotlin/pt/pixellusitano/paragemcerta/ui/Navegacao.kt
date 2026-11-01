@@ -16,15 +16,19 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.setValue
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import pt.pixellusitano.paragemcerta.atualizar.Atualizacoes
 import pt.pixellusitano.paragemcerta.atualizar.NovaVersao
 import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -52,6 +56,7 @@ import pt.pixellusitano.paragemcerta.ui.rotas.lugarDaRota
 import pt.pixellusitano.paragemcerta.ui.rotas.paraRota
 import pt.pixellusitano.paragemcerta.ui.sobre.SobreEcra
 import pt.pixellusitano.paragemcerta.ui.viagem.ViagemEcra
+import pt.pixellusitano.paragemcerta.viagem.FicheirosViagem
 
 @Serializable data class Inicio(val linha: String? = null)
 @Serializable data object Pesquisa
@@ -64,11 +69,20 @@ import pt.pixellusitano.paragemcerta.ui.viagem.ViagemEcra
 /** origem e destino codificados como "nome|lat|lon" (ver paraRota); origem null = "A minha posição". */
 @Serializable data class Rotas(val origem: String? = null, val destino: String? = null)
 
-/** Ecrãs com a barra de baixo. "Linhas" (fase 4) entra quando existir. */
+/**
+ * Ecrãs com a barra de baixo. "Linhas" (fase 4) entra quando existir. abrirViagem: a notificação da viagem foi tocada, por isso
+ * abre-se o ecrã da viagem e avisa-se (aoAbrirViagem) para o pedido não se repetir.
+ */
 @Composable
-fun Navegacao(ligacoes: Ligacoes) {
+fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: () -> Unit = {}) {
     val nav = rememberNavController()
     val contexto = LocalContext.current
+    LaunchedEffect(abrirViagem) {
+        if (abrirViagem) {
+            nav.navigate(Viagem) { launchSingleTop = true }
+            aoAbrirViagem()
+        }
+    }
     val atual by nav.currentBackStackEntryAsState()
     val destino = atual?.destination
     val naInicio = destino?.hasRoute(Inicio::class) == true
@@ -85,8 +99,13 @@ fun Navegacao(ligacoes: Ligacoes) {
     // Uma atualização descarregada que o sistema ainda quer confirmar mostra-se sempre, tenha ou não "Atualizar sozinha" ligado.
     // Sem ela: com "Atualizar sozinha" ligado a app trata disto em segundo plano; só quem o desligou recebe o aviso para confirmar.
     val pendente = remember { Atualizacoes.pendente(contexto) }
-    if (pendente != null) AvisoAtualizacao(pendente)
-    else if (!remember { Atualizacoes.atualizarSozinha(contexto) }) AvisoAtualizacao(null)
+    // Instalar mata o processo :trip e com ele o aviso da paragem: com uma viagem por acabar o aviso espera pela abertura seguinte
+    // (e a verificação diária não se gasta). Começa escondido até se ler os ficheiros da viagem.
+    val semViagem by produceState(false) { value = withContext(Dispatchers.IO) { !FicheirosViagem.porAcabar(contexto) } }
+    if (semViagem) {
+        if (pendente != null) AvisoAtualizacao(pendente)
+        else if (!remember { Atualizacoes.atualizarSozinha(contexto) }) AvisoAtualizacao(null)
+    }
     AvisoNovidades()
     // Não empilha a pergunta das notificações sobre outro aviso: fica para a abertura seguinte.
     if (pendente == null && remember { Atualizacoes.novidadesPorMostrar(contexto) } == null) AvisoNotificacoes()

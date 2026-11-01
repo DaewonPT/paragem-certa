@@ -107,6 +107,18 @@ class ViagemScreenshotTest {
         texto("Silenciar").assertIsEnabled()
     }
 
+    @Test fun aEsperaNaoDeixaDizerQueJaSaiu() {
+        // "Já saí" à espera saltava o autocarro que a pessoa ainda vai apanhar, e com ele os avisos.
+        mostrar(ex.espera(plano, 1))
+        texto("Já saí").assertIsNotEnabled()
+        texto("Silenciar").assertIsEnabled()
+    }
+
+    @Test fun aBordoDeixaDizerQueJaSaiu() {
+        mostrar(ex.aBordo(plano, 1, k = 2))
+        texto("Já saí").assertIsEnabled()
+    }
+
     @Test fun deslizarMostraAEtapaSeguinte() {
         mostrar(ex.aBordo(plano, 1, k = 2))
         regra.onRoot().performTouchInput { swipeLeft() }

@@ -113,6 +113,38 @@ class PreparacaoViagemTest {
         esperarComecar()
     }
 
+    @Test fun semNenhumaLocalizacaoNoAndroid14NaoComecaEExplica() {
+        runBlocking { preferencias.marcarPrimeiraViagemFeita() }
+        shadowOf(c).denyPermissions(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+        preparar()
+        esperarPor("Localização precisa")
+        regra.onNodeWithText("Começar pelo horário").performClick()
+        esperarPor("Localização necessária")
+        regra.onNodeWithText("Para acompanhar a viagem com o ecrã desligado, o Android pede a localização, pelo menos aproximada.").assertExists()
+        regra.onNodeWithText("Permitir localização").assertExists()
+        assertEquals(0, comecou)
+        assertNull(FicheirosViagem.lerPlano(c)) // o serviço rebentava ao arrancar: nada é gravado nem pedido
+        assertNull(shadowOf(c as Application).nextStartedService)
+
+        regra.onNodeWithText("Agora não").performClick()
+        regra.waitUntil(5_000) { regra.waitForIdle(); desistiu > 0 }
+        assertEquals(0, comecou)
+        assertNull(FicheirosViagem.lerPlano(c))
+        assertNull(FicheirosViagem.lerEstado(c))
+    }
+
+    @Test fun comAAproximadaComecaPeloHorario() {
+        runBlocking { preferencias.marcarPrimeiraViagemFeita() }
+        shadowOf(c).denyPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
+        shadowOf(c).grantPermissions(Manifest.permission.ACCESS_COARSE_LOCATION)
+        preparar()
+        esperarPor("Localização precisa")
+        regra.onNodeWithText("Começar pelo horário").performClick()
+        esperarComecar()
+        regra.onNodeWithText("Localização necessária").assertDoesNotExist()
+        assertEquals(ServicoViagem.ACAO_COMECAR, shadowOf(c as Application).nextStartedService.action)
+    }
+
     @Test fun oPlanoLevaOSomEAVibracaoDasDefinicoes() {
         runBlocking {
             preferencias.definirSomAviso(false)

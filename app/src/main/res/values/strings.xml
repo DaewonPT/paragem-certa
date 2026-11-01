@@ -226,6 +226,7 @@
     <!-- Começar viagem, primeira viagem e viagem interrompida -->
     <string name="detalhe_comecar">Começar viagem</string>
     <string name="viagem_interrompida">Viagem interrompida — toca para retomar</string>
+    <string name="viagem_em_curso">Viagem em curso — toca para ver</string>
     <string name="viagem_descartar">Descartar</string>
     <string name="viagem_nao_comecou">Não foi possível começar a viagem. Tenta outra vez.</string>
     <string name="viagem_nao_retomou">Não foi possível retomar a viagem. Tenta outra vez.</string>
@@ -236,6 +237,11 @@
     <string name="prep_localizacao_texto">Para te avisar na paragem certa, a Paragem Certa precisa de saber onde estás com precisão durante a viagem. A posição fica no telemóvel. Sem ela, os avisos seguem só o horário.</string>
     <string name="prep_localizacao_permitir">Permitir localização precisa</string>
     <string name="prep_localizacao_horario">Começar pelo horário</string>
+    <string name="prep_servico_titulo">Localização necessária</string>
+    <string name="prep_servico_texto">Para acompanhar a viagem com o ecrã desligado, o Android pede a localização, pelo menos aproximada.</string>
+    <string name="prep_servico_permitir">Permitir localização</string>
+    <string name="prep_servico_recusada">Sem a localização o Android não deixa a viagem correr com o ecrã desligado. A viagem não começou.</string>
+    <string name="prep_agora_nao">Agora não</string>
     <string name="prep_desligada_titulo">Localização desligada</string>
     <string name="prep_desligada_texto">A localização do telemóvel está desligada. Liga-a para os avisos saberem onde estás; sem ela, seguem só o horário.</string>
     <string name="prep_notificacoes_titulo">Avisos sem notificação</string>

@@ -14,6 +14,21 @@ class AtualizacaoAutomaticaTest {
 
     @Test fun comAppEmSegundoPlanoInstala() = assertEquals(Decisao.INSTALAR, decidir(nova, ligado = true, emPrimeiroPlano = false))
 
+    // Instalar mata o processo :trip e com ele o aviso da paragem: com uma viagem por acabar espera-se (o WorkManager repete).
+    @Test fun comUmaViagemEmCursoEspera() =
+        assertEquals(Decisao.ESPERAR, decidir(nova, ligado = true, emPrimeiroPlano = false, emViagem = true))
+
+    @Test fun semVersaoNovaOuDesligadaAViagemNaoMudaNada() {
+        assertEquals(Decisao.NADA, decidir(null, ligado = true, emPrimeiroPlano = false, emViagem = true))
+        assertEquals(Decisao.NADA, decidir(nova, ligado = false, emPrimeiroPlano = false, emViagem = true))
+    }
+
+    @Test fun confirmacaoPendenteGanhaMesmoComViagemEmCurso() =
+        assertEquals(Decisao.NADA, decidir(nova, ligado = true, emPrimeiroPlano = false, pendente = nova.tag, emViagem = true))
+
+    @Test fun semViagemENemAppEmUsoInstala() =
+        assertEquals(Decisao.INSTALAR, decidir(nova, ligado = true, emPrimeiroPlano = false, emViagem = false))
+
     @Test fun desligadaGanhaMesmoComAppEmUso() = assertEquals(Decisao.NADA, decidir(nova, ligado = false, emPrimeiroPlano = true))
 
     @Test fun confirmacaoPendenteDaMesmaVersaoNaoDescarregaOutraVez() =

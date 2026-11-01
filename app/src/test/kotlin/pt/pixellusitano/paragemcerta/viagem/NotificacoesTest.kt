@@ -12,6 +12,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
+import pt.pixellusitano.paragemcerta.MainActivity
 import pt.pixellusitano.paragemcerta.core.modelo.Etapa
 import pt.pixellusitano.paragemcerta.core.modelo.Itinerario
 import pt.pixellusitano.paragemcerta.core.modelo.Lugar
@@ -27,6 +28,7 @@ import pt.pixellusitano.paragemcerta.core.viagem.PlanoViagem
 import pt.pixellusitano.paragemcerta.core.viagem.Viagem
 import java.time.Instant
 import java.time.ZoneId
+import java.util.TimeZone
 
 // 10:00 UTC, 11:00 em Lisboa (verão): as horas do texto só batem certo se a zona for mesmo a pedida.
 private val T0 = Instant.parse("2026-07-01T10:00:00Z")
@@ -119,6 +121,35 @@ class NotificacoesTest {
             "pt.pixellusitano.paragemcerta.viagem.ServicoViagem",
             shadowOf(n.actions[0].actionIntent).savedIntent.component!!.className,
         )
+    }
+
+    @Test fun jaSaiSoApareceAbordo() {
+        fun botoes(e: EstadoViagem) = progresso(simples, e).actions.map { it.title.toString() }
+        // A pé não há de que sair, e à espera "Já saí" saltava o autocarro que a pessoa ainda vai apanhar.
+        assertEquals(listOf("Silenciar", "Parar"), botoes(Viagem(simples).inicio(T0)))
+        assertEquals(listOf("Silenciar", "Parar"), botoes(Viagem(simples).inicio(T0).copy(etapa = 1, fase = Fase.ESPERA)))
+        assertEquals(listOf("Silenciar", "Já saí", "Parar"), botoes(aBordo(simples, 1, k = 2)))
+    }
+
+    @Test fun tocarNaNotificacaoAbreOEcraDaViagem() {
+        val e = aBordo(simples, 1, k = 2)
+        for (n in listOf(progresso(simples, e), aviso(simples, Evento.PREPARA_TE, e))) {
+            val aberto = shadowOf(n.contentIntent).savedIntent
+            assertEquals(MainActivity::class.java.name, aberto.component!!.className)
+            assertTrue(aberto.getBooleanExtra(Notificacoes.EXTRA_ABRIR_VIAGEM, false))
+        }
+    }
+
+    @Test fun semZonaPedidaAsHorasSaoDeLisboa() {
+        // Com o telemóvel noutro fuso a hora do horário é a de Lisboa, como no ecrã da viagem.
+        val antes = TimeZone.getDefault()
+        TimeZone.setDefault(TimeZone.getTimeZone("Asia/Tokyo"))
+        try {
+            val espera = Viagem(simples).inicio(T0).copy(etapa = 1, fase = Fase.ESPERA, atualizado = T0.plusSeconds(60))
+            assertEquals("O 736 parte às 11:03", titulo(Notificacoes.progresso(c, plano(simples), espera, Viagem(simples))))
+        } finally {
+            TimeZone.setDefault(antes)
+        }
     }
 
     @Test fun faltaUmaParagem() {

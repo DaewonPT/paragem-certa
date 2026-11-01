@@ -280,8 +280,8 @@ private fun Rodape(ecra: EcraViagem, aoSilenciar: () -> Unit, aoJaSai: () -> Uni
                 OutlinedButton(onClick = aoSilenciar, enabled = !estado.silenciado) {
                     Text(stringResource(if (estado.silenciado) R.string.viagem_silenciado else R.string.viagem_silenciar))
                 }
-                // A pé o motor não faz nada com "Já saí": só se sai de um veículo (ou se desiste de esperar por ele).
-                OutlinedButton(onClick = aoJaSai, enabled = estado.fase != Fase.A_PE) { Text(stringResource(R.string.viagem_ja_sai)) }
+                // Só se sai de um veículo: a pé não há de que sair e à espera "Já saí" saltava o autocarro que ainda vais apanhar.
+                OutlinedButton(onClick = aoJaSai, enabled = estado.fase == Fase.A_BORDO) { Text(stringResource(R.string.viagem_ja_sai)) }
             }
             OutlinedButton(onClick = aoParar) { Text(stringResource(if (estado.terminada) R.string.viagem_concluir else R.string.viagem_parar)) }
         }

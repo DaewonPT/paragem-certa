@@ -7,16 +7,18 @@ import kotlinx.coroutines.CancellationException
 import pt.pixellusitano.paragemcerta.BuildConfig
 import pt.pixellusitano.paragemcerta.core.rede.OkHttpHttp
 import pt.pixellusitano.paragemcerta.core.rede.userAgent
+import pt.pixellusitano.paragemcerta.viagem.FicheirosViagem
 
 enum class Decisao { NADA, ESPERAR, INSTALAR }
 
 /**
- * Só instala com a opção ligada e uma versão nova; com a app em uso espera, para a instalação não a matar a meio.
+ * Só instala com a opção ligada e uma versão nova; com a app em uso espera, para a instalação não a matar a meio. O mesmo
+ * com uma viagem por acabar ([emViagem]): instalar mata o processo :trip e com ele o aviso da paragem.
  * Se essa versão já está descarregada à espera de confirmação ([pendente]), não repete a transferência nem abre outra sessão.
  */
-fun decidir(nova: NovaVersao?, ligado: Boolean, emPrimeiroPlano: Boolean, pendente: String? = null): Decisao = when {
+fun decidir(nova: NovaVersao?, ligado: Boolean, emPrimeiroPlano: Boolean, pendente: String? = null, emViagem: Boolean = false): Decisao = when {
     !ligado || nova == null || nova.tag == pendente -> Decisao.NADA
-    emPrimeiroPlano -> Decisao.ESPERAR
+    emPrimeiroPlano || emViagem -> Decisao.ESPERAR
     else -> Decisao.INSTALAR
 }
 
@@ -25,7 +27,8 @@ class AtualizacaoAutomatica(contexto: Context, parametros: WorkerParameters) : C
     override suspend fun doWork(): Result = try {
         val ligado = Atualizacoes.atualizarSozinha(applicationContext)
         val nova = if (ligado) VerificadorVersoes(OkHttpHttp(userAgent(BuildConfig.VERSION_NAME))).verificar(BuildConfig.VERSION_CODE) else null
-        when (decidir(nova, ligado, emPrimeiroPlano(applicationContext), Atualizacoes.pendente(applicationContext)?.tag)) {
+        val emViagem = FicheirosViagem.porAcabar(applicationContext)
+        when (decidir(nova, ligado, emPrimeiroPlano(applicationContext), Atualizacoes.pendente(applicationContext)?.tag, emViagem)) {
             Decisao.NADA -> Result.success()
             Decisao.ESPERAR -> Result.retry() // o WorkManager volta a tentar mais tarde, com recuo crescente
             Decisao.INSTALAR -> {

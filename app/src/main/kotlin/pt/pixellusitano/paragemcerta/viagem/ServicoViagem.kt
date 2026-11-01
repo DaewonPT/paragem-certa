@@ -102,7 +102,8 @@ class ServicoViagem : Service() {
             Notificacoes.ACAO_PARAR -> parar()
             // Os botões de uma notificação velha podem chegar a um processo novo, sem viagem a correr.
             Notificacoes.ACAO_SILENCIAR -> corrida?.let { aplicar(Entrada.Silenciar(agora())) } ?: stopSelf()
-            Notificacoes.ACAO_JA_SAI -> corrida?.let { aplicar(Entrada.JaSai(agora())) } ?: stopSelf()
+            // Só a bordo: à espera, "Já saí" saltava o autocarro que a pessoa ainda vai apanhar (e os avisos dele); a pé não há de que sair.
+            Notificacoes.ACAO_JA_SAI -> corrida?.let { if (it.estado.fase == Fase.A_BORDO) aplicar(Entrada.JaSai(agora())) } ?: stopSelf()
             else -> stopSelf()
         }
         return START_NOT_STICKY // o Android 14 e seguintes não deixa reabrir sozinho: a app mostra "Viagem interrompida"
@@ -132,6 +133,11 @@ class ServicoViagem : Service() {
             FicheirosViagem.gravarEstado(this, estado)
         }
         if (!primeiroPlano(Notificacoes.progresso(this, plano, estado, viagem))) {
+            // Num arranque novo ninguém vai retomar: sem ficheiros o ecrã da viagem, já aberto, fecha em vez de ficar parado.
+            if (guardado == null) {
+                FicheirosViagem.apagar(this)
+                avisarApp()
+            }
             stopSelf()
             return
         }
@@ -151,7 +157,10 @@ class ServicoViagem : Service() {
         }
     }
 
-    /** O Android pode recusar (arranque em segundo plano, sem permissão de localização): então não há serviço. Antes da API 29 o tipo é ignorado. */
+    /**
+     * O Android pode recusar (arranque em segundo plano com um IllegalStateException; a partir do 14, sem nenhuma permissão de
+     * localização, com um SecurityException): então não há serviço. Antes da API 29 o tipo é ignorado.
+     */
     @SuppressLint("InlinedApi")
     private fun primeiroPlano(n: Notification): Boolean = try {
         ServiceCompat.startForeground(this, Notificacoes.ID_PROGRESSO, n, ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION)

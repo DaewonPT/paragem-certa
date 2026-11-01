@@ -26,6 +26,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -60,6 +61,22 @@ import java.time.Duration
 private fun Etapa.pontos() = desenho.ifEmpty { listOf(de.lat to de.lon, para.lat to para.lon) }
 
 private fun hex(c: Color) = "#%06X".format(c.toArgb() and 0xFFFFFF)
+
+/** O Transitous chama START e END às pontas dadas em coordenadas; nunca são o nome de uma paragem. */
+private val NOMES_DE_COORDENADA = setOf("START", "END")
+
+/**
+ * O itinerário com os nomes que a pessoa viu na origem e no destino, onde a fonte pôs START ou END. Um nome verdadeiro
+ * (a paragem escolhida) fica: são estes nomes que a viagem diz na notificação, no "Chegaste a ..." e na partilha.
+ */
+fun Itinerario.comNomes(de: String, para: String): Itinerario = copy(
+    etapas = etapas.mapIndexed { i, e ->
+        e.copy(
+            de = if (i == 0 && e.de.nome in NOMES_DE_COORDENADA) e.de.copy(nome = de) else e.de,
+            para = if (i == etapas.lastIndex && e.para.nome in NOMES_DE_COORDENADA) e.para.copy(nome = para) else e.para,
+        )
+    },
+)
 
 @Composable
 fun DetalheRotaEcra(it: Itinerario, de: String, para: String, preferencias: Preferencias, aoComecou: () -> Unit, aoVoltar: () -> Unit) {
@@ -96,7 +113,7 @@ fun DetalheRotaEcra(it: Itinerario, de: String, para: String, preferencias: Pref
     )
     if (preparar) {
         PreparacaoViagem(
-            it, preferencias,
+            remember(it, de, para) { it.comNomes(de, para) }, preferencias,
             aoComecou = {
                 preparar = false
                 aoComecou()

@@ -17,6 +17,7 @@ import pt.pixellusitano.paragemcerta.core.viagem.Fase
 import pt.pixellusitano.paragemcerta.core.viagem.Origem
 import pt.pixellusitano.paragemcerta.core.viagem.PlanoViagem
 import pt.pixellusitano.paragemcerta.core.viagem.Viagem
+import pt.pixellusitano.paragemcerta.ui.comum.LISBOA_FUSO
 import pt.pixellusitano.paragemcerta.ui.rotas.nomeModo
 import pt.pixellusitano.paragemcerta.ui.rotas.textoDistancia
 import java.time.Duration
@@ -37,6 +38,7 @@ object Notificacoes {
     const val ACAO_SILENCIAR = "pt.pixellusitano.paragemcerta.viagem.SILENCIAR"
     const val ACAO_JA_SAI = "pt.pixellusitano.paragemcerta.viagem.JA_SAI"
     const val ACAO_PARAR = "pt.pixellusitano.paragemcerta.viagem.PARAR"
+    const val EXTRA_ABRIR_VIAGEM = "pt.pixellusitano.paragemcerta.ABRIR_VIAGEM"
     private const val SERVICO = "pt.pixellusitano.paragemcerta.viagem.ServicoViagem"
 
     /** Os dois canais; pode chamar-se sempre que o serviço ou a app arrancam. O dos avisos não tem som nem vibração: toca o Alarme. */
@@ -55,8 +57,8 @@ object Notificacoes {
         )
     }
 
-    /** A notificação fixa do serviço: onde vais e o que falta, com os botões Silenciar, Já saí e Parar. */
-    fun progresso(c: Context, plano: PlanoViagem, estado: EstadoViagem, viagem: Viagem, zona: ZoneId = ZoneId.systemDefault()): Notification =
+    /** A notificação fixa do serviço: onde vais e o que falta, com os botões Silenciar, Já saí (só a bordo) e Parar. */
+    fun progresso(c: Context, plano: PlanoViagem, estado: EstadoViagem, viagem: Viagem, zona: ZoneId = LISBOA_FUSO): Notification =
         NotificationCompat.Builder(c, CANAL_VIAGEM)
             .setSmallIcon(R.drawable.ic_notificacao)
             .setContentTitle(textoProgresso(c, plano, estado, viagem, zona))
@@ -66,7 +68,7 @@ object Notificacoes {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
             .addAction(0, c.getString(R.string.viagem_silenciar), pedirAoServico(c, ACAO_SILENCIAR))
-            .addAction(0, c.getString(R.string.viagem_ja_sai), pedirAoServico(c, ACAO_JA_SAI))
+            .apply { if (estado.fase == Fase.A_BORDO) addAction(0, c.getString(R.string.viagem_ja_sai), pedirAoServico(c, ACAO_JA_SAI)) }
             .addAction(0, c.getString(R.string.viagem_parar), pedirAoServico(c, ACAO_PARAR))
             .build()
 
@@ -76,7 +78,7 @@ object Notificacoes {
      * tocam (ver Alarme), mas também têm texto.
      */
     fun aviso(
-        c: Context, evento: Evento, plano: PlanoViagem, estado: EstadoViagem, viagem: Viagem, zona: ZoneId = ZoneId.systemDefault(),
+        c: Context, evento: Evento, plano: PlanoViagem, estado: EstadoViagem, viagem: Viagem, zona: ZoneId = LISBOA_FUSO,
     ): Notification =
         NotificationCompat.Builder(c, CANAL_AVISOS)
             .setSmallIcon(R.drawable.ic_notificacao)
@@ -149,8 +151,11 @@ object Notificacoes {
         if (e.fase == Fase.A_BORDO || (e.fase == Fase.TERMINADA && !etapas[e.etapa].aPe)) e.etapa
         else etapas.subList(0, e.etapa).indexOfLast { !it.aPe }.takeIf { it >= 0 } ?: e.etapa
 
+    /** Tocar na notificação leva ao ecrã da viagem (o MainActivity trata do extra). */
     private fun abrirApp(c: Context): PendingIntent = PendingIntent.getActivity(
-        c, 0, Intent(c, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP),
+        c, 0,
+        Intent(c, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
+            .putExtra(EXTRA_ABRIR_VIAGEM, true),
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
 

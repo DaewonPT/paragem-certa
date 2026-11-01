@@ -56,6 +56,26 @@ class ComecarViagemTest {
         assertEquals(Preparacao(localizacaoPrecisa = false, localizacaoLigada = false, notificacoes = false, bateriaLivre = false, volumeAlarme = 0), lerPreparacao(c))
     }
 
+    @Test fun oServicoSoPodeArrancarComAlgumaLocalizacao() {
+        // Este teste corre no Android 16 (sdk 36): sem nenhuma das duas permissões o startForeground do tipo localização falha.
+        shadowOf(c).denyPermissions(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+        assertFalse(lerPreparacao(c).servicoPode)
+        shadowOf(c).grantPermissions(Manifest.permission.ACCESS_COARSE_LOCATION)
+        assertTrue(lerPreparacao(c).servicoPode)
+        shadowOf(c).denyPermissions(Manifest.permission.ACCESS_COARSE_LOCATION)
+        shadowOf(c).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
+        assertTrue(lerPreparacao(c).servicoPode)
+    }
+
+    @Test fun seAViagemNaoSeConstroiNaoFicaNadaENaoArranca() {
+        // Sem etapas o Viagem(...) recusa (require): um RuntimeException, não um IOException.
+        val vazio = plano.itinerario.copy(etapas = emptyList())
+        assertFalse(comecarViagem(c, vazio, som = true, vibrar = false))
+        assertNull(FicheirosViagem.lerPlano(c))
+        assertNull(FicheirosViagem.lerEstado(c))
+        assertNull(shadowOf(c as Application).nextStartedService)
+    }
+
     @Test fun comecarGravaOPlanoApagaOEstadoVelhoEArrancaOServico() {
         val velho = ex.aBordo(plano, 1, k = 3).copy(silenciado = true)
         FicheirosViagem.gravarPlano(c, plano)
@@ -93,6 +113,21 @@ class ComecarViagemTest {
 
         processos(c.packageName, "${c.packageName}:trip")
         assertFalse(viagemInterrompida(c)) // o serviço está a correr
+    }
+
+    @Test fun emCursoSoComEstadoPorAcabarEOServicoVivo() {
+        processos(c.packageName)
+        assertFalse(viagemEmCurso(c)) // nada gravado
+
+        FicheirosViagem.gravarPlano(c, plano)
+        FicheirosViagem.gravarEstado(c, ex.aBordo(plano, 1, k = 3))
+        assertFalse(viagemEmCurso(c)) // o serviço não está a correr: é a interrompida
+
+        processos(c.packageName, "${c.packageName}:trip")
+        assertTrue(viagemEmCurso(c))
+
+        FicheirosViagem.gravarEstado(c, ex.aBordo(plano, 3, k = 1).copy(terminada = true))
+        assertFalse(viagemEmCurso(c)) // já chegou
     }
 
     @Test fun viagemTerminadaNaoEInterrompida() {

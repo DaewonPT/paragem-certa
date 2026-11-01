@@ -156,7 +156,8 @@ class ServicoViagemTest {
         val n = sombra.lastForegroundNotification
         assertEquals("viagem", n.channelId)
         assertTrue(titulo(n)!!.startsWith("A pé até Cais do Sodré · "))
-        assertEquals(listOf("Silenciar", "Já saí", "Parar"), n.actions.map { it.title.toString() })
+        // "Já saí" só a bordo: a pé não há de que sair, e à espera saltava o autocarro que a pessoa ainda vai apanhar.
+        assertEquals(listOf("Silenciar", "Parar"), n.actions.map { it.title.toString() })
         val estado = FicheirosViagem.lerEstado(c, agora)!!
         assertEquals(0, estado.etapa)
         assertEquals(Fase.A_PE, estado.fase)
@@ -216,11 +217,34 @@ class ServicoViagemTest {
     }
 
     @Test fun oJaSaiNaoToca() {
-        val s = comecar(SO_O_736)
+        // A bordo, 100 m para lá da antepenúltima paragem: "Já saí" acaba a etapa (e a viagem) sem alarme.
+        val s = retomarABordo { it[3] + 100 }
         pedir(s, Notificacoes.ACAO_JA_SAI)
         assertTrue(alarmes.isEmpty())
         assertEquals("Chegaste a Oriente", avisoPostado())
         assertTrue(shadowOf(s.get()).isStoppedBySelf) // nada a tocar: pára logo
+    }
+
+    @Test fun oJaSaiAEsperaDoAutocarroEIgnorado() {
+        // Só o 736: o serviço começa à espera dele. Saltar a etapa dava "Chegaste" sem a pessoa ter entrado no autocarro.
+        val s = comecar(SO_O_736)
+        val antes = FicheirosViagem.lerEstado(c, agora)!!
+        assertEquals(Fase.ESPERA, antes.fase)
+        pedir(s, Notificacoes.ACAO_JA_SAI)
+        assertEquals(antes, FicheirosViagem.lerEstado(c, agora))
+        assertNull(avisoPostado())
+        assertTrue(alarmes.isEmpty())
+        assertFalse(shadowOf(s.get()).isStoppedBySelf)
+    }
+
+    @Test fun oJaSaiAPeEIgnorado() {
+        val s = comecar(CASA_AO_TRABALHO)
+        val antes = FicheirosViagem.lerEstado(c, agora)!!
+        assertEquals(Fase.A_PE, antes.fase)
+        pedir(s, Notificacoes.ACAO_JA_SAI)
+        assertEquals(antes, FicheirosViagem.lerEstado(c, agora))
+        assertNull(avisoPostado())
+        assertFalse(shadowOf(s.get()).isStoppedBySelf)
     }
 
     @Test fun depoisDeChegarOServicoSoParaQuandoOAlarmeAcaba() {
@@ -290,14 +314,31 @@ class ServicoViagemTest {
         assertNotNull(FicheirosViagem.lerPlano(c)) // o plano fica: não foi a pessoa que parou
     }
 
-    @Test fun seOAndroidRecusarOEstadoFicaParaViagemInterrompida() {
+    @Test fun seOAndroidRecusarAoRetomarOEstadoFicaParaViagemInterrompida() {
         FicheirosViagem.gravarPlano(c, plano(SO_O_736))
-        val s = servico(ServicoViagem.ACAO_COMECAR)
+        val guardado = Viagem(SO_O_736).inicio(T0).copy(fase = Fase.A_BORDO, progresso = 700.0, ultimoGps = T0, atualizado = T0)
+        FicheirosViagem.gravarEstado(c, guardado)
+        agora = T0.plusSeconds(30)
+        val s = servico(ServicoViagem.ACAO_RETOMAR)
         shadowOf(s.get()).setThrowInStartForeground(IllegalStateException("não podes arrancar em segundo plano"))
         s.create().startCommand(0, 1)
         assertTrue(shadowOf(s.get()).isStoppedBySelf)
         assertFalse(bloqueioPreso())
-        assertFalse(FicheirosViagem.lerEstado(c, agora)!!.terminada)
+        assertEquals(guardado, FicheirosViagem.lerEstado(c, agora)) // a pessoa ainda pode tentar retomar
+    }
+
+    @Test fun seOAndroidRecusarAoComecarNaoFicaViagemNenhumaEAAppSabe() {
+        // Sem a localização (Android 14+) o startForeground rebenta: o ecrã da viagem, aberto antes do serviço, não pode ficar parado.
+        FicheirosViagem.gravarPlano(c, plano(SO_O_736))
+        val s = servico(ServicoViagem.ACAO_COMECAR)
+        shadowOf(s.get()).setThrowInStartForeground(SecurityException("falta a permissão de localização"))
+        s.create().startCommand(0, 1)
+        assertTrue(shadowOf(s.get()).isStoppedBySelf)
+        assertFalse(bloqueioPreso())
+        assertNull(FicheirosViagem.lerPlano(c))
+        assertNull(FicheirosViagem.lerEstado(c, agora))
+        val aviso = shadowOf(c).broadcastIntents.single { it.action == FicheirosViagem.ACAO_ESTADO }
+        assertEquals(c.packageName, aviso.`package`)
     }
 
     @Test fun semLocalizacaoPrecisaAViagemCorrePeloHorario() {
