@@ -1,7 +1,11 @@
 package pt.pixellusitano.paragemcerta.ui
 
+import android.Manifest
 import android.content.Intent
 import android.net.Uri
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -20,6 +24,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -76,7 +82,14 @@ fun Navegacao(ligacoes: Ligacoes) {
         restoreState = true
     }
 
-    AvisoAtualizacao()
+    // Uma atualização descarregada que o sistema ainda quer confirmar mostra-se sempre, tenha ou não "Atualizar sozinha" ligado.
+    // Sem ela: com "Atualizar sozinha" ligado a app trata disto em segundo plano; só quem o desligou recebe o aviso para confirmar.
+    val pendente = remember { Atualizacoes.pendente(contexto) }
+    if (pendente != null) AvisoAtualizacao(pendente)
+    else if (!remember { Atualizacoes.atualizarSozinha(contexto) }) AvisoAtualizacao(null)
+    AvisoNovidades()
+    // Não empilha a pergunta das notificações sobre outro aviso: fica para a abertura seguinte.
+    if (pendente == null && remember { Atualizacoes.novidadesPorMostrar(contexto) } == null) AvisoNotificacoes()
 
     Scaffold(
         bottomBar = {
@@ -164,16 +177,64 @@ fun Navegacao(ligacoes: Ligacoes) {
     }
 }
 
-/** Na variante pessoal mostra, no máximo uma vez por dia, que há uma versão nova no GitHub. */
+/** Depois de uma atualização, mostra uma só vez o que mudou. */
 @Composable
-private fun AvisoAtualizacao() {
+private fun AvisoNovidades() {
+    val contexto = LocalContext.current
+    var novidades by remember { mutableStateOf(Atualizacoes.novidadesPorMostrar(contexto)) }
+    val n = novidades ?: return
+    val fechar = {
+        Atualizacoes.marcarNovidadesVistas(contexto)
+        novidades = null
+    }
+    AlertDialog(
+        onDismissRequest = fechar,
+        title = { Text(stringResource(R.string.atualizacao_novidades_titulo, n.tag.removePrefix("v"))) },
+        text = { Text(n.notas.trim(), Modifier.verticalScroll(rememberScrollState())) },
+        confirmButton = { TextButton(onClick = fechar) { Text(stringResource(R.string.ok)) } },
+    )
+}
+
+/** Pergunta, uma só vez, se a app pode mostrar notificações (Android 13+), para avisar quando uma atualização precisa de um toque. */
+@Composable
+private fun AvisoNotificacoes() {
+    val contexto = LocalContext.current
+    var aberto by remember { mutableStateOf(Atualizacoes.pedirNotificacoes(contexto)) }
+    val pedir = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
+    if (!aberto) return
+    val fechar = {
+        Atualizacoes.marcarNotificacoesPedidas(contexto)
+        aberto = false
+    }
+    AlertDialog(
+        onDismissRequest = fechar,
+        text = { Text(stringResource(R.string.atualizacao_notificacoes)) },
+        confirmButton = {
+            TextButton(onClick = {
+                fechar()
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) pedir.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }) { Text(stringResource(R.string.atualizacao_continuar)) }
+        },
+        dismissButton = { TextButton(onClick = fechar) { Text(stringResource(R.string.atualizacao_agora_nao)) } },
+    )
+}
+
+/**
+ * Aviso manual de versão nova. [pendente] é uma versão já descarregada que o sistema ainda quer confirmar: mostra-se logo,
+ * sem verificar nada. Sem ela, para quem desligou "Atualizar sozinha", verifica no máximo uma vez por dia no GitHub.
+ */
+@Composable
+private fun AvisoAtualizacao(pendente: NovaVersao?) {
     val contexto = LocalContext.current
     val escopo = androidx.compose.runtime.rememberCoroutineScope()
-    var nova by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf<NovaVersao?>(null) }
-    androidx.compose.runtime.LaunchedEffect(Unit) { nova = runCatching { Atualizacoes.verificar(contexto) }.getOrNull() }
+    var nova by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(pendente) }
+    androidx.compose.runtime.LaunchedEffect(Unit) {
+        if (pendente == null) nova = runCatching { Atualizacoes.verificar(contexto) }.getOrNull()
+    }
     val n = nova ?: return
     val falhou = stringResource(R.string.atualizacao_falhou)
     AlertDialog(
+        // "Agora não": a pendente fica guardada e volta a aparecer na abertura seguinte.
         onDismissRequest = { nova = null },
         title = { Text(stringResource(R.string.atualizacao_titulo, n.tag.removePrefix("v"))) },
         // Notas longas rolam em vez de ficarem cortadas (o aviso não tem altura para tudo).
@@ -183,6 +244,7 @@ private fun AvisoAtualizacao() {
                 nova = null
                 escopo.launch {
                     runCatching { Atualizacoes.instalar(contexto, n) }
+                        .onSuccess { Atualizacoes.limparPendente(contexto) }
                         .onFailure { Toast.makeText(contexto, falhou, Toast.LENGTH_LONG).show() }
                 }
             }) { Text(stringResource(R.string.atualizacao_atualizar)) }

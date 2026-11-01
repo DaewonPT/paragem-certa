@@ -11,6 +11,7 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import pt.pixellusitano.paragemcerta.atualizar.Atualizacoes
 import pt.pixellusitano.paragemcerta.core.atraso.Limites
 import pt.pixellusitano.paragemcerta.dados.AtualizacaoDiaria
 import pt.pixellusitano.paragemcerta.ui.Navegacao
@@ -23,6 +24,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         // Aqui e não na Application: essa corre também no processo :trip, que não pode tocar no WorkManager.
         AtualizacaoDiaria.agendar(applicationContext)
+        Atualizacoes.agendar(this)
         enableEdgeToEdge()
         val ligacoes = (application as ParagemCertaApp).ligacoes
         setContent {

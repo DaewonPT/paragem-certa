@@ -86,6 +86,14 @@
     <string name="atualizacao_atualizar">Atualizar</string>
     <string name="atualizacao_agora_nao">Agora não</string>
     <string name="atualizacao_falhou">Não foi possível descarregar a atualização. Tenta mais tarde.</string>
+    <string name="atualizacao_novidades_titulo">Atualizada para %1$s</string>
+    <string name="atualizacao_pronta">Atualização pronta — toca para instalar</string>
+    <string name="atualizacao_canal">Atualizações</string>
+    <string name="atualizacao_notificacoes">Para te avisar quando uma atualização precisar de um toque, a Paragem Certa pode mostrar notificações.</string>
+    <string name="atualizacao_continuar">Continuar</string>
+    <string name="eu_atualizacoes">Atualizações</string>
+    <string name="eu_atualizar_sozinha">Atualizar sozinha</string>
+    <string name="eu_atualizar_dados_moveis">Também com dados móveis</string>
 
     <!-- Correções da revisão final -->
     <string name="a_carregar">A carregar…</string>
