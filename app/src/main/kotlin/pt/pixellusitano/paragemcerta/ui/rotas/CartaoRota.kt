@@ -39,7 +39,7 @@ private val HORA = DateTimeFormatter.ofPattern("HH:mm")
 
 internal fun Instant.horaLisboa(): String = HORA.format(atZone(LISBOA_FUSO))
 
-private fun minutosDe(d: Duration) = (d.seconds + 30) / 60
+internal fun minutosDe(d: Duration) = (d.seconds + 30) / 60
 
 /** "25 min", "1 h 05 min". */
 internal fun textoDuracao(d: Duration): String {

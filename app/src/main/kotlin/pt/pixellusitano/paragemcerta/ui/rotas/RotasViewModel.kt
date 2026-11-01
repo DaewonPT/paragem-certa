@@ -88,6 +88,10 @@ class RotasViewModel(
     private val _alertas = MutableStateFlow(emptySet<String>())
     val alertas: StateFlow<Set<String>> = _alertas.asStateFlow()
 
+    /** Itinerário aberto no detalhe; null = lista. */
+    private val _aberto = MutableStateFlow<Itinerario?>(null)
+    val aberto: StateFlow<Itinerario?> = _aberto.asStateFlow()
+
     private var posicao: Pair<Double, Double>? = null
     private var procura: Job? = null
 
@@ -126,6 +130,10 @@ class RotasViewModel(
     }
 
     fun tentarOutraVez() = procurar()
+
+    fun abrir(i: Itinerario?) {
+        _aberto.value = i
+    }
 
     private fun procurar() {
         procura?.cancel()

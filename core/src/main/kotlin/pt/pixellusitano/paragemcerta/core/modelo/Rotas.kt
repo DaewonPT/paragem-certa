@@ -7,11 +7,12 @@ enum class TipoLugar { MORADA, LOCAL, PARAGEM, POSICAO }
 
 data class Lugar(val nome: String, val lat: Double, val lon: Double, val tipo: TipoLugar)
 
-/** Uma parte da viagem: a pé (aPe) ou num veículo (modo, linha, destino). */
+/** Uma parte da viagem: a pé (aPe) ou num veículo (modo, linha, destino); distancia em metros, quando a fonte a dá. */
 data class Etapa(
     val aPe: Boolean, val modo: Modo, val linhaNome: String?, val linhaId: String?, val destino: String?,
     val de: Lugar, val para: Lugar, val partida: Instant, val chegada: Instant, val partidaProgramada: Instant,
     val aoVivo: Boolean, val paragensIntermedias: Int, val desenho: List<Pair<Double, Double>>, val cor: String?,
+    val distancia: Double? = null,
 )
 
 data class Itinerario(val etapas: List<Etapa>, val partida: Instant, val chegada: Instant, val transbordos: Int) {

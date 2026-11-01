@@ -28,11 +28,14 @@ import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
 import org.maplibre.android.style.expressions.Expression
 import org.maplibre.android.style.layers.CircleLayer
+import org.maplibre.android.style.layers.LineLayer
+import org.maplibre.android.style.layers.Property
 import org.maplibre.android.style.layers.PropertyFactory
 import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.sources.GeoJsonSource
 import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
+import org.maplibre.geojson.LineString
 import org.maplibre.geojson.Point
 import pt.pixellusitano.paragemcerta.core.modelo.Paragem
 import pt.pixellusitano.paragemcerta.core.modelo.Veiculo
@@ -51,7 +54,13 @@ private const val FONTE_VEICULOS = "fonte-veiculos"
 private const val CAMADA_PARAGENS = "camada-paragens"
 private const val CAMADA_VEICULOS = "camada-veiculos"
 private const val CAMADA_VEICULOS_TEXTO = "camada-veiculos-texto"
+private const val FONTE_PERCURSOS = "fonte-percursos"
+private const val CAMADA_PERCURSOS = "camada-percursos"
+private const val CAMADA_A_PE = "camada-a-pe"
 private val SINAL_ANTIGO: Duration = Duration.ofMinutes(2)
+
+/** Um troço de uma rota no mapa: pontos (lat, lon), cor "#RRGGBB" e se é a pé (desenhado a tracejado). */
+data class Percurso(val pontos: List<Pair<Double, Double>>, val cor: String, val aPe: Boolean)
 
 @SuppressLint("MissingPermission")
 @Composable
@@ -68,6 +77,7 @@ fun Mapa(
     aoTocarParagem: (Paragem) -> Unit,
     aoTocarVeiculo: (Veiculo) -> Unit,
     modifier: Modifier = Modifier,
+    percursos: List<Percurso> = emptyList(),
 ) {
     val contexto = LocalContext.current
     val ciclo = LocalLifecycleOwner.current.lifecycle
@@ -178,6 +188,25 @@ fun Mapa(
         )
     }
 
+    LaunchedEffect(percursos, estado.estilo) {
+        estado.estilo?.getSourceAs<GeoJsonSource>(FONTE_PERCURSOS)?.setGeoJson(
+            FeatureCollection.fromFeatures(percursos.filter { it.pontos.size >= 2 }.map { p ->
+                Feature.fromGeometry(LineString.fromLngLats(p.pontos.map { (lat, lon) -> Point.fromLngLat(lon, lat) })).apply {
+                    addStringProperty("cor", p.cor)
+                    addBooleanProperty("aPe", p.aPe)
+                }
+            }),
+        )
+    }
+
+    LaunchedEffect(percursos, estado.mapa) {
+        val mapa = estado.mapa ?: return@LaunchedEffect
+        val pontos = percursos.flatMap { it.pontos }.distinct()
+        if (pontos.size < 2) return@LaunchedEffect
+        val limites = LatLngBounds.Builder().includes(pontos.map { (lat, lon) -> LatLng(lat, lon) }).build()
+        mapa.easeCamera(CameraUpdateFactory.newLatLngBounds(limites, 80))
+    }
+
     AndroidView(factory = { vista }, modifier = modifier)
 }
 
@@ -190,6 +219,24 @@ private class EstadoMapa {
 private fun prepararCamadas(estilo: Style, escuro: Boolean) {
     estilo.addSource(GeoJsonSource(FONTE_PARAGENS))
     estilo.addSource(GeoJsonSource(FONTE_VEICULOS))
+    estilo.addSource(GeoJsonSource(FONTE_PERCURSOS))
+    // Os percursos ficam por baixo das paragens e dos veículos.
+    estilo.addLayer(
+        LineLayer(CAMADA_PERCURSOS, FONTE_PERCURSOS).withProperties(
+            PropertyFactory.lineColor(Expression.get("cor")),
+            PropertyFactory.lineWidth(5f),
+            PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+            PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+        ).withFilter(Expression.eq(Expression.get("aPe"), Expression.literal(false))),
+    )
+    estilo.addLayer(
+        LineLayer(CAMADA_A_PE, FONTE_PERCURSOS).withProperties(
+            PropertyFactory.lineColor(if (escuro) "#8D9AB3" else "#627189"),
+            PropertyFactory.lineWidth(3f),
+            PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+            PropertyFactory.lineDasharray(arrayOf(1f, 2f)),
+        ).withFilter(Expression.eq(Expression.get("aPe"), Expression.literal(true))),
+    )
     estilo.addLayer(
         CircleLayer(CAMADA_PARAGENS, FONTE_PARAGENS).withProperties(
             PropertyFactory.circleRadius(6f),

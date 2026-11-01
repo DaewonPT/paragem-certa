@@ -111,6 +111,7 @@ fun modoDe(mode: String): Modo = when (mode) {
     val intermediateStops: List<PontoRotaJson> = emptyList(),
     val legGeometry: DesenhoJson? = null,
     val cancelled: Boolean = false,
+    val distance: Double? = null,
 )
 
 @Serializable private class ItinerarioJson(val startTime: String, val endTime: String, val transfers: Int = 0, val legs: List<EtapaJson> = emptyList())
@@ -155,6 +156,7 @@ object TransitousParser {
                             paragensIntermedias = l.intermediateStops.size,
                             desenho = l.legGeometry?.let { g -> descodificarPolilinha(g.points, g.precision) }.orEmpty(),
                             cor = l.routeColor?.let { c -> if (c.startsWith("#")) c else "#$c" },
+                            distancia = l.distance,
                         )
                     },
                     partida = Instant.parse(it.startTime),

@@ -122,7 +122,6 @@ fun Navegacao(ligacoes: Ligacoes) {
                         preferencias = ligacoes.preferencias,
                         origem = r.origem?.let(::lugarDaRota),
                         destino = r.destino?.let(::lugarDaRota),
-                        aoAbrirRota = {},
                     )
                 }
             }

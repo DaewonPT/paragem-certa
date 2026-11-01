@@ -71,7 +71,6 @@ fun RotasEcra(
     preferencias: Preferencias,
     origem: Lugar?,
     destino: Lugar?,
-    aoAbrirRota: (Itinerario) -> Unit,
 ) {
     val contexto = LocalContext.current
     val vm = viewModel {
@@ -84,6 +83,7 @@ fun RotasEcra(
     val estado by vm.estado.collectAsStateWithLifecycle()
     val filtros by vm.filtros.collectAsStateWithLifecycle()
     val alertas by vm.alertas.collectAsStateWithLifecycle()
+    val aberto by vm.aberto.collectAsStateWithLifecycle()
     val locais by remember { repositorio.locais() }.collectAsStateWithLifecycle(emptyList())
     val recentes by remember { repositorio.recentes() }.collectAsStateWithLifecycle(emptyList())
     var escolher by rememberSaveable { mutableStateOf<Campo?>(null) }
@@ -93,13 +93,21 @@ fun RotasEcra(
         pedirPosicaoAtual(contexto, vm::definirPosicao)
     }
     BackHandler(enabled = escolher != null) { escolher = null }
+    BackHandler(enabled = escolher == null && aberto != null) { vm.abrir(null) }
 
+    val rota = aberto
     when (val campo = escolher) {
+        null if rota != null -> DetalheRotaEcra(
+            rota,
+            de = pedido.origem?.nome ?: stringResource(R.string.rotas_minha_posicao),
+            para = pedido.destino?.nome.orEmpty(),
+            aoVoltar = { vm.abrir(null) },
+        )
         null -> RotasConteudo(
             pedido = pedido, estado = estado, filtros = filtros, alertas = alertas, agora = Instant.now(),
             aoEscolherOrigem = { escolher = Campo.ORIGEM }, aoEscolherDestino = { escolher = Campo.DESTINO },
             aoMudarHora = vm::definirHora, aoMudarFiltros = vm::mudarFiltros,
-            aoAbrirRota = aoAbrirRota, aoTentarOutraVez = vm::tentarOutraVez,
+            aoAbrirRota = vm::abrir, aoTentarOutraVez = vm::tentarOutraVez,
             modifier = Modifier.statusBarsPadding(),
         )
         else -> EscolherLugarEcra(

@@ -125,6 +125,16 @@
     <string name="escolher_procura">Morada, sítio ou paragem</string>
     <string name="escolher_recentes">Recentes</string>
     <string name="escolher_sem_resultados">Sem resultados. Experimenta escrever a rua ou o nome do sítio.</string>
+    <string name="detalhe_a_pe">A pé %1$d min</string>
+    <string name="detalhe_ate">até %1$s</string>
+    <string name="detalhe_sai_em">sai em %1$s</string>
+    <plurals name="detalhe_paragens">
+        <item quantity="one">%1$d paragem</item>
+        <item quantity="other">%1$d paragens</item>
+    </plurals>
+    <string name="detalhe_chegada">Chegada a %1$s</string>
+    <string name="detalhe_partilhar">Partilhar rota</string>
+    <string name="detalhe_tvde">Abrir app de TVDE</string>
     <string name="ok">OK</string>
     <string name="cancelar">Cancelar</string>
 </resources>

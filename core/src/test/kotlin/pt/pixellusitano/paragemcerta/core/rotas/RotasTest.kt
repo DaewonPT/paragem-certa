@@ -24,6 +24,7 @@ class RotasTest {
         val r = rotas[0]
         assertEquals(3, r.etapas.size)
         assertTrue(r.etapas[0].aPe)
+        assertEquals(121.0, r.etapas[0].distancia)
         assertEquals(Modo.AUTOCARRO, r.etapas[1].modo)
         assertEquals("210", r.etapas[1].linhaNome)
         assertTrue(r.etapas[1].desenho.size > 10)
