@@ -8,7 +8,9 @@ import org.junit.Test
 import pt.pixellusitano.paragemcerta.core.HttpFalso
 import pt.pixellusitano.paragemcerta.core.fixture
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
+import pt.pixellusitano.paragemcerta.core.modelo.Lugar
 import pt.pixellusitano.paragemcerta.core.modelo.Modo
+import pt.pixellusitano.paragemcerta.core.modelo.TipoLugar
 import pt.pixellusitano.paragemcerta.core.rede.Resposta
 import java.time.Instant
 
@@ -57,6 +59,20 @@ class TransitousTest {
         assertEquals("Metro de Lisboa", operadorDe("pt-Metro-Lisboa_CS"))
         assertEquals("Carris", operadorDe("pt-Carris_3803"))
         assertNull(operadorDe("eu-FlixBus_123"))
+    }
+
+    @Test fun lugaresParaRotas() {
+        val l = TransitousParser.lugares(fixture("transitous-geocode-morada.json"))
+        assertEquals(6, l.size)
+        assertTrue(l.take(4).all { it.tipo == TipoLugar.PARAGEM })
+        assertEquals(Lugar("Avenida da Liberdade", l[4].lat, l[4].lon, TipoLugar.LOCAL), l[4])
+        assertEquals(TipoLugar.LOCAL, l[5].tipo)
+    }
+
+    @Test fun pesquisaDeLugaresSemTipo() = runTest {
+        val http = HttpFalso({ Resposta(200, "[]") })
+        Transitous(http).pesquisarLugares("Avenida da Liberdade")
+        assertEquals("https://api.transitous.org/api/v1/geocode?text=Avenida+da+Liberdade", http.pedidos.single())
     }
 
     @Test fun tempoRealUsaAHoraPrevista() {

@@ -195,6 +195,18 @@ object TransitousParser {
             Paragem(RefParagem(Fonte.TRANSITOUS, id), l.name, l.lat, l.lon, null)
         }
 
+    /** Moradas, locais e paragens para origem/destino de rotas (aqui a Carris Metropolitana não é escondida). */
+    fun lugares(json: String): List<Lugar> =
+        JSON.decodeFromString<List<LocalJson>>(json).mapNotNull { l ->
+            val tipo = when (l.type) {
+                "ADDRESS" -> TipoLugar.MORADA
+                "PLACE" -> TipoLugar.LOCAL
+                "STOP" -> TipoLugar.PARAGEM
+                else -> return@mapNotNull null
+            }
+            Lugar(l.name, l.lat, l.lon, tipo).takeIf { emPortugal(l.lat, l.lon) }
+        }
+
     fun pesquisa(json: String): List<Paragem> =
         JSON.decodeFromString<List<LocalJson>>(json).mapNotNull { l ->
             val id = l.id?.takeIf { l.type == "STOP" && !it.startsWith(PREFIXO_CM_TRANSITOUS) && emPortugal(l.lat, l.lon) }
@@ -215,6 +227,9 @@ class Transitous(private val http: Http, private val base: String = "https://api
 
     suspend fun planear(de: Lugar, para: Lugar, hora: Instant, chegarAs: Boolean, filtros: Filtros): Resultado<List<Itinerario>> =
         http.pedir(urlPlano(base, de, para, hora, chegarAs, filtros), TransitousParser::rotas)
+
+    suspend fun pesquisarLugares(texto: String): Resultado<List<Lugar>> =
+        http.pedir("$base/api/v1/geocode?text=${enc(texto)}", TransitousParser::lugares)
 
     suspend fun pesquisar(texto: String): Resultado<List<Paragem>> =
         http.pedir("$base/api/v1/geocode?text=${enc(texto)}&type=STOP", TransitousParser::pesquisa)
