@@ -51,7 +51,8 @@ private const val RELOGIO_MS = 5_000L
 private const val GPS_POUPAR_MS = 10_000L
 private const val GPS_PRECISO_MS = 1_000L
 private const val SEM_PRECISAO = 999f
-private val BLOQUEIO_MAX = Duration.ofHours(2)
+// O mesmo teto da guarda do motor (2 h de atraso + 30 min): o telemóvel fica acordado enquanto a viagem puder correr.
+private val BLOQUEIO_MAX = Duration.ofHours(2).plusMinutes(30)
 private val CM_INTERVALO = Duration.ofSeconds(30)
 private const val CM_TOLERANCIA_S = 90L
 
