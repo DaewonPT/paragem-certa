@@ -116,7 +116,7 @@ object Notificacoes {
     }
 
     /** "chega em M min" só quando há tempo real (da fonte, ou da paragem de embarque: o atraso mexeu); senão, a hora do horário. */
-    private fun textoEspera(c: Context, etapa: Etapa, e: EstadoViagem, zona: ZoneId): String {
+    internal fun textoEspera(c: Context, etapa: Etapa, e: EstadoViagem, zona: ZoneId): String {
         val linha = etapa.linhaNome ?: nomeModo(etapa.modo)
         val partida = (etapa.paragens.firstOrNull()?.hora ?: etapa.partida).plusSeconds(e.atrasoS)
         val minutos = (Duration.between(e.atualizado, partida).seconds + 59) / 60

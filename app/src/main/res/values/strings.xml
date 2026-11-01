@@ -201,4 +201,17 @@
     <string name="aviso_horario">%1$s (posição estimada, confirma a paragem)</string>
     <string name="aviso_chegou">Chegaste a %1$s</string>
     <string name="viagem_liga_localizacao">Liga a localização para a Paragem Certa saber onde estás.</string>
+
+    <!-- Viagem ao vivo: ecrã -->
+    <string name="viagem_etapa_n">Etapa %1$d de %2$d</string>
+    <string name="viagem_feita">Concluída</string>
+    <string name="viagem_agora">Agora</string>
+    <string name="viagem_a_seguir">A seguir</string>
+    <string name="viagem_selo_horario">Posição estimada pelo horário</string>
+    <string name="viagem_estas_aqui">Estás aqui</string>
+    <string name="viagem_sais_aqui">Sais aqui</string>
+    <string name="viagem_chegada_prevista">Chegada prevista às %1$s</string>
+    <string name="viagem_partilhar">Partilhar chegada</string>
+    <string name="viagem_silenciado">Silenciado</string>
+    <string name="viagem_concluir">Concluir</string>
 </resources>

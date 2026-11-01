@@ -45,12 +45,14 @@ import pt.pixellusitano.paragemcerta.ui.rotas.RotasEcra
 import pt.pixellusitano.paragemcerta.ui.rotas.lugarDaRota
 import pt.pixellusitano.paragemcerta.ui.rotas.paraRota
 import pt.pixellusitano.paragemcerta.ui.sobre.SobreEcra
+import pt.pixellusitano.paragemcerta.ui.viagem.ViagemEcra
 
 @Serializable data class Inicio(val linha: String? = null)
 @Serializable data object Pesquisa
 @Serializable data object Eu
 @Serializable data object Sobre
 @Serializable data object Locais
+@Serializable data object Viagem
 @Serializable data class Paragem(val chave: String)
 
 /** origem e destino codificados como "nome|lat|lon" (ver paraRota); origem null = "A minha posição". */
@@ -150,6 +152,7 @@ fun Navegacao(ligacoes: Ligacoes) {
                 }
             }
             composable<Locais> { LocaisEcra(repositorio, aoVoltar = { nav.popBackStack() }) }
+            composable<Viagem> { ViagemEcra(aoVoltar = { nav.popBackStack() }) }
             composable<Sobre> {
                 SobreEcra(versao = BuildConfig.VERSION_NAME, aoAbrir = { url ->
                     runCatching { contexto.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
