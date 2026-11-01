@@ -2,6 +2,13 @@
 
 A versão mais recente aparece primeiro.
 
+## 0.2.3 — Atualiza-se sozinha
+
+- A partir desta versão, a app atualiza-se sozinha em segundo plano, com Wi-Fi e quando não a estás a usar.
+- Em Eu → Definições podes desligar isto ou deixar atualizar também com dados móveis.
+- Se o telemóvel pedir confirmação, aparece um aviso para tocares uma vez.
+- Depois de cada atualização, vês o que há de novo.
+
 ## 0.2.2 — Qual Rua de Goa?
 
 - Cada rua ou sítio da pesquisa mostra o concelho por baixo do nome.
