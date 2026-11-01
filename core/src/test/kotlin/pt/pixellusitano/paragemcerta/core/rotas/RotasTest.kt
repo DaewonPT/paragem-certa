@@ -94,4 +94,21 @@ class RotasTest {
         listOf("maxPreTransitTime", "maxTransfers", "pedestrianProfile", "transitModes").forEach { assertFalse(url.contains(it)) }
         assertTrue(url.contains("arriveBy=false"))
     }
+
+    @Test fun comboioSemMetro() {
+        val url = urlPlano("https://api.transitous.org", de, para, t0, chegarAs = false, Filtros(modos = setOf(Modo.COMBOIO)))
+        assertTrue("falta os modos de comboio em $url", url.contains("transitModes=HIGHSPEED_RAIL,LONG_DISTANCE,NIGHT_RAIL,REGIONAL_FAST_RAIL,REGIONAL_RAIL,SUBURBAN"))
+        assertFalse("metro em $url", url.contains("SUBWAY"))
+    }
+
+    @Test fun todosOsModosSemFiltro() {
+        val todos = setOf(Modo.AUTOCARRO, Modo.ELETRICO, Modo.METRO, Modo.COMBOIO, Modo.BARCO)
+        val url = urlPlano("https://api.transitous.org", de, para, t0, chegarAs = false, Filtros(modos = todos))
+        assertFalse("transitModes em $url", url.contains("transitModes"))
+    }
+
+    @Test fun horaEmSegundosInteiros() {
+        val url = urlPlano("https://api.transitous.org", de, para, t0.plusNanos(123_456_789), chegarAs = false, Filtros())
+        assertTrue("hora com fração em $url", url.contains("time=2026-11-01T08:00:00Z&"))
+    }
 }

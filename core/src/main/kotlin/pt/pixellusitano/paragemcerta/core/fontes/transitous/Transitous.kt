@@ -19,6 +19,7 @@ import pt.pixellusitano.paragemcerta.core.rede.pedir
 import pt.pixellusitano.paragemcerta.core.rotas.descodificarPolilinha
 import java.net.URLEncoder
 import java.time.Instant
+import java.time.temporal.ChronoUnit
 
 /** Ids do Transitous que pertencem à Carris Metropolitana: essa vem só da API dela (os ids não coincidem). */
 const val PREFIXO_CM_TRANSITOUS = "pt-Carris-Metropolitana_"
@@ -120,16 +121,22 @@ fun modoDe(mode: String): Modo = when (mode) {
 
 private fun PontoRotaJson.lugar() = Lugar(name, lat, lon, TipoLugar.LOCAL)
 
-private val ORDEM_MODOS = listOf(Modo.AUTOCARRO to "BUS", Modo.ELETRICO to "TRAM", Modo.METRO to "SUBWAY", Modo.COMBOIO to "RAIL", Modo.BARCO to "FERRY")
+// "RAIL" sozinho apanha também o metro no Transitous, por isso o comboio lista os seus modos um a um.
+private val ORDEM_MODOS = listOf(
+    Modo.AUTOCARRO to "BUS", Modo.ELETRICO to "TRAM", Modo.METRO to "SUBWAY",
+    Modo.COMBOIO to "HIGHSPEED_RAIL,LONG_DISTANCE,NIGHT_RAIL,REGIONAL_FAST_RAIL,REGIONAL_RAIL,SUBURBAN", Modo.BARCO to "FERRY",
+)
 
 /** Pedido de rotas do MOTIS (Transitous) com os filtros da Paragem Certa. */
 fun urlPlano(base: String, de: Lugar, para: Lugar, hora: Instant, chegarAs: Boolean, filtros: Filtros): String = buildString {
     append("$base/api/v6/plan?fromPlace=${de.lat},${de.lon}&toPlace=${para.lat},${para.lon}")
-    append("&time=$hora&arriveBy=$chegarAs&numItineraries=5")
+    append("&time=${hora.truncatedTo(ChronoUnit.SECONDS)}&arriveBy=$chegarAs&numItineraries=5")
     if (filtros.menosAPe) append("&maxPreTransitTime=600&maxPostTransitTime=600")
     if (filtros.menosTransbordos) append("&maxTransfers=1")
     if (filtros.acessivel) append("&pedestrianProfile=WHEELCHAIR")
-    if (filtros.modos.isNotEmpty()) append("&transitModes=" + ORDEM_MODOS.filter { it.first in filtros.modos }.joinToString(",") { it.second })
+    // Todos os modos ligados = sem filtro, para não excluir os que a app não lista (autocarros de longo curso, funiculares).
+    if (filtros.modos.isNotEmpty() && !filtros.modos.containsAll(ORDEM_MODOS.map { it.first }))
+        append("&transitModes=" + ORDEM_MODOS.filter { it.first in filtros.modos }.joinToString(",") { it.second })
 }
 
 object TransitousParser {
