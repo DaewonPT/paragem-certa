@@ -81,4 +81,50 @@
     <string name="a_carregar">A carregar…</string>
     <string name="tempo_real_indisponivel_ha">Tempo real indisponível — atualizado há %1$d min</string>
     <string name="linha_falhou">Não foi possível carregar a linha. Tenta outra vez mais tarde.</string>
+
+    <!-- Rotas -->
+    <string name="nav_rotas">Rotas</string>
+    <string name="rotas_de">De</string>
+    <string name="rotas_para">Para</string>
+    <string name="rotas_minha_posicao">A minha posição</string>
+    <string name="rotas_partir_agora">Partir agora</string>
+    <string name="rotas_partir_as">Partir às</string>
+    <string name="rotas_chegar_as">Chegar às</string>
+    <string name="rotas_partir_quando">Partir %1$s</string>
+    <string name="rotas_chegar_quando">Chegar %1$s</string>
+    <string name="rotas_as">às %1$s</string>
+    <string name="rotas_amanha_as">amanhã às %1$s</string>
+    <string name="rotas_menos_a_pe">Menos a pé</string>
+    <string name="rotas_menos_transbordos">Menos transbordos</string>
+    <string name="rotas_acessivel">♿ Acessível</string>
+    <string name="modo_autocarro">Autocarro</string>
+    <string name="modo_metro">Metro</string>
+    <string name="modo_comboio">Comboio</string>
+    <string name="modo_eletrico">Elétrico</string>
+    <string name="modo_barco">Barco</string>
+    <string name="etiqueta_mais_rapida">mais rápida</string>
+    <string name="etiqueta_menos_a_pe">menos a pé</string>
+    <string name="etiqueta_direta">direta</string>
+    <string name="etiqueta_transbordo_apertado">transbordo apertado</string>
+    <string name="rotas_dica">Escolhe para onde vais e mostramos-te as ligações.</string>
+    <string name="rotas_a_procurar">A procurar ligações…</string>
+    <string name="rotas_sem_ligacoes">Não encontrámos ligações a esta hora. Experimenta outra hora.</string>
+    <string name="rotas_muito_perto">Estás praticamente lá: vai a pé.</string>
+    <string name="rotas_sem_origem">Escolhe de onde partes.</string>
+    <string name="rotas_erro_rede">Sem ligação à internet. Tenta outra vez quando tiveres rede.</string>
+    <string name="rotas_erro_servico">O serviço de rotas não respondeu. Tenta daqui a pouco.</string>
+    <string name="rotas_tentar">Tentar outra vez</string>
+    <string name="rotas_a_pe">%1$d min a pé</string>
+    <string name="rotas_sem_transbordos">sem transbordos</string>
+    <plurals name="rotas_transbordos">
+        <item quantity="one">%1$d transbordo</item>
+        <item quantity="other">%1$d transbordos</item>
+    </plurals>
+    <string name="rotas_sai_de">Sai de %1$s</string>
+    <string name="rotas_aviso_linha">aviso numa linha</string>
+    <string name="escolher_procura">Morada, sítio ou paragem</string>
+    <string name="escolher_recentes">Recentes</string>
+    <string name="escolher_sem_resultados">Sem resultados. Experimenta escrever a rua ou o nome do sítio.</string>
+    <string name="ok">OK</string>
+    <string name="cancelar">Cancelar</string>
 </resources>

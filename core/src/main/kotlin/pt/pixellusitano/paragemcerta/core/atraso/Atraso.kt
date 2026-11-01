@@ -19,8 +19,11 @@ fun minutosDeAtraso(programada: Instant, prevista: Instant): Int {
     return ((abs(segundos) + 30) / 60).toInt() * segundos.sign
 }
 
-fun estado(c: Chegada, l: Limites = Limites()): EstadoAtraso {
-    val d = minutosDeAtraso(c.programada, c.prevista ?: return EstadoAtraso.HORARIO)
+fun estado(c: Chegada, l: Limites = Limites()): EstadoAtraso = estado(c.programada, c.prevista, l)
+
+/** prevista = null quando não há tempo real (por exemplo, a partida de uma etapa só com horário). */
+fun estado(programada: Instant, prevista: Instant?, l: Limites = Limites()): EstadoAtraso {
+    val d = minutosDeAtraso(programada, prevista ?: return EstadoAtraso.HORARIO)
     return when {
         d <= -2 -> EstadoAtraso.ADIANTADO
         d < l.atrasado -> EstadoAtraso.A_HORAS
@@ -40,10 +43,12 @@ fun rotuloTempo(c: Chegada, agora: Instant, zona: ZoneId): String {
     }
 }
 
-fun rotuloAtraso(c: Chegada, l: Limites = Limites()): String {
-    val prevista = c.prevista ?: return "🕒 horário"
-    val d = minutosDeAtraso(c.programada, prevista)
-    return when (estado(c, l)) {
+fun rotuloAtraso(c: Chegada, l: Limites = Limites()): String = rotuloAtraso(c.programada, c.prevista, l)
+
+fun rotuloAtraso(programada: Instant, prevista: Instant?, l: Limites = Limites()): String {
+    prevista ?: return "🕒 horário"
+    val d = minutosDeAtraso(programada, prevista)
+    return when (estado(programada, prevista, l)) {
         EstadoAtraso.A_HORAS -> "a horas"
         EstadoAtraso.ADIANTADO -> "−${-d} adiantado"
         else -> "+$d"

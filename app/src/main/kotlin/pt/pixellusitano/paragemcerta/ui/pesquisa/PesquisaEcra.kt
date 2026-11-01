@@ -1,13 +1,9 @@
 package pt.pixellusitano.paragemcerta.ui.pesquisa
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
@@ -26,7 +22,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -36,6 +31,7 @@ import pt.pixellusitano.paragemcerta.core.fontes.transitous.operadorDe
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.Paragem
 import pt.pixellusitano.paragemcerta.dados.Repositorio
+import pt.pixellusitano.paragemcerta.ui.comum.ItemLista
 import pt.pixellusitano.paragemcerta.ui.comum.SeloLinha
 import pt.pixellusitano.paragemcerta.ui.comum.corDaLinha
 
@@ -70,11 +66,11 @@ fun PesquisaEcra(
         LazyColumn {
             items(resultados) { r ->
                 when (r) {
-                    is ResultadoPesquisa.DeLinha -> Item(onClick = { aoAbrirLinha(r.l) }) {
+                    is ResultadoPesquisa.DeLinha -> ItemLista(onClick = { aoAbrirLinha(r.l) }) {
                         SeloLinha(r.l.nomeCurto, corDaLinha(r.l.cor, r.l.modo))
                         Text(r.l.nomeLongo, color = MaterialTheme.colorScheme.onBackground)
                     }
-                    is ResultadoPesquisa.DeParagem -> Item(onClick = { aoAbrirParagem(r.p) }) {
+                    is ResultadoPesquisa.DeParagem -> ItemLista(onClick = { aoAbrirParagem(r.p) }) {
                         Text("📍", color = MaterialTheme.colorScheme.primary)
                         Column {
                             Text(r.p.nome, color = MaterialTheme.colorScheme.onBackground)
@@ -92,13 +88,4 @@ fun PesquisaEcra(
 internal fun subtituloParagem(p: Paragem): String = when (p.ref.fonte) {
     Fonte.CM -> "Carris Metropolitana · ${p.ref.id}"
     Fonte.TRANSITOUS -> listOfNotNull(operadorDe(p.ref.id), p.ref.id.substringAfterLast('_')).joinToString(" · ")
-}
-
-@Composable
-private fun Item(onClick: () -> Unit, conteudo: @Composable () -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button, onClick = onClick).padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) { conteudo() }
 }

@@ -38,6 +38,8 @@ import pt.pixellusitano.paragemcerta.ui.inicio.InicioEcra
 import pt.pixellusitano.paragemcerta.ui.inicio.Painel
 import pt.pixellusitano.paragemcerta.ui.paragem.ParagemEcra
 import pt.pixellusitano.paragemcerta.ui.pesquisa.PesquisaEcra
+import pt.pixellusitano.paragemcerta.ui.rotas.RotasEcra
+import pt.pixellusitano.paragemcerta.ui.rotas.lugarDaRota
 import pt.pixellusitano.paragemcerta.ui.sobre.SobreEcra
 
 @Serializable data class Inicio(val linha: String? = null)
@@ -46,7 +48,10 @@ import pt.pixellusitano.paragemcerta.ui.sobre.SobreEcra
 @Serializable data object Sobre
 @Serializable data class Paragem(val chave: String)
 
-/** Ecrãs com a barra de baixo. "Rotas" (fase 2) e "Linhas" (fase 4) entram quando existirem. */
+/** origem e destino codificados como "nome|lat|lon" (ver paraRota); origem null = "A minha posição". */
+@Serializable data class Rotas(val origem: String? = null, val destino: String? = null)
+
+/** Ecrãs com a barra de baixo. "Linhas" (fase 4) entra quando existir. */
 @Composable
 fun Navegacao(ligacoes: Ligacoes) {
     val nav = rememberNavController()
@@ -55,6 +60,7 @@ fun Navegacao(ligacoes: Ligacoes) {
     val destino = atual?.destination
     val naInicio = destino?.hasRoute(Inicio::class) == true
     val noEu = destino?.hasRoute(Eu::class) == true
+    val nasRotas = destino?.hasRoute(Rotas::class) == true
     val repositorio = ligacoes.repositorio
 
     fun separador(rota: Any) = nav.navigate(rota) {
@@ -67,10 +73,12 @@ fun Navegacao(ligacoes: Ligacoes) {
 
     Scaffold(
         bottomBar = {
-            if (naInicio || noEu) {
+            if (naInicio || nasRotas || noEu) {
                 NavigationBar {
                     NavigationBarItem(selected = naInicio, onClick = { separador(Inicio()) },
                         icon = { Text("🗺") }, label = { Text(stringResource(R.string.nav_inicio)) })
+                    NavigationBarItem(selected = nasRotas, onClick = { separador(Rotas()) },
+                        icon = { Text("🧭") }, label = { Text(stringResource(R.string.nav_rotas)) })
                     NavigationBarItem(selected = noEu, onClick = { separador(Eu) },
                         icon = { Text("★") }, label = { Text(stringResource(R.string.nav_eu)) })
                 }
@@ -105,6 +113,18 @@ fun Navegacao(ligacoes: Ligacoes) {
             composable<Paragem> { entrada ->
                 val ref = RefParagem.daChave(entrada.toRoute<Paragem>().chave)
                 if (ref == null) nav.popBackStack() else ParagemEcra(ref, repositorio, aoVoltar = { nav.popBackStack() })
+            }
+            composable<Rotas> { entrada ->
+                val r = entrada.toRoute<Rotas>()
+                Box(Modifier.padding(bottom = margens.calculateBottomPadding())) {
+                    RotasEcra(
+                        repositorio = repositorio,
+                        preferencias = ligacoes.preferencias,
+                        origem = r.origem?.let(::lugarDaRota),
+                        destino = r.destino?.let(::lugarDaRota),
+                        aoAbrirRota = {},
+                    )
+                }
             }
             composable<Eu> {
                 Box(Modifier.padding(bottom = margens.calculateBottomPadding())) {

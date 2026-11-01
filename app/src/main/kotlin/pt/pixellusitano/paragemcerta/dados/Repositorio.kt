@@ -134,13 +134,19 @@ class Repositorio(
     /** Alertas ativos da paragem ou das linhas que lá passam (Carris Metropolitana; o Transitous ainda não os tem). */
     suspend fun alertasDaParagem(ref: RefParagem, linhas: Set<String>): List<Alerta> {
         if (ref.fonte != Fonte.CM) return emptyList()
+        return alertasAtivos().filter { ref.id in it.paragemIds || it.linhaIds.any(linhas::contains) }
+    }
+
+    /** Linhas da Carris Metropolitana com algum alerta ativo; vazio se os alertas não chegarem. */
+    suspend fun linhasComAlerta(): Set<String> = alertasAtivos().flatMapTo(mutableSetOf()) { it.linhaIds }
+
+    private suspend fun alertasAtivos(): List<Alerta> {
         val agora = relogio()
-        val cache = alertasEmCache?.takeIf { Duration.between(it.first, agora) < VALIDADE_ALERTAS }
-        val todos = cache?.second ?: when (val r = cm.alertas(agora)) {
+        alertasEmCache?.takeIf { Duration.between(it.first, agora) < VALIDADE_ALERTAS }?.let { return it.second }
+        return when (val r = cm.alertas(agora)) {
             is Resultado.Ok -> r.valor.also { alertasEmCache = agora to it }
-            is Resultado.Falha -> return emptyList()
+            is Resultado.Falha -> emptyList()
         }
-        return todos.filter { ref.id in it.paragemIds || it.linhaIds.any(linhas::contains) }
     }
 
     fun favoritas(): Flow<List<Favorita>> = bd.favoritas().todas().map { lista ->
