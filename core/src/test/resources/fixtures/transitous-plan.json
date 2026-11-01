@@ -1,0 +1,2232 @@
+{
+ "from": {
+  "name": "START",
+  "lat": 38.7058,
+  "lon": -9.1431,
+  "vertexType": "NORMAL"
+ },
+ "to": {
+  "name": "END",
+  "lat": 38.7678,
+  "lon": -9.099,
+  "vertexType": "NORMAL"
+ },
+ "direct": [],
+ "itineraries": [
+  {
+   "duration": 1800,
+   "startTime": "2026-11-01T02:28:00Z",
+   "endTime": "2026-11-01T02:58:00Z",
+   "transfers": 0,
+   "id": "CkghJ8KGp1daQ0Apfh04Z0RJIsAyDnB0LUNhcnJpc18zODA0Oag4DrxaWkNAQXlSJjW0SSLASLDHmtcGUKjImtcGWgRXQUxLYAEKjAEKAzIxMBIuMjAyNjExMDFfMDI6MzBfcHQtQ2FycmlzXzEzNTQ4XzIwMjYwNjA2XzY2XzBfNBoOcHQtQ2FycmlzXzM4MDQhqDgOvFpaQ0ApeVImNbRJIsAyDnB0LUNhcnJpc183ODA1OcumXOFdYkNAQfsdigJ9MiLASKjImtcGUMDUmtcGWgNCVVNgAQpIGg5wdC1DYXJyaXNfNzgwNSHLplzhXWJDQCn7HYoCfTIiwDk17zhFR2JDQEGmm8QgsDIiwEjA1JrXBlC41ZrXBloEV0FMS2AB",
+   "legs": [
+    {
+     "mode": "WALK",
+     "from": {
+      "name": "START",
+      "lat": 38.7058,
+      "lon": -9.1431,
+      "tz": "Europe/Lisbon",
+      "departure": "2026-11-01T02:28:00Z",
+      "scheduledDeparture": "2026-11-01T02:28:00Z",
+      "vertexType": "NORMAL"
+     },
+     "to": {
+      "name": "Cais Sodré",
+      "stopId": "pt-Carris_3804",
+      "importance": 0.0027713263407349586,
+      "lat": 38.705894,
+      "lon": -9.143952999999998,
+      "tz": "Europe/Lisbon",
+      "arrival": "2026-11-01T02:30:00Z",
+      "scheduledArrival": "2026-11-01T02:30:00Z",
+      "stopCode": "3804",
+      "vertexType": "TRANSIT",
+      "modes": [
+       "SUBURBAN",
+       "SUBWAY",
+       "BUS"
+      ]
+     },
+     "duration": 120,
+     "startTime": "2026-11-01T02:28:00Z",
+     "endTime": "2026-11-01T02:30:00Z",
+     "scheduledStartTime": "2026-11-01T02:28:00Z",
+     "scheduledEndTime": "2026-11-01T02:30:00Z",
+     "realTime": false,
+     "scheduled": false,
+     "distance": 121.0,
+     "legGeometry": {
+      "points": "oglyhA`s`mP~BB??ApB??AfB??AhB??Cv@W`O??x@r@zA`BdAbB~@jB^fBLbA@z@??A`B??A`B??aRY",
+      "precision": 6,
+      "length": 25
+     },
+     "steps": [
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 7.0,
+       "fromLevel": 0.0,
+       "toLevel": 0.0,
+       "toOsmNode": 9109454795,
+       "polyline": {
+        "points": "oglyhA`s`mP~BB",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 5.0,
+       "fromLevel": 0.0,
+       "toLevel": 0.0,
+       "osmWay": 478334388,
+       "fromOsmNode": 9109454795,
+       "toOsmNode": 4715626126,
+       "polyline": {
+        "points": "oclyhAds`mPApB",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 5.0,
+       "fromLevel": 0.0,
+       "toLevel": 0.0,
+       "osmWay": 478334388,
+       "fromOsmNode": 4715626126,
+       "toOsmNode": 2305795056,
+       "polyline": {
+        "points": "qclyhAvv`mPAfB",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 5.0,
+       "fromLevel": 0.0,
+       "toLevel": 0.0,
+       "osmWay": 478334388,
+       "fromOsmNode": 2305795056,
+       "toOsmNode": 5849582939,
+       "polyline": {
+        "points": "sclyhA~y`mPAhB",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 25.0,
+       "fromLevel": 0.0,
+       "toLevel": 0.0,
+       "osmWay": 618947856,
+       "fromOsmNode": 5849582939,
+       "toOsmNode": 5849582950,
+       "polyline": {
+        "points": "uclyhAh}`mPCv@W`O",
+        "precision": 6,
+        "length": 3
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 33.0,
+       "fromLevel": 0.0,
+       "toLevel": 0.0,
+       "osmWay": 618947853,
+       "fromOsmNode": 5849582950,
+       "toOsmNode": 5849582918,
+       "polyline": {
+        "points": "qdlyhAboamPx@r@zA`BdAbB~@jB^fBLbA@z@",
+        "precision": 6,
+        "length": 8
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 4.0,
+       "fromLevel": 0.0,
+       "toLevel": 0.0,
+       "osmWay": 618947846,
+       "fromOsmNode": 5849582918,
+       "toOsmNode": 376775287,
+       "polyline": {
+        "points": "ezkyhApabmPA`B",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 4.0,
+       "fromLevel": 0.0,
+       "toLevel": 0.0,
+       "osmWay": 618947846,
+       "fromOsmNode": 376775287,
+       "toOsmNode": 5849582917,
+       "polyline": {
+        "points": "gzkyhArdbmPA`B",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 33.0,
+       "fromLevel": 0.0,
+       "toLevel": 0.0,
+       "fromOsmNode": 5849582917,
+       "polyline": {
+        "points": "izkyhAtgbmPaRY",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      }
+     ]
+    },
+    {
+     "mode": "BUS",
+     "from": {
+      "name": "Cais Sodré",
+      "stopId": "pt-Carris_3804",
+      "importance": 0.0027713263407349586,
+      "lat": 38.705894,
+      "lon": -9.143952999999998,
+      "tz": "Europe/Lisbon",
+      "departure": "2026-11-01T02:30:00Z",
+      "scheduledDeparture": "2026-11-01T02:30:00Z",
+      "stopCode": "3804",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "departureTimestampReason": "NO_RT_DATA",
+      "modes": [
+       "SUBURBAN",
+       "SUBWAY",
+       "BUS"
+      ]
+     },
+     "to": {
+      "name": "Estação Oriente",
+      "stopId": "pt-Carris_7805",
+      "importance": 0.00010284069867338985,
+      "lat": 38.76849000000001,
+      "lon": -9.098609999999999,
+      "tz": "Europe/Lisbon",
+      "arrival": "2026-11-01T02:56:00Z",
+      "scheduledArrival": "2026-11-01T02:56:00Z",
+      "stopCode": "7805",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "arrivalTimestampReason": "NO_RT_DATA",
+      "departureTimestampReason": "NO_RT_DATA",
+      "modes": [
+       "BUS"
+      ]
+     },
+     "duration": 1560,
+     "startTime": "2026-11-01T02:30:00Z",
+     "endTime": "2026-11-01T02:56:00Z",
+     "scheduledStartTime": "2026-11-01T02:30:00Z",
+     "scheduledEndTime": "2026-11-01T02:56:00Z",
+     "realTime": false,
+     "scheduled": true,
+     "interlineWithPreviousLeg": false,
+     "headsign": "Prior Velho",
+     "tripFrom": {
+      "name": "Cais Sodré",
+      "stopId": "pt-Carris_3804",
+      "importance": 0.0027713263407349586,
+      "lat": 38.705894,
+      "lon": -9.143952999999998,
+      "tz": "Europe/Lisbon",
+      "departure": "2026-11-01T02:30:00Z",
+      "scheduledDeparture": "2026-11-01T02:30:00Z",
+      "stopCode": "3804",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "departureTimestampReason": "NO_RT_DATA",
+      "modes": [
+       "SUBURBAN",
+       "SUBWAY",
+       "BUS"
+      ]
+     },
+     "tripTo": {
+      "name": "Prior Velho",
+      "stopId": "pt-Carris_16310",
+      "importance": 3.915980050805956e-05,
+      "lat": 38.79017000000001,
+      "lon": -9.124171999999998,
+      "tz": "Europe/Lisbon",
+      "arrival": "2026-11-01T03:11:00Z",
+      "scheduledArrival": "2026-11-01T03:11:00Z",
+      "stopCode": "16310",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "arrivalTimestampReason": "NO_RT_DATA",
+      "modes": [
+       "BUS"
+      ]
+     },
+     "routeId": "pt-Carris_66_0",
+     "routeUrl": "",
+     "directionId": "0",
+     "routeType": 3,
+     "agencyName": "Carris",
+     "agencyUrl": "http://www.carris.pt",
+     "agencyFareUrl": "",
+     "agencyId": "1",
+     "tripId": "20261101_02:30_pt-Carris_13548_20260606_66_0_4",
+     "routeShortName": "210",
+     "routeLongName": "Cais Sodré - Prior Velho",
+     "tripShortName": "",
+     "displayName": "210",
+     "cancelled": false,
+     "source": "pt_Carris.gtfs.zip/stop_times.txt:612653:612696",
+     "intermediateStops": [
+      {
+       "name": "Pç. Comércio",
+       "stopId": "pt-Carris_4599",
+       "importance": 0.00025078223552554846,
+       "lat": 38.706720000000004,
+       "lon": -9.136822999999998,
+       "tz": "Europe/Lisbon",
+       "arrival": "2026-11-01T02:32:00Z",
+       "departure": "2026-11-01T02:32:00Z",
+       "scheduledArrival": "2026-11-01T02:32:00Z",
+       "scheduledDeparture": "2026-11-01T02:32:00Z",
+       "stopCode": "4599",
+       "vertexType": "TRANSIT",
+       "pickupType": "NORMAL",
+       "dropoffType": "NORMAL",
+       "cancelled": false,
+       "arrivalTimestampReason": "NO_RT_DATA",
+       "departureTimestampReason": "NO_RT_DATA",
+       "modes": [
+        "BUS"
+       ]
+      },
+      {
+       "name": "Sul e Sueste",
+       "stopId": "pt-Carris_4509",
+       "importance": 0.00011658034782158211,
+       "lat": 38.707188,
+       "lon": -9.133465,
+       "tz": "Europe/Lisbon",
+       "arrival": "2026-11-01T02:33:00Z",
+       "departure": "2026-11-01T02:33:00Z",
+       "scheduledArrival": "2026-11-01T02:33:00Z",
+       "scheduledDeparture": "2026-11-01T02:33:00Z",
+       "stopCode": "4509",
+       "vertexType": "TRANSIT",
+       "pickupType": "NORMAL",
+       "dropoffType": "NORMAL",
+       "cancelled": false,
+       "arrivalTimestampReason": "NO_RT_DATA",
+       "departureTimestampReason": "NO_RT_DATA",
+       "modes": [
+        "BUS"
+       ]
+      }
+     ],
+     "legGeometry": {
+      "points": "kmlyhA`hbmP?cCtDB~HLhBBfEFpBAt@Gl@Qr@q@d@eAFqANmLFuLOyA]aAq@q@{@UuCSiIMmDEe@?gDEgDCgCC}JSyBFG@Me@e@eBkBkGiH_d@iGsa@sAmIVg@fCy@zBy@|XoGfCiBxBkCjBqD`BoE`AkEz@gGJqFGeFcPqfAeK{p@iC{PgIqi@cFu\\wCyRsAgIqHof@eKaq@yAuKqOmbACsDVoA\\qAdEcDzAIj@g@VYJo@HiAIyAg@eBwBiI?EsDsOoA_DaAiB{@cAeASs@OmEsCeE_HmAmDyKi[kCkHiG{Q_Xyv@kBaGaBsEs[q{@yBqFiD{H_IoPiBqDqG{KoKmQcTa\\yWk`@aGiKKGmGiLcBuCiq@oqBwC}IqB_GuYuu@kCn@_Cf@iCh@cGfCiZk[}AaFoDqA{EmAuCq@{JEwBIoHaAsF_C{[ob@GG}SuX_DoDmo@go@gEqC}NuMu^ea@iBsBIE}IsJkFwFyB}Cc[mb@md@{f@m@q@GC{@}@{AaBwA_Bcc@ma@oM}D_TyDgSqDeA_@eA[sDeBoFeGs@aAwCsEm@sAe@kAGoB{FmL{@oBcCkDyFcHyA?_IqGwEqBCCcC_A{l@gVsIsEmy@}h@mUuMsFyBl@uDNwDWkDYqB?ESk@cBqEwBkE_DiE{j@s_@yBiB}PoLiQcQePqNCGgAaAiH}BuDq@oEoAoBw@_DaBwDqCuEeFkFoGeCoC}BsBmDmD{KsP{BuD}N_Xu@uA{EwI_@i@eJgPaCgEmEuGkQmWyG{J_DcE{BqBeD{CcQsOyVeTyLoKuEeEyBoBuP{OwAuAyDsD_Xm\\gDmF_EmBaMwGwX{KgEeBiAe@yIaGgMsK]]iGcIsQkMcBkA}^oVuYwVsAeAgIqIyWoVoHsFuAw@_HaC}@OICaK_CcG]_NiAqRyAgDwA_IgD_TuL{UaSGGgIeHkM}GmSsHyLuEbAyHUgIkAaIiAaIm[uG}i@{MgMqDiXuD_DpA}@pIaBbOyx@wPoQ_DwN{B_UmDMCqe@oHoTiDgBQyXiDmv@oJ{EgGiAg@mJkEqM_G_DwA_XyJGCqb@{OwZuKsDwAgE{AqVyIEC{EaBw[_L{NkFavA{j@FiCu@yFgT}UaAo@GEaUwMeCoAdKmdAjAaMjFai@JgCw[gGGC_@Eq~@iQaPwB}L{Ba|@uOm^}IqM}CGCoIsBsi@oKwIaDwJ_BcKoB}J}AqJKgKDgIv@kH|BgGtCgH`F{ErEwGvHETGBeEnHsMtQcDbAaDrCaBlDw@bFE`FtAlHfC|DbApFjA|IFpG{EhYcL`l@_If`@{G|]sAzPcAbEoBvIyIf`@a@~BoFf[aMtr@sFfWeE`Se@nCu@vDc@pCw@hDe@tCuA|G}Nrr@iB|I{AzG?@eTbbAu@lDsFfXsG|ZqL|k@iW~oAyBdK?@gY|tAeThdAuJ`K}F|FcE~AoH\\{VuCaMa@eNCcMlAwUnIEBuJjDwCjA_HJwLxDgAyCcFqN{GkT}IsVcG_P}@sB?A_AuBqEoIuCoEgZob@qGgGa@WECaLeHcEgB_ImBkC]G?{ACu@Ee@CqL@cBHcAFeo@nGsALgEb@{@H{@H{h@jFwBPoFh@_E^sALC@cj@hFaFj@a^tEsIpAw[|EsDf@qGLOAMAqCKaHiAoC}@w@a@s@g@oCwBwCaCm@uAm@oA{@qA{@iESo@[kCKiCSwM?WvN_xCb@eH~C{p@jCcg@fD{W~DyFbG_JjJmBjAUzAw@ZSn@u@f@wAJkA?OHkAIsA?CEYMi@g@u@cAk@gAWcLVoFXiBHmET{If@e\\fB{Kd@aCJcBHCoD?aHZgkC?mGFkUBki@Raq@?iEDaIFyc@?iEDwLbB?",
+      "precision": 6,
+      "length": 487
+     },
+     "bikesAllowed": false,
+     "wheelchairAccessible": "NOT_ACCESSIBLE",
+     "reservation": "NONE"
+    },
+    {
+     "mode": "WALK",
+     "from": {
+      "name": "Estação Oriente",
+      "stopId": "pt-Carris_7805",
+      "importance": 0.00010284069867338985,
+      "lat": 38.76849000000001,
+      "lon": -9.098609999999999,
+      "tz": "Europe/Lisbon",
+      "arrival": "2026-11-01T02:56:00Z",
+      "departure": "2026-11-01T02:56:00Z",
+      "scheduledArrival": "2026-11-01T02:56:00Z",
+      "scheduledDeparture": "2026-11-01T02:56:00Z",
+      "stopCode": "7805",
+      "vertexType": "TRANSIT",
+      "cancelled": false,
+      "arrivalTimestampReason": "NO_RT_DATA",
+      "departureTimestampReason": "NO_RT_DATA",
+      "modes": [
+       "BUS"
+      ]
+     },
+     "to": {
+      "name": "END",
+      "lat": 38.7678,
+      "lon": -9.099,
+      "tz": "Europe/Lisbon",
+      "arrival": "2026-11-01T02:58:00Z",
+      "scheduledArrival": "2026-11-01T02:58:00Z",
+      "vertexType": "NORMAL"
+     },
+     "duration": 120,
+     "startTime": "2026-11-01T02:56:00Z",
+     "endTime": "2026-11-01T02:58:00Z",
+     "scheduledStartTime": "2026-11-01T02:56:00Z",
+     "scheduledEndTime": "2026-11-01T02:58:00Z",
+     "realTime": false,
+     "scheduled": false,
+     "distance": 106.0,
+     "legGeometry": {
+      "points": "muf}hAjrijP`CJ??Al@??dAD??`DN??lEP??K~D??C~A??E`B??I~D??EbB??^@???J??BH??FD??FB??HA??DE??DG??@K??^B??vAF??tER??tLd@",
+      "precision": 6,
+      "length": 46
+     },
+     "steps": [
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 7.0,
+       "fromLevel": 0.0,
+       "toLevel": 0.0,
+       "toOsmNode": 13208076061,
+       "polyline": {
+        "points": "muf}hAjrijP`CJ",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 2.0,
+       "fromLevel": 0.0,
+       "toLevel": 0.0,
+       "osmWay": 1437052621,
+       "fromOsmNode": 13208076061,
+       "toOsmNode": 13208076121,
+       "polyline": {
+        "points": "kqf}hAvrijPAl@",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 4.0,
+       "fromLevel": 0.0,
+       "toLevel": 0.0,
+       "osmWay": 1437052650,
+       "fromOsmNode": 13208076121,
+       "toOsmNode": 13175492206,
+       "polyline": {
+        "points": "mqf}hAdtijPdAD",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "STAIRS",
+       "distance": 9.0,
+       "fromLevel": 0.0,
+       "toLevel": 1.0,
+       "osmWay": 1433586333,
+       "fromOsmNode": 13175492206,
+       "toOsmNode": 13175492208,
+       "polyline": {
+        "points": "gof}hAjtijP`DN",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 11.0,
+       "fromLevel": 1.0,
+       "toLevel": 1.0,
+       "osmWay": 1433586341,
+       "fromOsmNode": 13175492208,
+       "toOsmNode": 13175492218,
+       "polyline": {
+        "points": "ejf}hAztijPlEP",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 8.0,
+       "fromLevel": 1.0,
+       "toLevel": 1.0,
+       "osmWay": 1433586377,
+       "fromOsmNode": 13175492218,
+       "toOsmNode": 13175492135,
+       "polyline": {
+        "points": "wcf}hAluijPK~D",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 4.0,
+       "fromLevel": 1.0,
+       "toLevel": 1.0,
+       "osmWay": 1433586377,
+       "fromOsmNode": 13175492135,
+       "toOsmNode": 13175492235,
+       "polyline": {
+        "points": "cdf}hAl{ijPC~A",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 4.0,
+       "fromLevel": 1.0,
+       "toLevel": 1.0,
+       "osmWay": 1433586377,
+       "fromOsmNode": 13175492235,
+       "toOsmNode": 13175492145,
+       "polyline": {
+        "points": "gdf}hAl~ijPE`B",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 8.0,
+       "fromLevel": 1.0,
+       "toLevel": 1.0,
+       "osmWay": 1433586377,
+       "fromOsmNode": 13175492145,
+       "toOsmNode": 13175492155,
+       "polyline": {
+        "points": "mdf}hAnajjPI~D",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 4.0,
+       "fromLevel": 1.0,
+       "toLevel": 1.0,
+       "osmWay": 1433586377,
+       "fromOsmNode": 13175492155,
+       "toOsmNode": 13175492252,
+       "polyline": {
+        "points": "wdf}hAngjjPEbB",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 2.0,
+       "fromLevel": 1.0,
+       "toLevel": 1.0,
+       "osmWay": 1433586357,
+       "fromOsmNode": 13175492252,
+       "toOsmNode": 13175492371,
+       "polyline": {
+        "points": "}df}hArjjjP^@",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "ELEVATOR",
+       "distance": 0.0,
+       "fromLevel": 1.0,
+       "toLevel": 2.0,
+       "osmWay": 1433586383,
+       "fromOsmNode": 13175492371,
+       "toOsmNode": 13175492370,
+       "polyline": {
+        "points": "}cf}hAtjjjP?J",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "ELEVATOR",
+       "distance": 0.0,
+       "fromLevel": 1.0,
+       "toLevel": 2.0,
+       "osmWay": 1433586383,
+       "fromOsmNode": 13175492370,
+       "toOsmNode": 13175492316,
+       "polyline": {
+        "points": "}cf}hA`kjjPBH",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "ELEVATOR",
+       "distance": 0.0,
+       "fromLevel": 1.0,
+       "toLevel": 2.0,
+       "osmWay": 1433586383,
+       "fromOsmNode": 13175492316,
+       "toOsmNode": 13175492369,
+       "polyline": {
+        "points": "ycf}hAjkjjPFD",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "ELEVATOR",
+       "distance": 0.0,
+       "fromLevel": 1.0,
+       "toLevel": 2.0,
+       "osmWay": 1433586383,
+       "fromOsmNode": 13175492369,
+       "toOsmNode": 13175492317,
+       "polyline": {
+        "points": "qcf}hApkjjPFB",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "ELEVATOR",
+       "distance": 0.0,
+       "fromLevel": 1.0,
+       "toLevel": 2.0,
+       "osmWay": 1433586383,
+       "fromOsmNode": 13175492317,
+       "toOsmNode": 13175492314,
+       "polyline": {
+        "points": "icf}hAtkjjPHA",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "ELEVATOR",
+       "distance": 0.0,
+       "fromLevel": 1.0,
+       "toLevel": 2.0,
+       "osmWay": 1433586383,
+       "fromOsmNode": 13175492314,
+       "toOsmNode": 13175492315,
+       "polyline": {
+        "points": "_cf}hArkjjPDE",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "ELEVATOR",
+       "distance": 0.0,
+       "fromLevel": 1.0,
+       "toLevel": 2.0,
+       "osmWay": 1433586383,
+       "fromOsmNode": 13175492315,
+       "toOsmNode": 13175492368,
+       "polyline": {
+        "points": "ybf}hAlkjjPDG",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "ELEVATOR",
+       "distance": 0.0,
+       "fromLevel": 1.0,
+       "toLevel": 2.0,
+       "osmWay": 1433586383,
+       "fromOsmNode": 13175492368,
+       "toOsmNode": 13175492367,
+       "polyline": {
+        "points": "sbf}hAdkjjP@K",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 2.0,
+       "fromLevel": 1.0,
+       "toLevel": 1.0,
+       "osmWay": 1433586356,
+       "fromOsmNode": 13175492367,
+       "toOsmNode": 13175492251,
+       "polyline": {
+        "points": "qbf}hAxjjjP^B",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 5.0,
+       "fromLevel": 1.0,
+       "toLevel": 1.0,
+       "osmWay": 1433586356,
+       "fromOsmNode": 13175492251,
+       "toOsmNode": 13182271218,
+       "polyline": {
+        "points": "qaf}hA|jjjPvAF",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "STAIRS",
+       "distance": 12.0,
+       "fromLevel": 1.0,
+       "toLevel": 2.0,
+       "osmWay": 1434221903,
+       "fromOsmNode": 13182271218,
+       "toOsmNode": 13182271408,
+       "polyline": {
+        "points": "y~e}hAdkjjPtER",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 24.0,
+       "fromLevel": 0.0,
+       "toLevel": 0.0,
+       "fromOsmNode": 13182271408,
+       "polyline": {
+        "points": "cxe}hAxkjjPtLd@",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "duration": 3240,
+   "startTime": "2026-11-01T02:29:00Z",
+   "endTime": "2026-11-01T03:23:00Z",
+   "transfers": 0,
+   "id": "CkghJ8KGp1daQ0Apfh04Z0RJIsAyDnB0LUNhcnJpc18zODEwObUaEvdYWkNAQRytaklHSSLASOzHmtcGUKjImtcGWgRXQUxLYAEKjAEKAzIwOBIuMjAyNjExMDFfMDI6MzBfcHQtQ2FycmlzXzEzMDk1XzIwMjYwNjA2XzY1XzBfNRoOcHQtQ2FycmlzXzM4MTAhtRoS91haQ0ApHK1qSUdJIsAyDnB0LUNhcnJpc183ODI1Ob0cdt8xYkNAQfje36C9MiLASKjImtcGUJzgmtcGWgNCVVNgAQpIGg5wdC1DYXJyaXNfNzgyNSG9HHbfMWJDQCn43t+gvTIiwDk17zhFR2JDQEGmm8QgsDIiwEic4JrXBlCU4ZrXBloEV0FMS2AB",
+   "legs": [
+    {
+     "mode": "WALK",
+     "from": {
+      "name": "START",
+      "lat": 38.7058,
+      "lon": -9.1431,
+      "tz": "Europe/Lisbon",
+      "departure": "2026-11-01T02:29:00Z",
+      "scheduledDeparture": "2026-11-01T02:29:00Z",
+      "vertexType": "NORMAL"
+     },
+     "to": {
+      "name": "Cais Sodré",
+      "stopId": "pt-Carris_3810",
+      "importance": 0.0027713263407349586,
+      "lat": 38.70584,
+      "lon": -9.143121999999998,
+      "tz": "Europe/Lisbon",
+      "arrival": "2026-11-01T02:30:00Z",
+      "scheduledArrival": "2026-11-01T02:30:00Z",
+      "stopCode": "3810",
+      "vertexType": "TRANSIT",
+      "modes": [
+       "SUBURBAN",
+       "SUBWAY",
+       "BUS"
+      ]
+     },
+     "duration": 60,
+     "startTime": "2026-11-01T02:29:00Z",
+     "endTime": "2026-11-01T02:30:00Z",
+     "scheduledStartTime": "2026-11-01T02:29:00Z",
+     "scheduledEndTime": "2026-11-01T02:30:00Z",
+     "realTime": false,
+     "scheduled": false,
+     "distance": 4.0,
+     "legGeometry": {
+      "points": "oglyhAvr`mPoAj@",
+      "precision": 6,
+      "length": 2
+     },
+     "steps": [
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 4.0,
+       "fromLevel": 0.0,
+       "toLevel": 0.0,
+       "polyline": {
+        "points": "oglyhAvr`mPoAj@",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      }
+     ]
+    },
+    {
+     "mode": "BUS",
+     "from": {
+      "name": "Cais Sodré",
+      "stopId": "pt-Carris_3810",
+      "importance": 0.0027713263407349586,
+      "lat": 38.70584,
+      "lon": -9.143121999999998,
+      "tz": "Europe/Lisbon",
+      "departure": "2026-11-01T02:30:00Z",
+      "scheduledDeparture": "2026-11-01T02:30:00Z",
+      "stopCode": "3810",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "departureTimestampReason": "NO_RT_DATA",
+      "modes": [
+       "SUBURBAN",
+       "SUBWAY",
+       "BUS"
+      ]
+     },
+     "to": {
+      "name": "Estação Oriente",
+      "stopId": "pt-Carris_7825",
+      "importance": 0.00010284069867338985,
+      "lat": 38.767147,
+      "lon": -9.099103,
+      "tz": "Europe/Lisbon",
+      "arrival": "2026-11-01T03:21:00Z",
+      "scheduledArrival": "2026-11-01T03:21:00Z",
+      "stopCode": "7825",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "arrivalTimestampReason": "NO_RT_DATA",
+      "departureTimestampReason": "NO_RT_DATA",
+      "modes": [
+       "BUS"
+      ]
+     },
+     "duration": 3060,
+     "startTime": "2026-11-01T02:30:00Z",
+     "endTime": "2026-11-01T03:21:00Z",
+     "scheduledStartTime": "2026-11-01T02:30:00Z",
+     "scheduledEndTime": "2026-11-01T03:21:00Z",
+     "realTime": false,
+     "scheduled": true,
+     "interlineWithPreviousLeg": false,
+     "headsign": "Estação Oriente (Interface)",
+     "tripFrom": {
+      "name": "Cais Sodré",
+      "stopId": "pt-Carris_3810",
+      "importance": 0.0027713263407349586,
+      "lat": 38.70584,
+      "lon": -9.143121999999998,
+      "tz": "Europe/Lisbon",
+      "departure": "2026-11-01T02:30:00Z",
+      "scheduledDeparture": "2026-11-01T02:30:00Z",
+      "stopCode": "3810",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "departureTimestampReason": "NO_RT_DATA",
+      "modes": [
+       "SUBURBAN",
+       "SUBWAY",
+       "BUS"
+      ]
+     },
+     "tripTo": {
+      "name": "Estação Oriente (Interface)",
+      "stopId": "pt-Carris_7817",
+      "importance": 7.669549813726917e-05,
+      "lat": 38.76819600000001,
+      "lon": -9.1,
+      "level": 0.0,
+      "tz": "Europe/Lisbon",
+      "arrival": "2026-11-01T03:22:00Z",
+      "scheduledArrival": "2026-11-01T03:22:00Z",
+      "stopCode": "7817",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "arrivalTimestampReason": "NO_RT_DATA",
+      "modes": [
+       "BUS"
+      ]
+     },
+     "routeId": "pt-Carris_65_0",
+     "routeUrl": "",
+     "directionId": "0",
+     "routeType": 3,
+     "agencyName": "Carris",
+     "agencyUrl": "http://www.carris.pt",
+     "agencyFareUrl": "",
+     "agencyId": "1",
+     "tripId": "20261101_02:30_pt-Carris_13095_20260606_65_0_5",
+     "routeShortName": "208",
+     "routeLongName": "Cais Sodré - Estação Oriente",
+     "tripShortName": "",
+     "displayName": "208",
+     "cancelled": false,
+     "source": "pt_Carris.gtfs.zip/stop_times.txt:399572:399626",
+     "intermediateStops": [
+      {
+       "name": "Corpo Santo",
+       "stopId": "pt-Carris_3824",
+       "importance": 0.00012141931074438617,
+       "lat": 38.707237,
+       "lon": -9.141169999999997,
+       "tz": "Europe/Lisbon",
+       "arrival": "2026-11-01T02:31:00Z",
+       "departure": "2026-11-01T02:31:00Z",
+       "scheduledArrival": "2026-11-01T02:31:00Z",
+       "scheduledDeparture": "2026-11-01T02:31:00Z",
+       "stopCode": "3824",
+       "vertexType": "TRANSIT",
+       "pickupType": "NORMAL",
+       "dropoffType": "NORMAL",
+       "cancelled": false,
+       "arrivalTimestampReason": "NO_RT_DATA",
+       "departureTimestampReason": "NO_RT_DATA",
+       "modes": [
+        "BUS"
+       ]
+      },
+      {
+       "name": "Pç. Comércio",
+       "stopId": "pt-Carris_5519",
+       "importance": 0.00025078223552554846,
+       "lat": 38.70890000000001,
+       "lon": -9.136007,
+       "tz": "Europe/Lisbon",
+       "arrival": "2026-11-01T02:33:00Z",
+       "departure": "2026-11-01T02:33:00Z",
+       "scheduledArrival": "2026-11-01T02:33:00Z",
+       "scheduledDeparture": "2026-11-01T02:33:00Z",
+       "stopCode": "5519",
+       "vertexType": "TRANSIT",
+       "pickupType": "NORMAL",
+       "dropoffType": "NORMAL",
+       "cancelled": false,
+       "arrivalTimestampReason": "NO_RT_DATA",
+       "departureTimestampReason": "NO_RT_DATA",
+       "modes": [
+        "BUS"
+       ]
+      }
+     ],
+     "legGeometry": {
+      "points": "_jlyhAbt`mP?zDsCCgCC}JSyBFG@Me@e@eBkBkGiH_d@iGsa@sAmIWi@e@o@a@q@q@a@q@Uo@Ge@Be@Fc@Jg@LyCdAm@Ng@Lc@J]Be@Dc@@a@AUCWESIWM_@SW[[a@W]M[We@M_@Ga@O]Gk@k@gDkBaM?E{@oGsJop@w@mE_AkDoAuE{@yCg@yCg@iCcA{HgAgIg@aDsDwUKeBO}AKcBSmBMqB]uBw@aFcEmXWoBiBeM]mBC{AKmB?wAMyAG_AqCwPcGc`@kCsPqEiYU{CcGjBgN~DGByBn@uDx@sR|FuCp@Ie@]eC_I{h@M}@WsA_@kCeDoTa@yBwGnBEBgI`CiBj@sDbAkDdAoSzFkSjGmb@fMeEjAwAd@yI`C{GnBoq@fSuYvI_I|BiIdCmEzAgGwAICICcVcEcLoBiKaBiHaAyLeBiGCcCAmIsCiHaC_DeAOEOEwIwC_H{B}YwJc[iKoD^}Ab@gBx@kA`CaCxHqEIo~BmLMAia@qBoEW{J]_Nm@ct@eDsNo@{EUsi@kC?A}@AqR}@mDQ}FSgm@aDqG]gH]q]}Ao`@iBwFWsFWkPu@K?yi@eC{Ou@cGW}EW_vAoG_FUoQ{@qq@}CI?gWkAsFYcFUmsAiGqG[sGa@cmAuFG?{G]gCM}EWi\\{BiHc@yBGmES}BM_I_@kk@iC_Ie@_u@yCsKe@sj@aC_E]}DMiM{@UCI?iF]uEWsEU}AImDWgESuDKst@sCqCMe~@_FcQy@eTaAOAsAG_p@{Cqh@wCgEYoCy@kAa@kFyAgEi@a@qAbB_YnAsT\\wCrAcMDeHRoEJqEZ}Ln@gUVwJLaIt@kTt@kH~CeO~CgMpCkJ|DgNd@oB?AfAcDzDcNbFaMfDkFrBeDpGgH`GcFzFgD|JmGhPkIf_@iOhHyBxq@uP~HiCLCf@MtMiEtFkBvDzBdE`AjDBrDi@dDuApC{BxBcD`B_E|@uE\\_FWwHSiAu@_EEY{CyFwDsDgEgBgEe@{EZqEcImBuEuC_HmBmHoAkEaCaEIG_HwLkl@mjAc@qAyAmCwDkDyBk@yQEiCAcPEkGqA_EcC{EuH}D{H]{IL_X~Ccs@XcHJoD?gVs@sSuAuQ_DoTgDoPsEgQuEoMyHyQuKsP{DkFkBoCaRcWaEmFwAO_DE_Dd@yBZmGlHeIfLuEeBwG}CwB?aP?yp@?uECyF^_@PgBhAco@ha@gUvNcFDg@@oK?eX@cPBiB?eKBkA?aD@sEfAgJBcF@cG_Ft@uIt@yKbA_OW{PCkDg@kDwG~AsCp@sEjAkBb@sEjA{OfDsIvBoS`FCBsM`DsEfA{aA`VsEjAwCf@cEp@o@Ln@pEZ|ClEl]?BtA`JwBbFkD|K{ApEgIhTeEtKwDdOLhMbBtGrFbIbThQjRzLjBhAfA~Cf@hDXrDEtD_@nDo}@tiA?DkB`CyFLuHHo@y@iCqEuDoG_E_EwMsOko@l@sNwPgB{BkFjI{JzNSH?DgBpCcElDyInH}AlA}`Afy@uM~Kq@d@mBfBoK~I_DxZsBjRwRwDeEm@_Ds@eAnL\\dGk@jEIDShBu@|E_EzK{EzIqHnHqGfDmSlDwKmEoCqCcB_DoC{FwC}GgFwEgJwDoVCeE?_DB]?O?C?kCDsq@YiLkDyGuE{FaHwGoOkC}MEkR?yP?wF?q@?iC?A?uD?yi@?mFDgURgFvA{F`BqDpBeCxC_ClEqAbFClZ?dC?bG?fK?F?vB?fE?`H}BpJcLzYcc@bF{HjDkIfFwL?ySkAkSc@uHtMiBnNgHlIgLrD{Mz@aPo@eQ_@iHg@iI{@uNiAgSxCgQrIeK|VqDdOaBvNaBFAzkBcTzEbAvKyAfUyEz@aFRcENuENsCZ_HhIiNp@gA?CrCgEjF}HbEiLvAaK}@gIkAoDqCcEwN{QkCiF_AmC_@qDWiKwBki@f@cCr@kDjA{CfFyFbGO~HKrc@UbAeE?aG{@mE{c@Rq@@I?{NHsOJyIj@cQfCqWtD{NpB{MfAmDHmL_@_DOoKo@sH{AqH_CaQwHOEGE_FsBwGwBgJyCsIkDkHwC{OoGsFaBkQkFoJmDyKcFqH}@eE_BECce@yQmL_LmEcHsAoFgEqF_C}@eEaB_DkA}FOcE~AkE`IeApJd@pCr@tCz@pP^dU}Jjg@?@{cAnfF?@{A~GaMbp@{Kb^yVnoAoDhLaCrFwDtFqBrBaGvEsCfG{@~GFjHf@fDpA~HIrHCxAgMho@?@_J~c@iCzLyAvK_Jnn@{Nbt@wPv{@mEvYcGnf@yDd_@iAfNaGxaA?H?A}@|MaAhOiDrByAxBoAlC_D`BkC`AeCNeOg@yGUm^mAc`@kCaT_CeN{@kR]qQsAiG_AwOeGsFmA}DSiCO_ES_IF_DzAgInAsPiCsFsFe@g@}@y@yAoA_DgFeCaFgAaGo@wDgEge@g@iG}AqFwCoDqCuAwCYgD\\{PnD{MpFkMyCsRhDsF~@iCy@eAm@{@w@g@cAc@gAOcAUsA?wBFoB`A_NoB_@hByQDo@dAaLHo@rDsMt@u@DYnAeCf@{DI}D}@cDwAgCnBe]~Col@Z{GRqB?wLcCaCaNgDmDo@mEy@mEw@cGaAqHeAl@eJrBmJfB{EjCkEhBcC?ExByCoDeI{j@odA|@iAl@uAV}ALeBGaBO_BoX{h@oCgFyPe\\uKsScLeTcQu\\qHaO_MuV?EoFuKvDcE~I}H_e@_~@oUgd@wZh[e@d@EDkWtU{DxBkWhN{ElCm[zK}c@pHsWdAsOBG?M?qB@OCkLa@d@{Pt@kRpCmM|F_SkMmScBqG{@wDkBsN?mE?AFqA?iHvCgRjFuObC_FrT}b@rWsg@?CvWah@nSi`@jNwY`Po]fD}JyM{LiQkPqC_DkAqAGEWWmD{HiByDDwD~C}InTm\\hHqLvFcMnKuR`HcQdFiWRm@vDsN~DcQbF}Y|EqXfDe[~CuZpB{Jz@qAfJaGjFk@hBWdF_BrDkDzBgF^{@BsLc@aF{BeIoA_AqCwBcAY}Bk@g@KaEf@mD`@{GRe@BI@kHXoADeI\\uZtAsCkD_BsEe@gJm@oYg@uOSwK_@}PMwELqLNwOCeQSaV?C?g@MsJ{A_n@d@iCFqCg@iC?_EEeCGmGm@i\\]gQ]kJ{@qIaCmJ}@sc@d@g_Al@uCn@}AzDqGbCsCxFi@~CCxK\\R@xK\\pY`A`ADlb@vAbHbAvZhAbEYrEPtFT|o@jCnGb@F?`Hb@zJl@nDRxMx@zERnKd@hFe@dl@zB~\\fAbLTnAbD`CnBpCn@fBGbBg@pCmCjj@`A^@hd@`BfEXt@dBlArAg@rJ{@lT{A~YqBI",
+      "precision": 6,
+      "length": 891
+     },
+     "bikesAllowed": false,
+     "wheelchairAccessible": "NOT_ACCESSIBLE",
+     "reservation": "NONE"
+    },
+    {
+     "mode": "WALK",
+     "from": {
+      "name": "Estação Oriente",
+      "stopId": "pt-Carris_7825",
+      "importance": 0.00010284069867338985,
+      "lat": 38.767147,
+      "lon": -9.099103,
+      "tz": "Europe/Lisbon",
+      "arrival": "2026-11-01T03:21:00Z",
+      "departure": "2026-11-01T03:21:00Z",
+      "scheduledArrival": "2026-11-01T03:21:00Z",
+      "scheduledDeparture": "2026-11-01T03:21:00Z",
+      "stopCode": "7825",
+      "vertexType": "TRANSIT",
+      "cancelled": false,
+      "arrivalTimestampReason": "NO_RT_DATA",
+      "departureTimestampReason": "NO_RT_DATA",
+      "modes": [
+       "BUS"
+      ]
+     },
+     "to": {
+      "name": "END",
+      "lat": 38.7678,
+      "lon": -9.099,
+      "tz": "Europe/Lisbon",
+      "arrival": "2026-11-01T03:23:00Z",
+      "scheduledArrival": "2026-11-01T03:23:00Z",
+      "vertexType": "NORMAL"
+     },
+     "duration": 120,
+     "startTime": "2026-11-01T03:21:00Z",
+     "endTime": "2026-11-01T03:23:00Z",
+     "scheduledStartTime": "2026-11-01T03:21:00Z",
+     "scheduledEndTime": "2026-11-01T03:23:00Z",
+     "realTime": false,
+     "scheduled": false,
+     "distance": 70.0,
+     "legGeometry": {
+      "points": "odd}hAttjjPC|@??_EQ??iXiA??yES",
+      "precision": 6,
+      "length": 8
+     },
+     "steps": [
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 2.0,
+       "fromLevel": 0.0,
+       "toLevel": 0.0,
+       "toOsmNode": 13208076094,
+       "polyline": {
+        "points": "odd}hAttjjPC|@",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 11.0,
+       "fromLevel": 0.0,
+       "toLevel": 0.0,
+       "osmWay": 1437052623,
+       "fromOsmNode": 13208076094,
+       "toOsmNode": 13208076099,
+       "polyline": {
+        "points": "sdd}hArvjjP_EQ",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 45.0,
+       "fromLevel": 0.0,
+       "toLevel": 0.0,
+       "osmWay": 1437052623,
+       "fromOsmNode": 13208076099,
+       "toOsmNode": 13208076101,
+       "polyline": {
+        "points": "sjd}hA`vjjPiXiA",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 12.0,
+       "fromLevel": 0.0,
+       "toLevel": 0.0,
+       "fromOsmNode": 13208076101,
+       "polyline": {
+        "points": "}ce}hAvsjjPyES",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "duration": 1800,
+   "startTime": "2026-11-01T03:28:00Z",
+   "endTime": "2026-11-01T03:58:00Z",
+   "transfers": 0,
+   "id": "CkghJ8KGp1daQ0Apfh04Z0RJIsAyDnB0LUNhcnJpc18zODA0Oag4DrxaWkNAQXlSJjW0SSLASMDjmtcGULjkmtcGWgRXQUxLYAEKjAEKAzIxMBIuMjAyNjExMDFfMDM6MzBfcHQtQ2FycmlzXzEzNTcyXzIwMjYwNjA2XzY2XzBfNxoOcHQtQ2FycmlzXzM4MDQhqDgOvFpaQ0ApeVImNbRJIsAyDnB0LUNhcnJpc183ODA1OcumXOFdYkNAQfsdigJ9MiLASLjkmtcGUNDwmtcGWgNCVVNgAQpIGg5wdC1DYXJyaXNfNzgwNSHLplzhXWJDQCn7HYoCfTIiwDk17zhFR2JDQEGmm8QgsDIiwEjQ8JrXBlDI8ZrXBloEV0FMS2AB",
+   "legs": [
+    {
+     "mode": "WALK",
+     "from": {
+      "name": "START",
+      "lat": 38.7058,
+      "lon": -9.1431,
+      "tz": "Europe/Lisbon",
+      "departure": "2026-11-01T03:28:00Z",
+      "scheduledDeparture": "2026-11-01T03:28:00Z",
+      "vertexType": "NORMAL"
+     },
+     "to": {
+      "name": "Cais Sodré",
+      "stopId": "pt-Carris_3804",
+      "importance": 0.0027713263407349586,
+      "lat": 38.705894,
+      "lon": -9.143952999999998,
+      "tz": "Europe/Lisbon",
+      "arrival": "2026-11-01T03:30:00Z",
+      "scheduledArrival": "2026-11-01T03:30:00Z",
+      "stopCode": "3804",
+      "vertexType": "TRANSIT",
+      "modes": [
+       "SUBURBAN",
+       "SUBWAY",
+       "BUS"
+      ]
+     },
+     "duration": 120,
+     "startTime": "2026-11-01T03:28:00Z",
+     "endTime": "2026-11-01T03:30:00Z",
+     "scheduledStartTime": "2026-11-01T03:28:00Z",
+     "scheduledEndTime": "2026-11-01T03:30:00Z",
+     "realTime": false,
+     "scheduled": false,
+     "distance": 121.0,
+     "legGeometry": {
+      "points": "oglyhA`s`mP~BB??ApB??AfB??AhB??Cv@W`O??x@r@zA`BdAbB~@jB^fBLbA@z@??A`B??A`B??aRY",
+      "precision": 6,
+      "length": 25
+     },
+     "steps": [
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 7.0,
+       "fromLevel": 0.0,
+       "toLevel": 0.0,
+       "toOsmNode": 9109454795,
+       "polyline": {
+        "points": "oglyhA`s`mP~BB",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 5.0,
+       "fromLevel": 0.0,
+       "toLevel": 0.0,
+       "osmWay": 478334388,
+       "fromOsmNode": 9109454795,
+       "toOsmNode": 4715626126,
+       "polyline": {
+        "points": "oclyhAds`mPApB",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 5.0,
+       "fromLevel": 0.0,
+       "toLevel": 0.0,
+       "osmWay": 478334388,
+       "fromOsmNode": 4715626126,
+       "toOsmNode": 2305795056,
+       "polyline": {
+        "points": "qclyhAvv`mPAfB",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 5.0,
+       "fromLevel": 0.0,
+       "toLevel": 0.0,
+       "osmWay": 478334388,
+       "fromOsmNode": 2305795056,
+       "toOsmNode": 5849582939,
+       "polyline": {
+        "points": "sclyhA~y`mPAhB",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 25.0,
+       "fromLevel": 0.0,
+       "toLevel": 0.0,
+       "osmWay": 618947856,
+       "fromOsmNode": 5849582939,
+       "toOsmNode": 5849582950,
+       "polyline": {
+        "points": "uclyhAh}`mPCv@W`O",
+        "precision": 6,
+        "length": 3
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 33.0,
+       "fromLevel": 0.0,
+       "toLevel": 0.0,
+       "osmWay": 618947853,
+       "fromOsmNode": 5849582950,
+       "toOsmNode": 5849582918,
+       "polyline": {
+        "points": "qdlyhAboamPx@r@zA`BdAbB~@jB^fBLbA@z@",
+        "precision": 6,
+        "length": 8
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 4.0,
+       "fromLevel": 0.0,
+       "toLevel": 0.0,
+       "osmWay": 618947846,
+       "fromOsmNode": 5849582918,
+       "toOsmNode": 376775287,
+       "polyline": {
+        "points": "ezkyhApabmPA`B",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 4.0,
+       "fromLevel": 0.0,
+       "toLevel": 0.0,
+       "osmWay": 618947846,
+       "fromOsmNode": 376775287,
+       "toOsmNode": 5849582917,
+       "polyline": {
+        "points": "gzkyhArdbmPA`B",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 33.0,
+       "fromLevel": 0.0,
+       "toLevel": 0.0,
+       "fromOsmNode": 5849582917,
+       "polyline": {
+        "points": "izkyhAtgbmPaRY",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      }
+     ]
+    },
+    {
+     "mode": "BUS",
+     "from": {
+      "name": "Cais Sodré",
+      "stopId": "pt-Carris_3804",
+      "importance": 0.0027713263407349586,
+      "lat": 38.705894,
+      "lon": -9.143952999999998,
+      "tz": "Europe/Lisbon",
+      "departure": "2026-11-01T03:30:00Z",
+      "scheduledDeparture": "2026-11-01T03:30:00Z",
+      "stopCode": "3804",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "departureTimestampReason": "NO_RT_DATA",
+      "modes": [
+       "SUBURBAN",
+       "SUBWAY",
+       "BUS"
+      ]
+     },
+     "to": {
+      "name": "Estação Oriente",
+      "stopId": "pt-Carris_7805",
+      "importance": 0.00010284069867338985,
+      "lat": 38.76849000000001,
+      "lon": -9.098609999999999,
+      "tz": "Europe/Lisbon",
+      "arrival": "2026-11-01T03:56:00Z",
+      "scheduledArrival": "2026-11-01T03:56:00Z",
+      "stopCode": "7805",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "arrivalTimestampReason": "NO_RT_DATA",
+      "departureTimestampReason": "NO_RT_DATA",
+      "modes": [
+       "BUS"
+      ]
+     },
+     "duration": 1560,
+     "startTime": "2026-11-01T03:30:00Z",
+     "endTime": "2026-11-01T03:56:00Z",
+     "scheduledStartTime": "2026-11-01T03:30:00Z",
+     "scheduledEndTime": "2026-11-01T03:56:00Z",
+     "realTime": false,
+     "scheduled": true,
+     "interlineWithPreviousLeg": false,
+     "headsign": "Prior Velho",
+     "tripFrom": {
+      "name": "Cais Sodré",
+      "stopId": "pt-Carris_3804",
+      "importance": 0.0027713263407349586,
+      "lat": 38.705894,
+      "lon": -9.143952999999998,
+      "tz": "Europe/Lisbon",
+      "departure": "2026-11-01T03:30:00Z",
+      "scheduledDeparture": "2026-11-01T03:30:00Z",
+      "stopCode": "3804",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "departureTimestampReason": "NO_RT_DATA",
+      "modes": [
+       "SUBURBAN",
+       "SUBWAY",
+       "BUS"
+      ]
+     },
+     "tripTo": {
+      "name": "Prior Velho",
+      "stopId": "pt-Carris_16310",
+      "importance": 3.915980050805956e-05,
+      "lat": 38.79017000000001,
+      "lon": -9.124171999999998,
+      "tz": "Europe/Lisbon",
+      "arrival": "2026-11-01T04:11:00Z",
+      "scheduledArrival": "2026-11-01T04:11:00Z",
+      "stopCode": "16310",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "arrivalTimestampReason": "NO_RT_DATA",
+      "modes": [
+       "BUS"
+      ]
+     },
+     "routeId": "pt-Carris_66_0",
+     "routeUrl": "",
+     "directionId": "0",
+     "routeType": 3,
+     "agencyName": "Carris",
+     "agencyUrl": "http://www.carris.pt",
+     "agencyFareUrl": "",
+     "agencyId": "1",
+     "tripId": "20261101_03:30_pt-Carris_13572_20260606_66_0_7",
+     "routeShortName": "210",
+     "routeLongName": "Cais Sodré - Prior Velho",
+     "tripShortName": "",
+     "displayName": "210",
+     "cancelled": false,
+     "source": "pt_Carris.gtfs.zip/stop_times.txt:617069:617112",
+     "intermediateStops": [
+      {
+       "name": "Pç. Comércio",
+       "stopId": "pt-Carris_4599",
+       "importance": 0.00025078223552554846,
+       "lat": 38.706720000000004,
+       "lon": -9.136822999999998,
+       "tz": "Europe/Lisbon",
+       "arrival": "2026-11-01T03:32:00Z",
+       "departure": "2026-11-01T03:32:00Z",
+       "scheduledArrival": "2026-11-01T03:32:00Z",
+       "scheduledDeparture": "2026-11-01T03:32:00Z",
+       "stopCode": "4599",
+       "vertexType": "TRANSIT",
+       "pickupType": "NORMAL",
+       "dropoffType": "NORMAL",
+       "cancelled": false,
+       "arrivalTimestampReason": "NO_RT_DATA",
+       "departureTimestampReason": "NO_RT_DATA",
+       "modes": [
+        "BUS"
+       ]
+      },
+      {
+       "name": "Sul e Sueste",
+       "stopId": "pt-Carris_4509",
+       "importance": 0.00011658034782158211,
+       "lat": 38.707188,
+       "lon": -9.133465,
+       "tz": "Europe/Lisbon",
+       "arrival": "2026-11-01T03:33:00Z",
+       "departure": "2026-11-01T03:33:00Z",
+       "scheduledArrival": "2026-11-01T03:33:00Z",
+       "scheduledDeparture": "2026-11-01T03:33:00Z",
+       "stopCode": "4509",
+       "vertexType": "TRANSIT",
+       "pickupType": "NORMAL",
+       "dropoffType": "NORMAL",
+       "cancelled": false,
+       "arrivalTimestampReason": "NO_RT_DATA",
+       "departureTimestampReason": "NO_RT_DATA",
+       "modes": [
+        "BUS"
+       ]
+      }
+     ],
+     "legGeometry": {
+      "points": "kmlyhA`hbmP?cCtDB~HLhBBfEFpBAt@Gl@Qr@q@d@eAFqANmLFuLOyA]aAq@q@{@UuCSiIMmDEe@?gDEgDCgCC}JSyBFG@Me@e@eBkBkGiH_d@iGsa@sAmIVg@fCy@zBy@|XoGfCiBxBkCjBqD`BoE`AkEz@gGJqFGeFcPqfAeK{p@iC{PgIqi@cFu\\wCyRsAgIqHof@eKaq@yAuKqOmbACsDVoA\\qAdEcDzAIj@g@VYJo@HiAIyAg@eBwBiI?EsDsOoA_DaAiB{@cAeASs@OmEsCeE_HmAmDyKi[kCkHiG{Q_Xyv@kBaGaBsEs[q{@yBqFiD{H_IoPiBqDqG{KoKmQcTa\\yWk`@aGiKKGmGiLcBuCiq@oqBwC}IqB_GuYuu@kCn@_Cf@iCh@cGfCiZk[}AaFoDqA{EmAuCq@{JEwBIoHaAsF_C{[ob@GG}SuX_DoDmo@go@gEqC}NuMu^ea@iBsBIE}IsJkFwFyB}Cc[mb@md@{f@m@q@GC{@}@{AaBwA_Bcc@ma@oM}D_TyDgSqDeA_@eA[sDeBoFeGs@aAwCsEm@sAe@kAGoB{FmL{@oBcCkDyFcHyA?_IqGwEqBCCcC_A{l@gVsIsEmy@}h@mUuMsFyBl@uDNwDWkDYqB?ESk@cBqEwBkE_DiE{j@s_@yBiB}PoLiQcQePqNCGgAaAiH}BuDq@oEoAoBw@_DaBwDqCuEeFkFoGeCoC}BsBmDmD{KsP{BuD}N_Xu@uA{EwI_@i@eJgPaCgEmEuGkQmWyG{J_DcE{BqBeD{CcQsOyVeTyLoKuEeEyBoBuP{OwAuAyDsD_Xm\\gDmF_EmBaMwGwX{KgEeBiAe@yIaGgMsK]]iGcIsQkMcBkA}^oVuYwVsAeAgIqIyWoVoHsFuAw@_HaC}@OICaK_CcG]_NiAqRyAgDwA_IgD_TuL{UaSGGgIeHkM}GmSsHyLuEbAyHUgIkAaIiAaIm[uG}i@{MgMqDiXuD_DpA}@pIaBbOyx@wPoQ_DwN{B_UmDMCqe@oHoTiDgBQyXiDmv@oJ{EgGiAg@mJkEqM_G_DwA_XyJGCqb@{OwZuKsDwAgE{AqVyIEC{EaBw[_L{NkFavA{j@FiCu@yFgT}UaAo@GEaUwMeCoAdKmdAjAaMjFai@JgCw[gGGC_@Eq~@iQaPwB}L{Ba|@uOm^}IqM}CGCoIsBsi@oKwIaDwJ_BcKoB}J}AqJKgKDgIv@kH|BgGtCgH`F{ErEwGvHETGBeEnHsMtQcDbAaDrCaBlDw@bFE`FtAlHfC|DbApFjA|IFpG{EhYcL`l@_If`@{G|]sAzPcAbEoBvIyIf`@a@~BoFf[aMtr@sFfWeE`Se@nCu@vDc@pCw@hDe@tCuA|G}Nrr@iB|I{AzG?@eTbbAu@lDsFfXsG|ZqL|k@iW~oAyBdK?@gY|tAeThdAuJ`K}F|FcE~AoH\\{VuCaMa@eNCcMlAwUnIEBuJjDwCjA_HJwLxDgAyCcFqN{GkT}IsVcG_P}@sB?A_AuBqEoIuCoEgZob@qGgGa@WECaLeHcEgB_ImBkC]G?{ACu@Ee@CqL@cBHcAFeo@nGsALgEb@{@H{@H{h@jFwBPoFh@_E^sALC@cj@hFaFj@a^tEsIpAw[|EsDf@qGLOAMAqCKaHiAoC}@w@a@s@g@oCwBwCaCm@uAm@oA{@qA{@iESo@[kCKiCSwM?WvN_xCb@eH~C{p@jCcg@fD{W~DyFbG_JjJmBjAUzAw@ZSn@u@f@wAJkA?OHkAIsA?CEYMi@g@u@cAk@gAWcLVoFXiBHmET{If@e\\fB{Kd@aCJcBHCoD?aHZgkC?mGFkUBki@Raq@?iEDaIFyc@?iEDwLbB?",
+      "precision": 6,
+      "length": 487
+     },
+     "bikesAllowed": false,
+     "wheelchairAccessible": "NOT_ACCESSIBLE",
+     "reservation": "NONE"
+    },
+    {
+     "mode": "WALK",
+     "from": {
+      "name": "Estação Oriente",
+      "stopId": "pt-Carris_7805",
+      "importance": 0.00010284069867338985,
+      "lat": 38.76849000000001,
+      "lon": -9.098609999999999,
+      "tz": "Europe/Lisbon",
+      "arrival": "2026-11-01T03:56:00Z",
+      "departure": "2026-11-01T03:56:00Z",
+      "scheduledArrival": "2026-11-01T03:56:00Z",
+      "scheduledDeparture": "2026-11-01T03:56:00Z",
+      "stopCode": "7805",
+      "vertexType": "TRANSIT",
+      "cancelled": false,
+      "arrivalTimestampReason": "NO_RT_DATA",
+      "departureTimestampReason": "NO_RT_DATA",
+      "modes": [
+       "BUS"
+      ]
+     },
+     "to": {
+      "name": "END",
+      "lat": 38.7678,
+      "lon": -9.099,
+      "tz": "Europe/Lisbon",
+      "arrival": "2026-11-01T03:58:00Z",
+      "scheduledArrival": "2026-11-01T03:58:00Z",
+      "vertexType": "NORMAL"
+     },
+     "duration": 120,
+     "startTime": "2026-11-01T03:56:00Z",
+     "endTime": "2026-11-01T03:58:00Z",
+     "scheduledStartTime": "2026-11-01T03:56:00Z",
+     "scheduledEndTime": "2026-11-01T03:58:00Z",
+     "realTime": false,
+     "scheduled": false,
+     "distance": 106.0,
+     "legGeometry": {
+      "points": "muf}hAjrijP`CJ??Al@??dAD??`DN??lEP??K~D??C~A??E`B??I~D??EbB??^@???J??BH??FD??FB??HA??DE??DG??@K??^B??vAF??tER??tLd@",
+      "precision": 6,
+      "length": 46
+     },
+     "steps": [
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 7.0,
+       "fromLevel": 0.0,
+       "toLevel": 0.0,
+       "toOsmNode": 13208076061,
+       "polyline": {
+        "points": "muf}hAjrijP`CJ",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 2.0,
+       "fromLevel": 0.0,
+       "toLevel": 0.0,
+       "osmWay": 1437052621,
+       "fromOsmNode": 13208076061,
+       "toOsmNode": 13208076121,
+       "polyline": {
+        "points": "kqf}hAvrijPAl@",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 4.0,
+       "fromLevel": 0.0,
+       "toLevel": 0.0,
+       "osmWay": 1437052650,
+       "fromOsmNode": 13208076121,
+       "toOsmNode": 13175492206,
+       "polyline": {
+        "points": "mqf}hAdtijPdAD",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "STAIRS",
+       "distance": 9.0,
+       "fromLevel": 0.0,
+       "toLevel": 1.0,
+       "osmWay": 1433586333,
+       "fromOsmNode": 13175492206,
+       "toOsmNode": 13175492208,
+       "polyline": {
+        "points": "gof}hAjtijP`DN",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 11.0,
+       "fromLevel": 1.0,
+       "toLevel": 1.0,
+       "osmWay": 1433586341,
+       "fromOsmNode": 13175492208,
+       "toOsmNode": 13175492218,
+       "polyline": {
+        "points": "ejf}hAztijPlEP",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 8.0,
+       "fromLevel": 1.0,
+       "toLevel": 1.0,
+       "osmWay": 1433586377,
+       "fromOsmNode": 13175492218,
+       "toOsmNode": 13175492135,
+       "polyline": {
+        "points": "wcf}hAluijPK~D",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 4.0,
+       "fromLevel": 1.0,
+       "toLevel": 1.0,
+       "osmWay": 1433586377,
+       "fromOsmNode": 13175492135,
+       "toOsmNode": 13175492235,
+       "polyline": {
+        "points": "cdf}hAl{ijPC~A",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 4.0,
+       "fromLevel": 1.0,
+       "toLevel": 1.0,
+       "osmWay": 1433586377,
+       "fromOsmNode": 13175492235,
+       "toOsmNode": 13175492145,
+       "polyline": {
+        "points": "gdf}hAl~ijPE`B",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 8.0,
+       "fromLevel": 1.0,
+       "toLevel": 1.0,
+       "osmWay": 1433586377,
+       "fromOsmNode": 13175492145,
+       "toOsmNode": 13175492155,
+       "polyline": {
+        "points": "mdf}hAnajjPI~D",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 4.0,
+       "fromLevel": 1.0,
+       "toLevel": 1.0,
+       "osmWay": 1433586377,
+       "fromOsmNode": 13175492155,
+       "toOsmNode": 13175492252,
+       "polyline": {
+        "points": "wdf}hAngjjPEbB",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 2.0,
+       "fromLevel": 1.0,
+       "toLevel": 1.0,
+       "osmWay": 1433586357,
+       "fromOsmNode": 13175492252,
+       "toOsmNode": 13175492371,
+       "polyline": {
+        "points": "}df}hArjjjP^@",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "ELEVATOR",
+       "distance": 0.0,
+       "fromLevel": 1.0,
+       "toLevel": 2.0,
+       "osmWay": 1433586383,
+       "fromOsmNode": 13175492371,
+       "toOsmNode": 13175492370,
+       "polyline": {
+        "points": "}cf}hAtjjjP?J",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "ELEVATOR",
+       "distance": 0.0,
+       "fromLevel": 1.0,
+       "toLevel": 2.0,
+       "osmWay": 1433586383,
+       "fromOsmNode": 13175492370,
+       "toOsmNode": 13175492316,
+       "polyline": {
+        "points": "}cf}hA`kjjPBH",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "ELEVATOR",
+       "distance": 0.0,
+       "fromLevel": 1.0,
+       "toLevel": 2.0,
+       "osmWay": 1433586383,
+       "fromOsmNode": 13175492316,
+       "toOsmNode": 13175492369,
+       "polyline": {
+        "points": "ycf}hAjkjjPFD",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "ELEVATOR",
+       "distance": 0.0,
+       "fromLevel": 1.0,
+       "toLevel": 2.0,
+       "osmWay": 1433586383,
+       "fromOsmNode": 13175492369,
+       "toOsmNode": 13175492317,
+       "polyline": {
+        "points": "qcf}hApkjjPFB",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "ELEVATOR",
+       "distance": 0.0,
+       "fromLevel": 1.0,
+       "toLevel": 2.0,
+       "osmWay": 1433586383,
+       "fromOsmNode": 13175492317,
+       "toOsmNode": 13175492314,
+       "polyline": {
+        "points": "icf}hAtkjjPHA",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "ELEVATOR",
+       "distance": 0.0,
+       "fromLevel": 1.0,
+       "toLevel": 2.0,
+       "osmWay": 1433586383,
+       "fromOsmNode": 13175492314,
+       "toOsmNode": 13175492315,
+       "polyline": {
+        "points": "_cf}hArkjjPDE",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "ELEVATOR",
+       "distance": 0.0,
+       "fromLevel": 1.0,
+       "toLevel": 2.0,
+       "osmWay": 1433586383,
+       "fromOsmNode": 13175492315,
+       "toOsmNode": 13175492368,
+       "polyline": {
+        "points": "ybf}hAlkjjPDG",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "ELEVATOR",
+       "distance": 0.0,
+       "fromLevel": 1.0,
+       "toLevel": 2.0,
+       "osmWay": 1433586383,
+       "fromOsmNode": 13175492368,
+       "toOsmNode": 13175492367,
+       "polyline": {
+        "points": "sbf}hAdkjjP@K",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 2.0,
+       "fromLevel": 1.0,
+       "toLevel": 1.0,
+       "osmWay": 1433586356,
+       "fromOsmNode": 13175492367,
+       "toOsmNode": 13175492251,
+       "polyline": {
+        "points": "qbf}hAxjjjP^B",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 5.0,
+       "fromLevel": 1.0,
+       "toLevel": 1.0,
+       "osmWay": 1433586356,
+       "fromOsmNode": 13175492251,
+       "toOsmNode": 13182271218,
+       "polyline": {
+        "points": "qaf}hA|jjjPvAF",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "STAIRS",
+       "distance": 12.0,
+       "fromLevel": 1.0,
+       "toLevel": 2.0,
+       "osmWay": 1434221903,
+       "fromOsmNode": 13182271218,
+       "toOsmNode": 13182271408,
+       "polyline": {
+        "points": "y~e}hAdkjjPtER",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      },
+      {
+       "relativeDirection": "CONTINUE",
+       "distance": 24.0,
+       "fromLevel": 0.0,
+       "toLevel": 0.0,
+       "fromOsmNode": 13182271408,
+       "polyline": {
+        "points": "cxe}hAxkjjPtLd@",
+        "precision": 6,
+        "length": 2
+       },
+       "streetName": "",
+       "exit": "",
+       "stayOn": false,
+       "area": false,
+       "toll": false,
+       "elevationUp": 0,
+       "elevationDown": 0
+      }
+     ]
+    }
+   ]
+  }
+ ],
+ "previousPageCursor": "EARLIER|1793498820",
+ "nextPageCursor": "LATER|1793503740"
+}
