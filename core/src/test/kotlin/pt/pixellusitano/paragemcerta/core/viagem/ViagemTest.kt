@@ -21,6 +21,7 @@ import pt.pixellusitano.paragemcerta.core.viagem.Evento.SAI_AGORA
 import java.io.File
 import java.time.Duration
 import java.time.Instant
+import java.util.Random
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.roundToLong
@@ -289,7 +290,8 @@ class ViagemTest {
         val passos = Tracos.correr(viagem, t0, tracoVeiculo(etapa).filter { it.s < 300 }, listOf(Entrada.JaSai(aos(300.0))))
         val ja = passos.first { it.entrada is Entrada.JaSai }
         assertEquals(Fase.A_BORDO, ja.antes.fase)
-        assertEquals(listOf(SAI_AGORA, ETAPA_SEGUINTE), ja.eventos)
+        // Já saiu: não há nada a avisar.
+        assertEquals(listOf(ETAPA_SEGUINTE), ja.eventos)
         assertEquals(1, ja.depois.etapa)
         assertEquals(Fase.A_PE, ja.depois.fase)
         assertTrue(ja.depois.avisados.isEmpty())
@@ -305,6 +307,50 @@ class ViagemTest {
         assertEquals(listOf(CHEGOU), ja.eventos)
         assertTrue(ja.depois.terminada)
         assertEquals(listOf(PREPARA_TE, SAI_AGORA, CHEGOU), eventos(passos))
+    }
+
+    @Test fun jaSaiNaUltimaEtapaANaoTocar() {
+        val etapa = autocarro()
+        val viagem = Viagem(itinerario(etapa))
+        val passos = Tracos.correr(viagem, t0, tracoVeiculo(etapa).filter { it.s < 300 }, listOf(Entrada.JaSai(aos(300.0))))
+        val ja = passos.first { it.entrada is Entrada.JaSai }
+        assertEquals(Fase.A_BORDO, ja.antes.fase)
+        assertEquals(listOf(CHEGOU), ja.eventos)
+        assertTrue(ja.depois.terminada)
+        // Metro pelo horário (chega aos 360 s): o Sai agora ficava devido aos 300 s, entre os Relogio dos 297 e dos 302 s.
+        val metro = Viagem(itinerario(metro()))
+        val noMetro = Tracos.correr(metro, aos(2.0), emptyList(), listOf(Entrada.JaSai(aos(301.0)))).first { it.entrada is Entrada.JaSai }
+        assertEquals(Fase.A_BORDO, noMetro.antes.fase)
+        assertEquals(setOf(PREPARA_TE), noMetro.antes.avisados)
+        assertEquals(listOf(CHEGOU), noMetro.eventos)
+    }
+
+    @Test fun paradoNaParagemComRuidoNaoEmbarca() {
+        // Cinco minutos à espera, com GPS de σ 25 m: o máximo do ruído passa de A[0] + 60, mas não duas vezes seguidas.
+        val etapa = autocarro(partidaS = 600.0)
+        val viagem = Viagem(itinerario(etapa))
+        for (semente in 1..5) {
+            val rnd = Random(semente.toLong())
+            val posicoes = (0 until 150).map { i ->
+                val (lat, lon) = ponto(rnd.nextGaussian() * 25, rnd.nextGaussian() * 25)
+                Posicao(i * 2.0, lat, lon, 37.5f)
+            }
+            val passos = Tracos.correr(viagem, t0, posicoes).filter { it.entrada.hora < aos(300.0) }
+            assertTrue("semente $semente", passos.all { it.depois.fase == Fase.ESPERA })
+        }
+    }
+
+    @Test fun umSaltoDeRuidoNaoEmbarca() {
+        // Uma posição a 70 m pela linha e logo a seguir de volta à paragem.
+        val etapa = autocarro(partidaS = 600.0)
+        val viagem = Viagem(itinerario(etapa))
+        val paragem = etapa.paragens[0]
+        val (lat70, lon70) = ponto(70.0, 0.0)
+        val posicoes = Tracos.parado(paragem.lat, paragem.lon, 0.0, 100.0) + Posicao(100.0, lat70, lon70) +
+            Tracos.parado(paragem.lat, paragem.lon, 102.0, 300.0)
+        val passos = Tracos.correr(viagem, t0, posicoes).filter { it.entrada.hora < aos(300.0) }
+        assertTrue(passos.first { it.entrada.hora == aos(100.0) && it.entrada is Entrada.Gps }.depois.progresso > 60.0)
+        assertTrue(passos.all { it.depois.fase == Fase.ESPERA })
     }
 
     @Test fun retomarDepoisDeGravarNaoRepeteAvisos() {

@@ -64,12 +64,14 @@ enum class Evento { PREPARA_TE, SAI_AGORA, ETAPA_SEGUINTE, CHEGOU }
  * que faltam até ao fim da etapa. velocidade: m/s ao longo da linha (a pé, a aproximar-se ou afastar-se do fim).
  * ultimoGps: a hora da última posição aceite; no início, a da viagem (o GPS tem 60 s para arrancar).
  * avisados: os avisos já dados na etapa atual.
+ * avancou: à espera, a última posição aceite levou P para a frente e para lá de A[0] + 60 (meio embarque).
  */
 @Serializable
 data class EstadoViagem(
     val etapa: Int, val fase: Fase, val progresso: Double, val atrasoS: Long,
     val velocidade: Double, val origem: Origem, val ultimoGps: Instant?, val avisados: Set<Evento>,
     val altaPrecisao: Boolean, val silenciado: Boolean, val terminada: Boolean, val atualizado: Instant,
+    val avancou: Boolean = false,
 )
 
 /** O trip-plan.json: a rota escolhida e as definições do aviso (o processo :trip não lê as definições da app). */
@@ -150,8 +152,14 @@ class Viagem(val plano: Itinerario) {
         if (x is Entrada.Relogio && s.fase == Fase.A_BORDO && s.origem == Origem.HORARIO) {
             s = s.copy(progresso = max(s.progresso, percurso.progressoEm(x.hora.minusSeconds(s.atrasoS))))
         }
-        if (aceite && s.fase == Fase.ESPERA && e.progresso > a[0] + EMBARQUE_M && s.progresso > a[0] + EMBARQUE_M && s.velocidade > EMBARQUE_MS) {
-            s = s.copy(fase = Fase.A_BORDO, atrasoS = segundosEntre(percurso.horaEm(s.progresso), x.hora))
+        if (aceite && s.fase == Fase.ESPERA) {
+            // Embarca com duas posições aceites seguidas a levar P para a frente, para lá de A[0] + 60: um salto
+            // do ruído de quem espera parado na paragem não chega.
+            val avancou = s.progresso > e.progresso && s.progresso > a[0] + EMBARQUE_M
+            s = s.copy(avancou = avancou)
+            if (avancou && e.avancou && s.velocidade > EMBARQUE_MS) {
+                s = s.copy(fase = Fase.A_BORDO, atrasoS = segundosEntre(percurso.horaEm(s.progresso), x.hora))
+            }
         }
         return avaliar(s, x.hora, jaSai = x is Entrada.JaSai, emptyList())
     }
@@ -187,7 +195,8 @@ class Viagem(val plano: Itinerario) {
         val horario = e.origem == Origem.HORARIO
         var s = e.copy(altaPrecisao = e.altaPrecisao || saiu(d - ALTA_PARAGENS) || falta <= ALTA_TEMPO || d <= ALTA_PARAGENS)
         val eventos = antes.toMutableList()
-        if (s.fase == Fase.A_BORDO) {
+        // Depois de "Já saí" não se toca nada: só se muda de etapa.
+        if (s.fase == Fase.A_BORDO && !jaSai) {
             if (Evento.PREPARA_TE !in s.avisados && (saiu(d - PREPARA_ANTES) || falta <= PREPARA_TEMPO)) eventos += Evento.PREPARA_TE
             val perto = saiu(d - 1) && a[d] - s.progresso <= max(SAI_M, s.velocidade * SAI_S)
             if (Evento.SAI_AGORA !in s.avisados && (perto || (horario && falta <= SAI_TEMPO))) eventos += Evento.SAI_AGORA
@@ -197,7 +206,7 @@ class Viagem(val plano: Itinerario) {
         val fim = jaSai || (s.fase == Fase.A_BORDO &&
             ((!horario && s.progresso >= a[d] - FIM_M) || (horario && agora >= eta.plus(FIM_HORARIO))))
         if (!fim) return s to eventos
-        if (Evento.SAI_AGORA !in s.avisados) eventos += Evento.SAI_AGORA
+        if (!jaSai && Evento.SAI_AGORA !in s.avisados) eventos += Evento.SAI_AGORA
         return fimDeEtapa(s, agora, eventos)
     }
 
@@ -210,7 +219,7 @@ class Viagem(val plano: Itinerario) {
     private fun naEtapa(e: EstadoViagem, i: Int, agora: Instant): EstadoViagem {
         val etapa = plano.etapas[i]
         val percurso = percursos[i]
-        val base = e.copy(etapa = i, velocidade = 0.0, avisados = emptySet(), altaPrecisao = false)
+        val base = e.copy(etapa = i, velocidade = 0.0, avisados = emptySet(), altaPrecisao = false, avancou = false)
         if (percurso == null) {
             return base.copy(fase = Fase.A_PE, atrasoS = 0, progresso = distanciaMetros(etapa.de.lat, etapa.de.lon, etapa.para.lat, etapa.para.lon))
         }

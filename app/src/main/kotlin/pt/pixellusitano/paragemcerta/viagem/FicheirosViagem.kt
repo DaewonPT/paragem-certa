@@ -2,13 +2,15 @@ package pt.pixellusitano.paragemcerta.viagem
 
 import android.app.ActivityManager
 import android.content.Context
-import android.util.AtomicFile
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import pt.pixellusitano.paragemcerta.core.viagem.EstadoViagem
 import pt.pixellusitano.paragemcerta.core.viagem.PlanoViagem
 import java.io.File
+import java.io.FileOutputStream
 import java.io.IOException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.time.Duration
 import java.time.Instant
 
@@ -52,30 +54,38 @@ object FicheirosViagem {
 
     /** Só os dois ficheiros: o gps.csv das versões de depuração fica para o autor o copiar. */
     fun apagar(c: Context) {
-        AtomicFile(ficheiro(c, PLANO)).delete()
-        AtomicFile(ficheiro(c, ESTADO)).delete()
+        ficheiro(c, PLANO).delete()
+        ficheiro(c, ESTADO).delete()
     }
 
     /** O serviço está vivo se a app tiver um processo cujo nome acaba em ":trip". */
     fun emCurso(c: Context): Boolean =
         c.getSystemService(ActivityManager::class.java).runningAppProcesses.orEmpty().any { it.processName.endsWith(":trip") }
 
+    /**
+     * Escreve num temporário da mesma pasta e troca-o pelo ficheiro de uma vez. Não é AtomicFile: esse, ao ler, apaga
+     * o ".new" que o outro processo esteja a escrever, e a última escrita do :trip (terminada, silenciado) perdia-se.
+     */
     private fun gravar(f: File, texto: String) {
-        f.parentFile?.mkdirs()
-        val a = AtomicFile(f)
-        val saida = a.startWrite()
+        val pasta = f.parentFile!!.apply { mkdirs() }
+        val temp = File.createTempFile(f.name, ".tmp", pasta)
         try {
-            saida.write(texto.encodeToByteArray())
-            a.finishWrite(saida)
-        } catch (e: IOException) {
-            a.failWrite(saida)
-            throw e
+            FileOutputStream(temp).use {
+                it.write(texto.encodeToByteArray())
+                it.fd.sync()
+            }
+            Files.move(temp.toPath(), f.toPath(), StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING)
+        } finally {
+            temp.delete()
         }
     }
 
-    /** Um ficheiro que não existe ou está estragado (processo morto a meio, versão antiga) é o mesmo que não haver nada. */
+    /**
+     * Um ficheiro que não existe ou está estragado (versão antiga) é o mesmo que não haver nada. Quem lê não apaga
+     * nem renomeia nada: o temporário a meio pode ser do outro processo.
+     */
     private inline fun <reified T> ler(f: File): T? = try {
-        json.decodeFromString<T>(AtomicFile(f).readFully().decodeToString())
+        json.decodeFromString<T>(f.readText())
     } catch (_: Exception) {
         null
     }

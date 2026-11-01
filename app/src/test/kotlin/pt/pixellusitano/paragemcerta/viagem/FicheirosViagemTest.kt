@@ -7,7 +7,6 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
-import org.junit.Assume.assumeFalse
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -39,14 +38,23 @@ class FicheirosViagemTest {
     }
 
     @Test fun gravarOutraVezSubstitui() {
-        // Como no PreferenciasTest: o AtomicFile acaba com um rename sobre o ficheiro que já existe, que o JDK no Windows
-        // recusa (fica um trip-state.json.new por renomear). No Android e no CI (Linux) substitui.
-        assumeFalse(System.getProperty("os.name").orEmpty().startsWith("Windows"))
         FicheirosViagem.gravarPlano(c, plano)
         FicheirosViagem.gravarEstado(c, estado)
         val depois = estado.copy(etapa = 1, silenciado = false)
         FicheirosViagem.gravarEstado(c, depois)
         assertEquals(depois, FicheirosViagem.lerEstado(c, rota.partida))
+        assertEquals(setOf("trip-plan.json", "trip-state.json"), pasta.list()!!.toSet())
+    }
+
+    @Test fun lerNaoApagaOQueOOutroProcessoEstaAEscrever() {
+        // A escrita a meio do :trip (o ".new" do AtomicFile de antes, o temporário de agora) não é da app.
+        FicheirosViagem.gravarPlano(c, plano)
+        FicheirosViagem.gravarEstado(c, estado)
+        val aMeio = listOf(File(pasta, "trip-state.json.new"), File(pasta, "trip-state.json123.tmp"))
+        aMeio.forEach { it.writeText("{") }
+        assertEquals(estado, FicheirosViagem.lerEstado(c, rota.partida))
+        assertEquals(plano, FicheirosViagem.lerPlano(c))
+        aMeio.forEach { assertTrue(it.name, it.exists()) }
     }
 
     @Test fun semFicheirosNaoHaNada() {
