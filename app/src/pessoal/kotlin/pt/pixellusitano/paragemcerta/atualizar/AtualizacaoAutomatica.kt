@@ -10,9 +10,12 @@ import pt.pixellusitano.paragemcerta.core.rede.userAgent
 
 enum class Decisao { NADA, ESPERAR, INSTALAR }
 
-/** Só instala com a opção ligada e uma versão nova; com a app em uso espera, para a instalação não a matar a meio. */
-fun decidir(nova: NovaVersao?, ligado: Boolean, emPrimeiroPlano: Boolean): Decisao = when {
-    !ligado || nova == null -> Decisao.NADA
+/**
+ * Só instala com a opção ligada e uma versão nova; com a app em uso espera, para a instalação não a matar a meio.
+ * Se essa versão já está descarregada à espera de confirmação ([pendente]), não repete a transferência nem abre outra sessão.
+ */
+fun decidir(nova: NovaVersao?, ligado: Boolean, emPrimeiroPlano: Boolean, pendente: String? = null): Decisao = when {
+    !ligado || nova == null || nova.tag == pendente -> Decisao.NADA
     emPrimeiroPlano -> Decisao.ESPERAR
     else -> Decisao.INSTALAR
 }
@@ -22,7 +25,7 @@ class AtualizacaoAutomatica(contexto: Context, parametros: WorkerParameters) : C
     override suspend fun doWork(): Result = try {
         val ligado = Atualizacoes.atualizarSozinha(applicationContext)
         val nova = if (ligado) VerificadorVersoes(OkHttpHttp(userAgent(BuildConfig.VERSION_NAME))).verificar(BuildConfig.VERSION_CODE) else null
-        when (decidir(nova, ligado, emPrimeiroPlano(applicationContext))) {
+        when (decidir(nova, ligado, emPrimeiroPlano(applicationContext), Atualizacoes.pendente(applicationContext)?.tag)) {
             Decisao.NADA -> Result.success()
             Decisao.ESPERAR -> Result.retry() // o WorkManager volta a tentar mais tarde, com recuo crescente
             Decisao.INSTALAR -> {

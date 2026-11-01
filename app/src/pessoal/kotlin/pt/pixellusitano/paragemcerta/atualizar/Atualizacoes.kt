@@ -1,5 +1,6 @@
 package pt.pixellusitano.paragemcerta.atualizar
 
+import android.Manifest
 import android.annotation.SuppressLint
 import android.app.ActivityManager
 import android.app.Notification
@@ -10,6 +11,7 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Process
 import androidx.work.Constraints
@@ -73,6 +75,10 @@ object Atualizacoes {
     private const val DADOS_MOVEIS = "usar_dados_moveis"
     private const val NOVIDADES_TAG = "novidades_tag"
     private const val NOVIDADES_NOTAS = "novidades_notas"
+    private const val PENDENTE_TAG = "pendente_tag"
+    private const val PENDENTE_URL = "pendente_url"
+    private const val PENDENTE_NOTAS = "pendente_notas"
+    private const val NOTIFICACOES_PEDIDAS = "notificacoes_pedidas"
     private const val TRABALHO = "atualizacao-automatica"
 
     /** Canal das notificações de "atualização pronta". */
@@ -136,7 +142,7 @@ object Atualizacoes {
                 s.fsync(saida)
             }
             val aviso = PendingIntent.getBroadcast(
-                contexto, sessao, Intent(contexto, ResultadoInstalacao::class.java),
+                contexto, sessao, Intent(contexto, ResultadoInstalacao::class.java).comVersao(nova),
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
             )
             guardarNovidades(contexto, nova)
@@ -158,7 +164,44 @@ object Atualizacoes {
     }
 
     fun marcarNovidadesVistas(contexto: Context) = prefs(contexto).edit().remove(NOVIDADES_TAG).remove(NOVIDADES_NOTAS).apply()
+
+    /** Guarda a versão cuja instalação ficou à espera de um toque do utilizador, para a app a mostrar quando abrir. */
+    @SuppressLint("ApplySharedPref") // commit e não apply: o processo pode morrer logo a seguir ao receiver
+    internal fun guardarPendente(contexto: Context, nova: NovaVersao) {
+        prefs(contexto).edit().putString(PENDENTE_TAG, nova.tag).putString(PENDENTE_URL, nova.urlApk).putString(PENDENTE_NOTAS, nova.notas).commit()
+    }
+
+    /** A versão à espera de confirmação, enquanto for mais nova do que a que está a correr; senão já foi instalada (ou ultrapassada) e apaga-se. */
+    fun pendente(contexto: Context): NovaVersao? {
+        val prefs = prefs(contexto)
+        val tag = prefs.getString(PENDENTE_TAG, null) ?: return null
+        if (!isNewer(BuildConfig.VERSION_CODE, tag)) {
+            limparPendente(contexto)
+            return null
+        }
+        return NovaVersao(tag, prefs.getString(PENDENTE_URL, "").orEmpty(), prefs.getString(PENDENTE_NOTAS, "").orEmpty())
+    }
+
+    fun limparPendente(contexto: Context) = prefs(contexto).edit().remove(PENDENTE_TAG).remove(PENDENTE_URL).remove(PENDENTE_NOTAS).apply()
+
+    /**
+     * Android 13+: sem a permissão a notificação "atualização pronta" é descartada. Pede-se uma só vez, e só a quem deixou
+     * a atualização automática ligada (é ela que precisa de avisar); quem recusa pode dá-la nas definições do sistema.
+     */
+    fun pedirNotificacoes(contexto: Context): Boolean =
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && atualizarSozinha(contexto) &&
+            !prefs(contexto).getBoolean(NOTIFICACOES_PEDIDAS, false) &&
+            contexto.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+
+    fun marcarNotificacoesPedidas(contexto: Context) = prefs(contexto).edit().putBoolean(NOTIFICACOES_PEDIDAS, true).apply()
 }
+
+/** O instalador devolve ao receiver o intent com que a sessão foi criada, por isso a versão viaja nele. */
+internal fun Intent.comVersao(nova: NovaVersao): Intent =
+    putExtra("versao_tag", nova.tag).putExtra("versao_url", nova.urlApk).putExtra("versao_notas", nova.notas)
+
+internal fun Intent.versao(): NovaVersao? =
+    getStringExtra("versao_tag")?.let { NovaVersao(it, getStringExtra("versao_url").orEmpty(), getStringExtra("versao_notas").orEmpty()) }
 
 /** Há uma atividade desta app à frente do utilizador? Instalar agora mataria a app a meio do uso. */
 internal fun emPrimeiroPlano(contexto: Context): Boolean {
@@ -176,7 +219,13 @@ class ResultadoInstalacao : BroadcastReceiver() {
         @Suppress("DEPRECATION")
         val confirmar = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT) ?: return
         confirmar.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        if (emPrimeiroPlano(contexto)) contexto.startActivity(confirmar) else avisar(contexto, confirmar)
+        if (emPrimeiroPlano(contexto)) {
+            contexto.startActivity(confirmar)
+        } else {
+            // A notificação pode ser descartada (Android 13+ sem permissão): a app mostra o aviso quando abrir.
+            intent.versao()?.let { Atualizacoes.guardarPendente(contexto, it) }
+            avisar(contexto, confirmar)
+        }
     }
 
     private fun avisar(contexto: Context, confirmar: Intent) {

@@ -23,4 +23,12 @@ object Atualizacoes {
     fun novidadesPorMostrar(contexto: Context): NovaVersao? = null
 
     fun marcarNovidadesVistas(contexto: Context) = Unit
+
+    fun pendente(contexto: Context): NovaVersao? = null
+
+    fun limparPendente(contexto: Context) = Unit
+
+    fun pedirNotificacoes(contexto: Context): Boolean = false
+
+    fun marcarNotificacoesPedidas(contexto: Context) = Unit
 }

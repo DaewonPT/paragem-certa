@@ -15,4 +15,13 @@ class AtualizacaoAutomaticaTest {
     @Test fun comAppEmSegundoPlanoInstala() = assertEquals(Decisao.INSTALAR, decidir(nova, ligado = true, emPrimeiroPlano = false))
 
     @Test fun desligadaGanhaMesmoComAppEmUso() = assertEquals(Decisao.NADA, decidir(nova, ligado = false, emPrimeiroPlano = true))
+
+    @Test fun confirmacaoPendenteDaMesmaVersaoNaoDescarregaOutraVez() =
+        assertEquals(Decisao.NADA, decidir(nova, ligado = true, emPrimeiroPlano = false, pendente = nova.tag))
+
+    @Test fun confirmacaoPendenteGanhaMesmoComAppEmUso() =
+        assertEquals(Decisao.NADA, decidir(nova, ligado = true, emPrimeiroPlano = true, pendente = nova.tag))
+
+    @Test fun confirmacaoPendenteDeVersaoAnteriorNaoImpedeAMaisNova() =
+        assertEquals(Decisao.INSTALAR, decidir(nova, ligado = true, emPrimeiroPlano = false, pendente = "v0.0.9"))
 }
