@@ -10,17 +10,25 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.GraphicsMode
+import pt.pixellusitano.paragemcerta.core.fontes.transitous.TransitousParser
 import pt.pixellusitano.paragemcerta.core.modelo.Chegada
+import pt.pixellusitano.paragemcerta.core.modelo.Lugar
+import pt.pixellusitano.paragemcerta.core.modelo.TipoLugar
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.Linha
 import pt.pixellusitano.paragemcerta.core.modelo.Modo
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
 import pt.pixellusitano.paragemcerta.dados.EstadoChegadas
+import pt.pixellusitano.paragemcerta.dados.LocalGuardado
+import pt.pixellusitano.paragemcerta.dados.ViagemRecente
+import pt.pixellusitano.paragemcerta.dados.fixture
 import pt.pixellusitano.paragemcerta.ui.tema.ModoTema
 import pt.pixellusitano.paragemcerta.ui.tema.TemaParagemCerta
 import java.time.Instant
@@ -80,6 +88,29 @@ class PainelScreenshotTest {
         val d = LocalDensity.current
         CompositionLocalProvider(LocalDensity provides Density(d.density, fontScale = 2f)) {
             TemaParagemCerta(ModoTema.CLARO) { Painel(bom) }
+        }
+    }
+
+    private val rota = TransitousParser.rotas(fixture("transitous-plan.json"))[0]
+    private val aqui = 38.7058 to -9.1431
+    private fun casa(lat: Double) = LocalGuardado(1, "Casa", Lugar("Casa", lat, -9.1431, TipoLugar.LOCAL), "CASA", 0)
+
+    @Test fun casaPertoNaoMostraCartao() {
+        assertTrue(locaisParaIr(listOf(casa(aqui.first + 0.0027)), aqui).isEmpty()) // uns 300 m
+        assertEquals(1, locaisParaIr(listOf(casa(aqui.first + 0.027)), aqui).size) // uns 3 km
+        assertTrue(locaisParaIr(listOf(casa(aqui.first + 0.027)), null).isEmpty())
+    }
+
+    @Test fun painel_casa() = captureRoboImage("src/test/screenshots/painel_casa.png") {
+        TemaParagemCerta(ModoTema.CLARO) {
+            PainelConteudo(
+                favoritas = emptyList(), pertoDeTi = emptyList(), linhas = linhas, agora = agora,
+                aoAbrirParagem = {}, aoPesquisar = {}, modifier = Modifier.width(360.dp),
+                irPara = listOf(casa(aqui.first + 0.027) to rota),
+                ultima = ViagemRecente(
+                    Lugar("A minha posição", 38.7, -9.14, TipoLugar.POSICAO), Lugar("Oriente", 38.7678, -9.099, TipoLugar.LOCAL), agora,
+                ),
+            )
         }
     }
 

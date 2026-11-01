@@ -99,7 +99,12 @@ fun Navegacao(ligacoes: Ligacoes) {
                         aoLimparLinha = { nav.popBackStack() },
                         aoIrPara = { nav.navigate(it) },
                         painel = { posicao ->
-                            Painel(repositorio, posicao, aoAbrirParagem = { nav.navigate(Paragem(it.chave)) }, aoPesquisar = { nav.navigate(Pesquisa) })
+                            Painel(
+                                repositorio, posicao,
+                                aoAbrirParagem = { nav.navigate(Paragem(it.chave)) },
+                                aoPesquisar = { nav.navigate(Pesquisa) },
+                                aoAbrirRotas = { nav.navigate(it) },
+                            )
                         },
                     )
                 }

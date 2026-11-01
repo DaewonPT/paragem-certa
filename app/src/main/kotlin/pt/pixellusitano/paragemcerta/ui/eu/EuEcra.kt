@@ -19,10 +19,15 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import android.widget.Toast
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -62,6 +67,7 @@ fun EuEcra(
     val favoritas by remember { repositorio.favoritas() }.collectAsStateWithLifecycle(initialValue = emptyList())
     val modo by preferencias.modo.collectAsStateWithLifecycle(initialValue = ModoTema.SISTEMA)
     val limites by preferencias.limites.collectAsStateWithLifecycle(initialValue = Limites())
+    val apagados = stringResource(R.string.eu_dados_apagados)
     EuConteudo(
         favoritas = favoritas,
         modo = modo,
@@ -80,6 +86,10 @@ fun EuEcra(
         aoEnviarOpiniao = { runCatching { contexto.startActivity(intentOpiniao(BuildConfig.VERSION_NAME)) } },
         modifier = Modifier.fillMaxSize(),
         aoAbrirLocais = aoAbrirLocais,
+        aoApagarDados = {
+            escopo.launch { repositorio.apagarDadosDoTelemovel() }
+            Toast.makeText(contexto, apagados, Toast.LENGTH_SHORT).show()
+        },
     )
 }
 
@@ -97,6 +107,7 @@ fun EuConteudo(
     aoEnviarOpiniao: () -> Unit,
     modifier: Modifier = Modifier,
     aoAbrirLocais: () -> Unit = {},
+    aoApagarDados: () -> Unit = {},
 ) {
     Column(modifier.background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState()).statusBarsPadding().padding(16.dp)) {
         Text(stringResource(R.string.eu_favoritas), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
@@ -119,6 +130,8 @@ fun EuConteudo(
 
         Definicoes(modo, limites, aoMudarModo, aoMudarLimites, Modifier.padding(top = 24.dp))
 
+        Privacidade(aoApagarDados, Modifier.padding(top = 24.dp))
+
         Column(Modifier.padding(top = 24.dp)) {
             Ligacao(stringResource(R.string.eu_locais), aoAbrirLocais)
             Ligacao(stringResource(R.string.eu_sobre), aoAbrirSobre)
@@ -127,11 +140,35 @@ fun EuConteudo(
     }
 }
 
+/** Apagar dados deste telemóvel, depois de confirmar. */
 @Composable
-private fun Ligacao(texto: String, aoTocar: () -> Unit) {
+fun Privacidade(aoApagarDados: () -> Unit, modifier: Modifier = Modifier) {
+    var confirmar by remember { mutableStateOf(false) }
+    Column(modifier.background(MaterialTheme.colorScheme.background)) {
+        Text(stringResource(R.string.eu_privacidade), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
+        FrisoAzulejo(Modifier.fillMaxWidth().padding(vertical = 8.dp))
+        Ligacao(stringResource(R.string.eu_apagar_dados), { confirmar = true }, MaterialTheme.colorScheme.error)
+    }
+    if (confirmar) {
+        AlertDialog(
+            onDismissRequest = { confirmar = false },
+            text = { Text(stringResource(R.string.eu_apagar_confirmar)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    confirmar = false
+                    aoApagarDados()
+                }) { Text(stringResource(R.string.locais_apagar), color = MaterialTheme.colorScheme.error) }
+            },
+            dismissButton = { TextButton(onClick = { confirmar = false }) { Text(stringResource(R.string.cancelar)) } },
+        )
+    }
+}
+
+@Composable
+private fun Ligacao(texto: String, aoTocar: () -> Unit, cor: Color = MaterialTheme.colorScheme.primary) {
     Text(
         texto,
-        color = MaterialTheme.colorScheme.primary,
+        color = cor,
         style = MaterialTheme.typography.titleMedium,
         modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button, onClick = aoTocar).padding(vertical = 12.dp),
     )

@@ -35,6 +35,10 @@ class EuScreenshotTest {
 
     @Test fun eu_escuro() = captureRoboImage("src/test/screenshots/eu_escuro.png") { TemaParagemCerta(ModoTema.ESCURO) { Eu() } }
 
+    @Test fun eu_privacidade() = captureRoboImage("src/test/screenshots/eu_privacidade.png") {
+        TemaParagemCerta(ModoTema.CLARO) { Privacidade(aoApagarDados = {}, modifier = Modifier.width(360.dp)) }
+    }
+
     @Test fun definicoes_claro() = captureRoboImage("src/test/screenshots/definicoes_claro.png") {
         TemaParagemCerta(ModoTema.CLARO) {
             Definicoes(ModoTema.ESCURO, Limites(3, 8), aoMudarModo = {}, aoMudarLimites = {}, modifier = Modifier.width(360.dp))

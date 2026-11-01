@@ -2,7 +2,9 @@ package pt.pixellusitano.paragemcerta.ui.inicio
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -10,11 +12,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -23,19 +27,69 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.core.atraso.aindaPorChegar
+import pt.pixellusitano.paragemcerta.core.modelo.Filtros
+import pt.pixellusitano.paragemcerta.core.modelo.Itinerario
 import pt.pixellusitano.paragemcerta.core.modelo.Linha
+import pt.pixellusitano.paragemcerta.core.modelo.Lugar
+import pt.pixellusitano.paragemcerta.core.modelo.TipoLugar
+import pt.pixellusitano.paragemcerta.core.rede.Resultado
+import pt.pixellusitano.paragemcerta.core.regras.distanciaMetros
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
 import pt.pixellusitano.paragemcerta.core.regras.favoritaPorOmissao
 import pt.pixellusitano.paragemcerta.core.regras.maisProximas
 import pt.pixellusitano.paragemcerta.dados.EstadoChegadas
+import pt.pixellusitano.paragemcerta.dados.LocalGuardado
+import pt.pixellusitano.paragemcerta.dados.ViagemRecente
+import pt.pixellusitano.paragemcerta.ui.Rotas
+import pt.pixellusitano.paragemcerta.ui.rotas.MINHA_POSICAO
+import pt.pixellusitano.paragemcerta.ui.rotas.horaLisboa
+import pt.pixellusitano.paragemcerta.ui.rotas.paraRota
+import pt.pixellusitano.paragemcerta.ui.rotas.simboloLocal
+import pt.pixellusitano.paragemcerta.ui.rotas.simboloModo
+import pt.pixellusitano.paragemcerta.ui.rotas.textoDuracao
 import pt.pixellusitano.paragemcerta.dados.Repositorio
 import pt.pixellusitano.paragemcerta.ui.comum.FaixaEstado
 import pt.pixellusitano.paragemcerta.ui.comum.LinhaChegada
 import pt.pixellusitano.paragemcerta.ui.tema.FrisoAzulejo
+import java.time.Duration
 import java.time.Instant
 
 /** Uma paragem no painel, com as suas chegadas (estado null enquanto carrega). */
 data class BlocoParagem(val ref: RefParagem, val nome: String, val estado: EstadoChegadas?, val maximo: Int)
+
+private val VALIDADE_IR_PARA: Duration = Duration.ofMinutes(10)
+
+/** Casa e trabalho, por esta ordem, só quando estão a mais de 500 m (mais perto, vai-se a pé). Sem posição, nenhum. */
+internal fun locaisParaIr(locais: List<LocalGuardado>, posicao: Pair<Double, Double>?): List<LocalGuardado> {
+    val (lat, lon) = posicao ?: return emptyList()
+    return listOf("CASA", "TRABALHO").mapNotNull { t -> locais.firstOrNull { it.tipo == t } }
+        .filter { distanciaMetros(lat, lon, it.lugar.lat, it.lugar.lon) > 500 }
+}
+
+/** "Ir para casa": a próxima ligação (linha e hora) e a duração; sem itinerário, um convite a ver as ligações. */
+@Composable
+fun CartaoIrPara(local: LocalGuardado, itinerario: Itinerario?, aoAbrir: () -> Unit) {
+    val titulo = stringResource(if (local.tipo == "CASA") R.string.painel_ir_casa else R.string.painel_ir_trabalho)
+    val detalhe = itinerario?.let { i ->
+        val e = i.etapas.firstOrNull { !it.aPe }
+        if (e == null) "🚶 " + textoDuracao(i.duracao)
+        else stringResource(R.string.painel_proxima, e.linhaNome ?: simboloModo(e.modo), e.partida.horaLisboa(), textoDuracao(i.duracao))
+    } ?: stringResource(R.string.painel_ver_ligacoes)
+    CartaoAcao(simboloLocal(local.tipo), titulo, detalhe, aoAbrir)
+}
+
+@Composable
+private fun CartaoAcao(simbolo: String, titulo: String, detalhe: String, aoAbrir: () -> Unit) {
+    OutlinedCard(onClick = aoAbrir, modifier = Modifier.fillMaxWidth()) {
+        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(simbolo, style = MaterialTheme.typography.titleLarge)
+            Column(Modifier.weight(1f)) {
+                Text(titulo, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+                Text(detalhe, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
+    }
+}
 
 /** Conteúdo puro do painel (testado com capturas). */
 @Composable
@@ -47,9 +101,23 @@ fun PainelConteudo(
     aoAbrirParagem: (RefParagem) -> Unit,
     aoPesquisar: () -> Unit,
     modifier: Modifier = Modifier,
+    irPara: List<Pair<LocalGuardado, Itinerario?>> = emptyList(),
+    ultima: ViagemRecente? = null,
+    aoIrPara: (LocalGuardado) -> Unit = {},
+    aoRepetir: (ViagemRecente) -> Unit = {},
 ) {
     Column(modifier.background(MaterialTheme.colorScheme.surface).padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
         FrisoAzulejo(Modifier.fillMaxWidth().padding(bottom = 8.dp))
+        if (irPara.isNotEmpty() || ultima != null) {
+            Column(Modifier.padding(bottom = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                irPara.forEach { (l, i) -> CartaoIrPara(l, i) { aoIrPara(l) } }
+                ultima?.let { r ->
+                    CartaoAcao("↻", stringResource(R.string.painel_repetir), stringResource(R.string.painel_de_para, r.de.nome, r.para.nome)) {
+                        aoRepetir(r)
+                    }
+                }
+            }
+        }
         if (favoritas.isEmpty()) {
             Text(stringResource(R.string.painel_sem_favoritas), color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(vertical = 8.dp))
@@ -100,8 +168,24 @@ fun Painel(
     posicao: Pair<Double, Double>?,
     aoAbrirParagem: (RefParagem) -> Unit,
     aoPesquisar: () -> Unit,
+    aoAbrirRotas: (Rotas) -> Unit = {},
 ) {
     val favoritas by remember { repositorio.favoritas() }.collectAsStateWithLifecycle(initialValue = emptyList())
+    val locais by remember { repositorio.locais() }.collectAsStateWithLifecycle(initialValue = emptyList())
+    val recentes by remember { repositorio.recentes() }.collectAsStateWithLifecycle(initialValue = emptyList())
+    val paraIr = remember(locais, posicao) { locaisParaIr(locais, posicao) }
+    // Memória do ecrã: cada destino só volta a pedir rotas passados 10 min (e sempre que o último pedido falhou).
+    val cache = remember { mutableMapOf<Long, Pair<Instant, Itinerario?>>() }
+    val itinerarios by produceState(emptyMap<Long, Itinerario?>(), paraIr, posicao) {
+        val (lat, lon) = posicao ?: return@produceState
+        for (l in paraIr) {
+            val agora = Instant.now()
+            val i = cache[l.id]?.takeIf { Duration.between(it.first, agora) < VALIDADE_IR_PARA }?.second
+                ?: (repositorio.planear(Lugar(MINHA_POSICAO, lat, lon, TipoLugar.POSICAO), l.lugar, agora, false, Filtros()) as? Resultado.Ok)
+                    ?.valor?.minByOrNull { it.chegada }.also { cache[l.id] = agora to it }
+            value = value + (l.id to i)
+        }
+    }
     val linhas by produceState(emptyMap<String, Linha>()) {
         value = repositorio.linhasCm()
     }
@@ -129,6 +213,11 @@ fun Painel(
         aoAbrirParagem = aoAbrirParagem,
         aoPesquisar = aoPesquisar,
         modifier = Modifier.verticalScroll(rememberScrollState()),
+        irPara = paraIr.map { it to itinerarios[it.id] },
+        ultima = recentes.firstOrNull(),
+        aoIrPara = { l -> aoAbrirRotas(Rotas(destino = l.lugar.paraRota())) },
+        // "A minha posição" não se guarda como origem: volta a ser a posição de agora.
+        aoRepetir = { r -> aoAbrirRotas(Rotas(origem = r.de.takeIf { it.nome != MINHA_POSICAO }?.paraRota(), destino = r.para.paraRota())) },
     )
 }
 

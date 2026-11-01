@@ -152,6 +152,16 @@
     <string name="mais_opcoes">Mais opções</string>
     <string name="dialogo_nome">Nome</string>
     <string name="guardar">Guardar</string>
+    <string name="painel_ir_casa">Ir para casa</string>
+    <string name="painel_ir_trabalho">Ir para o trabalho</string>
+    <string name="painel_proxima">%1$s às %2$s · %3$s</string>
+    <string name="painel_ver_ligacoes">Toca para ver as ligações</string>
+    <string name="painel_repetir">Repetir a última rota</string>
+    <string name="painel_de_para">%1$s → %2$s</string>
+    <string name="eu_privacidade">Privacidade</string>
+    <string name="eu_apagar_dados">Apagar dados deste telemóvel</string>
+    <string name="eu_apagar_confirmar">Isto apaga as favoritas, os locais e as viagens recentes deste telemóvel. Continuar?</string>
+    <string name="eu_dados_apagados">Dados apagados</string>
     <string name="ok">OK</string>
     <string name="cancelar">Cancelar</string>
 </resources>
