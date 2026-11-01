@@ -107,6 +107,8 @@ class TransitousTest {
         val longa = "Setúbal (São Julião, Nossa Senhora da Anunciada e Santa Maria da Graça)"
         assertEquals(longa, zonaDe(longa, "Setúbal"))
         assertEquals(longa, zonaDe(longa, "SETÚBAL"))
+        // Só conta como "já diz o concelho" quando o nome dele acaba numa palavra inteira.
+        assertEquals("Moravia · Mora", zonaDe("Moravia", "Mora"))
     }
 
     @Test fun zonaComUmaPeca() {

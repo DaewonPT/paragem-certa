@@ -76,7 +76,8 @@ fun zonaDe(freguesia: String?, concelho: String?): String? {
     val c = concelho?.trim()?.takeIf { it.isNotEmpty() }
     return when {
         f == null -> c
-        c == null || f.startsWith(c, ignoreCase = true) -> f
+        // "Setúbal (São Julião…)" já diz o concelho; "Moravia" não diz "Mora" (tem de acabar numa palavra inteira).
+        c == null || (f.startsWith(c, ignoreCase = true) && f.getOrNull(c.length)?.isLetterOrDigit() != true) -> f
         else -> "$f · $c"
     }
 }
