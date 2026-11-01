@@ -35,6 +35,43 @@ class RegrasTest {
         assertNull(favoritaPorOmissao(emptyList(), null))
     }
 
+    @Test fun nomeBaseTiraOCais() {
+        assertEquals("Algés (Estação)", nomeBase("Algés (Estação) P12"))
+        assertEquals("Algés (Estação)", nomeBase("Algés (Estação) P1"))
+        assertEquals("Oriente", nomeBase("Oriente Cais 3"))
+        assertEquals("Entrecampos", nomeBase("Entrecampos plataforma 2b"))
+        assertEquals("Cais do Sodré (Terminal)", nomeBase("Cais do Sodré (Terminal)"))
+        assertEquals("Rua P", nomeBase("Rua P"))
+    }
+
+    private data class Ponto(val nome: String, val lat: Double, val lon: Double)
+
+    private fun agrupar(vararg pontos: Ponto) = agruparPorEstacao(pontos.toList(), Ponto::nome, Ponto::lat, Ponto::lon)
+
+    @Test fun cadaCaisDaMesmaEstacaoFicaNumGrupo() {
+        val grupos = agrupar(
+            Ponto("Algés (Estação) P1", 38.7015, -9.2300),
+            Ponto("Algés (Estação) P2", 38.7020, -9.2305),
+            Ponto("Algés (Estação) P12", 38.7025, -9.2310),
+        )
+        assertEquals(1, grupos.size)
+        assertEquals("Algés (Estação)", grupos[0].nome)
+        assertEquals(listOf("Algés (Estação) P1", "Algés (Estação) P2", "Algés (Estação) P12"), grupos[0].itens.map { it.nome })
+        assertEquals(38.7020, grupos[0].lat, 1e-9)
+        assertEquals(-9.2305, grupos[0].lon, 1e-9)
+    }
+
+    @Test fun estacoesComOMesmoNomeLongeUmaDaOutraSaoDuas() {
+        val grupos = agrupar(Ponto("Estação", 38.72, -9.14), Ponto("Estação", 38.52, -8.89))
+        assertEquals(2, grupos.size)
+        assertEquals(38.72, grupos[0].lat, 1e-9)
+        assertEquals(38.52, grupos[1].lat, 1e-9)
+    }
+
+    @Test fun agruparSemItensDaVazio() {
+        assertTrue(agrupar().isEmpty())
+    }
+
     @Test fun pausas() {
         assertEquals(Duration.ofSeconds(20), intervaloNormal(Fonte.CM))
         assertEquals(Duration.ofSeconds(60), intervaloNormal(Fonte.TRANSITOUS))

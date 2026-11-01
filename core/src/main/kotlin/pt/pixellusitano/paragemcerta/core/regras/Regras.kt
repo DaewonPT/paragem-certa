@@ -27,6 +27,30 @@ fun maisProximas(paragens: List<Paragem>, lat: Double, lon: Double, limite: Int 
         .take(limite)
         .map { it.first }
 
+private val SUFIXO_CAIS = Regex("""\s+(?:P|Cais|Plataforma)\s*\d+[A-Za-z]?\s*$""", RegexOption.IGNORE_CASE)
+
+/** O nome sem o cais ou plataforma do fim: "Algés (Estação) P12" -> "Algés (Estação)". */
+fun nomeBase(nome: String): String = nome.replace(SUFIXO_CAIS, "").trim()
+
+data class Grupo<T>(val nome: String, val lat: Double, val lon: Double, val itens: List<T>)
+
+private const val RAIO_ESTACAO_METROS = 400.0
+
+/** Junta os itens do mesmo nomeBase a menos de 400 m do primeiro do grupo; lat/lon do grupo são a média. */
+fun <T> agruparPorEstacao(itens: List<T>, nome: (T) -> String, lat: (T) -> Double, lon: (T) -> Double): List<Grupo<T>> {
+    val grupos = mutableListOf<MutableList<T>>()
+    for (item in itens) {
+        val base = nomeBase(nome(item))
+        val grupo = grupos.firstOrNull { g ->
+            val primeiro = g.first()
+            nomeBase(nome(primeiro)).equals(base, ignoreCase = true) &&
+                distanciaMetros(lat(primeiro), lon(primeiro), lat(item), lon(item)) <= RAIO_ESTACAO_METROS
+        }
+        if (grupo != null) grupo.add(item) else grupos.add(mutableListOf(item))
+    }
+    return grupos.map { g -> Grupo(nomeBase(nome(g.first())), g.map(lat).average(), g.map(lon).average(), g) }
+}
+
 data class Favorita(val ref: RefParagem, val nome: String, val ordem: Int, val lat: Double, val lon: Double)
 
 /** A favorita mais próxima da última posição; sem posição, a primeira pela ordem do utilizador. */
