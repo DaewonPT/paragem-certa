@@ -22,6 +22,9 @@ object FicheirosViagem {
     /** O aviso, só para a nossa app, de que o estado mudou; vai sem dados: quem o recebe volta a ler o ficheiro. */
     const val ACAO_ESTADO = "pt.pixellusitano.paragemcerta.VIAGEM"
 
+    /** No aviso: o Android não deixou o serviço arrancar. Os ficheiros podem ficar (viagem por retomar), por isso o ecrã da viagem sai sem os ler. */
+    const val EXTRA_SEM_SERVICO = "semServico"
+
     private const val PLANO = "trip-plan.json"
     private const val ESTADO = "trip-state.json"
     private val json = Json { ignoreUnknownKeys = true }

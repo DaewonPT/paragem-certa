@@ -81,7 +81,8 @@ fun ViagemEcra(aoVoltar: () -> Unit) {
     // O serviço (outro processo) avisa a cada passo. Ao voltar à app lê-se também: os avisos de enquanto esteve parada perderam-se.
     LifecycleStartEffect(vm) {
         val receptor = object : BroadcastReceiver() {
-            override fun onReceive(c: Context, i: Intent) = vm.atualizar()
+            override fun onReceive(c: Context, i: Intent) =
+                if (i.getBooleanExtra(FicheirosViagem.EXTRA_SEM_SERVICO, false)) vm.semServico() else vm.atualizar()
         }
         ContextCompat.registerReceiver(contexto, receptor, IntentFilter(FicheirosViagem.ACAO_ESTADO), ContextCompat.RECEIVER_NOT_EXPORTED)
         vm.atualizar()

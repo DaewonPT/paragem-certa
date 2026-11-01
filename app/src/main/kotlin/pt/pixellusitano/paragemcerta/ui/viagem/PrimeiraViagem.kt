@@ -84,19 +84,21 @@ fun proximoPasso(p: Preparacao, feitos: Set<Passo>, primeiraViagem: Boolean, com
 /** O guia, no dontkillmyapp.com, de como o fabricante fecha as apps em segundo plano. */
 fun guiaBateria(fabricante: String) = "https://dontkillmyapp.com/" + fabricante.lowercase().replace(' ', '-')
 
-fun lerPreparacao(c: Context): Preparacao {
-    fun tem(permissao: String) = ContextCompat.checkSelfPermission(c, permissao) == PackageManager.PERMISSION_GRANTED
-    val precisa = tem(Manifest.permission.ACCESS_FINE_LOCATION)
-    return Preparacao(
-        localizacaoPrecisa = precisa,
-        servicoPode = servicoPodeArrancar(Build.VERSION.SDK_INT, precisa, tem(Manifest.permission.ACCESS_COARSE_LOCATION)),
-        localizacaoLigada = LocationManagerCompat.isLocationEnabled(c.getSystemService(LocationManager::class.java)),
-        // Antes do Android 13 as notificações não se pedem.
-        notificacoes = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || tem(Manifest.permission.POST_NOTIFICATIONS),
-        bateriaLivre = c.getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(c.packageName),
-        volumeAlarme = c.getSystemService(AudioManager::class.java).getStreamVolume(AudioManager.STREAM_ALARM),
-    )
-}
+private fun tem(c: Context, permissao: String) = ContextCompat.checkSelfPermission(c, permissao) == PackageManager.PERMISSION_GRANTED
+
+/** O Android deixa o serviço da viagem arrancar com as permissões de agora? Começar e retomar passam pelo mesmo crivo. */
+fun servicoPode(c: Context) =
+    servicoPodeArrancar(Build.VERSION.SDK_INT, tem(c, Manifest.permission.ACCESS_FINE_LOCATION), tem(c, Manifest.permission.ACCESS_COARSE_LOCATION))
+
+fun lerPreparacao(c: Context) = Preparacao(
+    localizacaoPrecisa = tem(c, Manifest.permission.ACCESS_FINE_LOCATION),
+    servicoPode = servicoPode(c),
+    localizacaoLigada = LocationManagerCompat.isLocationEnabled(c.getSystemService(LocationManager::class.java)),
+    // Antes do Android 13 as notificações não se pedem.
+    notificacoes = Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU || tem(c, Manifest.permission.POST_NOTIFICATIONS),
+    bateriaLivre = c.getSystemService(PowerManager::class.java).isIgnoringBatteryOptimizations(c.packageName),
+    volumeAlarme = c.getSystemService(AudioManager::class.java).getStreamVolume(AudioManager.STREAM_ALARM),
+)
 
 /**
  * Grava o plano e o primeiro estado e pede ao serviço (processo :trip) que comece. O estado vai já daqui: o ecrã da viagem
@@ -119,6 +121,27 @@ fun comecarViagem(c: Context, itinerario: Itinerario, som: Boolean, vibrar: Bool
 
 /** Só a partir da app visível (o Android 14 não deixa arrancar este serviço de outra maneira). */
 fun retomarViagem(c: Context): Boolean = arrancarServico(c, ServicoViagem.ACAO_RETOMAR)
+
+/**
+ * O que o aviso "Viagem interrompida — toca para retomar" chama ao tocar. Retoma já (e diz aoRetomou) se o serviço pode
+ * arrancar; senão mostra primeiro o passo da localização do começo: sem ele o RETOMAR rebentava no startForeground e o ecrã
+ * da viagem, já aberto, ficava parado. Se a pessoa recusar, a viagem fica por retomar, com o aviso.
+ */
+@Composable
+fun rememberRetomarViagem(aoRetomou: () -> Unit): () -> Unit {
+    val contexto = LocalContext.current
+    var pedir by remember { mutableStateOf(false) }
+    fun naoRetomou() = Toast.makeText(contexto, R.string.viagem_nao_retomou, Toast.LENGTH_LONG).show()
+    fun retomar() = if (retomarViagem(contexto)) aoRetomou() else naoRetomou()
+    if (pedir) {
+        PedirLocalizacaoServico(
+            aoDada = { pedir = false; retomar() },
+            aoRecusar = { pedir = false; naoRetomou() },
+            aoCancelar = { pedir = false },
+        )
+    }
+    return { if (servicoPode(contexto)) retomar() else pedir = true }
+}
 
 /** O Android recusa o serviço em primeiro plano com um IllegalStateException (ForegroundServiceStartNotAllowedException, a partir do 12). */
 private fun arrancarServico(c: Context, acao: String): Boolean = try {
@@ -157,14 +180,6 @@ fun PreparacaoViagem(itinerario: Itinerario, preferencias: Preferencias, aoComec
     val pedirNotificacoes = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { dada ->
         if (dada) feitos += Passo.NOTIFICACOES else semNotificacoes = true
     }
-    // Sem nenhuma localização o Android 14+ não deixa o serviço arrancar: a viagem não começa.
-    val semServico = {
-        Toast.makeText(contexto, R.string.prep_servico_recusada, Toast.LENGTH_LONG).show()
-        aoCancelar()
-    }
-    val pedirAproximada = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { dada ->
-        if (dada) feitos += Passo.LOCALIZACAO_SERVICO else semServico()
-    }
     val a = avisos ?: return
     // O telemóvel lê-se de novo a cada passo: dar a localização precisa pode revelar que a localização do telemóvel está desligada.
     val passo = proximoPasso(lerPreparacao(contexto), feitos, a.primeiraViagem, a.som)
@@ -194,11 +209,14 @@ fun PreparacaoViagem(itinerario: Itinerario, preferencias: Preferencias, aoComec
             aoConfirmar = { pedirLocalizacao.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)) },
             recusar = R.string.prep_localizacao_horario, aoRecusar = { feitos += Passo.LOCALIZACAO },
         )
-        Passo.LOCALIZACAO_SERVICO -> AvisoPasso(
-            R.string.prep_servico_titulo, R.string.prep_servico_texto, aoCancelar,
-            confirmar = R.string.prep_servico_permitir,
-            aoConfirmar = { pedirAproximada.launch(Manifest.permission.ACCESS_COARSE_LOCATION) },
-            recusar = R.string.prep_agora_nao, aoRecusar = semServico,
+        Passo.LOCALIZACAO_SERVICO -> PedirLocalizacaoServico(
+            aoDada = { feitos += Passo.LOCALIZACAO_SERVICO },
+            // Sem nenhuma localização o Android 14+ não deixa o serviço arrancar: a viagem não começa.
+            aoRecusar = {
+                Toast.makeText(contexto, R.string.prep_servico_recusada, Toast.LENGTH_LONG).show()
+                aoCancelar()
+            },
+            aoCancelar = aoCancelar,
         )
         Passo.LOCALIZACAO_DESLIGADA -> AvisoPasso(
             R.string.prep_desligada_titulo, R.string.prep_desligada_texto, aoCancelar,
@@ -235,6 +253,17 @@ fun PreparacaoViagem(itinerario: Itinerario, preferencias: Preferencias, aoComec
         )
         null -> {}
     }
+}
+
+/** O passo LOCALIZACAO_SERVICO: explica e pede a localização aproximada, o mínimo que o Android exige ao serviço. "Agora não", ou o Android negar, chama aoRecusar; tocar fora, aoCancelar. */
+@Composable
+fun PedirLocalizacaoServico(aoDada: () -> Unit, aoRecusar: () -> Unit, aoCancelar: () -> Unit) {
+    val pedir = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { dada -> if (dada) aoDada() else aoRecusar() }
+    AvisoPasso(
+        R.string.prep_servico_titulo, R.string.prep_servico_texto, aoCancelar,
+        confirmar = R.string.prep_servico_permitir, aoConfirmar = { pedir.launch(Manifest.permission.ACCESS_COARSE_LOCATION) },
+        recusar = R.string.prep_agora_nao, aoRecusar = aoRecusar,
+    )
 }
 
 @Composable

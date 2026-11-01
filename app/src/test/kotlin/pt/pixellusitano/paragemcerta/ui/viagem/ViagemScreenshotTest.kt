@@ -21,6 +21,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -180,6 +181,22 @@ class ViagemScreenshotTest {
         contexto.sendBroadcast(Intent(FicheirosViagem.ACAO_ESTADO).setPackage(contexto.packageName))
         regra.waitUntil(5_000) { regra.waitForIdle(); saiu } // sem nada na tela para consultar, é o waitForIdle que deixa a leitura acabar
         assertTrue(saiu)
+    }
+
+    @Test fun seOServicoNaoArrancarOEcraSaiEOsFicheirosFicamParaRetomar() {
+        val agora = Exemplo(Instant.now())
+        val p = agora.plano()
+        FicheirosViagem.gravarPlano(contexto, p)
+        FicheirosViagem.gravarEstado(contexto, agora.aBordo(p, 1, k = 2))
+        var saiu = false
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { ViagemEcra(aoVoltar = { saiu = true }) } }
+
+        esperarPor("Faltam 3 paragens · sais em Oriente")
+        // O serviço recusou o RETOMAR: não apagou nada (é a "Viagem interrompida"), por isso ler os ficheiros outra vez não mudava o ecrã.
+        contexto.sendBroadcast(Intent(FicheirosViagem.ACAO_ESTADO).setPackage(contexto.packageName).putExtra(FicheirosViagem.EXTRA_SEM_SERVICO, true))
+        regra.waitUntil(5_000) { regra.waitForIdle(); saiu }
+        assertTrue(saiu)
+        assertNotNull(FicheirosViagem.lerEstado(contexto))
     }
 
     private fun esperarPor(t: String) = regra.waitUntil(5_000) { regra.onAllNodesWithText(t).fetchSemanticsNodes().isNotEmpty() }

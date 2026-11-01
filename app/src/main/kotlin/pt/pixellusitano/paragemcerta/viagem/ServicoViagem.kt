@@ -133,11 +133,10 @@ class ServicoViagem : Service() {
             FicheirosViagem.gravarEstado(this, estado)
         }
         if (!primeiroPlano(Notificacoes.progresso(this, plano, estado, viagem))) {
-            // Num arranque novo ninguém vai retomar: sem ficheiros o ecrã da viagem, já aberto, fecha em vez de ficar parado.
-            if (guardado == null) {
-                FicheirosViagem.apagar(this)
-                avisarApp()
-            }
+            // Num arranque novo ninguém vai retomar: apagam-se os ficheiros. Os de uma viagem retomada ficam para o "Viagem
+            // interrompida". Em ambos o ecrã da viagem, já aberto, fecha em vez de ficar parado.
+            if (guardado == null) FicheirosViagem.apagar(this)
+            avisarApp(semServico = true)
             stopSelf()
             return
         }
@@ -230,7 +229,8 @@ class ServicoViagem : Service() {
         avisarApp()
     }
 
-    private fun avisarApp() = sendBroadcast(Intent(FicheirosViagem.ACAO_ESTADO).setPackage(packageName))
+    private fun avisarApp(semServico: Boolean = false) =
+        sendBroadcast(Intent(FicheirosViagem.ACAO_ESTADO).setPackage(packageName).putExtra(FicheirosViagem.EXTRA_SEM_SERVICO, semServico))
 
     /**
      * A viagem acabou (CHEGOU, a guarda dos 30 min, ou uma última etapa a pé que nunca chega a 50 m do destino):

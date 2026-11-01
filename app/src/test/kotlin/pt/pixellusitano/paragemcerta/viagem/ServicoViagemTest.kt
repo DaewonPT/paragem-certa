@@ -314,7 +314,7 @@ class ServicoViagemTest {
         assertNotNull(FicheirosViagem.lerPlano(c)) // o plano fica: não foi a pessoa que parou
     }
 
-    @Test fun seOAndroidRecusarAoRetomarOEstadoFicaParaViagemInterrompida() {
+    @Test fun seOAndroidRecusarAoRetomarOEstadoFicaParaViagemInterrompidaEAAppSabe() {
         FicheirosViagem.gravarPlano(c, plano(SO_O_736))
         val guardado = Viagem(SO_O_736).inicio(T0).copy(fase = Fase.A_BORDO, progresso = 700.0, ultimoGps = T0, atualizado = T0)
         FicheirosViagem.gravarEstado(c, guardado)
@@ -325,6 +325,10 @@ class ServicoViagemTest {
         assertTrue(shadowOf(s.get()).isStoppedBySelf)
         assertFalse(bloqueioPreso())
         assertEquals(guardado, FicheirosViagem.lerEstado(c, agora)) // a pessoa ainda pode tentar retomar
+        // O ecrã da viagem, já aberto, tem de saber que o serviço não arrancou: os ficheiros ficam, por isso só o aviso o fecha.
+        val aviso = shadowOf(c).broadcastIntents.single { it.action == FicheirosViagem.ACAO_ESTADO }
+        assertEquals(c.packageName, aviso.`package`)
+        assertTrue(aviso.getBooleanExtra(FicheirosViagem.EXTRA_SEM_SERVICO, false))
     }
 
     @Test fun seOAndroidRecusarAoComecarNaoFicaViagemNenhumaEAAppSabe() {
@@ -339,6 +343,7 @@ class ServicoViagemTest {
         assertNull(FicheirosViagem.lerEstado(c, agora))
         val aviso = shadowOf(c).broadcastIntents.single { it.action == FicheirosViagem.ACAO_ESTADO }
         assertEquals(c.packageName, aviso.`package`)
+        assertTrue(aviso.getBooleanExtra(FicheirosViagem.EXTRA_SEM_SERVICO, false))
     }
 
     @Test fun semLocalizacaoPrecisaAViagemCorrePeloHorario() {

@@ -74,7 +74,7 @@ import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import pt.pixellusitano.paragemcerta.ui.viagem.retomarViagem
+import pt.pixellusitano.paragemcerta.ui.viagem.rememberRetomarViagem
 import pt.pixellusitano.paragemcerta.ui.viagem.viagemEmCurso
 import pt.pixellusitano.paragemcerta.ui.viagem.viagemInterrompida
 import pt.pixellusitano.paragemcerta.viagem.FicheirosViagem
@@ -123,7 +123,7 @@ fun InicioEcra(
     // Com a viagem a correr, o aviso leva ao ecrã dela (a notificação também).
     var interrompida by remember { mutableStateOf(false) }
     var emCurso by remember { mutableStateOf(false) }
-    val naoRetomou = stringResource(R.string.viagem_nao_retomou)
+    val retomar = rememberRetomarViagem(aoRetomou = aoAbrirViagem)
     LifecycleResumeEffect(Unit) {
         val leitura = escopo.launch {
             withContext(Dispatchers.IO) { viagemInterrompida(contexto) to viagemEmCurso(contexto) }.let { (parada, ativa) ->
@@ -175,9 +175,7 @@ fun InicioEcra(
             if (interrompida) {
                 AvisoViagem(
                     R.string.viagem_interrompida,
-                    aoAbrir = {
-                        if (retomarViagem(contexto)) aoAbrirViagem() else Toast.makeText(contexto, naoRetomou, Toast.LENGTH_LONG).show()
-                    },
+                    aoAbrir = retomar,
                     aoDescartar = {
                         FicheirosViagem.apagar(contexto)
                         interrompida = false

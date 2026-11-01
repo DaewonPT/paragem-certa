@@ -95,6 +95,12 @@ class ViagemViewModel(
     val vista: StateFlow<VistaViagem> = _vista.asStateFlow()
     private var leitura: Job? = null
 
+    /** O serviço não arrancou (ver FicheirosViagem.EXTRA_SEM_SERVICO): não há viagem a mostrar, mesmo que os ficheiros fiquem. */
+    fun semServico() {
+        leitura?.cancel()
+        _vista.value = VistaViagem.SemViagem
+    }
+
     /** Um pedido novo substitui o que ainda não acabou: uma leitura velha não pode pisar a nova. */
     fun atualizar() {
         leitura?.cancel()
