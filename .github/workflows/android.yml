@@ -127,11 +127,15 @@ jobs:
           TAG: ${{ github.ref_name }}
         run: |
           APK="paragem-certa-$TAG.apk"
+          # A nota desta versão (secção "## X.Y.Z" do PATCHNOTES.md, sem os ** do markdown) é o que o aviso
+          # de atualização mostra no telemóvel; sem secção, ficam as notas automáticas.
+          awk -v v="${TAG#v}" '/^## /{ativo = (index($0, "## " v " ") == 1); next} ativo {gsub(/\*\*/, ""); print}' PATCHNOTES.md > notas.md
           # Unsigned builds are named app-pessoal-release-unsigned.apk, so this cp also fails if signing was skipped.
           cp app/build/outputs/apk/pessoal/release/app-pessoal-release.apk "$APK"
           "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs "$APK"
           if gh release view "$TAG" > /dev/null 2>&1; then
             gh release upload "$TAG" "$APK" --clobber
           else
-            gh release create "$TAG" "$APK" --title "$TAG" --generate-notes --verify-tag
+            if [ -s notas.md ]; then NOTAS=(--notes-file notas.md); else NOTAS=(--generate-notes); fi
+            gh release create "$TAG" "$APK" --title "$TAG" "${NOTAS[@]}" --verify-tag
           fi
