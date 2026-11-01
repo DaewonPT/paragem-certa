@@ -14,11 +14,15 @@ import pt.pixellusitano.paragemcerta.core.fontes.cm.CmParser
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.Transitous
 import pt.pixellusitano.paragemcerta.core.modelo.Alerta
 import pt.pixellusitano.paragemcerta.core.modelo.Chegada
+import pt.pixellusitano.paragemcerta.core.modelo.Filtros
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
+import pt.pixellusitano.paragemcerta.core.modelo.Itinerario
 import pt.pixellusitano.paragemcerta.core.modelo.Linha
+import pt.pixellusitano.paragemcerta.core.modelo.Lugar
 import pt.pixellusitano.paragemcerta.core.modelo.Modo
 import pt.pixellusitano.paragemcerta.core.modelo.Paragem
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
+import pt.pixellusitano.paragemcerta.core.modelo.TipoLugar
 import pt.pixellusitano.paragemcerta.core.modelo.Veiculo
 import pt.pixellusitano.paragemcerta.core.regras.Favorita
 import pt.pixellusitano.paragemcerta.core.regras.intervaloNormal
@@ -33,6 +37,10 @@ data class EstadoChegadas(
     val semLigacao: Boolean,
     val tempoRealIndisponivel: Boolean,
 )
+
+data class LocalGuardado(val id: Long, val nome: String, val lugar: Lugar, val tipo: String, val ordem: Int)
+
+data class ViagemRecente(val de: Lugar, val para: Lugar, val em: Instant)
 
 @Serializable
 private class ChegadaGuardada(
@@ -59,6 +67,8 @@ private fun Paragem.paraEntidade() = ParagemEntidade(
     chave = ref.chave, fonte = ref.fonte.name, id = ref.id, nome = nome,
     nomeNormalizado = normalizar(nome), lat = lat, lon = lon, acessivel = acessivel,
 )
+
+private fun LocalEntidade.lugar() = Lugar(nome, lat, lon, TipoLugar.LOCAL)
 
 private fun LinhaEntidade.paraLinha() = Linha(Fonte.CM, id, nomeCurto, nomeLongo, cor, corTexto, Modo.AUTOCARRO)
 
@@ -206,6 +216,53 @@ class Repositorio(
         bd.paragens().substituirFonte(Fonte.CM.name, entidades)
         bd.linhas().substituir(linhas)
         return true
+    }
+
+    suspend fun planear(de: Lugar, para: Lugar, hora: Instant, chegarAs: Boolean, f: Filtros): Resultado<List<Itinerario>> =
+        transitous.planear(de, para, hora, chegarAs, f)
+
+    /** Primeiro os locais guardados cujo nome tem o texto (sem ligar a acentos), depois moradas e sítios do Transitous. */
+    suspend fun pesquisarLugares(texto: String): List<Lugar> {
+        val procura = normalizar(texto)
+        val meus = bd.locais().lista().filter { normalizar(it.nome).contains(procura) }.map { it.lugar() }
+        val outros = (transitous.pesquisarLugares(texto) as? Resultado.Ok)?.valor.orEmpty()
+        return meus + outros
+    }
+
+    fun locais(): Flow<List<LocalGuardado>> = bd.locais().todos().map { lista ->
+        lista.map { LocalGuardado(it.id, it.nome, it.lugar(), it.tipo, it.ordem) }
+    }
+
+    suspend fun guardarLocal(nome: String, lugar: Lugar, tipo: String) = bd.locais().guardar(nome, lugar.lat, lugar.lon, tipo)
+
+    suspend fun renomearLocal(id: Long, nome: String) = bd.locais().renomear(id, nome)
+
+    suspend fun reordenarLocais(ids: List<Long>) = bd.locais().reordenar(ids)
+
+    suspend fun apagarLocal(id: Long) = bd.locais().apagar(id)
+
+    fun recentes(): Flow<List<ViagemRecente>> = bd.locais().recentes().map { lista ->
+        lista.map {
+            ViagemRecente(
+                Lugar(it.deNome, it.deLat, it.deLon, TipoLugar.LOCAL),
+                Lugar(it.paraNome, it.paraLat, it.paraLon, TipoLugar.LOCAL),
+                Instant.ofEpochSecond(it.em),
+            )
+        }
+    }
+
+    suspend fun registarRecente(de: Lugar, para: Lugar) = bd.locais().registarRecente(
+        RecenteEntidade(
+            deNome = de.nome, deLat = de.lat, deLon = de.lon,
+            paraNome = para.nome, paraLat = para.lat, paraLon = para.lon, em = relogio().epochSecond,
+        ),
+    )
+
+    /** Favoritas, locais, viagens recentes e chegadas guardadas; também esquece o que tem em memória. */
+    suspend fun apagarDadosDoTelemovel() {
+        bd.locais().apagarDadosPessoais()
+        paragensDasLinhas.clear()
+        alertasEmCache = null
     }
 
     private companion object {

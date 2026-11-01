@@ -11,6 +11,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Test
 import pt.pixellusitano.paragemcerta.core.atraso.Limites
+import pt.pixellusitano.paragemcerta.core.modelo.Filtros
+import pt.pixellusitano.paragemcerta.core.modelo.Modo
 import pt.pixellusitano.paragemcerta.ui.tema.ModoTema
 
 /** DataStore em memória: o teste é sobre as regras das preferências, não sobre o ficheiro
@@ -37,6 +39,13 @@ class PreferenciasTest {
         p.definirModo(ModoTema.ESCURO)
         assertEquals(Limites(3, 8), p.limites.first())
         assertEquals(ModoTema.ESCURO, p.modo.first())
+    }
+
+    @Test fun guardaFiltros() = runTest {
+        val p = prefs()
+        assertEquals(Filtros(), p.filtros.first())
+        p.definirFiltros(Filtros(acessivel = true, modos = setOf(Modo.METRO)))
+        assertEquals(Filtros(acessivel = true, modos = setOf(Modo.METRO)), p.filtros.first())
     }
 
     @Test fun recusaLimitesImpossiveis() {

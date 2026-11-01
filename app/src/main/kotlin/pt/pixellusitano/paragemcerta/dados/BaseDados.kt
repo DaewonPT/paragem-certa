@@ -1,5 +1,6 @@
 package pt.pixellusitano.paragemcerta.dados
 
+import androidx.room.AutoMigration
 import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Entity
@@ -51,6 +52,29 @@ data class ChegadasGuardadasEntidade(
     @PrimaryKey val chave: String,
     val json: String,
     val guardadoEm: Long,
+)
+
+/** Sítios guardados pelo utilizador; tipo = CASA, TRABALHO ou OUTRO. */
+@Entity(tableName = "locais")
+data class LocalEntidade(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val nome: String,
+    val lat: Double,
+    val lon: Double,
+    val tipo: String,
+    val ordem: Int,
+)
+
+@Entity(tableName = "recentes")
+data class RecenteEntidade(
+    @PrimaryKey(autoGenerate = true) val id: Long = 0,
+    val deNome: String,
+    val deLat: Double,
+    val deLon: Double,
+    val paraNome: String,
+    val paraLat: Double,
+    val paraLon: Double,
+    val em: Long,
 )
 
 @Dao
@@ -137,15 +161,101 @@ interface ChegadasDao {
     suspend fun porChave(chave: String): ChegadasGuardadasEntidade?
 }
 
+@Dao
+interface LocaisDao {
+    @Query("SELECT * FROM locais ORDER BY ordem")
+    fun todos(): Flow<List<LocalEntidade>>
+
+    @Query("SELECT * FROM locais ORDER BY ordem")
+    suspend fun lista(): List<LocalEntidade>
+
+    @Insert
+    suspend fun inserir(l: LocalEntidade)
+
+    @Query("DELETE FROM locais WHERE tipo = :tipo")
+    suspend fun apagarTipo(tipo: String)
+
+    @Query("SELECT COALESCE(MAX(ordem), -1) + 1 FROM locais")
+    suspend fun proximaOrdem(): Int
+
+    /** Casa e Trabalho só há um de cada: o novo substitui o anterior. */
+    @Transaction
+    suspend fun guardar(nome: String, lat: Double, lon: Double, tipo: String) {
+        if (tipo != "OUTRO") apagarTipo(tipo)
+        inserir(LocalEntidade(nome = nome, lat = lat, lon = lon, tipo = tipo, ordem = proximaOrdem()))
+    }
+
+    @Query("UPDATE locais SET nome = :nome WHERE id = :id")
+    suspend fun renomear(id: Long, nome: String)
+
+    @Query("UPDATE locais SET ordem = :ordem WHERE id = :id")
+    suspend fun definirOrdem(id: Long, ordem: Int)
+
+    @Transaction
+    suspend fun reordenar(ids: List<Long>) = ids.forEachIndexed { i, id -> definirOrdem(id, i) }
+
+    @Query("DELETE FROM locais WHERE id = :id")
+    suspend fun apagar(id: Long)
+
+    @Query("SELECT * FROM recentes ORDER BY em DESC, id DESC LIMIT 10")
+    fun recentes(): Flow<List<RecenteEntidade>>
+
+    @Insert
+    suspend fun inserirRecente(r: RecenteEntidade)
+
+    @Query(
+        "DELETE FROM recentes WHERE deNome = :deNome AND deLat = :deLat AND deLon = :deLon " +
+            "AND paraNome = :paraNome AND paraLat = :paraLat AND paraLon = :paraLon",
+    )
+    suspend fun apagarPar(deNome: String, deLat: Double, deLon: Double, paraNome: String, paraLat: Double, paraLon: Double)
+
+    @Query("DELETE FROM recentes WHERE id NOT IN (SELECT id FROM recentes ORDER BY em DESC, id DESC LIMIT 10)")
+    suspend fun cortarRecentes()
+
+    /** O mesmo par de origem e destino passa para o topo em vez de se repetir. */
+    @Transaction
+    suspend fun registarRecente(r: RecenteEntidade) {
+        apagarPar(r.deNome, r.deLat, r.deLon, r.paraNome, r.paraLat, r.paraLon)
+        inserirRecente(r)
+        cortarRecentes()
+    }
+
+    @Query("DELETE FROM favoritas")
+    suspend fun apagarFavoritas()
+
+    @Query("DELETE FROM locais")
+    suspend fun apagarLocais()
+
+    @Query("DELETE FROM recentes")
+    suspend fun apagarRecentes()
+
+    @Query("DELETE FROM chegadas_guardadas")
+    suspend fun apagarChegadas()
+
+    /** Tudo o que é do utilizador; a rede (paragens e linhas) fica, para não ter de a descarregar outra vez. */
+    @Transaction
+    suspend fun apagarDadosPessoais() {
+        apagarFavoritas()
+        apagarLocais()
+        apagarRecentes()
+        apagarChegadas()
+    }
+}
+
 @Database(
-    entities = [ParagemEntidade::class, LinhaEntidade::class, FavoritaEntidade::class, ChegadasGuardadasEntidade::class],
-    version = 1,
+    entities = [
+        ParagemEntidade::class, LinhaEntidade::class, FavoritaEntidade::class, ChegadasGuardadasEntidade::class,
+        LocalEntidade::class, RecenteEntidade::class,
+    ],
+    version = 2,
+    autoMigrations = [AutoMigration(from = 1, to = 2)],
 )
 abstract class BaseDados : RoomDatabase() {
     abstract fun paragens(): ParagensDao
     abstract fun linhas(): LinhasDao
     abstract fun favoritas(): FavoritasDao
     abstract fun chegadas(): ChegadasDao
+    abstract fun locais(): LocaisDao
 }
 
 /** "Cais do Sodré" → "cais do sodre": a pesquisa ignora acentos e maiúsculas. */

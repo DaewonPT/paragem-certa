@@ -2,15 +2,19 @@ package pt.pixellusitano.paragemcerta.dados
 
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import pt.pixellusitano.paragemcerta.core.atraso.Limites
+import pt.pixellusitano.paragemcerta.core.modelo.Filtros
+import pt.pixellusitano.paragemcerta.core.modelo.Modo
 import pt.pixellusitano.paragemcerta.ui.tema.ModoTema
 
-/** Definições do utilizador (modo claro/escuro e limites de atraso), guardadas no telemóvel. */
+/** Definições do utilizador (modo claro/escuro, limites de atraso e filtros das rotas), guardadas no telemóvel. */
 class Preferencias(private val loja: DataStore<Preferences>) {
     val modo: Flow<ModoTema> = loja.data.map { p ->
         p[MODO]?.let { nome -> ModoTema.entries.firstOrNull { it.name == nome } } ?: ModoTema.SISTEMA
@@ -18,6 +22,24 @@ class Preferencias(private val loja: DataStore<Preferences>) {
 
     val limites: Flow<Limites> = loja.data.map { p ->
         Limites(p[ATRASADO] ?: Limites().atrasado, p[MUITO_ATRASADO] ?: Limites().muitoAtrasado)
+    }
+
+    val filtros: Flow<Filtros> = loja.data.map { p ->
+        Filtros(
+            menosAPe = p[MENOS_A_PE] ?: false,
+            menosTransbordos = p[MENOS_TRANSBORDOS] ?: false,
+            acessivel = p[ACESSIVEL] ?: false,
+            modos = p[MODOS].orEmpty().mapNotNull { nome -> Modo.entries.firstOrNull { it.name == nome } }.toSet(),
+        )
+    }
+
+    suspend fun definirFiltros(f: Filtros) {
+        loja.edit {
+            it[MENOS_A_PE] = f.menosAPe
+            it[MENOS_TRANSBORDOS] = f.menosTransbordos
+            it[ACESSIVEL] = f.acessivel
+            it[MODOS] = f.modos.map { m -> m.name }.toSet()
+        }
     }
 
     suspend fun definirModo(m: ModoTema) {
@@ -37,5 +59,9 @@ class Preferencias(private val loja: DataStore<Preferences>) {
         val MODO = stringPreferencesKey("modo")
         val ATRASADO = intPreferencesKey("limite_atrasado")
         val MUITO_ATRASADO = intPreferencesKey("limite_muito_atrasado")
+        val MENOS_A_PE = booleanPreferencesKey("filtro_menos_a_pe")
+        val MENOS_TRANSBORDOS = booleanPreferencesKey("filtro_menos_transbordos")
+        val ACESSIVEL = booleanPreferencesKey("filtro_acessivel")
+        val MODOS = stringSetPreferencesKey("filtro_modos")
     }
 }
