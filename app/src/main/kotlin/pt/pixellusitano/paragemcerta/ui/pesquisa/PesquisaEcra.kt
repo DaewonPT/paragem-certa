@@ -23,6 +23,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -41,6 +42,7 @@ import pt.pixellusitano.paragemcerta.dados.Repositorio
 import pt.pixellusitano.paragemcerta.ui.comum.ItemLista
 import pt.pixellusitano.paragemcerta.ui.comum.SeloLinha
 import pt.pixellusitano.paragemcerta.ui.comum.corDaLinha
+import pt.pixellusitano.paragemcerta.ui.inicio.ultimaPosicao
 
 @Composable
 fun PesquisaEcra(
@@ -50,7 +52,11 @@ fun PesquisaEcra(
     aoIrPara: (Lugar) -> Unit,
     aoVoltar: () -> Unit,
 ) {
-    val vm = viewModel { PesquisaViewModel(repositorio::pesquisar, repositorio::linhasCmComecadasPor, repositorio::pesquisarLugares) }
+    // O contexto da aplicação, não o da atividade: o ViewModel sobrevive a ela.
+    val contexto = LocalContext.current.applicationContext
+    val vm = viewModel {
+        PesquisaViewModel(repositorio::pesquisar, repositorio::linhasCmComecadasPor) { t -> repositorio.pesquisarLugares(t, ultimaPosicao(contexto)) }
+    }
     val texto by vm.texto.collectAsStateWithLifecycle()
     val resultados by vm.resultados.collectAsStateWithLifecycle()
     val semRede by vm.semRede.collectAsStateWithLifecycle()
@@ -105,7 +111,12 @@ fun PesquisaConteudo(
                 items(sitios) { r ->
                     ItemLista(onClick = { aoIrPara(r.l) }) {
                         Text("📍", color = MaterialTheme.colorScheme.primary)
-                        Text(r.l.nome, color = MaterialTheme.colorScheme.onBackground)
+                        Column {
+                            Text(r.l.nome, color = MaterialTheme.colorScheme.onBackground)
+                            r.l.zona?.let {
+                                Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                            }
+                        }
                     }
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 }

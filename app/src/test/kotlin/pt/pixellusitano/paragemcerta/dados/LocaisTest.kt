@@ -90,6 +90,16 @@ class LocaisTest {
         assertEquals(listOf("Estação Ferroviária de Algés"), lugares.filter { it.tipo == TipoLugar.LOCAL }.map { it.nome })
     }
 
+    @Test fun ruasComOMesmoNomeEmConcelhosDiferentesFicamSeparadas() = runTest {
+        fun rua(lat: Double, concelho: String) =
+            """{"type":"ADDRESS","name":"Rua de Goa","lat":$lat,"lon":-8.9,"areas":[{"name":"$concelho","adminLevel":7.0}]}"""
+        val resposta = "[${rua(40.9, "São João da Madeira")}, ${rua(40.9005, "São João da Madeira")}, ${rua(38.5, "Setúbal")}]"
+        val repoGoa = Repositorio(
+            bd, CarrisMetropolitana(http), Transitous(HttpPorUrl("geocode" to listOf({ Resposta(200, resposta) }))), relogio = { agora },
+        )
+        assertEquals(listOf("São João da Madeira", "Setúbal"), repoGoa.pesquisarLugares("rua de goa")!!.map { it.zona })
+    }
+
     @Test fun apagarDadosDoTelemovel() = runTest {
         repo.guardarLocal("Casa", lugar("Rua A"), "CASA")
         repo.registarRecente(lugar("A"), lugar("B"))

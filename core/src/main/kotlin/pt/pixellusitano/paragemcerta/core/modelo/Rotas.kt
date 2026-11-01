@@ -21,8 +21,9 @@ object InstanteSerializer : KSerializer<Instant> {
 
 enum class TipoLugar { MORADA, LOCAL, PARAGEM, POSICAO }
 
+/** zona = o concelho, só para mostrar (distingue várias ruas com o mesmo nome). */
 @Serializable
-data class Lugar(val nome: String, val lat: Double, val lon: Double, val tipo: TipoLugar)
+data class Lugar(val nome: String, val lat: Double, val lon: Double, val tipo: TipoLugar, val zona: String? = null)
 
 /** Uma paragem do percurso de uma etapa em veículo; hora = partida dessa paragem (ou a chegada, na última). */
 @Serializable

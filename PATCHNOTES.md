@@ -2,6 +2,11 @@
 
 A versão mais recente aparece primeiro.
 
+## 0.2.2 — Qual Rua de Goa?
+
+- Cada rua ou sítio da pesquisa mostra o concelho por baixo do nome.
+- As ruas e sítios mais perto de ti aparecem primeiro.
+
 ## 0.2.1 — Para onde vais?
 
 - "Para onde vais?" no início procura sítios, moradas e paragens e abre logo as rotas até lá.

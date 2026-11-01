@@ -59,13 +59,19 @@ private val JSON = Json { ignoreUnknownKeys = true; coerceInputValues = true }
 
 @Serializable private class PartidasJson(val stopTimes: List<PartidaJson> = emptyList())
 
+/** Zona administrativa de um resultado do geocoder: adminLevel 7 = concelho, 8 = freguesia (vem como 7.0, por isso Double). */
+@Serializable private class AreaJson(val name: String = "", val adminLevel: Double = 0.0)
+
 @Serializable private class LocalJson(
     val id: String? = null,
     val name: String = "",
     val type: String? = null,
     val lat: Double = 0.0,
     val lon: Double = 0.0,
+    val areas: List<AreaJson> = emptyList(),
 )
+
+private const val NIVEL_CONCELHO = 7.0
 
 /** Portugal continental, Madeira e Açores (o geocoder devolve resultados do mundo inteiro). */
 private fun emPortugal(lat: Double, lon: Double) =
@@ -232,7 +238,7 @@ object TransitousParser {
                 "STOP" -> TipoLugar.PARAGEM
                 else -> return@mapNotNull null
             }
-            Lugar(l.name, l.lat, l.lon, tipo).takeIf { emPortugal(l.lat, l.lon) }
+            Lugar(l.name, l.lat, l.lon, tipo, l.areas.firstOrNull { it.adminLevel == NIVEL_CONCELHO }?.name).takeIf { emPortugal(l.lat, l.lon) }
         }
 
     /** Nome para um ponto tocado no mapa: a 1.ª morada; sem ela, a paragem mais próxima.
@@ -267,8 +273,9 @@ class Transitous(private val http: Http, private val base: String = "https://api
     suspend fun lugarEm(lat: Double, lon: Double): Resultado<Lugar?> =
         http.pedir("$base/api/v1/reverse-geocode?place=$lat,$lon", TransitousParser::lugarMaisProximo)
 
-    suspend fun pesquisarLugares(texto: String): Resultado<List<Lugar>> =
-        http.pedir("$base/api/v1/geocode?text=${enc(texto)}", TransitousParser::lugares)
+    /** [perto] (lat, lon) põe os resultados mais próximos primeiro. */
+    suspend fun pesquisarLugares(texto: String, perto: Pair<Double, Double>? = null): Resultado<List<Lugar>> =
+        http.pedir("$base/api/v1/geocode?text=${enc(texto)}" + (perto?.let { "&place=${it.first},${it.second}" } ?: ""), TransitousParser::lugares)
 
     suspend fun pesquisar(texto: String): Resultado<List<Paragem>> =
         http.pedir("$base/api/v1/geocode?text=${enc(texto)}&type=STOP", TransitousParser::pesquisa)

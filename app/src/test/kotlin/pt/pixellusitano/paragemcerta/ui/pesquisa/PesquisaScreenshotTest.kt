@@ -25,7 +25,7 @@ import pt.pixellusitano.paragemcerta.ui.tema.TemaParagemCerta
 @Config(qualifiers = "w360dp-h780dp")
 class PesquisaScreenshotTest {
     private val linha = Linha(Fonte.CM, "3708", "3708", "Costa da Caparica - Lisboa", "#C61D23", "#FFFFFF", Modo.AUTOCARRO)
-    private val estacao = Lugar("Estação Ferroviária de Algés", 38.7019, -9.2300, TipoLugar.LOCAL)
+    private val estacao = Lugar("Estação Ferroviária de Algés", 38.7019, -9.2300, TipoLugar.LOCAL, "Oeiras")
     private fun cais(n: String) = Paragem(RefParagem(Fonte.CM, "0604$n"), "Algés (Estação) P$n", 38.7005, -9.2297, false)
     private val varios = Grupo("Algés (Estação)", 38.7005, -9.2297, listOf(cais("1"), cais("2"), cais("12")))
     private val so = Paragem(RefParagem(Fonte.CM, "060777"), "Algés (Jardim)", 38.7011, -9.2312, false)
