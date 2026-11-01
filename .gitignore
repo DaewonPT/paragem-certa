@@ -6,3 +6,5 @@ local.properties
 build/
 .idea/
 *.apk
+CLAUDE.md
+**/CLAUDE.md

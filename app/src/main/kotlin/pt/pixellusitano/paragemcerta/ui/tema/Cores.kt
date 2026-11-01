@@ -9,7 +9,7 @@ object Azulejo {
     val Eletrico = Color(0xFFFFC629)
     val Tinta = Color(0xFF132A4F)
     val Branco = Color(0xFFFFFFFF)
-    val Cinza = Color(0xFF6B7A90)
+    val Cinza = Color(0xFF627189) // 4,95:1 sobre branco (o 6B7A90 ficava em 4,36:1)
     val LinhaClara = Color(0xFFE5EAF3)
 
     val Noite = Color(0xFF0B1222)
