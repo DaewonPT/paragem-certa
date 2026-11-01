@@ -27,6 +27,8 @@ android {
         versionName = versao
         // Mesma regra que versionCodeFromTag no :core: major*10000 + minor*100 + patch.
         versionCode = versao.split('.').map(String::toInt).let { (a, b, c) -> a * 10000 + b * 100 + c }
+        // Só telemóveis ARM: as bibliotecas do mapa para x86 (emuladores, PCs) duplicavam o tamanho do APK.
+        ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }
 
     signingConfigs {
