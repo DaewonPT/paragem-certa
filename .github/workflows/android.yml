@@ -61,6 +61,37 @@ jobs:
             :app:lintPessoalDebug \
             :app:assemblePessoalDebug
 
+      # Spec 11: o serviço da viagem e as permissões do manifesto fundido não podem mudar sem ninguém ver.
+      - name: Check merged manifest (trip service and permissions)
+        run: |
+          MANIFESTO=$(find app/build/intermediates/merged_manifests/pessoalDebug -name AndroidManifest.xml)
+          [ -f "$MANIFESTO" ] || { echo "::error::Sem manifesto fundido da variante pessoal"; exit 1; }
+          python3 - "$MANIFESTO" <<'PY'
+          import sys
+          import xml.etree.ElementTree as ET
+
+          A = "{http://schemas.android.com/apk/res/android}"
+          raiz = ET.parse(sys.argv[1]).getroot()
+          permissoes = {p.get(A + "name") for p in raiz if p.tag.startswith("uses-permission")}
+          servicos = [s for s in raiz.iter("service") if (s.get(A + "name") or "").endswith(".viagem.ServicoViagem")]
+          erros = []
+          for nome in ("FOREGROUND_SERVICE_LOCATION", "POST_NOTIFICATIONS"):
+              if "android.permission." + nome not in permissoes:
+                  erros.append("falta a permissão " + nome)
+          for nome in ("ACCESS_BACKGROUND_LOCATION", "USE_FULL_SCREEN_INTENT", "REQUEST_IGNORE_BATTERY_OPTIMIZATIONS"):
+              if "android.permission." + nome in permissoes:
+                  erros.append("a permissão " + nome + " não pode existir")
+          if len(servicos) != 1:
+              erros.append("devia haver um só ServicoViagem e há %d" % len(servicos))
+          else:
+              for atributo, esperado in (("foregroundServiceType", "location"), ("process", ":trip")):
+                  if servicos[0].get(A + atributo) != esperado:
+                      erros.append("ServicoViagem: %s devia ser %s e é %s" % (atributo, esperado, servicos[0].get(A + atributo)))
+          for e in erros:
+              print("::error::" + e)
+          sys.exit(1 if erros else 0)
+          PY
+
       - name: Upload recorded screenshots
         if: inputs.record_screenshots
         uses: actions/upload-artifact@v7

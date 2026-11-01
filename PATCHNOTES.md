@@ -2,6 +2,14 @@
 
 A versão mais recente aparece primeiro.
 
+## 0.3.0 — Viagem ao vivo
+
+- "Começar viagem" na rota: a app segue-te etapa a etapa, a pé, à espera, a bordo e nos transbordos.
+- "Prepara-te" e "Sai agora" tocam e vibram, mesmo com o ecrã desligado.
+- Sem GPS (no Metro, por exemplo), a posição é estimada pelo horário e a app diz-to.
+- Se o Android fechar a viagem, o início mostra "Viagem interrompida — toca para retomar".
+- "Partilhar chegada" envia a hora prevista. Eu → Definições: "Som do aviso" e "Vibração do aviso".
+
 ## 0.2.2 — Qual Rua de Goa?
 
 - Cada rua ou sítio da pesquisa mostra o concelho por baixo do nome.
