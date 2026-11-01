@@ -59,6 +59,11 @@ data class BlocoParagem(val ref: RefParagem, val nome: String, val estado: Estad
 
 private val VALIDADE_IR_PARA: Duration = Duration.ofMinutes(10)
 
+/** Um itinerário guardado ainda serve se tem menos de 10 min e foi planeado a 200 m ou menos da posição de agora. */
+internal fun guardadoValido(em: Instant, origem: Pair<Double, Double>, agora: Instant, posicao: Pair<Double, Double>): Boolean =
+    Duration.between(em, agora) < VALIDADE_IR_PARA &&
+        distanciaMetros(origem.first, origem.second, posicao.first, posicao.second) <= 200
+
 /** Casa e trabalho, por esta ordem, só quando estão a mais de 500 m (mais perto, vai-se a pé). Sem posição, nenhum. */
 internal fun locaisParaIr(locais: List<LocalGuardado>, posicao: Pair<Double, Double>?): List<LocalGuardado> {
     val (lat, lon) = posicao ?: return emptyList()
@@ -174,15 +179,16 @@ fun Painel(
     val locais by remember { repositorio.locais() }.collectAsStateWithLifecycle(initialValue = emptyList())
     val recentes by remember { repositorio.recentes() }.collectAsStateWithLifecycle(initialValue = emptyList())
     val paraIr = remember(locais, posicao) { locaisParaIr(locais, posicao) }
-    // Memória do ecrã: cada destino só volta a pedir rotas passados 10 min (e sempre que o último pedido falhou).
-    val cache = remember { mutableMapOf<Long, Pair<Instant, Itinerario?>>() }
+    // Memória do ecrã: cada destino só volta a pedir rotas passados 10 min ou se a posição mudou mais de 200 m
+    // (e sempre que o último pedido falhou). Guarda-se também a origem usada no pedido.
+    val cache = remember { mutableMapOf<Long, Triple<Instant, Pair<Double, Double>, Itinerario?>>() }
     val itinerarios by produceState(emptyMap<Long, Itinerario?>(), paraIr, posicao) {
         val (lat, lon) = posicao ?: return@produceState
         for (l in paraIr) {
             val agora = Instant.now()
-            val i = cache[l.id]?.takeIf { Duration.between(it.first, agora) < VALIDADE_IR_PARA }?.second
+            val i = cache[l.id]?.takeIf { guardadoValido(it.first, it.second, agora, lat to lon) }?.third
                 ?: (repositorio.planear(Lugar(MINHA_POSICAO, lat, lon, TipoLugar.POSICAO), l.lugar, agora, false, Filtros()) as? Resultado.Ok)
-                    ?.valor?.minByOrNull { it.chegada }.also { cache[l.id] = agora to it }
+                    ?.valor?.minByOrNull { it.chegada }.also { cache[l.id] = Triple(agora, lat to lon, it) }
             value = value + (l.id to i)
         }
     }

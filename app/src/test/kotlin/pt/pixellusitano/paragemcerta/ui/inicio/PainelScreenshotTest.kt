@@ -11,6 +11,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -99,6 +100,14 @@ class PainelScreenshotTest {
         assertTrue(locaisParaIr(listOf(casa(aqui.first + 0.0027)), aqui).isEmpty()) // uns 300 m
         assertEquals(1, locaisParaIr(listOf(casa(aqui.first + 0.027)), aqui).size) // uns 3 km
         assertTrue(locaisParaIr(listOf(casa(aqui.first + 0.027)), null).isEmpty())
+    }
+
+    @Test fun itinerarioGuardadoSoServeSePerto() {
+        val origem = aqui
+        fun valido(minutos: Long, dLat: Double) = guardadoValido(agora, origem, agora.plusSeconds(minutos * 60), origem.first + dLat to origem.second)
+        assertTrue(valido(5, 0.00045)) // uns 50 m
+        assertFalse(valido(11, 0.00045)) // velho demais
+        assertFalse(valido(5, 0.027)) // uns 3 km
     }
 
     @Test fun painel_casa() = captureRoboImage("src/test/screenshots/painel_casa.png") {
