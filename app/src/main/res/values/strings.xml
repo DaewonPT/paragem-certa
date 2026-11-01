@@ -53,6 +53,7 @@
     <string name="pesquisa_sitios">Sítios e moradas</string>
     <string name="pesquisa_paragens">Paragens</string>
     <string name="pesquisa_chegadas">Chegadas</string>
+    <string name="pesquisa_chegadas_em">Chegadas em %1$s</string>
     <plurals name="pesquisa_n_paragens">
         <item quantity="one">%1$d paragem</item>
         <item quantity="other">%1$d paragens</item>

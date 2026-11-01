@@ -25,6 +25,8 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -85,7 +87,8 @@ fun PesquisaConteudo(
                 modifier = Modifier.weight(1f).focusRequester(foco),
             )
         }
-        if (texto.trim().length >= 2 && resultados.isEmpty()) {
+        // Sem rede, "experimenta o nome de uma rua" não ajuda: fica só o aviso de ligação, no fim da lista.
+        if (texto.trim().length >= 2 && resultados.isEmpty() && !semRede) {
             Text(stringResource(R.string.pesquisa_sem_resultados), color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(16.dp))
         }
@@ -127,7 +130,12 @@ fun PesquisaConteudo(
                                 }
                             }
                         }
-                        if (unica != null) TextButton(onClick = { aoAbrirParagem(unica) }) { Text(stringResource(R.string.pesquisa_chegadas)) }
+                        if (unica != null) {
+                            val descricao = stringResource(R.string.pesquisa_chegadas_em, unica.nome)
+                            TextButton(onClick = { aoAbrirParagem(unica) }, modifier = Modifier.semantics { contentDescription = descricao }) {
+                                Text(stringResource(R.string.pesquisa_chegadas))
+                            }
+                        }
                     }
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 }
