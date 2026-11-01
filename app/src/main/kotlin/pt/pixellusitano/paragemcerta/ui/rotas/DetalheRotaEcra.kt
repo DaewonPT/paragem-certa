@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import org.maplibre.android.geometry.LatLng
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.core.atraso.estado
+import pt.pixellusitano.paragemcerta.core.atraso.rotuloAtraso
 import pt.pixellusitano.paragemcerta.core.modelo.Etapa
 import pt.pixellusitano.paragemcerta.core.modelo.Itinerario
 import pt.pixellusitano.paragemcerta.ui.comum.LISBOA_FUSO
@@ -159,7 +160,8 @@ private fun LinhaEtapa(e: Etapa, paraNome: String) {
         }
     } else {
         val prevista = e.partida.takeIf { e.aoVivo }
-        val corHora = CoresAtraso.cor(estado(e.partidaProgramada, prevista, LocalLimites.current), LocalEscuro.current)
+        val limites = LocalLimites.current
+        val corHora = CoresAtraso.cor(estado(e.partidaProgramada, prevista, limites), LocalEscuro.current)
         val paragens = e.paragensIntermedias + 1 // contando a paragem onde se sai
         Hora(e.partida.horaLisboa(), corHora) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -169,6 +171,7 @@ private fun LinhaEtapa(e: Etapa, paraNome: String) {
                     color = cores.onSurface, fontWeight = FontWeight.Bold,
                 )
             }
+            Text(rotuloAtraso(e.partidaProgramada, prevista, limites), color = corHora, style = MaterialTheme.typography.labelSmall)
             Text(
                 listOf(
                     textoDuracao(Duration.between(e.partida, e.chegada)),

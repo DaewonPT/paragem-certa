@@ -15,6 +15,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -29,6 +31,7 @@ import pt.pixellusitano.paragemcerta.ui.comum.LISBOA_FUSO
 import pt.pixellusitano.paragemcerta.ui.comum.LocalLimites
 import pt.pixellusitano.paragemcerta.ui.comum.SeloLinha
 import pt.pixellusitano.paragemcerta.ui.comum.corDaLinha
+import pt.pixellusitano.paragemcerta.ui.comum.situacaoAtraso
 import pt.pixellusitano.paragemcerta.ui.tema.CoresAtraso
 import pt.pixellusitano.paragemcerta.ui.tema.LocalEscuro
 import java.time.Duration
@@ -66,6 +69,30 @@ internal fun textoEtiqueta(e: Etiqueta) = stringResource(
     },
 )
 
+/** O cartão inteiro numa frase para o leitor de ecrã, sem os símbolos ("›", 🚶) que ele leria à letra. */
+internal fun descricaoRota(it: Itinerario, etiquetas: List<String>, comAlerta: Boolean, limites: Limites): String {
+    val etapas = it.etapas.joinToString(", ") { e ->
+        if (e.aPe) "a pé ${minutosDe(Duration.between(e.partida, e.chegada))} min"
+        else listOfNotNull(nomeModo(e.modo).lowercase(), e.linhaNome).joinToString(" ")
+    }.replaceFirstChar { c -> c.uppercase() }
+    val transbordos = when (it.transbordos) {
+        0 -> "sem transbordos"
+        1 -> "1 transbordo"
+        else -> "${it.transbordos} transbordos"
+    }
+    val primeira = it.etapas.firstOrNull { e -> !e.aPe }
+    return listOfNotNull(
+        "Rota de ${textoDuracao(it.duracao)}, das ${it.partida.horaLisboa()} às ${it.chegada.horaLisboa()}",
+        etapas,
+        "${minutosDe(it.tempoAPe)} min a pé, $transbordos",
+        primeira?.let { e ->
+            "Sai de ${e.de.nome} às ${e.partida.horaLisboa()}, ${situacaoAtraso(e.partidaProgramada, e.partida.takeIf { e.aoVivo }, limites)}"
+        },
+        etiquetas.takeIf { e -> e.isNotEmpty() }?.let { e -> "Etiquetas: ${e.joinToString(", ")}" },
+        "Aviso numa linha".takeIf { comAlerta },
+    ).joinToString(". ", postfix = ".")
+}
+
 /** Um itinerário na lista: duração, horas, etapas, a pé e transbordos, a 1.ª partida com cor de atraso e as etiquetas. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -78,8 +105,13 @@ fun CartaoRota(
 ) {
     val cores = MaterialTheme.colorScheme
     val primeira = it.etapas.firstOrNull { e -> !e.aPe }
+    val nomes = etiquetas.sortedBy { e -> e.ordinal }.map { e -> textoEtiqueta(e) }
+    val descricao = descricaoRota(it, nomes, comAlerta, limites)
     OutlinedCard(onClick = aoAbrir, modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(
+            Modifier.padding(16.dp).clearAndSetSemantics { contentDescription = descricao },
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     textoDuracao(it.duracao), Modifier.weight(1f),

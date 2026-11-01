@@ -57,6 +57,18 @@ fun corDaLinha(hex: String?, modo: Modo): Color =
 
 private fun minutos(n: Long) = if (n == 1L) "1 minuto" else "$n minutos"
 
+/** "a horas", "atrasado 3 minutos", "adiantado 2 minutos" ou "hora do horário, sem tempo real", para o leitor de ecrã. */
+fun situacaoAtraso(programada: Instant, prevista: Instant?, limites: Limites): String {
+    val atraso = prevista?.let { minutosDeAtraso(programada, it).toLong() }
+    return when (estado(programada, prevista, limites)) {
+        EstadoAtraso.A_HORAS -> "a horas"
+        EstadoAtraso.ATRASADO -> "atrasado ${minutos(atraso!!)}"
+        EstadoAtraso.MUITO_ATRASADO -> "muito atrasado, ${minutos(atraso!!)}"
+        EstadoAtraso.ADIANTADO -> "adiantado ${minutos(-atraso!!)}"
+        EstadoAtraso.HORARIO -> "hora do horário, sem tempo real"
+    }
+}
+
 /** Frase completa para o leitor de ecrã, por exemplo "Linha 728 para Restelo, daqui a 7 minutos, atrasado 3 minutos". */
 fun descricaoChegada(c: Chegada, agora: Instant, limites: Limites = Limites()): String {
     val quando = when {
@@ -70,14 +82,7 @@ fun descricaoChegada(c: Chegada, agora: Instant, limites: Limites = Limites()): 
             }
         }
     }
-    val atraso = c.prevista?.let { minutosDeAtraso(c.programada, it).toLong() }
-    val situacao = when (estado(c, limites)) {
-        EstadoAtraso.A_HORAS -> "a horas"
-        EstadoAtraso.ATRASADO -> "atrasado ${minutos(atraso!!)}"
-        EstadoAtraso.MUITO_ATRASADO -> "muito atrasado, ${minutos(atraso!!)}"
-        EstadoAtraso.ADIANTADO -> "adiantado ${minutos(-atraso!!)}"
-        EstadoAtraso.HORARIO -> "hora do horário, sem tempo real"
-    }
+    val situacao = situacaoAtraso(c.programada, c.prevista, limites)
     val acessivel = if (c.acessivel == true) ", acessível a cadeira de rodas" else ""
     return "Linha ${c.linhaNome} para ${c.destino}, $quando, $situacao$acessivel"
 }
