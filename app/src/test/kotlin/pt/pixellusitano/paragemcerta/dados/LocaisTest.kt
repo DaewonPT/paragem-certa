@@ -76,6 +76,20 @@ class LocaisTest {
         assertEquals(listOf("Trabalho"), semRede.pesquisarLugares("trab")!!.map { it.nome })
     }
 
+    @Test fun caisDaEstacaoSaiDoNome() = runTest {
+        val resposta = """[
+            {"type":"STOP","name":"Algés (Estação) P9","id":"pt-Carris-Metropolitana_120339","lat":38.6988,"lon":-9.2276},
+            {"type":"STOP","name":"Algés (Estação) P10","id":"pt-Carris-Metropolitana_120340","lat":38.6989,"lon":-9.2277},
+            {"type":"PLACE","name":"Estação Ferroviária de Algés","lat":38.6985,"lon":-9.2296}
+        ]"""
+        val comCais = Repositorio(
+            bd, CarrisMetropolitana(http), Transitous(HttpPorUrl("geocode" to listOf({ Resposta(200, resposta) }))), relogio = { agora },
+        )
+        val lugares = comCais.pesquisarLugares("alges")!!
+        assertEquals(listOf("Algés (Estação)"), lugares.filter { it.tipo == TipoLugar.PARAGEM }.map { it.nome })
+        assertEquals(listOf("Estação Ferroviária de Algés"), lugares.filter { it.tipo == TipoLugar.LOCAL }.map { it.nome })
+    }
+
     @Test fun apagarDadosDoTelemovel() = runTest {
         repo.guardarLocal("Casa", lugar("Rua A"), "CASA")
         repo.registarRecente(lugar("A"), lugar("B"))

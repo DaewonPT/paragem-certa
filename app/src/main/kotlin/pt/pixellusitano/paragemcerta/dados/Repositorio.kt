@@ -25,7 +25,9 @@ import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
 import pt.pixellusitano.paragemcerta.core.modelo.TipoLugar
 import pt.pixellusitano.paragemcerta.core.modelo.Veiculo
 import pt.pixellusitano.paragemcerta.core.regras.Favorita
+import pt.pixellusitano.paragemcerta.core.regras.distanciaMetros
 import pt.pixellusitano.paragemcerta.core.regras.intervaloNormal
+import pt.pixellusitano.paragemcerta.core.regras.nomeBase
 import pt.pixellusitano.paragemcerta.core.regras.pausaDepoisDeFalha
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import java.time.Duration
@@ -227,14 +229,20 @@ class Repositorio(
     suspend fun planear(de: Lugar, para: Lugar, hora: Instant, chegarAs: Boolean, f: Filtros): Resultado<List<Itinerario>> =
         transitous.planear(de, para, hora, chegarAs, f)
 
-    /** Primeiro os locais guardados cujo nome tem o texto (sem ligar a acentos), depois moradas e sítios do Transitous.
+    /** Primeiro os locais guardados cujo nome tem o texto (sem ligar a acentos), depois moradas e sítios do Transitous
+     *  (as paragens sem o cais no nome, e sem repetidas).
      *  null = o Transitous falhou e não há nenhum local guardado que sirva (sem ligação, não "sem resultados"). */
     suspend fun pesquisarLugares(texto: String): List<Lugar>? {
         val procura = normalizar(texto)
         val meus = bd.locais().lista().filter { normalizar(it.nome).contains(procura) }.map { it.lugar() }
         val outros = (transitous.pesquisarLugares(texto) as? Resultado.Ok)?.valor
+            ?.map { if (it.tipo == TipoLugar.PARAGEM) it.copy(nome = nomeBase(it.nome)) else it }
+            ?.fold(emptyList<Lugar>()) { sem, l -> if (sem.any { it.repetidoDe(l) }) sem else sem + l }
         return if (outros == null && meus.isEmpty()) null else meus + outros.orEmpty()
     }
+
+    private fun Lugar.repetidoDe(o: Lugar) =
+        tipo == o.tipo && nome.equals(o.nome, ignoreCase = true) && distanciaMetros(lat, lon, o.lat, o.lon) < RAIO_REPETIDOS_METROS
 
     suspend fun lugarEm(lat: Double, lon: Double): Lugar? = (transitous.lugarEm(lat, lon) as? Resultado.Ok)?.valor
 
@@ -277,5 +285,6 @@ class Repositorio(
     private companion object {
         val INTERVALO_VEICULOS: Duration = Duration.ofSeconds(15)
         val VALIDADE_ALERTAS: Duration = Duration.ofMinutes(5)
+        const val RAIO_REPETIDOS_METROS = 400.0
     }
 }
