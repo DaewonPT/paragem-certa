@@ -27,13 +27,17 @@ object Alarme {
     private val fio = Handler(Looper.getMainLooper())
     private var toque: Ringtone? = null
 
-    /** 3 s no Prepara-te e 6 s no Sai agora; os outros eventos não tocam. Um aviso novo corta o que ainda estiver a tocar. */
+    /** 3 s no Prepara-te e 6 s no Sai agora; os outros eventos não tocam (0). O serviço só pára depois de este tempo passar. */
+    fun duracaoMs(evento: Evento): Long = when (evento) {
+        Evento.PREPARA_TE -> 3_000L
+        Evento.SAI_AGORA -> 6_000L
+        Evento.ETAPA_SEGUINTE, Evento.CHEGOU -> 0L
+    }
+
+    /** Toca o que o evento pede (ver duracaoMs). Um aviso novo corta o que ainda estiver a tocar. */
     fun tocar(c: Context, evento: Evento, som: Boolean, vibrar: Boolean) {
-        val ms = when (evento) {
-            Evento.PREPARA_TE -> 3_000L
-            Evento.SAI_AGORA -> 6_000L
-            Evento.ETAPA_SEGUINTE, Evento.CHEGOU -> return
-        }
+        val ms = duracaoMs(evento)
+        if (ms == 0L) return
         fio.removeCallbacksAndMessages(null)
         toque?.stop()
         toque = null

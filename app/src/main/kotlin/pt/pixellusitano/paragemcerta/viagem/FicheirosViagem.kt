@@ -52,6 +52,9 @@ object FicheirosViagem {
         return estado
     }
 
+    /** O gps.csv que as versões de depuração gravam durante a viagem (ver ServicoViagem). */
+    fun gravacao(c: Context): File = ficheiro(c, "gps.csv")
+
     /** Só os dois ficheiros: o gps.csv das versões de depuração fica para o autor o copiar. */
     fun apagar(c: Context) {
         ficheiro(c, PLANO).delete()

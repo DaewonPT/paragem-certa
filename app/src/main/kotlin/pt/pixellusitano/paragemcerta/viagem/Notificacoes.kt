@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.provider.Settings
 import androidx.core.app.NotificationCompat
 import pt.pixellusitano.paragemcerta.MainActivity
 import pt.pixellusitano.paragemcerta.R
@@ -30,6 +31,7 @@ object Notificacoes {
     const val CANAL_AVISOS = "avisos"
     const val ID_PROGRESSO = 1
     const val ID_AVISO = 2
+    const val ID_LOCALIZACAO = 3
 
     // As ações dos botões; quem as atende é o ServicoViagem (processo :trip), que fica no mesmo pacote.
     const val ACAO_SILENCIAR = "pt.pixellusitano.paragemcerta.viagem.SILENCIAR"
@@ -84,6 +86,22 @@ object Notificacoes {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setAutoCancel(true)
             .build()
+
+    /** "Liga a localização": toca-se nela para abrir as definições. O serviço cancela-a quando o GPS volta e quando a viagem acaba. */
+    fun semLocalizacao(c: Context): Notification =
+        NotificationCompat.Builder(c, CANAL_AVISOS)
+            .setSmallIcon(R.drawable.ic_notificacao)
+            .setContentTitle(c.getString(R.string.viagem_liga_localizacao))
+            .setContentIntent(
+                PendingIntent.getActivity(c, 0, Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS), PendingIntent.FLAG_IMMUTABLE),
+            )
+            .setCategory(NotificationCompat.CATEGORY_ERROR)
+            .setAutoCancel(true)
+            .build()
+
+    /** Para o serviço que arranca sem nada a seguir: o Android exige uma notificação a quem usa startForegroundService. */
+    fun vazia(c: Context): Notification =
+        NotificationCompat.Builder(c, CANAL_VIAGEM).setSmallIcon(R.drawable.ic_notificacao).setContentTitle(c.getString(R.string.app_name)).build()
 
     internal fun textoProgresso(c: Context, plano: PlanoViagem, e: EstadoViagem, viagem: Viagem, zona: ZoneId): String {
         val etapas = plano.itinerario.etapas

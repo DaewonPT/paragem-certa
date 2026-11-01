@@ -12,6 +12,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import pt.pixellusitano.paragemcerta.core.atraso.Limites
+import pt.pixellusitano.paragemcerta.dados.AtualizacaoDiaria
 import pt.pixellusitano.paragemcerta.ui.Navegacao
 import pt.pixellusitano.paragemcerta.ui.comum.LocalLimites
 import pt.pixellusitano.paragemcerta.ui.tema.ModoTema
@@ -20,6 +21,8 @@ import pt.pixellusitano.paragemcerta.ui.tema.TemaParagemCerta
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // Aqui e não na Application: essa corre também no processo :trip, que não pode tocar no WorkManager.
+        AtualizacaoDiaria.agendar(applicationContext)
         enableEdgeToEdge()
         val ligacoes = (application as ParagemCertaApp).ligacoes
         setContent {

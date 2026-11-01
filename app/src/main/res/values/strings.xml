@@ -200,4 +200,5 @@
     <string name="aviso_apanha">%1$s e apanha o %2$s</string>
     <string name="aviso_horario">%1$s (posição estimada, confirma a paragem)</string>
     <string name="aviso_chegou">Chegaste a %1$s</string>
+    <string name="viagem_liga_localizacao">Liga a localização para a Paragem Certa saber onde estás.</string>
 </resources>
