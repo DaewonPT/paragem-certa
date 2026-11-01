@@ -75,6 +75,20 @@ class TransitousTest {
         assertEquals("https://api.transitous.org/api/v1/geocode?text=Avenida+da+Liberdade", http.pedidos.single())
     }
 
+    @Test fun lugarMaisProximoPrefereMoradaDepoisParagem() {
+        assertEquals("Campo Pequeno", TransitousParser.lugarMaisProximo(fixture("transitous-reverse.json"))?.nome)
+        val comMorada = fixture("transitous-reverse.json").replaceFirst("\"type\":\"PLACE\"", "\"type\":\"ADDRESS\"")
+        assertEquals(TipoLugar.MORADA, TransitousParser.lugarMaisProximo(comMorada)?.tipo)
+        // Só sítios soltos (um esgoto, um contentor): não dão um nome que se reconheça.
+        assertNull(TransitousParser.lugarMaisProximo(fixture("transitous-reverse-sem-morada.json")))
+    }
+
+    @Test fun lugarNumPonto() = runTest {
+        val http = HttpFalso({ Resposta(200, "[]") })
+        Transitous(http).lugarEm(38.7, -9.14)
+        assertEquals("https://api.transitous.org/api/v1/reverse-geocode?place=38.7,-9.14", http.pedidos.single())
+    }
+
     @Test fun tempoRealUsaAHoraPrevista() {
         val aoVivo = fixture("transitous-stoptimes.json")
             .replaceFirst("\"realTime\": false", "\"realTime\": true")

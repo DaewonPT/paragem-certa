@@ -78,12 +78,14 @@ fun Mapa(
     aoTocarVeiculo: (Veiculo) -> Unit,
     modifier: Modifier = Modifier,
     percursos: List<Percurso> = emptyList(),
+    aoToqueLongo: (lat: Double, lon: Double) -> Unit = { _, _ -> },
 ) {
     val contexto = LocalContext.current
     val ciclo = LocalLifecycleOwner.current.lifecycle
     val mover by rememberUpdatedState(aoMoverCamara)
     val tocarParagem by rememberUpdatedState(aoTocarParagem)
     val tocarVeiculo by rememberUpdatedState(aoTocarVeiculo)
+    val toqueLongo by rememberUpdatedState(aoToqueLongo)
     val paragensAtuais by rememberUpdatedState(paragens)
     val veiculosAtuais by rememberUpdatedState(veiculos)
 
@@ -111,6 +113,10 @@ fun Mapa(
                 mapa.addOnCameraIdleListener {
                     val b = mapa.projection.visibleRegion.latLngBounds
                     mover(b.latitudeSouth, b.longitudeWest, b.latitudeNorth, b.longitudeEast, mapa.cameraPosition.zoom)
+                }
+                mapa.addOnMapLongClickListener { ponto ->
+                    toqueLongo(ponto.latitude, ponto.longitude)
+                    true
                 }
                 mapa.addOnMapClickListener { ponto ->
                     val ecra = mapa.projection.toScreenLocation(ponto)

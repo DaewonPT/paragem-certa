@@ -209,6 +209,14 @@ object TransitousParser {
             Lugar(l.name, l.lat, l.lon, tipo).takeIf { emPortugal(l.lat, l.lon) }
         }
 
+    /** Nome para um ponto tocado no mapa: a 1.ª morada; sem ela, a paragem mais próxima.
+     *  Os sítios soltos (contentores, esgotos, monumentos ao lado) não dão um nome que se reconheça. */
+    fun lugarMaisProximo(json: String): Lugar? {
+        val perto = JSON.decodeFromString<List<LocalJson>>(json).filter { emPortugal(it.lat, it.lon) }
+        val l = perto.firstOrNull { it.type == "ADDRESS" } ?: perto.firstOrNull { it.type == "STOP" } ?: return null
+        return Lugar(l.name, l.lat, l.lon, if (l.type == "ADDRESS") TipoLugar.MORADA else TipoLugar.PARAGEM)
+    }
+
     fun pesquisa(json: String): List<Paragem> =
         JSON.decodeFromString<List<LocalJson>>(json).mapNotNull { l ->
             val id = l.id?.takeIf { l.type == "STOP" && !it.startsWith(PREFIXO_CM_TRANSITOUS) && emPortugal(l.lat, l.lon) }
@@ -229,6 +237,9 @@ class Transitous(private val http: Http, private val base: String = "https://api
 
     suspend fun planear(de: Lugar, para: Lugar, hora: Instant, chegarAs: Boolean, filtros: Filtros): Resultado<List<Itinerario>> =
         http.pedir(urlPlano(base, de, para, hora, chegarAs, filtros), TransitousParser::rotas)
+
+    suspend fun lugarEm(lat: Double, lon: Double): Resultado<Lugar?> =
+        http.pedir("$base/api/v1/reverse-geocode?place=$lat,$lon", TransitousParser::lugarMaisProximo)
 
     suspend fun pesquisarLugares(texto: String): Resultado<List<Lugar>> =
         http.pedir("$base/api/v1/geocode?text=${enc(texto)}", TransitousParser::lugares)

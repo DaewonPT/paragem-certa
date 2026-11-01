@@ -1,5 +1,6 @@
 package pt.pixellusitano.paragemcerta.ui.rotas
 
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -32,6 +33,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -44,6 +46,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.core.modelo.Filtros
 import pt.pixellusitano.paragemcerta.core.modelo.Itinerario
@@ -87,6 +90,10 @@ fun RotasEcra(
     val locais by remember { repositorio.locais() }.collectAsStateWithLifecycle(emptyList())
     val recentes by remember { repositorio.recentes() }.collectAsStateWithLifecycle(emptyList())
     var escolher by rememberSaveable { mutableStateOf<Campo?>(null) }
+    val escopo = rememberCoroutineScope()
+    val casa = stringResource(R.string.locais_casa)
+    val trabalho = stringResource(R.string.locais_trabalho)
+    val guardado = stringResource(R.string.local_guardado)
 
     LaunchedEffect(Unit) {
         ultimaPosicao(contexto)?.let(vm::definirPosicao)
@@ -121,6 +128,15 @@ fun RotasEcra(
                 escolher = null
             },
             aoVoltar = { escolher = null },
+            aoGuardar = { l, tipo ->
+                val nome = when (tipo) {
+                    "CASA" -> casa
+                    "TRABALHO" -> trabalho
+                    else -> l.nome
+                }
+                escopo.launch { repositorio.guardarLocal(nome, l, tipo) }
+                Toast.makeText(contexto, guardado, Toast.LENGTH_SHORT).show()
+            },
         )
     }
 }

@@ -34,6 +34,7 @@ import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
 import pt.pixellusitano.paragemcerta.dados.Ligacoes
 import pt.pixellusitano.paragemcerta.ui.eu.EuEcra
+import pt.pixellusitano.paragemcerta.ui.eu.LocaisEcra
 import pt.pixellusitano.paragemcerta.ui.inicio.InicioEcra
 import pt.pixellusitano.paragemcerta.ui.inicio.Painel
 import pt.pixellusitano.paragemcerta.ui.paragem.ParagemEcra
@@ -46,6 +47,7 @@ import pt.pixellusitano.paragemcerta.ui.sobre.SobreEcra
 @Serializable data object Pesquisa
 @Serializable data object Eu
 @Serializable data object Sobre
+@Serializable data object Locais
 @Serializable data class Paragem(val chave: String)
 
 /** origem e destino codificados como "nome|lat|lon" (ver paraRota); origem null = "A minha posição". */
@@ -95,6 +97,7 @@ fun Navegacao(ligacoes: Ligacoes) {
                         aoPesquisar = { nav.navigate(Pesquisa) },
                         linhaId = linha,
                         aoLimparLinha = { nav.popBackStack() },
+                        aoIrPara = { nav.navigate(it) },
                         painel = { posicao ->
                             Painel(repositorio, posicao, aoAbrirParagem = { nav.navigate(Paragem(it.chave)) }, aoPesquisar = { nav.navigate(Pesquisa) })
                         },
@@ -132,9 +135,11 @@ fun Navegacao(ligacoes: Ligacoes) {
                         preferencias = ligacoes.preferencias,
                         aoAbrirFavorita = { nav.navigate(Paragem(it.ref.chave)) },
                         aoAbrirSobre = { nav.navigate(Sobre) },
+                        aoAbrirLocais = { nav.navigate(Locais) },
                     )
                 }
             }
+            composable<Locais> { LocaisEcra(repositorio, aoVoltar = { nav.popBackStack() }) }
             composable<Sobre> {
                 SobreEcra(versao = BuildConfig.VERSION_NAME, aoAbrir = { url ->
                     runCatching { contexto.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }

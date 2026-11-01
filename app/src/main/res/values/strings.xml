@@ -135,6 +135,23 @@
     <string name="detalhe_chegada">Chegada a %1$s</string>
     <string name="detalhe_partilhar">Partilhar rota</string>
     <string name="detalhe_tvde">Abrir app de TVDE</string>
+    <string name="eu_locais">Os meus locais</string>
+    <string name="locais_vazio">Ainda não tens locais. Toca sem largar num ponto do mapa, ou guarda um resultado quando escolhes para onde vais.</string>
+    <string name="locais_opcoes">Opções de %1$s</string>
+    <string name="locais_mudar_nome">Mudar o nome</string>
+    <string name="locais_apagar">Apagar</string>
+    <string name="locais_casa">Casa</string>
+    <string name="locais_trabalho">Trabalho</string>
+    <string name="local_guardado">Guardado em Os meus locais</string>
+    <string name="menu_ir_para_aqui">Ir para aqui</string>
+    <string name="menu_partir_daqui">Partir daqui</string>
+    <string name="menu_guardar_local">Guardar local</string>
+    <string name="guardar_como_casa">Guardar como casa</string>
+    <string name="guardar_como_trabalho">Guardar como trabalho</string>
+    <string name="guardar_como_local">Guardar como local</string>
+    <string name="mais_opcoes">Mais opções</string>
+    <string name="dialogo_nome">Nome</string>
+    <string name="guardar">Guardar</string>
     <string name="ok">OK</string>
     <string name="cancelar">Cancelar</string>
 </resources>

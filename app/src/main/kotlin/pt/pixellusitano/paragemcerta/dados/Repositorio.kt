@@ -235,6 +235,8 @@ class Repositorio(
         return meus + outros
     }
 
+    suspend fun lugarEm(lat: Double, lon: Double): Lugar? = (transitous.lugarEm(lat, lon) as? Resultado.Ok)?.valor
+
     fun locais(): Flow<List<LocalGuardado>> = bd.locais().todos().map { lista ->
         lista.map { LocalGuardado(it.id, it.nome, it.lugar(), it.tipo, it.ordem) }
     }

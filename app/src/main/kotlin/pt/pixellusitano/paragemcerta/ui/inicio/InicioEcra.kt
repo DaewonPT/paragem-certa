@@ -55,6 +55,17 @@ import pt.pixellusitano.paragemcerta.ui.mapa.LISBOA
 import pt.pixellusitano.paragemcerta.ui.mapa.Mapa
 import pt.pixellusitano.paragemcerta.ui.tema.FrisoAzulejo
 import pt.pixellusitano.paragemcerta.ui.tema.LocalEscuro
+import pt.pixellusitano.paragemcerta.ui.Rotas
+import pt.pixellusitano.paragemcerta.ui.comum.DialogoNome
+import pt.pixellusitano.paragemcerta.ui.comum.ItemLista
+import pt.pixellusitano.paragemcerta.core.modelo.Lugar
+import android.widget.Toast
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.res.stringResource
+import kotlinx.coroutines.launch
 import java.time.Duration
 import java.time.Instant
 
@@ -67,9 +78,13 @@ fun InicioEcra(
     linhaId: String? = null,
     aoLimparLinha: () -> Unit = {},
     painel: @Composable (posicao: Pair<Double, Double>?) -> Unit = {},
+    aoIrPara: (Rotas) -> Unit = {},
 ) {
     val contexto = LocalContext.current
-    val vm = viewModel { InicioViewModel(repositorio::paragensNaZona, repositorio::veiculos) }
+    val vm = viewModel { InicioViewModel(repositorio::paragensNaZona, repositorio::veiculos, repositorio::lugarEm) }
+    val menu by vm.menu.collectAsStateWithLifecycle()
+    var guardar by remember { mutableStateOf<Lugar?>(null) }
+    val escopo = rememberCoroutineScope()
     val paragens by vm.paragens.collectAsStateWithLifecycle()
     val veiculos by vm.veiculos.collectAsStateWithLifecycle()
     val escolhido by vm.veiculoEscolhido.collectAsStateWithLifecycle()
@@ -122,6 +137,7 @@ fun InicioEcra(
             aoTocarParagem = aoAbrirParagem,
             aoTocarVeiculo = vm::escolherVeiculo,
             modifier = Modifier.fillMaxSize(),
+            aoToqueLongo = vm::toqueLongo,
         )
         Column(Modifier.statusBarsPadding().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             BarraPesquisa(aoPesquisar)
@@ -146,6 +162,54 @@ fun InicioEcra(
                 },
             )
         }
+        menu?.let { lugar ->
+            MenuPonto(
+                lugar,
+                aoIrPara = { vm.irParaAqui()?.let(aoIrPara) },
+                aoPartirDaqui = { vm.partirDaqui()?.let(aoIrPara) },
+                aoGuardar = {
+                    guardar = lugar
+                    vm.fecharMenu()
+                },
+                aoFechar = vm::fecharMenu,
+            )
+        }
+        val guardado = stringResource(R.string.local_guardado)
+        guardar?.let { lugar ->
+            DialogoNome(
+                stringResource(R.string.menu_guardar_local),
+                inicial = lugar.nome.takeIf { it != InicioViewModel.PONTO_NO_MAPA }.orEmpty(),
+                aoConfirmar = { nome ->
+                    escopo.launch { repositorio.guardarLocal(nome, lugar, "OUTRO") }
+                    Toast.makeText(contexto, guardado, Toast.LENGTH_SHORT).show()
+                    guardar = null
+                },
+                aoCancelar = { guardar = null },
+            )
+        }
+    }
+}
+
+/** Menu de um ponto tocado sem largar: o nome e as três ações. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MenuPonto(lugar: Lugar, aoIrPara: () -> Unit, aoPartirDaqui: () -> Unit, aoGuardar: () -> Unit, aoFechar: () -> Unit) {
+    ModalBottomSheet(onDismissRequest = aoFechar) {
+        Text(
+            lugar.nome, Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+            style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface,
+        )
+        listOf(
+            "🧭" to R.string.menu_ir_para_aqui to aoIrPara,
+            "🚩" to R.string.menu_partir_daqui to aoPartirDaqui,
+            "⭐" to R.string.menu_guardar_local to aoGuardar,
+        ).forEach { (simboloTexto, acao) ->
+            ItemLista(onClick = acao) {
+                Text(simboloTexto.first, color = MaterialTheme.colorScheme.primary)
+                Text(stringResource(simboloTexto.second), color = MaterialTheme.colorScheme.onSurface)
+            }
+        }
+        Spacer(Modifier.navigationBarsPadding().padding(bottom = 16.dp))
     }
 }
 

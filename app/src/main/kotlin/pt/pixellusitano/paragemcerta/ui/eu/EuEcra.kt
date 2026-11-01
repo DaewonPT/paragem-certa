@@ -50,7 +50,13 @@ fun intentOpiniao(versao: String): Intent =
         .putExtra(Intent.EXTRA_TEXT, "Versão da app: $versao\n\n")
 
 @Composable
-fun EuEcra(repositorio: Repositorio, preferencias: Preferencias, aoAbrirFavorita: (Favorita) -> Unit, aoAbrirSobre: () -> Unit) {
+fun EuEcra(
+    repositorio: Repositorio,
+    preferencias: Preferencias,
+    aoAbrirFavorita: (Favorita) -> Unit,
+    aoAbrirSobre: () -> Unit,
+    aoAbrirLocais: () -> Unit = {},
+) {
     val contexto = LocalContext.current
     val escopo = rememberCoroutineScope()
     val favoritas by remember { repositorio.favoritas() }.collectAsStateWithLifecycle(initialValue = emptyList())
@@ -73,6 +79,7 @@ fun EuEcra(repositorio: Repositorio, preferencias: Preferencias, aoAbrirFavorita
         aoAbrirSobre = aoAbrirSobre,
         aoEnviarOpiniao = { runCatching { contexto.startActivity(intentOpiniao(BuildConfig.VERSION_NAME)) } },
         modifier = Modifier.fillMaxSize(),
+        aoAbrirLocais = aoAbrirLocais,
     )
 }
 
@@ -89,6 +96,7 @@ fun EuConteudo(
     aoAbrirSobre: () -> Unit,
     aoEnviarOpiniao: () -> Unit,
     modifier: Modifier = Modifier,
+    aoAbrirLocais: () -> Unit = {},
 ) {
     Column(modifier.background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState()).statusBarsPadding().padding(16.dp)) {
         Text(stringResource(R.string.eu_favoritas), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
@@ -112,6 +120,7 @@ fun EuConteudo(
         Definicoes(modo, limites, aoMudarModo, aoMudarLimites, Modifier.padding(top = 24.dp))
 
         Column(Modifier.padding(top = 24.dp)) {
+            Ligacao(stringResource(R.string.eu_locais), aoAbrirLocais)
             Ligacao(stringResource(R.string.eu_sobre), aoAbrirSobre)
             Ligacao(stringResource(R.string.eu_opiniao), aoEnviarOpiniao)
         }
