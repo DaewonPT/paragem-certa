@@ -175,4 +175,29 @@
     <string name="eu_dados_apagados">Dados apagados</string>
     <string name="ok">OK</string>
     <string name="cancelar">Cancelar</string>
+
+    <!-- Viagem ao vivo: notificações -->
+    <string name="viagem_canal_viagem">Viagem em curso</string>
+    <string name="viagem_canal_viagem_desc">Mostra a etapa da viagem e quantas paragens faltam.</string>
+    <string name="viagem_canal_avisos">Avisos de saída</string>
+    <string name="viagem_canal_avisos_desc">Os avisos Prepara-te e Sai agora. O som e a vibração seguem as definições de alarme do telemóvel.</string>
+    <plurals name="viagem_faltam">
+        <item quantity="one">Falta %1$d paragem · sais em %2$s</item>
+        <item quantity="other">Faltam %1$d paragens · sais em %2$s</item>
+    </plurals>
+    <string name="viagem_a_pe">A pé até %1$s · %2$s</string>
+    <string name="viagem_chega_em">O %1$s chega em %2$d min</string>
+    <string name="viagem_parte_as">O %1$s parte às %2$s</string>
+    <string name="viagem_horario">%1$s · posição estimada pelo horário</string>
+    <string name="viagem_silenciar">Silenciar</string>
+    <string name="viagem_ja_sai">Já saí</string>
+    <string name="viagem_parar">Parar</string>
+    <plurals name="aviso_prepara_te">
+        <item quantity="one">Prepara-te — sais daqui a %1$d paragem, em %2$s</item>
+        <item quantity="other">Prepara-te — sais daqui a %1$d paragens, em %2$s</item>
+    </plurals>
+    <string name="aviso_sai_agora">Sai agora — %1$s</string>
+    <string name="aviso_apanha">%1$s e apanha o %2$s</string>
+    <string name="aviso_horario">%1$s (posição estimada, confirma a paragem)</string>
+    <string name="aviso_chegou">Chegaste a %1$s</string>
 </resources>
