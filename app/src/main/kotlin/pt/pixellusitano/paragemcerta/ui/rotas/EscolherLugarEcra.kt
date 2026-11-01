@@ -151,7 +151,12 @@ private fun OpcaoGuardavel(l: Lugar, aoEscolher: () -> Unit, aoGuardar: (String)
                 },
             ) {
                 Text(simboloLugar(l.tipo), color = MaterialTheme.colorScheme.primary)
-                Text(l.nome, color = MaterialTheme.colorScheme.onBackground)
+                Column {
+                    Text(l.nome, color = MaterialTheme.colorScheme.onBackground)
+                    l.zona?.let {
+                        Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                    }
+                }
             }
         }
         Box {

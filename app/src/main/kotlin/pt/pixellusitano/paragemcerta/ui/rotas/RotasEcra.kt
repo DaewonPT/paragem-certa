@@ -122,7 +122,7 @@ fun RotasEcra(
             comPosicao = campo == Campo.ORIGEM,
             locais = locais,
             recentes = recentes.flatMap { listOf(it.para, it.de) }.filter { it.nome != MINHA_POSICAO }.distinctBy { it.nome }.take(8),
-            pesquisar = repositorio::pesquisarLugares,
+            pesquisar = { t -> repositorio.pesquisarLugares(t, ultimaPosicao(contexto)) },
             aoEscolher = { l ->
                 if (campo == Campo.ORIGEM) vm.definirOrigem(l) else if (l != null) vm.definirDestino(l)
                 escolher = null

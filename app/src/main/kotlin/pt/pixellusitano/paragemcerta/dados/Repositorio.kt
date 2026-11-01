@@ -231,11 +231,12 @@ class Repositorio(
 
     /** Primeiro os locais guardados cujo nome tem o texto (sem ligar a acentos), depois moradas e sítios do Transitous
      *  (as paragens sem o cais no nome, e sem repetidas).
+     *  perto = a posição do utilizador: o Transitous põe os resultados mais próximos primeiro.
      *  null = o Transitous falhou e não há nenhum local guardado que sirva (sem ligação, não "sem resultados"). */
-    suspend fun pesquisarLugares(texto: String): List<Lugar>? {
+    suspend fun pesquisarLugares(texto: String, perto: Pair<Double, Double>? = null): List<Lugar>? {
         val procura = normalizar(texto)
         val meus = bd.locais().lista().filter { normalizar(it.nome).contains(procura) }.map { it.lugar() }
-        val outros = (transitous.pesquisarLugares(texto) as? Resultado.Ok)?.valor
+        val outros = (transitous.pesquisarLugares(texto, perto) as? Resultado.Ok)?.valor
             ?.map { if (it.tipo == TipoLugar.PARAGEM) it.copy(nome = nomeBase(it.nome)) else it }
             ?.fold(emptyList<Lugar>()) { sem, l -> if (sem.any { it.repetidoDe(l) }) sem else sem + l }
         return if (outros == null && meus.isEmpty()) null else meus + outros.orEmpty()

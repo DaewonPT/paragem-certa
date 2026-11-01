@@ -65,7 +65,7 @@ class TransitousTest {
         val l = TransitousParser.lugares(fixture("transitous-geocode-morada.json"))
         assertEquals(6, l.size)
         assertTrue(l.take(4).all { it.tipo == TipoLugar.PARAGEM })
-        assertEquals(Lugar("Avenida da Liberdade", l[4].lat, l[4].lon, TipoLugar.LOCAL), l[4])
+        assertEquals(Lugar("Avenida da Liberdade", l[4].lat, l[4].lon, TipoLugar.LOCAL, "Lisboa"), l[4])
         assertEquals(TipoLugar.LOCAL, l[5].tipo)
     }
 
@@ -73,6 +73,21 @@ class TransitousTest {
         val http = HttpFalso({ Resposta(200, "[]") })
         Transitous(http).pesquisarLugares("Avenida da Liberdade")
         assertEquals("https://api.transitous.org/api/v1/geocode?text=Avenida+da+Liberdade", http.pedidos.single())
+    }
+
+    @Test fun lugaresTrazemOConcelho() {
+        val l = TransitousParser.lugares(fixture("transitous-geocode-goa.json"))
+        assertEquals("São João da Madeira", l[0].zona)
+        assertEquals("Setúbal", l[2].zona)
+        // Os que vêm sem área de concelho (adminLevel 7) ficam sem zona.
+        assertNull(TransitousParser.lugares("""[{"type":"ADDRESS","name":"Rua A","lat":38.7,"lon":-9.1,"areas":[{"name":"Portugal","adminLevel":2}]}]""").single().zona)
+        assertNull(TransitousParser.lugares("""[{"type":"ADDRESS","name":"Rua A","lat":38.7,"lon":-9.1}]""").single().zona)
+    }
+
+    @Test fun pesquisaPertoUsaAPosicao() = runTest {
+        val http = HttpFalso({ Resposta(200, "[]") })
+        Transitous(http).pesquisarLugares("Rua de Goa", 38.7058 to -9.1446)
+        assertTrue(http.pedidos.single().endsWith("&place=38.7058,-9.1446"))
     }
 
     @Test fun lugarMaisProximoPrefereMoradaDepoisParagem() {
