@@ -1,7 +1,10 @@
 package pt.pixellusitano.paragemcerta.core.rotas
 
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import pt.pixellusitano.paragemcerta.core.fixture
@@ -31,6 +34,24 @@ class RotasTest {
         assertTrue(r.etapas[2].aPe)
         assertEquals(Duration.ofMinutes(30), r.duracao)
         assertEquals(0, r.transbordos)
+    }
+
+    @Test fun paragensDaEtapa() {
+        val etapas = TransitousParser.rotas(fixture("transitous-plan.json"))[0].etapas
+        val bus = etapas[1]
+        assertNotNull(bus.idViagem)
+        assertEquals(bus.paragensIntermedias + 2, bus.paragens.size)
+        assertEquals("pt-Carris_3804", bus.paragens.first().id)
+        assertEquals(bus.partida, bus.paragens.first().hora)
+        assertEquals("pt-Carris_7805", bus.paragens.last().id)
+        assertEquals(bus.chegada, bus.paragens.last().hora)
+        assertTrue(etapas.filter { it.aPe }.all { it.paragens.isEmpty() && it.idViagem == null })
+    }
+
+    @Test fun itinerarioIdaEVolta() {
+        TransitousParser.rotas(fixture("transitous-plan.json")).forEach {
+            assertEquals(it, Json.decodeFromString<Itinerario>(Json.encodeToString(it)))
+        }
     }
 
     @Test fun polilinhaConhecida() {

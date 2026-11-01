@@ -12,6 +12,7 @@ import pt.pixellusitano.paragemcerta.core.modelo.TipoLugar
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.Modo
 import pt.pixellusitano.paragemcerta.core.modelo.Paragem
+import pt.pixellusitano.paragemcerta.core.modelo.ParagemEtapa
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
 import pt.pixellusitano.paragemcerta.core.rede.Http
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
@@ -21,7 +22,10 @@ import java.net.URLEncoder
 import java.time.Instant
 import java.time.temporal.ChronoUnit
 
-/** Ids do Transitous que pertencem à Carris Metropolitana: essa vem só da API dela (os ids não coincidem). */
+/**
+ * Ids do Transitous que pertencem à Carris Metropolitana: essa vem só da API dela. Os ids convertem-se por uma regra fixa:
+ * paragem sem este prefixo e com o 3 inicial a 0 (cmParagemDeTransitous), viagem sem "AAAAMMDD_HH:MM_" e sem o prefixo (cmViagemDeTransitous).
+ */
 const val PREFIXO_CM_TRANSITOUS = "pt-Carris-Metropolitana_"
 
 private val JSON = Json { ignoreUnknownKeys = true; coerceInputValues = true }
@@ -92,7 +96,14 @@ fun modoDe(mode: String): Modo = when (mode) {
     else -> Modo.OUTRO
 }
 
-@Serializable private class PontoRotaJson(val name: String = "", val lat: Double = 0.0, val lon: Double = 0.0)
+@Serializable private class PontoRotaJson(
+    val stopId: String? = null,
+    val name: String = "",
+    val lat: Double = 0.0,
+    val lon: Double = 0.0,
+    val arrival: String? = null,
+    val departure: String? = null,
+)
 
 @Serializable private class DesenhoJson(val points: String = "", val precision: Int = 6)
 
@@ -107,6 +118,7 @@ fun modoDe(mode: String): Modo = when (mode) {
     val routeId: String? = null,
     val routeColor: String? = null,
     val headsign: String? = null,
+    val tripId: String? = null,
     val from: PontoRotaJson = PontoRotaJson(),
     val to: PontoRotaJson = PontoRotaJson(),
     val intermediateStops: List<PontoRotaJson> = emptyList(),
@@ -120,6 +132,10 @@ fun modoDe(mode: String): Modo = when (mode) {
 @Serializable private class PlanoJson(val itineraries: List<ItinerarioJson> = emptyList())
 
 private fun PontoRotaJson.lugar() = Lugar(name, lat, lon, TipoLugar.LOCAL)
+
+/** A hora é a partida da paragem (ou a chegada, na última); sem nenhuma, a da etapa. */
+private fun PontoRotaJson.paragem(horaDaEtapa: String) =
+    ParagemEtapa(stopId, name, lat, lon, Instant.parse(departure ?: arrival ?: horaDaEtapa))
 
 // "RAIL" sozinho apanha também o metro no Transitous, por isso o comboio lista os seus modos um a um.
 private val ORDEM_MODOS = listOf(
@@ -164,6 +180,9 @@ object TransitousParser {
                             desenho = l.legGeometry?.let { g -> descodificarPolilinha(g.points, g.precision) }.orEmpty(),
                             cor = l.routeColor?.let { c -> if (c.startsWith("#")) c else "#$c" },
                             distancia = l.distance,
+                            idViagem = l.tripId,
+                            paragens = if (aPe) emptyList() else
+                                listOf(l.from.paragem(l.startTime)) + l.intermediateStops.map { s -> s.paragem(l.startTime) } + l.to.paragem(l.endTime),
                         )
                     },
                     partida = Instant.parse(it.startTime),
