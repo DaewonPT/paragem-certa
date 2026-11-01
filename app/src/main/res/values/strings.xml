@@ -18,6 +18,7 @@
     <string name="loc_texto">A Paragem Certa usa a tua localização para mostrar as paragens e as chegadas mais próximas. A posição fica no telemóvel: só é usada enquanto a app está aberta.</string>
     <string name="loc_aceitar">Permitir localização</string>
     <string name="loc_recusar">Agora não</string>
+    <string name="centrar_posicao">Centrar na minha posição</string>
     <string name="veiculo_linha">Linha %1$s</string>
     <string name="veiculo_destino">para %1$s</string>
     <string name="veiculo_sinal">último sinal há %1$d s</string>

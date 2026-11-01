@@ -13,7 +13,9 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Button
@@ -26,6 +28,7 @@ import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -35,6 +38,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -93,6 +99,7 @@ fun InicioEcra(
     var comLocalizacao by remember { mutableStateOf(temLocalizacao(contexto)) }
     var explicar by remember { mutableStateOf(!comLocalizacao && !localizacaoJaPerguntada(contexto)) }
     var posicao by remember { mutableStateOf(ultimaPosicao(contexto)) }
+    var centrarAgora by remember { mutableIntStateOf(0) }
     val pedir = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { r ->
         comLocalizacao = r.values.any { it }
     }
@@ -138,6 +145,8 @@ fun InicioEcra(
             aoTocarVeiculo = vm::escolherVeiculo,
             modifier = Modifier.fillMaxSize(),
             aoToqueLongo = vm::toqueLongo,
+            mostrarPosicao = comLocalizacao,
+            centrarAgora = centrarAgora,
         )
         Column(Modifier.statusBarsPadding().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             BarraPesquisa(aoPesquisar)
@@ -145,6 +154,14 @@ fun InicioEcra(
                 CartaoLinha(repositorio, l, paragensDaLinha, linhaFalhou, posicao, aoLimparLinha)
             }
             escolhido?.let { CartaoVeiculo(it, aoFechar = { vm.escolherVeiculo(null) }) }
+            BotaoCentrar(Modifier.align(Alignment.End)) {
+                if (comLocalizacao) {
+                    centrarAgora++
+                    pedirPosicaoAtual(contexto) { posicao = it }
+                } else {
+                    pedir.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                }
+            }
         }
     }
     }
@@ -222,6 +239,21 @@ private fun BarraPesquisa(aoPesquisar: () -> Unit) {
     ) {
         Text("🔍  " + stringResource(R.string.pesquisa_dica), color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp))
+    }
+}
+
+@Composable
+private fun BotaoCentrar(modifier: Modifier, aoTocar: () -> Unit) {
+    val descricao = stringResource(R.string.centrar_posicao)
+    Surface(
+        modifier.size(48.dp).clickable(role = Role.Button, onClick = aoTocar).semantics { contentDescription = descricao },
+        shape = CircleShape, shadowElevation = 6.dp,
+        border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.secondary),
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            // O leitor de ecrã lê a descrição, não o símbolo.
+            Text("◎", Modifier.clearAndSetSemantics {}, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge)
+        }
     }
 }
 

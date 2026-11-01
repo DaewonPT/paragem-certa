@@ -1,8 +1,10 @@
 package pt.pixellusitano.paragemcerta.ui.mapa
 
 import android.annotation.SuppressLint
+import android.content.Context
 import android.view.Gravity
 import pt.pixellusitano.paragemcerta.ui.inicio.Zona
+import pt.pixellusitano.paragemcerta.ui.inicio.temLocalizacao
 import android.graphics.Color as CorAndroid
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -23,6 +25,9 @@ import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.location.LocationComponentActivationOptions
+import org.maplibre.android.location.modes.CameraMode
+import org.maplibre.android.location.modes.RenderMode
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
@@ -79,6 +84,10 @@ fun Mapa(
     modifier: Modifier = Modifier,
     percursos: List<Percurso> = emptyList(),
     aoToqueLongo: (lat: Double, lon: Double) -> Unit = { _, _ -> },
+    /** Mostra o ponto azul da posição da pessoa (só aparece se a app tiver permissão de localização). */
+    mostrarPosicao: Boolean = false,
+    /** Contador: cada vez que sobe, a câmara vai para a posição da pessoa. */
+    centrarAgora: Int = 0,
 ) {
     val contexto = LocalContext.current
     val ciclo = LocalLifecycleOwner.current.lifecycle
@@ -88,6 +97,7 @@ fun Mapa(
     val toqueLongo by rememberUpdatedState(aoToqueLongo)
     val paragensAtuais by rememberUpdatedState(paragens)
     val veiculosAtuais by rememberUpdatedState(veiculos)
+    val posicaoVisivel by rememberUpdatedState(mostrarPosicao)
 
     val estado = remember { EstadoMapa() }
     val vista = remember {
@@ -103,10 +113,11 @@ fun Mapa(
                 mapa.uiSettings.isRotateGesturesEnabled = false
                 // Por omissão ficam no canto de baixo, tapados pelo painel: passam para cima, por baixo da pesquisa.
                 val px = resources.displayMetrics.density
+                // Mais abaixo que a pesquisa e o botão de centrar; a atribuição do OpenStreetMap é obrigatória e tem de ficar à vista.
                 mapa.uiSettings.attributionGravity = Gravity.TOP or Gravity.END
-                mapa.uiSettings.setAttributionMargins(0, (120 * px).toInt(), (12 * px).toInt(), 0)
+                mapa.uiSettings.setAttributionMargins(0, (180 * px).toInt(), (12 * px).toInt(), 0)
                 mapa.uiSettings.logoGravity = Gravity.TOP or Gravity.START
-                mapa.uiSettings.setLogoMargins((12 * px).toInt(), (120 * px).toInt(), 0, 0)
+                mapa.uiSettings.setLogoMargins((12 * px).toInt(), (180 * px).toInt(), 0, 0)
                 mapa.addOnCameraMoveStartedListener { razao ->
                     if (razao == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) estado.utilizadorMexeu = true
                 }
@@ -154,7 +165,25 @@ fun Mapa(
         mapa.setStyle(Style.Builder().fromUri(if (escuro) ESTILO_ESCURO else ESTILO_CLARO)) { estilo ->
             prepararCamadas(estilo, escuro)
             estado.estilo = estilo
+            // Mudar de estilo (claro/escuro) deita fora o ponto da posição: volta a ativá-lo.
+            if (posicaoVisivel) ativarPosicao(contexto, mapa, estilo)
         }
+    }
+
+    // A permissão pode chegar depois de o estilo estar carregado.
+    LaunchedEffect(mostrarPosicao) {
+        val mapa = estado.mapa ?: return@LaunchedEffect
+        val estilo = estado.estilo ?: return@LaunchedEffect
+        if (mostrarPosicao) ativarPosicao(contexto, mapa, estilo)
+    }
+
+    LaunchedEffect(centrarAgora, estado.mapa) {
+        val mapa = estado.mapa ?: return@LaunchedEffect
+        if (centrarAgora <= 0) return@LaunchedEffect
+        val componente = mapa.locationComponent
+        val local = if (componente.isLocationComponentActivated) componente.lastKnownLocation else null
+        val destino = local?.let { LatLng(it.latitude, it.longitude) } ?: centrarEm ?: return@LaunchedEffect
+        mapa.easeCamera(CameraUpdateFactory.newLatLngZoom(destino, 16.0))
     }
 
     // A primeira posição real chega depois do mapa: centra nela, a menos que a pessoa já tenha mexido no mapa.
@@ -220,6 +249,22 @@ private class EstadoMapa {
     var utilizadorMexeu = false
     var mapa: MapLibreMap? by mutableStateOf(null)
     var estilo: Style? by mutableStateOf(null)
+}
+
+/** Liga o ponto azul da posição (motor de localização do próprio MapLibre, sem serviços da Google). */
+@SuppressLint("MissingPermission")
+private fun ativarPosicao(contexto: Context, mapa: MapLibreMap, estilo: Style) {
+    if (!temLocalizacao(contexto)) return
+    try {
+        mapa.locationComponent.apply {
+            activateLocationComponent(LocationComponentActivationOptions.builder(contexto, estilo).useDefaultLocationEngine(true).build())
+            isLocationComponentEnabled = true
+            renderMode = RenderMode.NORMAL
+            cameraMode = CameraMode.NONE
+        }
+    } catch (_: SecurityException) {
+        // A permissão foi retirada entre a verificação e a ativação: fica sem ponto.
+    }
 }
 
 private fun prepararCamadas(estilo: Style, escuro: Boolean) {

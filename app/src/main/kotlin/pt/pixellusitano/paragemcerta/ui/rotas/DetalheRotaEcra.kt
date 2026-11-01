@@ -43,6 +43,7 @@ import pt.pixellusitano.paragemcerta.ui.comum.LISBOA_FUSO
 import pt.pixellusitano.paragemcerta.ui.comum.LocalLimites
 import pt.pixellusitano.paragemcerta.ui.comum.SeloLinha
 import pt.pixellusitano.paragemcerta.ui.comum.corDaLinha
+import pt.pixellusitano.paragemcerta.ui.inicio.temLocalizacao
 import pt.pixellusitano.paragemcerta.ui.mapa.Mapa
 import pt.pixellusitano.paragemcerta.ui.mapa.Percurso
 import pt.pixellusitano.paragemcerta.ui.tema.CoresAtraso
@@ -67,7 +68,7 @@ fun DetalheRotaEcra(it: Itinerario, de: String, para: String, aoVoltar: () -> Un
                 paragens = emptyList(), enquadrar = emptyList(), veiculos = emptyList(), coresLinhas = emptyMap(),
                 escuro = escuro, centroInicial = LatLng(inicio.first, inicio.second), camaraInicial = null, centrarEm = null,
                 aoMoverCamara = { _, _, _, _, _ -> }, aoTocarParagem = {}, aoTocarVeiculo = {},
-                modifier = Modifier.fillMaxSize(), percursos = percursos,
+                modifier = Modifier.fillMaxSize(), percursos = percursos, mostrarPosicao = temLocalizacao(contexto),
             )
         },
         aoVoltar = aoVoltar,
