@@ -2,6 +2,10 @@
 
 A versão mais recente aparece primeiro.
 
+## 0.3.1 — Voltar ao início
+
+- Tocar em "Início" na barra de baixo volta sempre ao início, mesmo depois de abrir uma rota a partir de "Para onde vais?".
+
 ## 0.3.0 — Viagem ao vivo
 
 - "Começar viagem" na rota: a app segue-te etapa a etapa, a pé, à espera, a bordo e nos transbordos.
