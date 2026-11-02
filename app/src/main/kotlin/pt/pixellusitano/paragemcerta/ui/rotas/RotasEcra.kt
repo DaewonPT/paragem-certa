@@ -66,7 +66,8 @@ import java.time.format.DateTimeFormatter
 
 private enum class Campo { ORIGEM, DESTINO }
 
-private val MODOS_FILTRO = listOf(
+/** Os meios de transporte que se podem escolher, nos filtros do ecrã Rotas e nas preferências de rotas do Menu. */
+internal val MODOS_FILTRO = listOf(
     Modo.AUTOCARRO to R.string.modo_autocarro, Modo.METRO to R.string.modo_metro, Modo.COMBOIO to R.string.modo_comboio,
     Modo.ELETRICO to R.string.modo_eletrico, Modo.BARCO to R.string.modo_barco,
 )

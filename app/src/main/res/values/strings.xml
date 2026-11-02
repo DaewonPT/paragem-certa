@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name">Paragem Certa</string>
 
     <!-- Sobre e fontes de dados -->
@@ -70,10 +70,15 @@
     <string name="pesquisa_sem_rede">Sem ligação: os sítios e moradas aparecem quando houver rede.</string>
     <string name="fonte_geoapi">Código postal via GEO API PT (geoapi.pt) · dados CTT/INE</string>
 
-    <!-- Navegação e Eu -->
+    <!-- Navegação, Menu e Definições -->
     <string name="nav_inicio">Início</string>
-    <string name="nav_eu">Eu</string>
-    <string name="eu_favoritas">Paragens favoritas</string>
+    <string name="nav_menu">Menu</string>
+    <string name="menu_favoritos">Favoritos</string>
+    <string name="menu_ajuda">Ajuda</string>
+    <string name="menu_reclamar">Reclamar de um transporte</string>
+    <string name="menu_sobre">Sobre</string>
+    <string name="favoritos_paragens">Paragens</string>
+    <string name="favoritos_sitios">Sítios</string>
     <string name="eu_sem_favoritas">Ainda não tens favoritas. Abre uma paragem e toca na ☆.</string>
     <string name="eu_subir">Subir</string>
     <string name="eu_remover">Remover</string>
@@ -85,8 +90,25 @@
     <string name="eu_limites">Cores do atraso</string>
     <string name="eu_limite_atrasado">Amarelo a partir de %1$d min</string>
     <string name="eu_limite_muito">Vermelho acima de %1$d min</string>
-    <string name="eu_sobre">Sobre e fontes de dados</string>
     <string name="eu_opiniao">Enviar opinião</string>
+    <string name="pref_rotas">Preferências de rotas</string>
+    <string name="pref_ordenar">Ordenar por</string>
+    <string name="pref_ordem_mais_rapida">Mais rápida</string>
+    <string name="pref_ordem_chegada_mais_cedo">Chegada mais cedo</string>
+    <string name="pref_ordem_menos_a_pe">Menos a pé</string>
+    <string name="pref_ordem_menos_transbordos">Menos transbordos</string>
+    <string name="pref_meios">Meios de transporte</string>
+    <string name="pref_tempo_a_pe">Tempo máximo a pé</string>
+    <string name="pref_minutos">%1$d min</string>
+    <string name="pref_ritmo">Ritmo a pé</string>
+    <string name="pref_ritmo_lento">Lento</string>
+    <string name="pref_ritmo_normal">Normal</string>
+    <string name="pref_ritmo_rapido">Rápido</string>
+    <string name="pref_acessivel">Percursos acessíveis</string>
+    <string name="pref_ecra_inicial">Ecrã inicial</string>
+    <string name="pref_ecra_mapa">Mapa</string>
+    <string name="pref_ecra_rotas">Rotas</string>
+    <string name="pref_ecra_favoritos">Favoritos — o Início com os favoritos abertos</string>
     <string name="menos">Menos</string>
     <string name="mais">Mais</string>
     <string name="linha_no_mapa">Linha %1$s no mapa</string>
@@ -171,14 +193,13 @@
     <string name="detalhe_chegada">Chegada a %1$s</string>
     <string name="detalhe_partilhar">Partilhar rota</string>
     <string name="detalhe_tvde">Abrir app de TVDE</string>
-    <string name="eu_locais">Os meus locais</string>
-    <string name="locais_vazio">Ainda não tens locais. Toca sem largar num ponto do mapa, ou guarda um resultado quando escolhes para onde vais.</string>
+    <string name="locais_vazio">Ainda não tens sítios. Toca sem largar num ponto do mapa, ou guarda um resultado quando escolhes para onde vais.</string>
     <string name="locais_opcoes">Opções de %1$s</string>
     <string name="locais_mudar_nome">Mudar o nome</string>
     <string name="locais_apagar">Apagar</string>
     <string name="locais_casa">Casa</string>
     <string name="locais_trabalho">Trabalho</string>
-    <string name="local_guardado">Guardado em Os meus locais</string>
+    <string name="local_guardado">Guardado nos favoritos</string>
     <string name="menu_ir_para_aqui">Ir para aqui</string>
     <string name="menu_partir_daqui">Partir daqui</string>
     <string name="menu_guardar_local">Guardar local</string>
@@ -200,6 +221,22 @@
     <string name="eu_dados_apagados">Dados apagados</string>
     <string name="ok">OK</string>
     <string name="cancelar">Cancelar</string>
+
+    <!-- Ajuda e reclamações -->
+    <string name="ajuda_aviso_p">Como funciona o aviso de saída?</string>
+    <string name="ajuda_aviso_r">Quando começas uma viagem, a app acompanha a tua posição. Avisa-te com “Prepara-te” quando estás a poucas paragens da tua e com “Sai agora” quando estás a chegar a ela. Sem localização, os avisos seguem só o horário.</string>
+    <string name="ajuda_bateria_p">Porque devo tirar a app da poupança de bateria?</string>
+    <string name="ajuda_bateria_r">Alguns telemóveis fecham as apps quando o ecrã está desligado e a viagem pára sem avisar. Se a Paragem Certa não estiver na poupança de bateria, os avisos não falham.</string>
+    <string name="ajuda_tempo_real_p">O que quer dizer “horário” e “tempo real”?</string>
+    <string name="ajuda_tempo_real_r">“Tempo real” é a hora que o operador está a medir no veículo, por isso é a mais certa. “Horário” é a hora planeada, sem medição: o veículo pode chegar mais cedo ou mais tarde.</string>
+    <string name="ajuda_favoritos_p">Como guardo um sítio nos favoritos?</string>
+    <string name="ajuda_favoritos_r">Toca sem largar num ponto do mapa, ou guarda um resultado quando escolhes para onde vais. As paragens guardam-se com a ☆ no ecrã da paragem. Depois ordenas, mudas o nome e apagas em Menu → Favoritos.</string>
+    <string name="reclamar_nota" tools:ignore="Typos">A Paragem Certa não é o operador. As reclamações vão diretamente para eles.</string>
+    <string name="reclamar_livro">Livro de Reclamações Eletrónico</string>
+    <string name="reclamar_carris">Carris</string>
+    <string name="reclamar_cm">Carris Metropolitana</string>
+    <string name="reclamar_metro">Metro de Lisboa</string>
+    <string name="reclamar_cp">CP</string>
 
     <!-- Viagem ao vivo: notificações -->
     <string name="viagem_canal_viagem">Viagem em curso</string>

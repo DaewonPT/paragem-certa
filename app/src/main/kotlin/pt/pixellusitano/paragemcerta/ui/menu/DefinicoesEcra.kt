@@ -1,7 +1,6 @@
-package pt.pixellusitano.paragemcerta.ui.eu
+package pt.pixellusitano.paragemcerta.ui.menu
 
-import android.content.Intent
-import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -16,23 +15,21 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import android.widget.Toast
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.graphics.Color
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -41,60 +38,42 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
-import pt.pixellusitano.paragemcerta.BuildConfig
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.atualizar.Atualizacoes
 import pt.pixellusitano.paragemcerta.core.atraso.Limites
-import pt.pixellusitano.paragemcerta.core.regras.Favorita
+import pt.pixellusitano.paragemcerta.core.modelo.Filtros
+import pt.pixellusitano.paragemcerta.dados.EcraInicial
 import pt.pixellusitano.paragemcerta.dados.Preferencias
 import pt.pixellusitano.paragemcerta.dados.Repositorio
-import pt.pixellusitano.paragemcerta.ui.sobre.EMAIL_CONTACTO
 import pt.pixellusitano.paragemcerta.ui.tema.FrisoAzulejo
 import pt.pixellusitano.paragemcerta.ui.tema.ModoTema
 
-fun intentOpiniao(versao: String): Intent =
-    Intent(Intent.ACTION_SENDTO, Uri.parse("mailto:$EMAIL_CONTACTO"))
-        .putExtra(Intent.EXTRA_SUBJECT, "Paragem Certa — opinião")
-        .putExtra(Intent.EXTRA_TEXT, "Versão da app: $versao\n\n")
-
 @Composable
-fun EuEcra(
-    repositorio: Repositorio,
-    preferencias: Preferencias,
-    aoAbrirFavorita: (Favorita) -> Unit,
-    aoAbrirSobre: () -> Unit,
-    aoAbrirLocais: () -> Unit = {},
-) {
+fun DefinicoesEcra(repositorio: Repositorio, preferencias: Preferencias, aoVoltar: () -> Unit) {
     val contexto = LocalContext.current
     val escopo = rememberCoroutineScope()
-    val favoritas by remember { repositorio.favoritas() }.collectAsStateWithLifecycle(initialValue = emptyList())
     val modo by preferencias.modo.collectAsStateWithLifecycle(initialValue = ModoTema.SISTEMA)
     val limites by preferencias.limites.collectAsStateWithLifecycle(initialValue = Limites())
     val somAviso by preferencias.somAviso.collectAsStateWithLifecycle(initialValue = true)
     val vibracaoAviso by preferencias.vibracaoAviso.collectAsStateWithLifecycle(initialValue = true)
+    val filtros by preferencias.filtros.collectAsStateWithLifecycle(initialValue = Filtros())
+    val ecraInicial by preferencias.ecraInicial.collectAsStateWithLifecycle(initialValue = EcraInicial.MAPA)
     val apagados = stringResource(R.string.eu_dados_apagados)
-    EuConteudo(
-        favoritas = favoritas,
+    DefinicoesConteudo(
         modo = modo,
         limites = limites,
         somAviso = somAviso,
         vibracaoAviso = vibracaoAviso,
-        aoAbrirFavorita = aoAbrirFavorita,
-        aoSubir = { f ->
-            val i = favoritas.indexOf(f)
-            if (i > 0) escopo.launch {
-                repositorio.reordenarFavoritas(favoritas.toMutableList().apply { add(i - 1, removeAt(i)) })
-            }
-        },
-        aoRemover = { f -> escopo.launch { repositorio.removerFavorita(f.ref) } },
+        filtros = filtros,
+        ecraInicial = ecraInicial,
         aoMudarModo = { escopo.launch { preferencias.definirModo(it) } },
         aoMudarLimites = { l -> escopo.launch { runCatching { preferencias.definirLimites(l) } } },
         aoMudarSom = { escopo.launch { preferencias.definirSomAviso(it) } },
         aoMudarVibracao = { escopo.launch { preferencias.definirVibracaoAviso(it) } },
-        aoAbrirSobre = aoAbrirSobre,
-        aoEnviarOpiniao = { runCatching { contexto.startActivity(intentOpiniao(BuildConfig.VERSION_NAME)) } },
+        aoMudarFiltros = { escopo.launch { preferencias.definirFiltros(it) } },
+        aoMudarEcraInicial = { escopo.launch { preferencias.definirEcraInicial(it) } },
+        aoVoltar = aoVoltar,
         modifier = Modifier.fillMaxSize(),
-        aoAbrirLocais = aoAbrirLocais,
         aoApagarDados = {
             escopo.launch { repositorio.apagarDadosDoTelemovel() }
             Toast.makeText(contexto, apagados, Toast.LENGTH_SHORT).show()
@@ -122,60 +101,48 @@ fun EuEcra(
 }
 
 @Composable
-fun EuConteudo(
-    favoritas: List<Favorita>,
+fun DefinicoesConteudo(
     modo: ModoTema,
     limites: Limites,
     somAviso: Boolean,
     vibracaoAviso: Boolean,
-    aoAbrirFavorita: (Favorita) -> Unit,
-    aoSubir: (Favorita) -> Unit,
-    aoRemover: (Favorita) -> Unit,
+    filtros: Filtros,
+    ecraInicial: EcraInicial,
     aoMudarModo: (ModoTema) -> Unit,
     aoMudarLimites: (Limites) -> Unit,
     aoMudarSom: (Boolean) -> Unit,
     aoMudarVibracao: (Boolean) -> Unit,
-    aoAbrirSobre: () -> Unit,
-    aoEnviarOpiniao: () -> Unit,
+    aoMudarFiltros: (Filtros) -> Unit,
+    aoMudarEcraInicial: (EcraInicial) -> Unit,
+    aoVoltar: () -> Unit,
     modifier: Modifier = Modifier,
-    aoAbrirLocais: () -> Unit = {},
     aoApagarDados: () -> Unit = {},
     /** Só a variante pessoal tem esta secção (as atualizações da Play Store vêm pela loja). */
     secaoAtualizacoes: @Composable (Modifier) -> Unit = {},
 ) {
     Column(modifier.background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState()).statusBarsPadding().padding(16.dp)) {
-        Text(stringResource(R.string.eu_favoritas), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
-        FrisoAzulejo(Modifier.fillMaxWidth().padding(vertical = 8.dp))
-        if (favoritas.isEmpty()) {
-            Text(stringResource(R.string.eu_sem_favoritas), color = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        favoritas.forEachIndexed { i, f ->
-            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    "★ " + f.nome,
-                    color = MaterialTheme.colorScheme.onBackground,
-                    modifier = Modifier.weight(1f).clickable(role = Role.Button) { aoAbrirFavorita(f) }.padding(vertical = 12.dp),
-                )
-                if (i > 0) TextButton(onClick = { aoSubir(f) }) { Text("↑ " + stringResource(R.string.eu_subir)) }
-                TextButton(onClick = { aoRemover(f) }) { Text(stringResource(R.string.eu_remover)) }
-            }
-            HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        }
-
-        Definicoes(
-            modo, limites, somAviso, vibracaoAviso, aoMudarModo, aoMudarLimites, aoMudarSom, aoMudarVibracao,
-            Modifier.padding(top = 24.dp),
-        )
-
+        CabecalhoEcra(stringResource(R.string.eu_definicoes), aoVoltar)
+        Definicoes(modo, limites, somAviso, vibracaoAviso, aoMudarModo, aoMudarLimites, aoMudarSom, aoMudarVibracao)
+        PreferenciasRotas(filtros, aoMudarFiltros, Modifier.padding(top = 24.dp))
+        EcraInicialOpcoes(ecraInicial, aoMudarEcraInicial, Modifier.padding(top = 24.dp))
         secaoAtualizacoes(Modifier.padding(top = 24.dp))
-
         Privacidade(aoApagarDados, Modifier.padding(top = 24.dp))
+    }
+}
 
-        Column(Modifier.padding(top = 24.dp)) {
-            Ligacao(stringResource(R.string.eu_locais), aoAbrirLocais)
-            Ligacao(stringResource(R.string.eu_sobre), aoAbrirSobre)
-            Ligacao(stringResource(R.string.eu_opiniao), aoEnviarOpiniao)
-        }
+/** O ecrã em que a app abre; "Favoritos" é o Início com o painel dos favoritos aberto. */
+@Composable
+private fun EcraInicialOpcoes(escolhido: EcraInicial, aoEscolher: (EcraInicial) -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier.background(MaterialTheme.colorScheme.background)) {
+        TituloSecao(stringResource(R.string.pref_ecra_inicial))
+        Escolha(
+            listOf(
+                EcraInicial.MAPA to stringResource(R.string.pref_ecra_mapa),
+                EcraInicial.ROTAS to stringResource(R.string.pref_ecra_rotas),
+                EcraInicial.FAVORITOS to stringResource(R.string.pref_ecra_favoritos),
+            ),
+            escolhido, aoEscolher,
+        )
     }
 }
 
@@ -189,26 +156,10 @@ fun SecaoAtualizacoes(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.background(MaterialTheme.colorScheme.background)) {
-        Text(stringResource(R.string.eu_atualizacoes), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
-        FrisoAzulejo(Modifier.fillMaxWidth().padding(vertical = 8.dp))
+        TituloSecao(stringResource(R.string.eu_atualizacoes))
         Text(stringResource(R.string.eu_atualizacoes_quando), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Interruptor(stringResource(R.string.eu_atualizar_sozinha), sozinha, true, aoMudarSozinha)
-        Interruptor(stringResource(R.string.eu_atualizar_dados_moveis), dadosMoveis, sozinha, aoMudarDadosMoveis)
-    }
-}
-
-@Composable
-private fun Interruptor(texto: String, ligado: Boolean, ativo: Boolean, aoMudar: (Boolean) -> Unit) {
-    Row(
-        Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(value = ligado, enabled = ativo, role = Role.Switch, onValueChange = aoMudar),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(
-            texto,
-            color = if (ativo) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant,
-            modifier = Modifier.weight(1f),
-        )
-        Switch(checked = ligado, onCheckedChange = null, enabled = ativo)
+        Interruptor(stringResource(R.string.eu_atualizar_sozinha), sozinha, aoMudarSozinha)
+        Interruptor(stringResource(R.string.eu_atualizar_dados_moveis), dadosMoveis, aoMudarDadosMoveis, ativo = sozinha)
     }
 }
 
@@ -217,8 +168,7 @@ private fun Interruptor(texto: String, ligado: Boolean, ativo: Boolean, aoMudar:
 fun Privacidade(aoApagarDados: () -> Unit, modifier: Modifier = Modifier) {
     var confirmar by remember { mutableStateOf(false) }
     Column(modifier.background(MaterialTheme.colorScheme.background)) {
-        Text(stringResource(R.string.eu_privacidade), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
-        FrisoAzulejo(Modifier.fillMaxWidth().padding(vertical = 8.dp))
+        TituloSecao(stringResource(R.string.eu_privacidade))
         Ligacao(stringResource(R.string.eu_apagar_dados), { confirmar = true }, MaterialTheme.colorScheme.error)
     }
     if (confirmar) {
@@ -237,7 +187,7 @@ fun Privacidade(aoApagarDados: () -> Unit, modifier: Modifier = Modifier) {
 }
 
 @Composable
-private fun Ligacao(texto: String, aoTocar: () -> Unit, cor: Color = MaterialTheme.colorScheme.primary) {
+internal fun Ligacao(texto: String, aoTocar: () -> Unit, cor: Color = MaterialTheme.colorScheme.primary) {
     Text(
         texto,
         color = cor,
@@ -246,6 +196,7 @@ private fun Ligacao(texto: String, aoTocar: () -> Unit, cor: Color = MaterialThe
     )
 }
 
+/** Aparência, cores do atraso e avisos da viagem; o título "Definições" é o do ecrã. */
 @Composable
 fun Definicoes(
     modo: ModoTema,
@@ -259,24 +210,16 @@ fun Definicoes(
     modifier: Modifier = Modifier,
 ) {
     Column(modifier.background(MaterialTheme.colorScheme.background)) {
-        Text(stringResource(R.string.eu_definicoes), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
-        FrisoAzulejo(Modifier.fillMaxWidth().padding(vertical = 8.dp))
-        Text(stringResource(R.string.eu_modo), style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
-        listOf(
-            ModoTema.SISTEMA to R.string.modo_sistema,
-            ModoTema.CLARO to R.string.modo_claro,
-            ModoTema.ESCURO to R.string.modo_escuro,
-        ).forEach { (m, texto) ->
-            Row(
-                Modifier.fillMaxWidth().heightIn(min = 48.dp).selectable(selected = modo == m, role = Role.RadioButton) { aoMudarModo(m) },
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                RadioButton(selected = modo == m, onClick = null)
-                Text(stringResource(texto), color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.padding(start = 8.dp))
-            }
-        }
-        Text(stringResource(R.string.eu_limites), style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.padding(top = 16.dp))
+        Subtitulo(stringResource(R.string.eu_modo))
+        Escolha(
+            listOf(
+                ModoTema.SISTEMA to stringResource(R.string.modo_sistema),
+                ModoTema.CLARO to stringResource(R.string.modo_claro),
+                ModoTema.ESCURO to stringResource(R.string.modo_escuro),
+            ),
+            modo, aoMudarModo,
+        )
+        Subtitulo(stringResource(R.string.eu_limites), Modifier.padding(top = 16.dp))
         Ajuste(
             stringResource(R.string.eu_limite_atrasado, limites.atrasado),
             menos = { if (limites.atrasado > 1) aoMudarLimites(limites.copy(atrasado = limites.atrasado - 1)) },
@@ -287,21 +230,52 @@ fun Definicoes(
             menos = { if (limites.muitoAtrasado - 1 > limites.atrasado) aoMudarLimites(limites.copy(muitoAtrasado = limites.muitoAtrasado - 1)) },
             mais = { if (limites.muitoAtrasado < 30) aoMudarLimites(limites.copy(muitoAtrasado = limites.muitoAtrasado + 1)) },
         )
-        Text(stringResource(R.string.eu_avisos), style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.padding(top = 16.dp))
+        Subtitulo(stringResource(R.string.eu_avisos), Modifier.padding(top = 16.dp))
         Interruptor(stringResource(R.string.eu_som_aviso), somAviso, aoMudarSom)
         Interruptor(stringResource(R.string.eu_vibracao_aviso), vibracaoAviso, aoMudarVibracao)
     }
 }
 
+/** Título de uma secção das definições, com o friso por baixo. */
 @Composable
-private fun Interruptor(texto: String, ligado: Boolean, aoMudar: (Boolean) -> Unit) {
+internal fun TituloSecao(texto: String) {
+    Text(texto, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
+    FrisoAzulejo(Modifier.fillMaxWidth().padding(vertical = 8.dp))
+}
+
+@Composable
+internal fun Subtitulo(texto: String, modifier: Modifier = Modifier) {
+    Text(texto, modifier, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
+}
+
+/** Uma escolha entre várias, em linhas de 48 dp com o botão de opção. */
+@Composable
+internal fun <T> Escolha(opcoes: List<Pair<T, String>>, escolhida: T, aoEscolher: (T) -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier) {
+        opcoes.forEach { (valor, texto) ->
+            Row(
+                Modifier.fillMaxWidth().heightIn(min = 48.dp).selectable(selected = escolhida == valor, role = Role.RadioButton) { aoEscolher(valor) },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                RadioButton(selected = escolhida == valor, onClick = null)
+                Text(texto, color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.padding(start = 8.dp))
+            }
+        }
+    }
+}
+
+@Composable
+internal fun Interruptor(texto: String, ligado: Boolean, aoMudar: (Boolean) -> Unit, ativo: Boolean = true) {
     Row(
-        Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(value = ligado, role = Role.Switch, onValueChange = aoMudar),
+        Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(value = ligado, enabled = ativo, role = Role.Switch, onValueChange = aoMudar),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(texto, color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.weight(1f))
-        Switch(checked = ligado, onCheckedChange = null)
+        Text(
+            texto,
+            color = if (ativo) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f),
+        )
+        Switch(checked = ligado, onCheckedChange = null, enabled = ativo)
     }
 }
 

@@ -16,7 +16,10 @@ import pt.pixellusitano.paragemcerta.core.modelo.Ordem
 import pt.pixellusitano.paragemcerta.core.modelo.Ritmo
 import pt.pixellusitano.paragemcerta.ui.tema.ModoTema
 
-/** Definições do utilizador (modo claro/escuro, limites de atraso, filtros das rotas e avisos da viagem), guardadas no telemóvel. */
+/** O ecrã em que a app abre; FAVORITOS é o Início com o painel dos favoritos aberto. As Linhas entram na etapa 4. */
+enum class EcraInicial { MAPA, ROTAS, FAVORITOS }
+
+/** Definições do utilizador (modo claro/escuro, limites de atraso, filtros das rotas, ecrã inicial e avisos da viagem), guardadas no telemóvel. */
 class Preferencias(private val loja: DataStore<Preferences>) {
     val modo: Flow<ModoTema> = loja.data.map { p ->
         p[MODO]?.let { nome -> ModoTema.entries.firstOrNull { it.name == nome } } ?: ModoTema.SISTEMA
@@ -38,6 +41,11 @@ class Preferencias(private val loja: DataStore<Preferences>) {
             ritmo = p[RITMO]?.let { nome -> Ritmo.entries.firstOrNull { it.name == nome } } ?: omissao.ritmo,
             ordem = p[ORDEM]?.let { nome -> Ordem.entries.firstOrNull { it.name == nome } } ?: omissao.ordem,
         )
+    }
+
+    /** Sem escolha, ou com um valor que esta versão não conhece, abre no mapa. */
+    val ecraInicial: Flow<EcraInicial> = loja.data.map { p ->
+        p[ECRA_INICIAL]?.let { nome -> EcraInicial.entries.firstOrNull { it.name == nome } } ?: EcraInicial.MAPA
     }
 
     /** Se os avisos "Prepara-te" e "Sai agora" tocam e vibram (vão no plano da viagem: o serviço não lê as definições). */
@@ -71,6 +79,10 @@ class Preferencias(private val loja: DataStore<Preferences>) {
         }
     }
 
+    suspend fun definirEcraInicial(e: EcraInicial) {
+        loja.edit { it[ECRA_INICIAL] = e.name }
+    }
+
     suspend fun definirModo(m: ModoTema) {
         loja.edit { it[MODO] = m.name }
     }
@@ -95,6 +107,7 @@ class Preferencias(private val loja: DataStore<Preferences>) {
         val MAX_A_PE_MIN = intPreferencesKey("filtro_max_a_pe_min")
         val RITMO = stringPreferencesKey("filtro_ritmo")
         val ORDEM = stringPreferencesKey("filtro_ordem")
+        val ECRA_INICIAL = stringPreferencesKey("ecra_inicial")
         val A_PE_MIN_POSSIVEIS = setOf(5, 10, 15, 20)
         val SOM_AVISO = booleanPreferencesKey("som_aviso")
         val VIBRACAO_AVISO = booleanPreferencesKey("vibracao_aviso")

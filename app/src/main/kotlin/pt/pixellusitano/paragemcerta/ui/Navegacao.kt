@@ -47,10 +47,14 @@ import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
 import pt.pixellusitano.paragemcerta.dados.Ligacoes
 import pt.pixellusitano.paragemcerta.ui.bussola.BussolaEcra
-import pt.pixellusitano.paragemcerta.ui.eu.EuEcra
-import pt.pixellusitano.paragemcerta.ui.eu.LocaisEcra
 import pt.pixellusitano.paragemcerta.ui.inicio.InicioEcra
 import pt.pixellusitano.paragemcerta.ui.inicio.Painel
+import pt.pixellusitano.paragemcerta.ui.menu.AjudaEcra
+import pt.pixellusitano.paragemcerta.ui.menu.DefinicoesEcra
+import pt.pixellusitano.paragemcerta.ui.menu.FavoritosEcra
+import pt.pixellusitano.paragemcerta.ui.menu.MenuEcra
+import pt.pixellusitano.paragemcerta.ui.menu.ReclamarEcra
+import pt.pixellusitano.paragemcerta.ui.menu.intentOpiniao
 import pt.pixellusitano.paragemcerta.ui.paragem.ParagemEcra
 import pt.pixellusitano.paragemcerta.ui.pesquisa.PesquisaEcra
 import pt.pixellusitano.paragemcerta.ui.rotas.RotasEcra
@@ -62,9 +66,12 @@ import pt.pixellusitano.paragemcerta.viagem.FicheirosViagem
 
 @Serializable data class Inicio(val linha: String? = null)
 @Serializable data object Pesquisa
-@Serializable data object Eu
+@Serializable data object Menu
+@Serializable data object Favoritos
+@Serializable data object Definicoes
+@Serializable data object Ajuda
+@Serializable data object Reclamar
 @Serializable data object Sobre
-@Serializable data object Locais
 @Serializable data object Viagem
 @Serializable data class Paragem(val chave: String)
 
@@ -100,11 +107,14 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
     val atual by nav.currentBackStackEntryAsState()
     val destino = atual?.destination
     val naInicio = destino?.hasRoute(Inicio::class) == true
-    val noEu = destino?.hasRoute(Eu::class) == true
+    val noMenu = destino?.hasRoute(Menu::class) == true
     val nasRotas = destino?.hasRoute(Rotas::class) == true
     val repositorio = ligacoes.repositorio
 
     fun separador(rota: Any) = nav.irParaSeparador(rota)
+    fun abrirUrl(url: String) {
+        runCatching { contexto.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
+    }
 
     // Uma atualização descarregada que o sistema ainda quer confirmar mostra-se sempre, tenha ou não "Atualizar sozinha" ligado.
     // Sem ela: com "Atualizar sozinha" ligado a app descarrega ao abrir e instala quando saíres; só quem o desligou recebe o aviso para confirmar.
@@ -122,14 +132,14 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
 
     Scaffold(
         bottomBar = {
-            if (naInicio || nasRotas || noEu) {
+            if (naInicio || nasRotas || noMenu) {
                 NavigationBar {
                     NavigationBarItem(selected = naInicio, onClick = { separador(Inicio()) },
                         icon = { Text("🗺") }, label = { Text(stringResource(R.string.nav_inicio)) })
                     NavigationBarItem(selected = nasRotas, onClick = { separador(Rotas()) },
                         icon = { Text("🧭") }, label = { Text(stringResource(R.string.nav_rotas)) })
-                    NavigationBarItem(selected = noEu, onClick = { separador(Eu) },
-                        icon = { Text("★") }, label = { Text(stringResource(R.string.nav_eu)) })
+                    NavigationBarItem(selected = noMenu, onClick = { separador(Menu) },
+                        icon = { Text("☰") }, label = { Text(stringResource(R.string.nav_menu)) })
                 }
             }
         },
@@ -186,18 +196,25 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
                     )
                 }
             }
-            composable<Eu> {
+            composable<Menu> {
                 Box(Modifier.padding(bottom = margens.calculateBottomPadding())) {
-                    EuEcra(
-                        repositorio = repositorio,
-                        preferencias = ligacoes.preferencias,
-                        aoAbrirFavorita = { nav.navigate(Paragem(it.ref.chave)) },
+                    MenuEcra(
+                        aoAbrirFavoritos = { nav.navigate(Favoritos) },
+                        aoAbrirDefinicoes = { nav.navigate(Definicoes) },
+                        aoAbrirAjuda = { nav.navigate(Ajuda) },
+                        aoAbrirReclamar = { nav.navigate(Reclamar) },
+                        aoEnviarOpiniao = { runCatching { contexto.startActivity(intentOpiniao(BuildConfig.VERSION_NAME)) } },
                         aoAbrirSobre = { nav.navigate(Sobre) },
-                        aoAbrirLocais = { nav.navigate(Locais) },
+                        modifier = Modifier.fillMaxSize(),
                     )
                 }
             }
-            composable<Locais> { LocaisEcra(repositorio, aoVoltar = { nav.popBackStack() }) }
+            composable<Favoritos> {
+                FavoritosEcra(repositorio, aoAbrirFavorita = { nav.navigate(Paragem(it.ref.chave)) }, aoVoltar = { nav.popBackStack() })
+            }
+            composable<Definicoes> { DefinicoesEcra(repositorio, ligacoes.preferencias, aoVoltar = { nav.popBackStack() }) }
+            composable<Ajuda> { AjudaEcra(aoVoltar = { nav.popBackStack() }, modifier = Modifier.fillMaxSize()) }
+            composable<Reclamar> { ReclamarEcra(aoAbrir = ::abrirUrl, aoVoltar = { nav.popBackStack() }, modifier = Modifier.fillMaxSize()) }
             composable<Viagem> {
                 ViagemEcra(aoVoltar = { nav.popBackStack() }, aoEncontrar = { nav.navigate(Bussola(it.nome, it.lat, it.lon)) })
             }
@@ -206,9 +223,7 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
                 BussolaEcra(b.nome, b.lat, b.lon, aoVoltar = { nav.popBackStack() })
             }
             composable<Sobre> {
-                SobreEcra(versao = BuildConfig.VERSION_NAME, aoAbrir = { url ->
-                    runCatching { contexto.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
-                })
+                SobreEcra(versao = BuildConfig.VERSION_NAME, aoAbrir = ::abrirUrl)
             }
         }
     }

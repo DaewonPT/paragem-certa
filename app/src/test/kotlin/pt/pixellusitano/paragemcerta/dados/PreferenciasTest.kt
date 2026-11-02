@@ -92,6 +92,25 @@ class PreferenciasTest {
         assertEquals(Filtros(), p.filtros.first())
     }
 
+    @Test fun ecraInicialPorOmissaoEMapa() = runTest {
+        assertEquals(EcraInicial.MAPA, prefs().ecraInicial.first())
+    }
+
+    @Test fun guardaEcraInicial() = runTest {
+        val p = prefs()
+        p.definirEcraInicial(EcraInicial.FAVORITOS)
+        assertEquals(EcraInicial.FAVORITOS, p.ecraInicial.first())
+        p.definirEcraInicial(EcraInicial.ROTAS)
+        assertEquals(EcraInicial.ROTAS, p.ecraInicial.first())
+        p.definirEcraInicial(EcraInicial.MAPA)
+        assertEquals(EcraInicial.MAPA, p.ecraInicial.first())
+    }
+
+    @Test fun ecraInicialDesconhecidoUsaMapa() = runTest {
+        val p = prefs(preferencesOf(stringPreferencesKey("ecra_inicial") to "LINHAS")) // só existe a partir da etapa 4
+        assertEquals(EcraInicial.MAPA, p.ecraInicial.first())
+    }
+
     @Test fun avisoComSomEVibracaoPorOmissao() = runTest {
         val p = prefs()
         assertTrue(p.somAviso.first())

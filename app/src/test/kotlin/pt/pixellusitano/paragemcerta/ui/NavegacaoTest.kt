@@ -29,7 +29,7 @@ class NavegacaoTest {
                 composable<Pesquisa> { Text("pesquisa") }
                 composable<Rotas> { Text("rotas") }
                 composable<Viagem> { Text("viagem") }
-                composable<Eu> { Text("eu") }
+                composable<Menu> { Text("menu") }
             }
         }
     }
@@ -64,8 +64,8 @@ class NavegacaoTest {
         }
     }
 
-    @Test fun inicioVoltaDepoisDoSeparadorEu() {
-        regra.runOnIdle { nav.irParaSeparador(Eu) }
+    @Test fun inicioVoltaDepoisDoSeparadorMenu() {
+        regra.runOnIdle { nav.irParaSeparador(Menu) }
         regra.runOnIdle { nav.irParaSeparador(Inicio()) }
         regra.runOnIdle { assertTrue(naInicio()) }
     }
