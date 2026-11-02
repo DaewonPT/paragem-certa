@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -32,6 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -46,6 +48,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.core.modelo.Filtros
@@ -92,6 +95,13 @@ fun RotasEcra(
     val recentes by remember { repositorio.recentes() }.collectAsStateWithLifecycle(emptyList())
     var escolher by rememberSaveable { mutableStateOf<Campo?>(null) }
     val escopo = rememberCoroutineScope()
+    // Os "dentro de 3 min" dos cartões andam com o relógio enquanto o ecrã está aberto.
+    val agora by produceState(Instant.now()) {
+        while (true) {
+            delay(15_000)
+            value = Instant.now()
+        }
+    }
     val casa = stringResource(R.string.locais_casa)
     val trabalho = stringResource(R.string.locais_trabalho)
     val guardado = stringResource(R.string.local_guardado)
@@ -114,10 +124,11 @@ fun RotasEcra(
             aoVoltar = { vm.abrir(null) },
         )
         null -> RotasConteudo(
-            pedido = pedido, estado = estado, filtros = filtros, alertas = alertas, agora = Instant.now(),
+            pedido = pedido, estado = estado, filtros = filtros, alertas = alertas, agora = agora,
             aoEscolherOrigem = { escolher = Campo.ORIGEM }, aoEscolherDestino = { escolher = Campo.DESTINO },
             aoMudarHora = vm::definirHora, aoMudarFiltros = vm::mudarFiltros,
             aoAbrirRota = vm::abrir, aoTentarOutraVez = vm::tentarOutraVez,
+            aoMaisCedo = vm::maisCedo, aoMaisTarde = vm::maisTarde,
             modifier = Modifier.statusBarsPadding(),
         )
         else -> EscolherLugarEcra(
@@ -157,13 +168,18 @@ fun RotasConteudo(
     aoMudarFiltros: (Filtros) -> Unit,
     aoAbrirRota: (Itinerario) -> Unit,
     aoTentarOutraVez: () -> Unit,
+    aoMaisCedo: () -> Unit,
+    aoMaisTarde: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var escolherHora by remember { mutableStateOf<TipoHora?>(null) }
     val cores = MaterialTheme.colorScheme
+    val lista = rememberLazyListState()
+    // Uma página nova (ou uma procura nova) começa de cima, não onde estava o fim da lista anterior.
+    LaunchedEffect((estado as? EstadoRotas.Prontas)?.itinerarios) { lista.scrollToItem(0) }
 
     LazyColumn(
-        modifier.fillMaxSize().background(cores.background),
+        modifier.fillMaxSize().background(cores.background), lista,
         contentPadding = PaddingValues(16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
@@ -213,12 +229,25 @@ fun RotasConteudo(
                     Aviso(stringResource(R.string.rotas_a_procurar))
                 }
             }
-            is EstadoRotas.Prontas -> itemsIndexed(estado.itinerarios) { i, it ->
-                CartaoRota(
-                    it, estado.etiquetas.getOrElse(i) { emptySet() },
-                    comAlerta = it.etapas.any { e -> !e.aPe && e.linhaNome in alertas },
-                    aoAbrir = { aoAbrirRota(it) },
-                )
+            is EstadoRotas.Prontas -> {
+                itemsIndexed(estado.itinerarios) { i, it ->
+                    CartaoRota(
+                        it, estado.etiquetas.getOrElse(i) { emptySet() },
+                        comAlerta = it.etapas.any { e -> !e.aPe && e.linhaNome in alertas },
+                        aoAbrir = { aoAbrirRota(it) },
+                        partidas = estado.partidas[i], agora = agora,
+                    )
+                }
+                if (estado.anterior != null || estado.seguinte != null || estado.aCarregarPagina || estado.erroPagina) item {
+                    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
+                        if (estado.aCarregarPagina) LinearProgressIndicator(Modifier.fillMaxWidth())
+                        else Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            if (estado.anterior != null) TextButton(onClick = aoMaisCedo) { Text(stringResource(R.string.rotas_mais_cedo)) }
+                            if (estado.seguinte != null) TextButton(onClick = aoMaisTarde) { Text(stringResource(R.string.rotas_mais_tarde)) }
+                        }
+                        if (estado.erroPagina) Aviso(stringResource(R.string.rotas_erro_pagina))
+                    }
+                }
             }
             is EstadoRotas.Vazias -> item {
                 Aviso(

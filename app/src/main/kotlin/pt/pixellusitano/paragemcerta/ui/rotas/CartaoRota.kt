@@ -17,13 +17,19 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import pt.pixellusitano.paragemcerta.R
+import pt.pixellusitano.paragemcerta.core.atraso.EstadoAtraso
 import pt.pixellusitano.paragemcerta.core.atraso.Limites
+import pt.pixellusitano.paragemcerta.core.atraso.aindaPorChegar
 import pt.pixellusitano.paragemcerta.core.atraso.estado
 import pt.pixellusitano.paragemcerta.core.atraso.rotuloAtraso
+import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.modelo.Etiqueta
 import pt.pixellusitano.paragemcerta.core.modelo.Itinerario
 import pt.pixellusitano.paragemcerta.core.modelo.Modo
@@ -31,6 +37,7 @@ import pt.pixellusitano.paragemcerta.ui.comum.LISBOA_FUSO
 import pt.pixellusitano.paragemcerta.ui.comum.LocalLimites
 import pt.pixellusitano.paragemcerta.ui.comum.SeloLinha
 import pt.pixellusitano.paragemcerta.ui.comum.corDaLinha
+import pt.pixellusitano.paragemcerta.ui.comum.minutos
 import pt.pixellusitano.paragemcerta.ui.comum.situacaoAtraso
 import pt.pixellusitano.paragemcerta.ui.tema.CoresAtraso
 import pt.pixellusitano.paragemcerta.ui.tema.LocalEscuro
@@ -71,8 +78,35 @@ internal fun textoEtiqueta(e: Etiqueta) = stringResource(
     },
 )
 
+/** Minutos até uma partida em tempo real que falta até 1 h (nunca negativo); null = mostra-se a hora (do horário, ou mais longe). */
+private fun minutosPara(c: Chegada, agora: Instant): Long? {
+    val segundos = Duration.between(agora, c.prevista ?: return null).seconds
+    return if (segundos <= 3600) maxOf(segundos / 60, 0) else null
+}
+
+/** Os tempos de "Parte de X dentro de …": os minutos até 1 h, depois a hora; o booleano diz se é tempo real. */
+internal fun textoPartidas(partidas: List<Chegada>, agora: Instant): List<Pair<String, Boolean>> =
+    partidas.map { c -> (minutosPara(c, agora)?.toString() ?: (c.prevista ?: c.programada).horaLisboa()) to (c.prevista != null) }
+
+/** "daqui a 3 minutos, 18 minutos, às 11:37": o "daqui a" abre cada grupo de minutos seguidos. */
+private fun frasePartidas(partidas: List<Chegada>, agora: Instant): String {
+    var emMinutos = false
+    return partidas.joinToString(", ") { c ->
+        val m = minutosPara(c, agora)
+        val frase = when (m) {
+            null -> "às ${(c.prevista ?: c.programada).horaLisboa()}"
+            0L -> "agora"
+            else -> (if (emMinutos) "" else "daqui a ") + minutos(m)
+        }
+        frase.also { emMinutos = m != null && m > 0 }
+    }
+}
+
 /** O cartão inteiro numa frase para o leitor de ecrã, sem os símbolos ("›", 🚶) que ele leria à letra. */
-internal fun descricaoRota(it: Itinerario, etiquetas: List<String>, comAlerta: Boolean, limites: Limites): String {
+internal fun descricaoRota(
+    it: Itinerario, etiquetas: List<String>, comAlerta: Boolean, limites: Limites,
+    partidas: List<Chegada>? = null, agora: Instant = Instant.now(),
+): String {
     val etapas = it.etapas.joinToString(", ") { e ->
         if (e.aPe) "a pé ${minutosDe(Duration.between(e.partida, e.chegada))} min"
         else listOfNotNull(nomeModo(e.modo).lowercase(), e.linhaNome).joinToString(" ")
@@ -90,12 +124,16 @@ internal fun descricaoRota(it: Itinerario, etiquetas: List<String>, comAlerta: B
         primeira?.let { e ->
             "Sai de ${e.de.nome} às ${e.partida.horaLisboa()}, ${situacaoAtraso(e.partidaProgramada, e.partida.takeIf { e.aoVivo }, limites)}"
         },
+        partidas?.takeIf { p -> p.isNotEmpty() }?.let { p -> "Próximas partidas: ${frasePartidas(p, agora)}" },
         etiquetas.takeIf { e -> e.isNotEmpty() }?.let { e -> "Etiquetas: ${e.joinToString(", ")}" },
         "Aviso numa linha".takeIf { comAlerta },
     ).joinToString(". ", postfix = ".")
 }
 
-/** Um itinerário na lista: duração, horas, etapas, a pé e transbordos, a 1.ª partida com cor de atraso e as etiquetas. */
+/**
+ * Um itinerário na lista: duração, horas, etapas, a pé e transbordos, a 1.ª partida com cor de atraso (ou, havendo [partidas],
+ * as próximas partidas dessa linha) e as etiquetas. A lista pode ficar aberta enquanto o relógio anda: as que já passaram não contam.
+ */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun CartaoRota(
@@ -104,11 +142,14 @@ fun CartaoRota(
     comAlerta: Boolean,
     aoAbrir: () -> Unit,
     limites: Limites = LocalLimites.current,
+    partidas: List<Chegada>? = null,
+    agora: Instant = Instant.now(),
 ) {
     val cores = MaterialTheme.colorScheme
     val primeira = it.etapas.firstOrNull { e -> !e.aPe }
+    val proximas = partidas.orEmpty().filter { p -> aindaPorChegar(p, agora) }
     val nomes = etiquetas.sortedBy { e -> e.ordinal }.map { e -> textoEtiqueta(e) }
-    val descricao = descricaoRota(it, nomes, comAlerta, limites)
+    val descricao = descricaoRota(it, nomes, comAlerta, limites, proximas, agora)
     OutlinedCard(onClick = aoAbrir, modifier = Modifier.fillMaxWidth()) {
         Column(
             Modifier.padding(16.dp).clearAndSetSemantics { contentDescription = descricao },
@@ -135,7 +176,18 @@ fun CartaoRota(
                 stringResource(R.string.rotas_a_pe, minutosDe(it.tempoAPe).toInt()) + " · " + transbordos,
                 color = cores.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium,
             )
-            primeira?.let { e ->
+            if (primeira != null && proximas.isNotEmpty()) {
+                val parteDe = stringResource(R.string.rotas_parte_de, primeira.de.nome) + " "
+                val aHoras = CoresAtraso.cor(EstadoAtraso.A_HORAS, LocalEscuro.current)
+                val tempos = buildAnnotatedString {
+                    append(parteDe)
+                    textoPartidas(proximas, agora).forEachIndexed { i, (tempo, aoVivo) ->
+                        if (i > 0) append(", ")
+                        withStyle(SpanStyle(color = if (aoVivo) aHoras else cores.onSurfaceVariant, fontWeight = FontWeight.ExtraBold)) { append(tempo) }
+                    }
+                }
+                Text(tempos, color = cores.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            } else primeira?.let { e ->
                 val prevista = e.partida.takeIf { e.aoVivo }
                 val cor = CoresAtraso.cor(estado(e.partidaProgramada, prevista, limites), LocalEscuro.current)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -55,7 +55,7 @@ private fun corNeutra(modo: Modo) = when (modo) {
 fun corDaLinha(hex: String?, modo: Modo): Color =
     hex?.let { runCatching { Color(android.graphics.Color.parseColor(it)) }.getOrNull() } ?: corNeutra(modo)
 
-private fun minutos(n: Long) = if (n == 1L) "1 minuto" else "$n minutos"
+internal fun minutos(n: Long) = if (n == 1L) "1 minuto" else "$n minutos"
 
 /** "a horas", "atrasado 3 minutos", "adiantado 2 minutos" ou "hora do horário, sem tempo real", para o leitor de ecrã. */
 fun situacaoAtraso(programada: Instant, prevista: Instant?, limites: Limites): String {

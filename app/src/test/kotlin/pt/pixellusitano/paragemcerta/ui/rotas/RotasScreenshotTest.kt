@@ -14,8 +14,11 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.TransitousParser
+import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.modelo.Filtros
+import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.Lugar
+import pt.pixellusitano.paragemcerta.core.modelo.Modo
 import pt.pixellusitano.paragemcerta.core.modelo.TipoLugar
 import pt.pixellusitano.paragemcerta.core.rotas.etiquetas
 import pt.pixellusitano.paragemcerta.dados.fixture
@@ -30,17 +33,40 @@ class RotasScreenshotTest {
     private val rotas = TransitousParser.rotas(fixture("transitous-plan.json"))
     private val prontas = EstadoRotas.Prontas(rotas, etiquetas(rotas))
     private val pedido = PedidoRotas(destino = Lugar("Oriente", 38.7678, -9.0990, TipoLugar.LOCAL))
+    private val agora = Instant.parse("2026-11-01T02:20:00Z")
+
+    private fun partida(programada: String, prevista: String?) =
+        Chegada(Fonte.CM, "1", "210", "Oriente", Instant.parse(programada), prevista?.let(Instant::parse), null, null, Modo.AUTOCARRO, null, null)
+
+    /** A primeira rota com partidas ao vivo e do horário; a segunda fica sem elas e mostra o "Sai de". */
+    private val comPartidas = prontas.copy(
+        partidas = mapOf(
+            0 to listOf(
+                partida("2026-11-01T02:22:00Z", "2026-11-01T02:23:00Z"),
+                partida("2026-11-01T02:38:00Z", "2026-11-01T02:38:00Z"),
+                partida("2026-11-01T03:37:00Z", null),
+            ),
+        ),
+    )
 
     @Composable
     private fun Rotas(estado: EstadoRotas) = RotasConteudo(
         pedido = pedido, estado = estado, filtros = Filtros(acessivel = true), alertas = setOf("210"),
-        agora = Instant.parse("2026-11-01T02:20:00Z"),
+        agora = agora,
         aoEscolherOrigem = {}, aoEscolherDestino = {}, aoMudarHora = { _, _ -> }, aoMudarFiltros = {},
-        aoAbrirRota = {}, aoTentarOutraVez = {}, modifier = Modifier.width(360.dp),
+        aoAbrirRota = {}, aoTentarOutraVez = {}, aoMaisCedo = {}, aoMaisTarde = {}, modifier = Modifier.width(360.dp),
     )
 
     @Test fun rotas_claro() = captureRoboImage("src/test/screenshots/rotas_claro.png") {
-        TemaParagemCerta(ModoTema.CLARO) { Rotas(prontas) }
+        TemaParagemCerta(ModoTema.CLARO) { Rotas(comPartidas) }
+    }
+
+    /** O fim da lista (só uma rota, para caber no ecrã): "Mais cedo" e "Mais tarde" e o aviso de que a página não carregou. */
+    @Test fun rotas_paginas() = captureRoboImage("src/test/screenshots/rotas_paginas.png") {
+        val uma = rotas.take(1)
+        TemaParagemCerta(ModoTema.CLARO) {
+            Rotas(EstadoRotas.Prontas(uma, etiquetas(uma), "EARLIER|1793498820", "LATER|1793503740", comPartidas.partidas, erroPagina = true))
+        }
     }
 
     @Test fun rotas_escuro() = captureRoboImage("src/test/screenshots/rotas_escuro.png") {

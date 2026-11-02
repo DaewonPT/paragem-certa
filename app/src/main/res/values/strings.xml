@@ -152,6 +152,10 @@
         <item quantity="other">%1$d transbordos</item>
     </plurals>
     <string name="rotas_sai_de">Sai de %1$s</string>
+    <string name="rotas_parte_de">Parte de %1$s dentro de</string>
+    <string name="rotas_mais_cedo">Mais cedo</string>
+    <string name="rotas_mais_tarde">Mais tarde</string>
+    <string name="rotas_erro_pagina">Não foi possível carregar mais rotas</string>
     <string name="rotas_aviso_linha">aviso numa linha</string>
     <string name="escolher_procura">Sítio, rua, código postal ou paragem</string>
     <string name="escolher_recentes">Recentes</string>
