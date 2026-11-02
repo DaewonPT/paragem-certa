@@ -6,9 +6,10 @@ import android.os.Build
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -96,6 +97,7 @@ fun DialogoAvisaMe(linhas: List<String>, aoAvisar: (Set<String>, Int) -> Unit, a
 }
 
 /** O cartão do diálogo, à parte da janela (as capturas de ecrã não apanham janelas). */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun AvisaMeConteudo(linhas: List<String>, aoAvisar: (Set<String>, Int) -> Unit, aoCancelar: () -> Unit, modifier: Modifier = Modifier) {
     var escolhidas by rememberSaveable { mutableStateOf(emptySet<String>()) }
@@ -118,7 +120,8 @@ fun AvisaMeConteudo(linhas: List<String>, aoAvisar: (Set<String>, Int) -> Unit, 
                     }
                 }
                 Text(stringResource(R.string.avisame_quando), style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 16.dp, bottom = 8.dp))
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Em ecrãs estreitos ou com letra grande os minutos passam à linha seguinte, em vez de ficarem escondidos de lado.
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     MINUTOS.forEach { m ->
                         FilterChip(selected = m == minutos, onClick = { minutos = m }, label = { Text(stringResource(R.string.avisame_minutos, m)) })
                     }
