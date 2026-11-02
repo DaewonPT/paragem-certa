@@ -219,25 +219,54 @@ class LocaisTest {
     }
 }
 
-/** Abre uma base de dados criada com o esquema v1 exportado e confirma que a v2 a migra sem perder favoritas. */
+/** Abre bases de dados criadas com os esquemas antigos exportados e confirma que a versão atual as migra sem perder nada. */
 @RunWith(RobolectricTestRunner::class)
 class MigracaoTest {
-    @Test fun favoritaSobreviveAMigracao() {
-        val contexto = RuntimeEnvironment.getApplication()
-        val ficheiro = contexto.getDatabasePath("migracao.db").apply { parentFile?.mkdirs(); delete() }
-        val esquema = Json.parseToJsonElement(File("schemas/pt.pixellusitano.paragemcerta.dados.BaseDados/1.json").readText())
+    private val contexto = RuntimeEnvironment.getApplication()
+
+    /** Uma base de dados com o esquema [versao] exportado e as [linhas] lá dentro, aberta depois pela versão atual. */
+    private fun abrirDaVersao(versao: Int, vararg linhas: String): BaseDados {
+        val ficheiro = contexto.getDatabasePath("migracao-$versao.db").apply { parentFile?.mkdirs(); delete() }
+        val esquema = Json.parseToJsonElement(File("schemas/pt.pixellusitano.paragemcerta.dados.BaseDados/$versao.json").readText())
             .jsonObject["database"]!!.jsonObject
         SQLiteDatabase.openOrCreateDatabase(ficheiro, null).use { db ->
             esquema["entities"]!!.jsonArray.forEach { e ->
                 db.execSQL(e.jsonObject["createSql"]!!.jsonPrimitive.content.replace("\${TABLE_NAME}", e.jsonObject["tableName"]!!.jsonPrimitive.content))
             }
             esquema["setupQueries"]!!.jsonArray.forEach { db.execSQL(it.jsonPrimitive.content) }
-            db.execSQL("INSERT INTO favoritas (chave, nome, ordem, lat, lon) VALUES ('CM:060419', 'Cais do Sodré', 0, 38.7, -9.14)")
-            db.version = 1
+            linhas.forEach(db::execSQL)
+            db.version = versao
         }
-        val bd = Room.databaseBuilder(contexto, BaseDados::class.java, ficheiro.absolutePath).allowMainThreadQueries().build()
+        return Room.databaseBuilder(contexto, BaseDados::class.java, ficheiro.absolutePath)
+            .addMigrations(MIGRACAO_2_3).allowMainThreadQueries().build()
+    }
+
+    @Test fun favoritaSobreviveAMigracao() {
+        val bd = abrirDaVersao(1, "INSERT INTO favoritas (chave, nome, ordem, lat, lon) VALUES ('CM:060419', 'Cais do Sodré', 0, 38.7, -9.14)")
         val favoritas = kotlinx.coroutines.runBlocking { bd.favoritas().todas().first() }
         assertEquals(listOf("CM:060419"), favoritas.map { it.chave })
+        bd.close()
+    }
+
+    @Test fun favoritosESitiosSobrevivemA3() {
+        val bd = abrirDaVersao(
+            2,
+            "INSERT INTO favoritas (chave, nome, ordem, lat, lon) VALUES ('CM:060419', 'Cais do Sodré', 0, 38.7, -9.14)",
+            "INSERT INTO favoritas (chave, nome, ordem, lat, lon) VALUES ('TRANSITOUS:pt-cp_94_30007', 'Oriente', 1, 38.76, -9.1)",
+            "INSERT INTO locais (id, nome, lat, lon, tipo, ordem) VALUES (1, 'Casa', 38.71, -9.15, 'CASA', 0)",
+            "INSERT INTO locais (id, nome, lat, lon, tipo, ordem) VALUES (2, 'Ginásio', 38.72, -9.16, 'OUTRO', 1)",
+        )
+        val favoritas = kotlinx.coroutines.runBlocking { bd.favoritas().todas().first() }
+        assertEquals(listOf("CM:060419" to "Cais do Sodré", "TRANSITOUS:pt-cp_94_30007" to "Oriente"), favoritas.map { it.chave to it.nome })
+        val locais = kotlinx.coroutines.runBlocking { bd.locais().lista() }
+        assertEquals(listOf(1L to "Casa", 2L to "Ginásio"), locais.map { it.id to it.nome })
+        assertEquals(listOf("CASA", "OUTRO"), locais.map { it.tipo })
+        assertEquals(38.72, locais[1].lat, 1e-9)
+        assertTrue(locais.all { it.uuid.isNotBlank() })
+        assertEquals(2, locais.map { it.uuid }.toSet().size) // cada sítio com o seu id para a conta
+        // Nada do que já cá estava vai sozinho para uma conta: só se a pessoa o juntar ao entrar.
+        assertTrue(favoritas.none { it.pendente } && locais.none { it.pendente })
+        assertTrue(kotlinx.coroutines.runBlocking { bd.apagados().todos() }.isEmpty())
         bd.close()
     }
 }

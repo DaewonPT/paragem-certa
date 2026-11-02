@@ -1,9 +1,11 @@
 package pt.pixellusitano.paragemcerta.dados
 
+import androidx.room.withTransaction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
@@ -17,6 +19,7 @@ import pt.pixellusitano.paragemcerta.core.fontes.geoapi.GeoApi
 import pt.pixellusitano.paragemcerta.core.fontes.geoapi.ehCodigoPostal
 import pt.pixellusitano.paragemcerta.core.fontes.geoapi.normalizarCodigoPostal
 import pt.pixellusitano.paragemcerta.core.fontes.geoapi.paraLugar
+import pt.pixellusitano.paragemcerta.core.fontes.servidor.FavoritoRemoto
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.Transitous
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.chavesDosNomes
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.comNomesAcentuados
@@ -172,11 +175,16 @@ class Repositorio(
 
     suspend fun alternarFavorita(p: Paragem) {
         val dao = bd.favoritas()
-        if (dao.porChave(p.ref.chave) != null) dao.apagar(p.ref.chave)
-        else dao.guardar(FavoritaEntidade(p.ref.chave, p.nome, dao.proximaOrdem(), p.lat, p.lon))
+        if (dao.porChave(p.ref.chave) != null) return removerFavorita(p.ref)
+        // Voltou a ser favorita: já não é para apagar na conta.
+        bd.apagados().apagar(p.ref.chave)
+        dao.guardar(FavoritaEntidade(p.ref.chave, p.nome, dao.proximaOrdem(), p.lat, p.lon))
     }
 
-    suspend fun removerFavorita(ref: RefParagem) = bd.favoritas().apagar(ref.chave)
+    suspend fun removerFavorita(ref: RefParagem) {
+        apagado(ref.chave, TIPO_PARAGEM)
+        bd.favoritas().apagar(ref.chave)
+    }
 
     suspend fun reordenarFavoritas(ordem: List<Favorita>) =
         bd.favoritas().guardarTodas(ordem.mapIndexed { i, f -> FavoritaEntidade(f.ref.chave, f.nome, i, f.lat, f.lon) })
@@ -329,7 +337,78 @@ class Repositorio(
 
     suspend fun reordenarLocais(ids: List<Long>) = bd.locais().reordenar(ids)
 
-    suspend fun apagarLocal(id: Long) = bd.locais().apagar(id)
+    suspend fun apagarLocal(id: Long) {
+        bd.locais().porId(id)?.let { apagado(it.uuid, it.tipo) }
+        bd.locais().apagar(id)
+    }
+
+    /** Com sessão iniciada (quem muda isto é a [Conta]), apagar guarda a chave para o apagar também na conta; sem sessão apaga só. */
+    @Volatile var comConta = false
+
+    // Guarda-se antes de apagar: se a app morrer a meio, a conta apaga-o na mesma e a resposta apaga-o cá.
+    private suspend fun apagado(chave: String, tipo: String) {
+        if (comConta) bd.apagados().guardar(ApagadoEntidade(chave, tipo))
+    }
+
+    /** Muda sempre que há uma escrita nos favoritos ou nos sítios; > 0 = há alterações por enviar à conta. */
+    fun porEnviar(): Flow<Int> = bd.apagados().porEnviar()
+
+    /** O que mudou no telemóvel e ainda não foi para a conta, como o servidor o quer (sem as chaves [soNoTelemovel]). */
+    suspend fun porSincronizar(soNoTelemovel: Set<String> = emptySet()): List<FavoritoRemoto> =
+        (bd.apagados().todos().map { FavoritoRemoto(it.chave, it.tipo, "", 0.0, 0.0, 0, apagado = true) } +
+            bd.favoritas().pendentes().map { FavoritoRemoto(it.chave, TIPO_PARAGEM, it.nome, it.lat, it.lon, it.ordem, apagado = false) } +
+            bd.locais().pendentes().map { FavoritoRemoto(it.uuid, it.tipo, it.nome, it.lat, it.lon, it.ordem, apagado = false) })
+            .filter { it.chave !in soNoTelemovel }
+
+    /**
+     * Aplica o que veio da conta (sem o marcar como por enviar) e tira as marcas do que foi [enviadas]. O que mudou no telemóvel
+     * enquanto o pedido ia e vinha não é pisado e fica por enviar. Um apagado na conta nunca apaga o que a pessoa deixou só
+     * neste telemóvel ([soNoTelemovel]).
+     */
+    suspend fun aplicarSincronizacao(enviadas: List<FavoritoRemoto>, recebidas: List<FavoritoRemoto>, soNoTelemovel: Set<String>) =
+        bd.withTransaction {
+            val enviada = enviadas.associateBy { it.chave }
+            val mudou = porSincronizar(soNoTelemovel).filter { enviada[it.chave] != it }.mapTo(HashSet()) { it.chave }
+            recebidas.filter { it.chave !in mudou && !(it.apagado && it.chave in soNoTelemovel) }.forEach { aplicar(it) }
+            enviadas.filter { it.chave !in mudou }.forEach {
+                when {
+                    it.apagado -> bd.apagados().apagar(it.chave)
+                    it.tipo == TIPO_PARAGEM -> bd.favoritas().enviada(it.chave)
+                    else -> bd.locais().enviado(it.chave)
+                }
+            }
+        }
+
+    private suspend fun aplicar(f: FavoritoRemoto) {
+        when (f.tipo) {
+            TIPO_PARAGEM ->
+                if (f.apagado) bd.favoritas().apagar(f.chave)
+                else bd.favoritas().guardar(FavoritaEntidade(f.chave, f.nome, f.ordem, f.lat, f.lon, pendente = false))
+            "CASA", "TRABALHO", "OUTRO" ->
+                if (f.apagado) bd.locais().apagarUuid(f.chave)
+                else bd.locais().inserir(
+                    LocalEntidade(bd.locais().porUuid(f.chave)?.id ?: 0, f.nome, f.lat, f.lon, f.tipo, f.ordem, f.chave, pendente = false),
+                )
+            // Um tipo novo de uma versão futura do servidor: fica para essa versão da app.
+        }
+    }
+
+    /** Ao entrar e juntar: tudo o que está no telemóvel vai para a conta (fica marcado até ir mesmo). */
+    suspend fun marcarTudoPorEnviar() = bd.withTransaction {
+        bd.favoritas().marcarTodas(true)
+        bd.locais().marcarTodos(true)
+    }
+
+    /** As chaves que a conta conheceria de tudo o que está no telemóvel. */
+    suspend fun chavesNoTelemovel(): Set<String> =
+        (bd.favoritas().todas().first().map { it.chave } + bd.locais().lista().map { it.uuid }).toSet()
+
+    /** Ao sair da conta: os favoritos ficam, mas nada fica por enviar. */
+    suspend fun limparMarcas() = bd.withTransaction {
+        bd.favoritas().marcarTodas(false)
+        bd.locais().marcarTodos(false)
+        bd.apagados().apagarTodos()
+    }
 
     fun recentes(): Flow<List<ViagemRecente>> = bd.locais().recentes().map { lista ->
         lista.map {
@@ -363,5 +442,6 @@ class Repositorio(
         val VALIDADE_PARTIDAS: Duration = Duration.ofSeconds(20)
         const val RAIO_REPETIDOS_METROS = 400.0
         const val RAIO_PEDACOS_METROS = 2000.0
+        const val TIPO_PARAGEM = "PARAGEM"
     }
 }

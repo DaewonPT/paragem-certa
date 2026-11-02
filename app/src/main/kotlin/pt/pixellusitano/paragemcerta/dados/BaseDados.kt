@@ -1,6 +1,7 @@
 package pt.pixellusitano.paragemcerta.dados
 
 import androidx.room.AutoMigration
+import androidx.room.ColumnInfo
 import androidx.room.Dao
 import androidx.room.Database
 import androidx.room.Entity
@@ -10,8 +11,11 @@ import androidx.room.PrimaryKey
 import androidx.room.Query
 import androidx.room.RoomDatabase
 import androidx.room.Transaction
+import androidx.room.migration.Migration
+import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.flow.Flow
 import java.text.Normalizer
+import java.util.UUID
 
 /** Paragens da Carris Metropolitana (rede inteira, atualizada uma vez por dia) e do Transitous já vistas. */
 @Entity(tableName = "paragens")
@@ -37,6 +41,7 @@ data class LinhaEntidade(
     val padroes: String,
 )
 
+/** pendente = mudou no telemóvel e ainda não foi para a conta (toda a escrita da app marca; o que vem da conta não). */
 @Entity(tableName = "favoritas")
 data class FavoritaEntidade(
     @PrimaryKey val chave: String,
@@ -44,6 +49,7 @@ data class FavoritaEntidade(
     val ordem: Int,
     val lat: Double,
     val lon: Double,
+    @ColumnInfo(defaultValue = "0") val pendente: Boolean = true,
 )
 
 /** Últimas chegadas boas de cada paragem, para mostrar sem rede. */
@@ -54,7 +60,7 @@ data class ChegadasGuardadasEntidade(
     val guardadoEm: Long,
 )
 
-/** Sítios guardados pelo utilizador; tipo = CASA, TRABALHO ou OUTRO. */
+/** Sítios guardados pelo utilizador; tipo = CASA, TRABALHO ou OUTRO. uuid = a chave do sítio na conta (o id só vale neste telemóvel). */
 @Entity(tableName = "locais")
 data class LocalEntidade(
     @PrimaryKey(autoGenerate = true) val id: Long = 0,
@@ -63,6 +69,15 @@ data class LocalEntidade(
     val lon: Double,
     val tipo: String,
     val ordem: Int,
+    @ColumnInfo(defaultValue = "''") val uuid: String = UUID.randomUUID().toString(),
+    @ColumnInfo(defaultValue = "0") val pendente: Boolean = true,
+)
+
+/** Favoritos e sítios apagados com a sessão iniciada, por apagar também na conta (chave = a da paragem ou o uuid do sítio). */
+@Entity(tableName = "apagados")
+data class ApagadoEntidade(
+    @PrimaryKey val chave: String,
+    val tipo: String,
 )
 
 @Entity(tableName = "recentes")
@@ -153,6 +168,37 @@ interface FavoritasDao {
 
     @Query("DELETE FROM favoritas WHERE chave = :chave")
     suspend fun apagar(chave: String)
+
+    @Query("SELECT * FROM favoritas WHERE pendente")
+    suspend fun pendentes(): List<FavoritaEntidade>
+
+    @Query("UPDATE favoritas SET pendente = 0 WHERE chave = :chave")
+    suspend fun enviada(chave: String)
+
+    @Query("UPDATE favoritas SET pendente = :pendente")
+    suspend fun marcarTodas(pendente: Boolean)
+}
+
+@Dao
+interface ApagadosDao {
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun guardar(a: ApagadoEntidade)
+
+    @Query("SELECT * FROM apagados")
+    suspend fun todos(): List<ApagadoEntidade>
+
+    @Query("DELETE FROM apagados WHERE chave = :chave")
+    suspend fun apagar(chave: String)
+
+    @Query("DELETE FROM apagados")
+    suspend fun apagarTodos()
+
+    /** Quantas alterações há por enviar à conta; volta a emitir a cada escrita nestas tabelas. */
+    @Query(
+        "SELECT (SELECT COUNT(*) FROM favoritas WHERE pendente) + (SELECT COUNT(*) FROM locais WHERE pendente) + " +
+            "(SELECT COUNT(*) FROM apagados)",
+    )
+    fun porEnviar(): Flow<Int>
 }
 
 @Dao
@@ -172,8 +218,27 @@ interface LocaisDao {
     @Query("SELECT * FROM locais ORDER BY ordem")
     suspend fun lista(): List<LocalEntidade>
 
-    @Insert
+    /** Com o id de um sítio que já existe, substitui-o (o que vem da conta). */
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
     suspend fun inserir(l: LocalEntidade)
+
+    @Query("SELECT * FROM locais WHERE id = :id")
+    suspend fun porId(id: Long): LocalEntidade?
+
+    @Query("SELECT * FROM locais WHERE uuid = :uuid")
+    suspend fun porUuid(uuid: String): LocalEntidade?
+
+    @Query("DELETE FROM locais WHERE uuid = :uuid")
+    suspend fun apagarUuid(uuid: String)
+
+    @Query("SELECT * FROM locais WHERE pendente")
+    suspend fun pendentes(): List<LocalEntidade>
+
+    @Query("UPDATE locais SET pendente = 0 WHERE uuid = :uuid")
+    suspend fun enviado(uuid: String)
+
+    @Query("UPDATE locais SET pendente = :pendente")
+    suspend fun marcarTodos(pendente: Boolean)
 
     @Query("DELETE FROM locais WHERE tipo = :tipo")
     suspend fun apagarTipo(tipo: String)
@@ -188,10 +253,10 @@ interface LocaisDao {
         inserir(LocalEntidade(nome = nome, lat = lat, lon = lon, tipo = tipo, ordem = proximaOrdem()))
     }
 
-    @Query("UPDATE locais SET nome = :nome WHERE id = :id")
+    @Query("UPDATE locais SET nome = :nome, pendente = 1 WHERE id = :id")
     suspend fun renomear(id: Long, nome: String)
 
-    @Query("UPDATE locais SET ordem = :ordem WHERE id = :id")
+    @Query("UPDATE locais SET ordem = :ordem, pendente = 1 WHERE id = :id")
     suspend fun definirOrdem(id: Long, ordem: Int)
 
     @Transaction
@@ -248,9 +313,9 @@ interface LocaisDao {
 @Database(
     entities = [
         ParagemEntidade::class, LinhaEntidade::class, FavoritaEntidade::class, ChegadasGuardadasEntidade::class,
-        LocalEntidade::class, RecenteEntidade::class,
+        LocalEntidade::class, RecenteEntidade::class, ApagadoEntidade::class,
     ],
-    version = 2,
+    version = 3,
     autoMigrations = [AutoMigration(from = 1, to = 2)],
 )
 abstract class BaseDados : RoomDatabase() {
@@ -259,6 +324,20 @@ abstract class BaseDados : RoomDatabase() {
     abstract fun favoritas(): FavoritasDao
     abstract fun chegadas(): ChegadasDao
     abstract fun locais(): LocaisDao
+    abstract fun apagados(): ApagadosDao
+}
+
+/** 0.4: marcas de "por enviar à conta" e um id estável para cada sítio. O que já cá estava fica sem marca: só vai para uma conta se
+ *  a pessoa o juntar ao entrar. */
+val MIGRACAO_2_3 = object : Migration(2, 3) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE favoritas ADD COLUMN pendente INTEGER NOT NULL DEFAULT 0")
+        db.execSQL("ALTER TABLE locais ADD COLUMN uuid TEXT NOT NULL DEFAULT ''")
+        db.execSQL("ALTER TABLE locais ADD COLUMN pendente INTEGER NOT NULL DEFAULT 0")
+        // randomblob corre uma vez por linha: cada sítio fica com o seu.
+        db.execSQL("UPDATE locais SET uuid = lower(hex(randomblob(16))) WHERE uuid = ''")
+        db.execSQL("CREATE TABLE IF NOT EXISTS `apagados` (`chave` TEXT NOT NULL, `tipo` TEXT NOT NULL, PRIMARY KEY(`chave`))")
+    }
 }
 
 /** "Cais do Sodré" → "cais do sodre": a pesquisa ignora acentos e maiúsculas. */
