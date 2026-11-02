@@ -4,6 +4,7 @@ import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assume
 import org.junit.Test
@@ -630,6 +631,60 @@ class ViagemTest {
         assertEquals(Origem.VEICULO, sai.depois.origem)
         assertTrue(sai.entrada.hora > etapa.paragens[d - 1].hora) // depois de o autocarro sair da penúltima
         assertTrue(passos.zipWithNext().all { (x, y) -> y.depois.etapa != x.depois.etapa || y.depois.progresso >= x.depois.progresso })
+    }
+
+    @Test fun aPosicaoDoVeiculoVaiParaOEstadoEApagaSeEleCala() {
+        val etapa = autocarro()
+        val viagem = Viagem(itinerario(etapa))
+        val h = aos(300.0)
+        val semGps = aBordo(viagem, 700.0, ultimoGps = h.minusSeconds(70))
+        assertNull(semGps.veiculoLat)
+        val (lido, _) = viagem.passo(semGps, Entrada.Veiculo(0, 3, false, h, lat = 38.7, lon = -9.1))
+        assertEquals(38.7 to -9.1, lido.veiculoLat to lido.veiculoLon)
+        // Uma leitura mais nova troca a posição; sem leituras novas, a última fica 59 s e à 60.ª apaga-se.
+        val (novo, _) = viagem.passo(lido, Entrada.Veiculo(0, 3, false, h.plusSeconds(15), lat = 38.71, lon = -9.11))
+        assertEquals(38.71 to -9.11, novo.veiculoLat to novo.veiculoLon)
+        assertEquals(38.71 to -9.11, viagem.passo(novo, Entrada.Relogio(h.plusSeconds(74))).first.let { it.veiculoLat to it.veiculoLon })
+        viagem.passo(novo, Entrada.Relogio(h.plusSeconds(75))).first.let { assertNull(it.veiculoLat); assertNull(it.veiculoLon) }
+        // Uma leitura sem posição (as de antes de existir) não inventa uma.
+        assertNull(viagem.passo(semGps, Entrada.Veiculo(0, 3, false, h)).first.veiculoLat)
+    }
+
+    @Test fun umaLeituraQueNaoContaNaoMostraOVeiculo() {
+        val viagem = Viagem(itinerario(autocarro()))
+        val h = aos(300.0)
+        val comGps = aBordo(viagem, 700.0, ultimoGps = h.minusSeconds(5))
+        // Fora da lista, de outra etapa, à espera, e o de outra viagem (mais à frente do que a pessoa pode estar).
+        val ignoradas = listOf(
+            comGps to Entrada.Veiculo(0, 0, true, h, 38.7, -9.1), comGps to Entrada.Veiculo(1, 5, true, h, 38.7, -9.1),
+            comGps.copy(fase = Fase.ESPERA, progresso = 0.0) to Entrada.Veiculo(0, 5, true, h, 38.7, -9.1),
+            comGps to Entrada.Veiculo(0, 5, true, h, 38.7, -9.1),
+        )
+        for ((e, x) in ignoradas) assertNull("$x", viagem.passo(e, x).first.veiculoLat)
+    }
+
+    @Test fun mudarDeEtapaApagaAPosicaoDoVeiculo() {
+        val (etapa, aPe) = autocarroEAPe()
+        val viagem = Viagem(itinerario(etapa, aPe))
+        val h = aos(300.0)
+        val (lido, _) = viagem.passo(aBordo(viagem, 700.0, ultimoGps = h.minusSeconds(70)), Entrada.Veiculo(0, 3, false, h, 38.7, -9.1))
+        assertEquals(38.7, lido.veiculoLat)
+        val (seguinte, eventos) = viagem.passo(lido, Entrada.JaSai(h.plusSeconds(1)))
+        assertEquals(listOf(ETAPA_SEGUINTE), eventos)
+        assertEquals(1, seguinte.etapa)
+        assertNull(seguinte.veiculoLat)
+        assertNull(seguinte.veiculoLon)
+    }
+
+    @Test fun umEstadoGuardadoSemAPosicaoDoVeiculoLeSeEAPosicaoSobreviveAoFicheiro() {
+        val viagem = Viagem(itinerario(autocarro()))
+        val h = aos(300.0)
+        // Os campos nulos não se escrevem: é o ficheiro de uma versão sem eles.
+        val antigo = Json.encodeToString(viagem.inicio(t0))
+        assertFalse("veiculoLat" in antigo)
+        assertEquals(viagem.inicio(t0), Json.decodeFromString<EstadoViagem>(antigo))
+        val (lido, _) = viagem.passo(aBordo(viagem, 700.0, ultimoGps = h.minusSeconds(70)), Entrada.Veiculo(0, 3, false, h, 38.7, -9.1))
+        assertEquals(lido, Json.decodeFromString<EstadoViagem>(Json.encodeToString(lido)))
     }
 
     @Test fun gravacoesReais() {

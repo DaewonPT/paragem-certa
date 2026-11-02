@@ -77,8 +77,10 @@ class ViagemScreenshotTest {
         texto("Estás aqui").assertExists()
         texto("Chegada prevista às 11:34").assertExists() // 10:34 UTC, Lisboa no verão
         texto("Posição estimada pelo horário").assertDoesNotExist()
+        // Os três botões estão à vista com o painel recolhido; o "Partilhar" fica no painel, por baixo da lista.
+        listOf("Estás aqui", "Silenciar", "Já saí", "Parar").forEach { texto(it).assertIsDisplayed() }
         regra.abrirPainel()
-        listOf("Estás aqui", "Silenciar", "Já saí", "Parar", "Partilhar chegada").forEach { texto(it).assertIsDisplayed() }
+        texto("Partilhar chegada").assertIsDisplayed()
     }
 
     @Test fun comLetraA200OsBotoesEOTituloContinuamAVista() {
@@ -88,8 +90,9 @@ class ViagemScreenshotTest {
                 TemaParagemCerta(ModoTema.CLARO) { Ecra(ex.aBordo(plano, 1, k = 2)) }
             }
         }
+        listOf("Faltam 3 paragens · sais em Oriente", "Silenciar", "Já saí", "Parar").forEach { texto(it).assertIsDisplayed() }
         regra.abrirPainel()
-        listOf("Faltam 3 paragens · sais em Oriente", "Silenciar", "Já saí", "Parar", "Partilhar chegada").forEach { texto(it).assertIsDisplayed() }
+        texto("Partilhar chegada").assertIsDisplayed()
     }
 
     @Test fun emHorarioMostraOSelo() {
@@ -168,8 +171,9 @@ class ViagemScreenshotTest {
                 )
             }
         }
+        listOf("Silenciar", "Já saí", "Parar").forEach { texto(it).performClick() }
         regra.abrirPainel()
-        listOf("Silenciar", "Já saí", "Parar", "Partilhar chegada").forEach { texto(it).performClick() }
+        texto("Partilhar chegada").performClick()
         assertEquals(listOf("silenciar", "jaSai", "parar", "partilhar"), pedidos)
     }
 

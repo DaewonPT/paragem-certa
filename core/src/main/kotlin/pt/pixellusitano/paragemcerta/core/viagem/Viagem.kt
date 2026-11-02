@@ -63,9 +63,12 @@ sealed interface Entrada {
     data class Silenciar(override val hora: Instant) : Entrada
     /**
      * O veículo da etapa (Carris Metropolitana), já escolhido pelo serviço: a caminho, a chegar ou parado na paragem de
-     * índice paragemIndice da etapa; aChegar se a chegar ou parado.
+     * índice paragemIndice da etapa; aChegar se a chegar ou parado. lat, lon: onde ele está (o mapa da viagem desenha-o).
      */
-    data class Veiculo(val etapa: Int, val paragemIndice: Int, val aChegar: Boolean, override val hora: Instant) : Entrada
+    data class Veiculo(
+        val etapa: Int, val paragemIndice: Int, val aChegar: Boolean, override val hora: Instant,
+        val lat: Double? = null, val lon: Double? = null,
+    ) : Entrada
 }
 
 enum class Fase { A_PE, ESPERA, A_BORDO, TERMINADA }
@@ -81,6 +84,8 @@ enum class Evento { PREPARA_TE, SAI_AGORA, ETAPA_SEGUINTE, CHEGOU }
  * avancou: à espera, a última posição aceite levou P para a frente e para lá de A[0] + 60 (meio embarque).
  * ultimoVeiculo: a hora da última leitura aceite do veículo da etapa (Carris Metropolitana).
  * origem: VEICULO quando, sem GPS há 60 s, as leituras do veículo continuam a chegar.
+ * veiculoLat, veiculoLon: onde o veículo da etapa estava na última leitura aceite (o mapa desenha-o); null sem leitura
+ * há 60 s e ao mudar de etapa.
  */
 @Serializable
 data class EstadoViagem(
@@ -88,6 +93,7 @@ data class EstadoViagem(
     val velocidade: Double, val origem: Origem, val ultimoGps: Instant?, val avisados: Set<Evento>,
     val altaPrecisao: Boolean, val silenciado: Boolean, val terminada: Boolean, val atualizado: Instant,
     val avancou: Boolean = false, val ultimoVeiculo: Instant? = null,
+    val veiculoLat: Double? = null, val veiculoLon: Double? = null,
 )
 
 /** O trip-plan.json: a rota escolhida e as definições do aviso (o processo :trip não lê as definições da app). */
@@ -166,6 +172,8 @@ class Viagem(val plano: Itinerario) {
             else -> {}
         }
         if (!aceite && semGps(s, x.hora)) s = s.copy(origem = if (semVeiculo(s, x.hora)) Origem.HORARIO else Origem.VEICULO)
+        // O veículo que deixou de chegar sai do mapa.
+        if (s.veiculoLat != null && semVeiculo(s, x.hora)) s = s.copy(veiculoLat = null, veiculoLon = null)
         if (s.fase == Fase.ESPERA && s.origem == Origem.HORARIO && x.hora >= hora0.plusSeconds(s.atrasoS)) s = s.copy(fase = Fase.A_BORDO)
         if (x is Entrada.Relogio && s.fase == Fase.A_BORDO && s.origem == Origem.HORARIO) {
             s = s.copy(progresso = max(s.progresso, percurso.progressoEm(x.hora.minusSeconds(s.atrasoS))))
@@ -192,7 +200,7 @@ class Viagem(val plano: Itinerario) {
         val k = x.paragemIndice
         if (x.etapa != e.etapa || e.fase != Fase.A_BORDO || k !in 1..a.lastIndex) return null
         if (!semGps(e, x.hora) && a[k - 1] > e.progresso + VEICULO_PERTO_M + e.velocidade * segundos(e.ultimoGps, x.hora)) return null
-        return e.copy(progresso = max(e.progresso, a[k - 1] + VEICULO_SAIU_M), ultimoVeiculo = x.hora)
+        return e.copy(progresso = max(e.progresso, a[k - 1] + VEICULO_SAIU_M), ultimoVeiculo = x.hora, veiculoLat = x.lat, veiculoLon = x.lon)
     }
 
     /** A posição na linha, se for de confiança; o novo P, a velocidade e o atraso. */
@@ -252,7 +260,7 @@ class Viagem(val plano: Itinerario) {
     private fun naEtapa(e: EstadoViagem, i: Int, agora: Instant): EstadoViagem {
         val etapa = plano.etapas[i]
         val percurso = percursos[i]
-        val base = e.copy(etapa = i, velocidade = 0.0, avisados = emptySet(), altaPrecisao = false, avancou = false, ultimoVeiculo = null)
+        val base = e.copy(etapa = i, velocidade = 0.0, avisados = emptySet(), altaPrecisao = false, avancou = false, ultimoVeiculo = null, veiculoLat = null, veiculoLon = null)
         if (percurso == null) {
             // A pé o atraso que trazia continua: a caminhada começa (e acaba) tão tarde como a etapa anterior.
             return base.copy(fase = Fase.A_PE, atrasoS = max(0, e.atrasoS), progresso = distanciaMetros(etapa.de.lat, etapa.de.lon, etapa.para.lat, etapa.para.lon))

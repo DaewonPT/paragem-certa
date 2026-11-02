@@ -22,6 +22,7 @@ import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -30,9 +31,11 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import pt.pixellusitano.paragemcerta.core.viagem.EstadoViagem
+import pt.pixellusitano.paragemcerta.core.viagem.Fase
 import pt.pixellusitano.paragemcerta.ui.rotas.percursos
 import pt.pixellusitano.paragemcerta.ui.tema.ModoTema
 import pt.pixellusitano.paragemcerta.ui.tema.TemaParagemCerta
+import java.time.Instant
 
 /** O mapa que segue a pessoa e o painel por baixo (o texto da viagem está em ViagemScreenshotTest). */
 @RunWith(RobolectricTestRunner::class)
@@ -133,6 +136,24 @@ class ViagemEcraTest {
         assertEquals("Cais do Sodré", marcas[0].nome)
         assertTrue(marcas[0].sai)
         assertEquals(etapa.para.lat, marcas[0].lat, 0.0)
+    }
+
+    private fun ecraDe(e: EstadoViagem) = ecraDaViagem(plano, e, ex.viagem(plano))
+
+    @Test fun oAutocarroDoEstadoVaiParaOMapaComALinhaDaEtapa() {
+        val h = Instant.parse("2026-07-01T10:05:00Z")
+        val v = veiculoDaViagem(ecraDe(ex.aBordo(plano, 1, k = 2).copy(veiculoLat = 38.71, veiculoLon = -9.13, ultimoVeiculo = h)))!!
+        assertEquals(38.71, v.lat, 0.0)
+        assertEquals(-9.13, v.lon, 0.0)
+        assertEquals("736", v.linhaId)
+        assertEquals(h, v.ultimoSinal)
+    }
+
+    @Test fun semAutocarroNoEstadoOuForaDeUmaEtapaAbordoNaoHaAutocarroNoMapa() {
+        val comPosicao = ex.aBordo(plano, 1, k = 2).copy(veiculoLat = 38.71, veiculoLon = -9.13, ultimoVeiculo = Instant.parse("2026-07-01T10:05:00Z"))
+        assertNull(veiculoDaViagem(ecraDe(ex.aBordo(plano, 1, k = 2))))
+        assertNull(veiculoDaViagem(ecraDe(comPosicao.copy(fase = Fase.TERMINADA, terminada = true))))
+        assertNull(veiculoDaViagem(ecraDe(comPosicao.copy(etapa = 2, fase = Fase.A_PE)))) // a pé não há linha
     }
 
     @Test fun viagem_mapa() = captureRoboImage("src/test/screenshots/viagem_mapa.png") {

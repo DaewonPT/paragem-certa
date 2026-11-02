@@ -444,5 +444,5 @@ internal fun escolherVeiculo(
         .minByOrNull { it.second }?.first
     val escolhido = daViagem ?: perto?.takeIf { it.id == candidato }
     val k = paragensDe(etapa).indexOfFirst { p -> escolhido?.paragem != null && p.id?.let(::cmParagemDeTransitous) == escolhido.paragem }
-    return (if (escolhido != null && k >= 0) Entrada.Veiculo(i, k, escolhido.aChegar, agora) else null) to perto?.id
+    return (if (escolhido != null && k >= 0) Entrada.Veiculo(i, k, escolhido.aChegar, agora, escolhido.lat, escolhido.lon) else null) to perto?.id
 }

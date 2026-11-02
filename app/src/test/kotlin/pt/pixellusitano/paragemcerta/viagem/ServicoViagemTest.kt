@@ -513,8 +513,8 @@ class ServicoViagemTest {
         val gps = Entrada.Gps(38.715, -9.14, 10f, agora.minusSeconds(5))
         val daViagem = veiculo("[YA15B]2261", 38.72, agora.minusSeconds(15), viagem = "T1")
         val maisPerto = veiculo("[YA15B]9", 38.715, agora.minusSeconds(15), paragem = "020043")
-        // O do trip_id conta logo, mesmo com outro mais perto (o motor é que vê se ele vai longe de mais da pessoa).
-        assertEquals(Entrada.Veiculo(0, 5, true, agora), escolherVeiculo(listOf(maisPerto, daViagem), etapa, 0, "T1", gps, 7.0, agora, null).first)
+        // O do trip_id conta logo, mesmo com outro mais perto (o motor é que vê se ele vai longe de mais da pessoa). A leitura leva a posição dele.
+        assertEquals(Entrada.Veiculo(0, 5, true, agora, 38.72, -9.14),escolherVeiculo(listOf(maisPerto, daViagem), etapa, 0, "T1", gps, 7.0, agora, null).first)
         // Leitura com mais de 60 s, ou com a hora 1 h à frente (a API diz que usa a hora de verão): não conta.
         for (sinal in listOf(agora.minusSeconds(61), agora.plusSeconds(3600))) {
             assertNull("$sinal", escolherVeiculo(listOf(daViagem.copy(ultimoSinal = sinal)), etapa, 0, "T1", null, 7.0, agora, null).first)
@@ -537,9 +537,9 @@ class ServicoViagemTest {
         val (primeira, candidato) = escolherVeiculo(todos, etapa, 0, null, gps, 7.0, agora, null)
         assertNull(primeira)
         assertEquals("[YA15B]1", candidato)
-        assertEquals(Entrada.Veiculo(0, 3, false, agora) to "[YA15B]1", escolherVeiculo(todos, etapa, 0, null, gps, 7.0, agora, candidato))
+        assertEquals(Entrada.Veiculo(0, 3, false, agora, 38.716, -9.14) to "[YA15B]1", escolherVeiculo(todos, etapa, 0, null, gps, 7.0, agora, candidato))
         // Com um trip_id que não aparece em vehicles também se escolhe assim.
-        assertEquals(Entrada.Veiculo(0, 3, false, agora) to "[YA15B]1", escolherVeiculo(todos, etapa, 0, "T9", gps, 7.0, agora, candidato))
+        assertEquals(Entrada.Veiculo(0, 3, false, agora, 38.716, -9.14) to "[YA15B]1",escolherVeiculo(todos, etapa, 0, "T9", gps, 7.0, agora, candidato))
         // Se o mais perto mudar, recomeça.
         assertEquals(null to "[YA15B]2", escolherVeiculo(listOf(outro), etapa, 0, null, gps, 7.0, agora, candidato))
         // A 334 m é longe de mais; sem posição aceite, ou com ela a mais de 60 s da leitura, não há com que comparar.
@@ -575,6 +575,8 @@ class ServicoViagemTest {
         assertEquals(listOf(Evento.PREPARA_TE, Evento.SAI_AGORA), alarmes.map { it.first })
         assertEquals(Fase.A_BORDO, FicheirosViagem.lerEstado(c, agora)!!.fase)
         assertEquals(Origem.VEICULO, FicheirosViagem.lerEstado(c, agora)!!.origem)
+        // O estado leva a posição do autocarro, para o mapa da viagem o desenhar.
+        assertEquals(38.724 to -9.14, FicheirosViagem.lerEstado(c, agora)!!.let { it.veiculoLat to it.veiculoLon })
     }
 
     @Test fun quemPerdeOAutocarroNaoEPuxadoPorEle() {
@@ -622,6 +624,8 @@ class ServicoViagemTest {
         val a = Percurso(emptyList(), etapa.paragens).noPercurso
         // O T2 a caminho da paragem 2 já saiu da 1; o T1 tinha-a levado para lá da 4.
         assertTrue("${estado.progresso}", estado.progresso >= a[1] + 31 && estado.progresso < a[3])
+        // E é o T2 que o mapa mostra, não o T1 (38.724).
+        assertEquals(38.709 to -9.14, estado.veiculoLat to estado.veiculoLon)
     }
 
     /** As respostas da CM voltam por outra thread: espera até 2 s que a condição se cumpra. */

@@ -61,7 +61,9 @@ import org.maplibre.android.geometry.LatLng
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.core.modelo.Etapa
 import pt.pixellusitano.paragemcerta.core.modelo.Lugar
+import pt.pixellusitano.paragemcerta.core.modelo.Veiculo
 import pt.pixellusitano.paragemcerta.core.regras.distanciaMetros
+import pt.pixellusitano.paragemcerta.core.viagem.EstadoViagem
 import pt.pixellusitano.paragemcerta.core.viagem.Fase
 import pt.pixellusitano.paragemcerta.core.viagem.paragensDe
 import pt.pixellusitano.paragemcerta.ui.comum.LISBOA_FUSO
@@ -141,14 +143,16 @@ internal fun pedirAoServico(c: Context, acao: String) {
     c.startService(Intent(c, ServicoViagem::class.java).setAction(acao))
 }
 
-/** O mapa da viagem: o percurso todo (a etapa atual em destaque), as paragens dela e o ponto "estás aqui" do MapLibre. */
+/** O mapa da viagem: o percurso todo (a etapa atual em destaque), as paragens dela, o autocarro e o ponto "estás aqui" do MapLibre. */
 @Composable
 private fun MapaDaViagem(ecra: EcraViagem, seguir: Boolean, aoDeixarDeSeguir: () -> Unit, comLocalizacao: Boolean) {
     val percursos = remember(ecra.itinerario, ecra.atual) { ecra.itinerario.percursos(ecra.atual) }
     val marcas = remember(ecra.itinerario, ecra.atual) { marcasDe(ecra.itinerario.etapas[ecra.atual]) }
     val inicio = percursos[ecra.atual].pontos.first()
+    val autocarro = veiculoDaViagem(ecra)
     Mapa(
-        paragens = emptyList(), enquadrar = emptyList(), veiculos = emptyList(), coresLinhas = emptyMap(),
+        paragens = emptyList(), enquadrar = emptyList(), veiculos = listOfNotNull(autocarro),
+        coresLinhas = autocarro?.let { mapOf(it.linhaId to percursos[ecra.atual].cor) }.orEmpty(),
         escuro = LocalEscuro.current, centroInicial = LatLng(inicio.first, inicio.second), camaraInicial = null, centrarEm = null,
         aoMoverCamara = { _, _, _, _, _ -> }, aoTocarParagem = {}, aoTocarVeiculo = {},
         modifier = Modifier.fillMaxSize(), percursos = percursos, marcas = marcas,
@@ -160,6 +164,14 @@ private fun MapaDaViagem(ecra: EcraViagem, seguir: Boolean, aoDeixarDeSeguir: ()
 internal fun marcasDe(etapa: Etapa): List<Marca> =
     if (etapa.aPe) listOf(Marca(etapa.para.lat, etapa.para.lon, etapa.para.nome, sai = true))
     else paragensDe(etapa).let { todas -> todas.mapIndexed { k, p -> Marca(p.lat, p.lon, p.nome, sai = k == todas.lastIndex) } }
+
+/** O autocarro da etapa a bordo, tal e qual o motor o leu (o mesmo Veiculo e o mesmo ícone do mapa do Início); null se não há leitura. */
+internal fun veiculoDaViagem(ecra: EcraViagem): Veiculo? {
+    val e = ecra.estado
+    if (e.fase != Fase.A_BORDO) return null
+    val linha = ecra.itinerario.etapas[ecra.atual].linhaNome ?: return null
+    return Veiculo("viagem", linha, e.veiculoLat ?: return null, e.veiculoLon ?: return null, null, e.ultimoVeiculo ?: return null)
+}
 
 /** A altura do painel com o mapa por trás: o suficiente para o título da etapa e as primeiras paragens; o resto arrasta-se. */
 private val PAINEL_VISIVEL = 340.dp
@@ -194,47 +206,53 @@ fun ViagemConteudo(
         anterior = ecra.atual
     }
     var seguir by rememberSaveable { mutableStateOf(true) }
-    BoxWithConstraints(modifier.fillMaxSize()) {
-        // Aberto por inteiro, deixa à vista a linha de cima do mapa, com o "Voltar".
-        val alturaPainel = (maxHeight - MAPA_VISIVEL_COM_PAINEL_ABERTO).coerceAtLeast(PAINEL_VISIVEL)
-        BottomSheetScaffold(
-            sheetPeekHeight = PAINEL_VISIVEL,
-            sheetContainerColor = cores.background,
-            sheetContent = {
-                // Altura fixa: o pager e a lista de paragens só se esticam com um limite.
-                Column(Modifier.fillMaxWidth().height(alturaPainel)) {
-                    if (estado.terminada) {
-                        Text(
-                            stringResource(R.string.aviso_chegou, ecra.para), Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                            color = cores.onSurface, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold,
-                        )
-                    }
-                    HorizontalPager(pager, Modifier.weight(1f).fillMaxWidth()) { i -> Cartao(ecra, i, aoEncontrar) }
-                    HorizontalDivider(color = cores.outlineVariant)
-                    Rodape(ecra, aoSilenciar, aoJaSai, aoParar, aoPartilhar)
-                }
-            },
-        ) {
-            Box(Modifier.fillMaxSize()) {
-                mapa(seguir && comLocalizacao) { seguir = false }
-                Column(Modifier.statusBarsPadding().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                        Surface(shape = RoundedCornerShape(24.dp), shadowElevation = 4.dp) {
-                            TextButton(onClick = aoVoltar) { Text("← " + stringResource(R.string.voltar)) }
-                        }
-                        if (comLocalizacao && !seguir) Button(onClick = { seguir = true }) { Text(stringResource(R.string.viagem_seguir_me)) }
-                    }
-                    if (ecra.horario) {
-                        Surface(color = cores.secondaryContainer, shape = RoundedCornerShape(8.dp), shadowElevation = 4.dp) {
+    Column(modifier.fillMaxSize()) {
+        BoxWithConstraints(Modifier.weight(1f).fillMaxWidth()) {
+            // Aberto por inteiro, deixa à vista a linha de cima do mapa, com o "Voltar".
+            val alturaPainel = (maxHeight - MAPA_VISIVEL_COM_PAINEL_ABERTO).coerceAtLeast(PAINEL_VISIVEL)
+            BottomSheetScaffold(
+                sheetPeekHeight = PAINEL_VISIVEL,
+                sheetContainerColor = cores.background,
+                sheetContent = {
+                    // Altura fixa: o pager e a lista de paragens só se esticam com um limite.
+                    Column(Modifier.fillMaxWidth().height(alturaPainel)) {
+                        if (estado.terminada) {
                             Text(
-                                stringResource(R.string.viagem_selo_horario), Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                style = MaterialTheme.typography.labelLarge,
+                                stringResource(R.string.aviso_chegou, ecra.para), Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                                color = cores.onSurface, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold,
                             )
+                        }
+                        HorizontalPager(pager, Modifier.weight(1f).fillMaxWidth()) { i -> Cartao(ecra, i, aoEncontrar) }
+                        if (!estado.terminada) {
+                            HorizontalDivider(color = cores.outlineVariant)
+                            Rodape(ecra, aoPartilhar)
+                        }
+                    }
+                },
+            ) {
+                Box(Modifier.fillMaxSize()) {
+                    mapa(seguir && comLocalizacao) { seguir = false }
+                    Column(Modifier.statusBarsPadding().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                            Surface(shape = RoundedCornerShape(24.dp), shadowElevation = 4.dp) {
+                                TextButton(onClick = aoVoltar) { Text("← " + stringResource(R.string.voltar)) }
+                            }
+                            if (comLocalizacao && !seguir) Button(onClick = { seguir = true }) { Text(stringResource(R.string.viagem_seguir_me)) }
+                        }
+                        if (ecra.horario) {
+                            Surface(color = cores.secondaryContainer, shape = RoundedCornerShape(8.dp), shadowElevation = 4.dp) {
+                                Text(
+                                    stringResource(R.string.viagem_selo_horario), Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    style = MaterialTheme.typography.labelLarge,
+                                )
+                            }
                         }
                     }
                 }
             }
         }
+        // Fora do painel, para os botões estarem à vista com ele recolhido.
+        Botoes(estado, aoSilenciar, aoJaSai, aoParar)
     }
 }
 
@@ -348,19 +366,29 @@ private fun LinhaParagem(p: ParagemVista) {
     }
 }
 
+/** A chegada prevista e "Partilhar chegada", no fundo do painel (só com ele aberto). */
+@Composable
+private fun Rodape(ecra: EcraViagem, aoPartilhar: () -> Unit) {
+    Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+            stringResource(R.string.viagem_chegada_prevista, ecra.chegada.horaLisboa()),
+            color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold,
+        )
+        Button(onClick = aoPartilhar, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.viagem_partilhar)) }
+    }
+}
+
+/** Silenciar, Já saí e Parar, numa barra fixa por baixo do painel: à vista com ele recolhido. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun Rodape(ecra: EcraViagem, aoSilenciar: () -> Unit, aoJaSai: () -> Unit, aoParar: () -> Unit, aoPartilhar: () -> Unit) {
-    val estado = ecra.estado
-    Column(Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (!estado.terminada) {
-            Text(
-                stringResource(R.string.viagem_chegada_prevista, ecra.chegada.horaLisboa()),
-                color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold,
-            )
-        }
+private fun Botoes(estado: EstadoViagem, aoSilenciar: () -> Unit, aoJaSai: () -> Unit, aoParar: () -> Unit) {
+    Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)) {
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         // Em linhas que quebram: com letra a 200 % os três botões não cabem lado a lado.
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        FlowRow(
+            Modifier.fillMaxWidth().navigationBarsPadding().padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
             if (!estado.terminada) {
                 OutlinedButton(onClick = aoSilenciar, enabled = !estado.silenciado) {
                     Text(stringResource(if (estado.silenciado) R.string.viagem_silenciado else R.string.viagem_silenciar))
@@ -370,6 +398,5 @@ private fun Rodape(ecra: EcraViagem, aoSilenciar: () -> Unit, aoJaSai: () -> Uni
             }
             OutlinedButton(onClick = aoParar) { Text(stringResource(if (estado.terminada) R.string.viagem_concluir else R.string.viagem_parar)) }
         }
-        if (!estado.terminada) Button(onClick = aoPartilhar, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.viagem_partilhar)) }
     }
 }
