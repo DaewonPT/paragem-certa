@@ -11,6 +11,8 @@ import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
 import kotlinx.coroutines.flow.flowOf
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -105,11 +107,27 @@ class ParagemTest {
         assertTrue(i.getStringExtra(Intent.EXTRA_TEXT)!!.contains("CM:060419"))
     }
 
+    @Test fun encontrarAParagemFicaEntreAvisaMeEReportarErroEAbreABussola() {
+        var toques = 0
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Ecra(estado, aoEncontrar = { toques++ }) } }
+        listOf("Reportar erro", "Encontrar a paragem", "Avisa-me").forEach { regra.onNodeWithText(it).performScrollTo() }
+        val topo = { texto: String -> regra.onNodeWithText(texto).fetchSemanticsNode().boundsInRoot.top }
+        assertTrue(topo("Avisa-me") < topo("Encontrar a paragem"))
+        assertTrue(topo("Encontrar a paragem") < topo("Reportar erro"))
+        regra.onNodeWithText("Encontrar a paragem").performClick()
+        assertEquals(1, toques)
+    }
+
+    @Test fun semAParagemCarregadaNaoHaBussola() {
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Ecra(estado) } }
+        regra.onNodeWithText("Encontrar a paragem").assertDoesNotExist()
+    }
+
     @Composable
-    private fun Ecra(e: EstadoChegadas, alertas: List<Alerta> = listOf(alerta)) = ParagemConteudo(
+    private fun Ecra(e: EstadoChegadas, alertas: List<Alerta> = listOf(alerta), aoEncontrar: (() -> Unit)? = null) = ParagemConteudo(
         nome = "Cais do Sodré (Terminal)", codigo = "060419", acessivel = true, favorita = true, vigiada = false,
         estado = e, filtro = null, linhasPresentes = listOf("1001" to "1001", "3708" to "3708"), alertas = alertas, linhas = emptyMap(),
-        agora = agora, aoFiltrar = {}, aoFavoritar = {}, aoAvisaMe = {}, aoReportar = {}, aoVoltar = {},
+        agora = agora, aoFiltrar = {}, aoFavoritar = {}, aoAvisaMe = {}, aoEncontrar = aoEncontrar, aoReportar = {}, aoVoltar = {},
         modifier = Modifier.width(360.dp),
     )
 

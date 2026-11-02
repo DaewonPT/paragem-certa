@@ -52,6 +52,7 @@ import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import pt.pixellusitano.paragemcerta.R
+import pt.pixellusitano.paragemcerta.core.modelo.Lugar
 import pt.pixellusitano.paragemcerta.core.regras.distanciaMetros
 import pt.pixellusitano.paragemcerta.core.viagem.Fase
 import pt.pixellusitano.paragemcerta.ui.comum.LISBOA_FUSO
@@ -70,7 +71,7 @@ import java.time.Duration
 
 /** O ecrã da viagem ligado aos ficheiros do serviço. Sem viagem (parou, ou o ficheiro era velho), sai. */
 @Composable
-fun ViagemEcra(aoVoltar: () -> Unit) {
+fun ViagemEcra(aoVoltar: () -> Unit, aoEncontrar: (Lugar) -> Unit = {}) {
     val contexto = LocalContext.current
     val vm = viewModel {
         val app = contexto.applicationContext // não a Activity: o ViewModel vive mais do que ela
@@ -101,6 +102,7 @@ fun ViagemEcra(aoVoltar: () -> Unit) {
                 contexto.startActivity(Intent.createChooser(envio, null))
             },
             aoVoltar = aoVoltar,
+            aoEncontrar = aoEncontrar,
         )
         else -> {
             Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
@@ -124,6 +126,7 @@ fun ViagemConteudo(
     aoPartilhar: () -> Unit,
     aoVoltar: () -> Unit,
     modifier: Modifier = Modifier,
+    aoEncontrar: (Lugar) -> Unit = {},
 ) {
     val cores = MaterialTheme.colorScheme
     val estado = ecra.estado
@@ -152,23 +155,23 @@ fun ViagemConteudo(
                 color = cores.onSurface, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold,
             )
         }
-        HorizontalPager(pager, Modifier.weight(1f).fillMaxWidth()) { i -> Cartao(ecra, i) }
+        HorizontalPager(pager, Modifier.weight(1f).fillMaxWidth()) { i -> Cartao(ecra, i, aoEncontrar) }
         HorizontalDivider(color = cores.outlineVariant)
         Rodape(ecra, aoSilenciar, aoJaSai, aoParar, aoPartilhar)
     }
 }
 
 @Composable
-private fun Cartao(ecra: EcraViagem, i: Int) {
+private fun Cartao(ecra: EcraViagem, i: Int, aoEncontrar: (Lugar) -> Unit) {
     val c = ecra.cartoes[i]
     Column(Modifier.fillMaxSize()) {
-        Cabecalho(ecra, c, i)
+        Cabecalho(ecra, c, i, aoEncontrar)
         if (c.paragens.isNotEmpty()) Paragens(c)
     }
 }
 
 @Composable
-private fun Cabecalho(ecra: EcraViagem, c: CartaoEtapa, i: Int) {
+private fun Cabecalho(ecra: EcraViagem, c: CartaoEtapa, i: Int, aoEncontrar: (Lugar) -> Unit) {
     val cores = MaterialTheme.colorScheme
     val contexto = LocalContext.current
     val estado = ecra.estado
@@ -194,6 +197,10 @@ private fun Cabecalho(ecra: EcraViagem, c: CartaoEtapa, i: Int) {
                 color = cores.onSurface, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold,
             )
             Text(stringResource(R.string.rotas_a_pe, minutosDe(Duration.between(e.partida, e.chegada)).toInt()), color = cores.onSurfaceVariant)
+            // A última etapa a pé acaba no destino, não numa paragem.
+            if (c.situacao == Situacao.ATUAL && i < ecra.cartoes.lastIndex) {
+                OutlinedButton(onClick = { aoEncontrar(e.para) }) { Text(stringResource(R.string.bussola_encontrar)) }
+            }
         } else {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SeloLinha(e.linhaNome ?: simboloModo(e.modo), corDaLinha(e.cor, e.modo))

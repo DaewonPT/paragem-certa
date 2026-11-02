@@ -60,7 +60,7 @@ import java.time.Instant
 
 /** Ecrã da paragem ligado aos dados. */
 @Composable
-fun ParagemEcra(ref: RefParagem, repositorio: Repositorio, aoVoltar: () -> Unit) {
+fun ParagemEcra(ref: RefParagem, repositorio: Repositorio, aoEncontrar: (Paragem) -> Unit, aoVoltar: () -> Unit) {
     val contexto = LocalContext.current
     val vm = viewModel(key = ref.chave) { ParagemViewModel(repositorio.chegadas(ref)) }
     val estado by vm.estado.collectAsStateWithLifecycle()
@@ -114,6 +114,7 @@ fun ParagemEcra(ref: RefParagem, repositorio: Repositorio, aoVoltar: () -> Unit)
         aoReportar = { runCatching { contexto.startActivity(intentReportarErro(BuildConfig.VERSION_NAME, ref.chave, nome)) } },
         aoVoltar = aoVoltar,
         modifier = Modifier.fillMaxSize(),
+        aoEncontrar = paragem?.let { p -> { aoEncontrar(p) } },
     )
     // O serviço vigia as linhas pelo nome que a pessoa vê (o do Transitous não é o id).
     if (avisaMe) AvisaMe(ref, nome, presentes.map { it.second }.distinct(), aoFechar = { avisaMe = false })
@@ -139,6 +140,7 @@ fun ParagemConteudo(
     aoReportar: () -> Unit,
     aoVoltar: () -> Unit,
     modifier: Modifier = Modifier,
+    aoEncontrar: (() -> Unit)? = null,
 ) {
     Column(modifier.background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState())) {
         Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.primary).statusBarsPadding().padding(start = 4.dp, end = 4.dp, bottom = 12.dp)) {
@@ -190,6 +192,12 @@ fun ParagemConteudo(
             // Sem linhas à vista não há o que escolher; se a paragem já está vigiada, "Parar" serve sempre.
             Button(onClick = aoAvisaMe, enabled = vigiada || linhasPresentes.isNotEmpty(), modifier = Modifier.padding(top = 16.dp).fillMaxWidth()) {
                 Text(stringResource(if (vigiada) R.string.avisame_vigiar_parar else R.string.avisame))
+            }
+            // Precisa das coordenadas da paragem: enquanto ela não carrega, não há bússola.
+            aoEncontrar?.let {
+                OutlinedButton(onClick = it, modifier = Modifier.padding(top = 16.dp).fillMaxWidth()) {
+                    Text(stringResource(R.string.bussola_encontrar))
+                }
             }
             OutlinedButton(onClick = aoReportar, modifier = Modifier.padding(top = 16.dp).fillMaxWidth()) {
                 Text(stringResource(R.string.paragem_reportar))

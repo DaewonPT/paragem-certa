@@ -31,6 +31,7 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import pt.pixellusitano.paragemcerta.core.modelo.Lugar
 import pt.pixellusitano.paragemcerta.core.viagem.EstadoViagem
 import pt.pixellusitano.paragemcerta.core.viagem.Fase
 import pt.pixellusitano.paragemcerta.core.viagem.Origem
@@ -56,8 +57,10 @@ class ViagemScreenshotTest {
     private fun Ecra(
         e: EstadoViagem, p: PlanoViagem = plano,
         aoSilenciar: () -> Unit = {}, aoJaSai: () -> Unit = {}, aoParar: () -> Unit = {}, aoPartilhar: () -> Unit = {},
+        aoEncontrar: (Lugar) -> Unit = {},
     ) = ViagemConteudo(
-        ecraDaViagem(p, e, ex.viagem(p)), aoSilenciar, aoJaSai, aoParar, aoPartilhar, aoVoltar = {}, modifier = Modifier.width(360.dp),
+        ecraDaViagem(p, e, ex.viagem(p)), aoSilenciar, aoJaSai, aoParar, aoPartilhar, aoVoltar = {},
+        aoEncontrar = aoEncontrar, modifier = Modifier.width(360.dp),
     )
 
     private fun mostrar(e: EstadoViagem, p: PlanoViagem = plano) = regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Ecra(e, p) } }
@@ -106,6 +109,27 @@ class ViagemScreenshotTest {
         texto("3 min a pé").assertExists()
         texto("Já saí").assertIsNotEnabled()
         texto("Silenciar").assertIsEnabled()
+    }
+
+    @Test fun aPeAteUmaParagemOfereceEncontrarAParagem() {
+        var lugar: Lugar? = null
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Ecra(ex.aPe(plano, etapa = 0, falta = 120.0), aoEncontrar = { lugar = it }) } }
+        texto("Encontrar a paragem").performClick()
+        assertEquals(plano.itinerario.etapas[0].para, lugar)
+        assertEquals("Cais do Sodré", lugar?.nome)
+    }
+
+    @Test fun aBordoNaoHaParagemParaEncontrar() {
+        mostrar(ex.aBordo(plano, 1, k = 2))
+        texto("Encontrar a paragem").assertDoesNotExist()
+    }
+
+    @Test fun aUltimaEtapaAPeVaiParaODestinoEnaoParaUmaParagem() {
+        val etapas = plano.itinerario.etapas.take(3)
+        val ateOFim = plano.copy(itinerario = plano.itinerario.copy(etapas = etapas, chegada = etapas.last().chegada))
+        mostrar(ex.aPe(ateOFim, etapa = 2, falta = 90.0), ateOFim)
+        texto("🚶 A pé até Oriente (Norte) · 90 m").assertExists()
+        texto("Encontrar a paragem").assertDoesNotExist()
     }
 
     @Test fun aEsperaNaoDeixaDizerQueJaSaiu() {

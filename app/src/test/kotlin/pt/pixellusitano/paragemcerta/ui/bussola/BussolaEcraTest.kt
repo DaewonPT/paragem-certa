@@ -1,0 +1,250 @@
+package pt.pixellusitano.paragemcerta.ui.bussola
+
+import android.Manifest
+import android.app.Application
+import android.hardware.Sensor
+import android.hardware.SensorEvent
+import android.hardware.SensorManager
+import android.location.Location
+import android.location.LocationManager
+import android.view.Surface
+import androidx.activity.compose.LocalActivityResultRegistryOwner
+import androidx.activity.result.ActivityResultRegistry
+import androidx.activity.result.ActivityResultRegistryOwner
+import androidx.activity.result.contract.ActivityResultContract
+import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableDoubleStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.dp
+import androidx.core.app.ActivityOptionsCompat
+import com.github.takahirom.roborazzi.captureRoboImage
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
+import org.junit.Rule
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
+import org.robolectric.RuntimeEnvironment
+import org.robolectric.Shadows.shadowOf
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
+import org.robolectric.shadows.ShadowSensor
+import org.robolectric.util.ReflectionHelpers
+import org.robolectric.util.ReflectionHelpers.ClassParameter
+import pt.pixellusitano.paragemcerta.ui.tema.ModoTema
+import pt.pixellusitano.paragemcerta.ui.tema.TemaParagemCerta
+
+/** O Android a responder ao pedido da localização: [dar] diz se a pessoa aceita. */
+private class RegistoFalso(private val dar: Boolean) : ActivityResultRegistry() {
+    val pedidas = mutableListOf<List<String>>()
+    override fun <I, O> onLaunch(requestCode: Int, contract: ActivityResultContract<I, O>, input: I, options: ActivityOptionsCompat?) {
+        val permissoes = (input as Array<*>).map { it as String }
+        pedidas += permissoes
+        @Suppress("UNCHECKED_CAST")
+        dispatchResult(requestCode, permissoes.associateWith { dar } as O)
+    }
+}
+
+@RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(sdk = [36])
+class BussolaEcraTest {
+    @get:Rule val regra = createComposeRule()
+
+    private val app = RuntimeEnvironment.getApplication() as Application
+
+    // ---- a orientação do sensor ----
+
+    /** O vetor de rotação de um telemóvel deitado com o topo a apontar para o azimute dado (z = −sen(az/2), w = cos(az/2)). */
+    private fun vetorDeitado(azimute: Double) = Math.toRadians(azimute / 2).let { floatArrayOf(0f, 0f, -Math.sin(it).toFloat(), Math.cos(it).toFloat()) }
+
+    @Test fun orientacaoDeUmTelemovelDeitadoAApontarParaEste() {
+        assertEquals(90.0, orientacaoGraus(vetorDeitado(90.0), Surface.ROTATION_0), 0.01)
+        assertEquals(0.0, orientacaoGraus(vetorDeitado(0.0), Surface.ROTATION_0), 0.01)
+    }
+
+    @Test fun comOEcraRodadoAOrientacaoSegueOCimaDoEcraEnaoOCimaDoTelemovel() {
+        // Deitado com o topo a este: com o ecrã rodado 90° (telemóvel virado à esquerda) o cimo do ecrã é o lado direito do telemóvel, a sul.
+        assertEquals(180.0, Math.abs(orientacaoGraus(vetorDeitado(90.0), Surface.ROTATION_90)), 0.01)
+        // Rodado ao contrário, o cimo do ecrã é o fundo do telemóvel: a oeste.
+        assertEquals(-90.0, orientacaoGraus(vetorDeitado(90.0), Surface.ROTATION_180), 0.01)
+        assertEquals(0.0, orientacaoGraus(vetorDeitado(90.0), Surface.ROTATION_270), 0.01)
+    }
+
+    // ---- o conteúdo ----
+
+    @Composable
+    private fun Conteudo(estado: EstadoBussola, aoPermitir: () -> Unit = {}) = TemaParagemCerta(ModoTema.CLARO) {
+        BussolaConteudo("Cais do Sodré", estado, aoPermitir, aoVoltar = {}, modifier = Modifier.width(360.dp))
+    }
+
+    @Test fun comSetaDizADistanciaEOLado() {
+        regra.setContent { Conteudo(EstadoBussola.Ativa(120.0, rumo = 73.0, angulo = 80.0, semSensor = false, calibrar = false)) }
+        regra.onNodeWithText("Encontrar a paragem").assertIsDisplayed()
+        regra.onNodeWithText("120 m", useUnmergedTree = true).assertIsDisplayed()
+        regra.onNodeWithContentDescription("Paragem Cais do Sodré, a 120 m, à tua direita").assertExists()
+        regra.onNodeWithText("Calibra a bússola: move o telemóvel num 8.").assertDoesNotExist()
+        regra.onNodeWithText("Este telemóvel não tem bússola. Aqui vês só a distância e a direção.").assertDoesNotExist()
+    }
+
+    @Test fun osQuatroLadosDaDescricao() {
+        var angulo by mutableDoubleStateOf(0.0)
+        regra.setContent { Conteudo(EstadoBussola.Ativa(120.0, rumo = 0.0, angulo = angulo, semSensor = false, calibrar = false)) }
+        listOf(0.0 to "em frente", 90.0 to "à tua direita", 180.0 to "atrás de ti", 270.0 to "à tua esquerda", 350.0 to "em frente").forEach { (a, lado) ->
+            angulo = a
+            regra.waitForIdle()
+            regra.onNodeWithContentDescription("Paragem Cais do Sodré, a 120 m, $lado").assertExists()
+        }
+    }
+
+    @Test fun bussolaPoucoPrecisaPedeParaCalibrar() {
+        regra.setContent { Conteudo(EstadoBussola.Ativa(120.0, rumo = 73.0, angulo = 80.0, semSensor = false, calibrar = true)) }
+        regra.onNodeWithText("Calibra a bússola: move o telemóvel num 8.").assertIsDisplayed()
+        regra.onNodeWithText("120 m", useUnmergedTree = true).assertIsDisplayed()
+    }
+
+    @Test fun semSensorDizSoADistanciaEORumoEmTexto() {
+        regra.setContent { Conteudo(EstadoBussola.Ativa(120.0, rumo = 40.0, angulo = null, semSensor = true, calibrar = false)) }
+        regra.onNodeWithText("120 m", useUnmergedTree = true).assertIsDisplayed()
+        regra.onNodeWithText("a nordeste", useUnmergedTree = true).assertIsDisplayed()
+        regra.onNodeWithText("Este telemóvel não tem bússola. Aqui vês só a distância e a direção.").assertIsDisplayed()
+        regra.onNodeWithContentDescription("Paragem Cais do Sodré, a 120 m, a nordeste").assertExists()
+    }
+
+    @Test fun semLocalizacaoExplicaEPedeAPermissao() {
+        var pedidos = 0
+        regra.setContent { Conteudo(EstadoBussola.PorPedir, aoPermitir = { pedidos++ }) }
+        regra.onNodeWithText("Para apontar para a paragem", substring = true).assertIsDisplayed()
+        regra.onNodeWithText("Permitir localização").performClick()
+        assertEquals(1, pedidos)
+    }
+
+    @Test fun localizacaoRecusadaExplicaOQueFazer() {
+        regra.setContent { Conteudo(EstadoBussola.Recusada) }
+        regra.onNodeWithText("Sem a localização não dá para apontar para a paragem. Podes dá-la nas definições do telemóvel.").assertIsDisplayed()
+        regra.onNodeWithText("Permitir localização").assertIsDisplayed()
+    }
+
+    @Test fun localizacaoDesligadaEAProcurar() {
+        regra.setContent { Conteudo(EstadoBussola.Desligada) }
+        regra.onNodeWithText("Liga a localização para a Paragem Certa saber onde estás.").assertIsDisplayed()
+    }
+
+    @Test fun enquantoNaoHaPosicaoDizQueProcura() {
+        regra.setContent { Conteudo(EstadoBussola.AProcurar) }
+        regra.onNodeWithText("A procurar a tua posição…").assertIsDisplayed()
+    }
+
+    // A seta fixa em 60° (a paragem a nordeste, com o telemóvel a apontar para o norte-noroeste).
+    @Test fun bussola() = captureRoboImage("src/test/screenshots/bussola.png") {
+        Conteudo(EstadoBussola.Ativa(120.0, rumo = 40.0, angulo = 60.0, semSensor = false, calibrar = false))
+    }
+
+    // ---- o ecrã ligado à localização e ao sensor ----
+
+    private val lat = 38.7060
+    private val lon = -9.1440
+
+    private fun ecra(registo: RegistoFalso = RegistoFalso(dar = true)) = regra.setContent {
+        CompositionLocalProvider(
+            LocalActivityResultRegistryOwner provides object : ActivityResultRegistryOwner { override val activityResultRegistry = registo },
+        ) {
+            TemaParagemCerta(ModoTema.CLARO) {
+                // A paragem fica a 0,001° a norte (cerca de 110 m).
+                BussolaEcra("Cais do Sodré", lat + 0.001, lon, aoVoltar = {})
+            }
+        }
+    }
+
+    private fun darLocalizacao() = shadowOf(app).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+
+    private fun gestor() = app.getSystemService(LocationManager::class.java)
+
+    private fun estouEm(latitude: Double, longitude: Double) {
+        shadowOf(gestor()).simulateLocation(Location(LocationManager.GPS_PROVIDER).apply { this.latitude = latitude; this.longitude = longitude })
+        regra.waitForIdle()
+    }
+
+    @Test fun semPermissaoPedeAPermissaoEQuandoERecusadaExplica() {
+        shadowOf(app).denyPermissions(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+        val registo = RegistoFalso(dar = false)
+        ecra(registo)
+        regra.onNodeWithText("Para apontar para a paragem", substring = true).assertIsDisplayed()
+        assertTrue(registo.pedidas.isEmpty()) // não surpreende a pessoa com o pedido: espera pelo toque
+        regra.onNodeWithText("Permitir localização").performClick()
+        assertEquals(listOf(listOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)), registo.pedidas)
+        regra.onNodeWithText("Sem a localização não dá para apontar para a paragem. Podes dá-la nas definições do telemóvel.").assertIsDisplayed()
+    }
+
+    @Test fun comLocalizacaoDesligadaDizParaLigar() {
+        darLocalizacao()
+        shadowOf(gestor()).setProviderEnabled(LocationManager.GPS_PROVIDER, false)
+        shadowOf(gestor()).setProviderEnabled(LocationManager.NETWORK_PROVIDER, false)
+        ecra()
+        regra.onNodeWithText("Liga a localização para a Paragem Certa saber onde estás.").assertIsDisplayed()
+    }
+
+    @Test fun semSensorDeBussolaMostraADistanciaEORumoEmTextoSemFalhar() {
+        darLocalizacao()
+        shadowOf(gestor()).setProviderEnabled(LocationManager.GPS_PROVIDER, true)
+        ecra()
+        regra.onNodeWithText("A procurar a tua posição…").assertIsDisplayed()
+        estouEm(lat, lon)
+        regra.onNodeWithText("110 m", useUnmergedTree = true).assertIsDisplayed()
+        regra.onNodeWithText("a norte", useUnmergedTree = true).assertIsDisplayed()
+        regra.onNodeWithText("Este telemóvel não tem bússola. Aqui vês só a distância e a direção.").assertIsDisplayed()
+    }
+
+    @Test fun comSensorAPontaApontaParaAParagem() {
+        darLocalizacao()
+        shadowOf(gestor()).setProviderEnabled(LocationManager.GPS_PROVIDER, true)
+        val sensores = app.getSystemService(SensorManager::class.java)
+        val sensor = ShadowSensor.newInstance(Sensor.TYPE_ROTATION_VECTOR)
+        shadowOf(sensores).addSensor(sensor)
+        ecra()
+        estouEm(lat, lon)
+
+        // A paragem está a norte e o telemóvel aponta para este: fica à esquerda.
+        val leitura = ReflectionHelpers.callConstructor(SensorEvent::class.java, ClassParameter.from(Int::class.javaPrimitiveType, 4)).also { it.sensor = sensor }
+        vetorDeitado(90.0).copyInto(leitura.values)
+        shadowOf(sensores).sendSensorEventToListeners(leitura)
+        regra.waitForIdle()
+        regra.onNodeWithContentDescription("Paragem Cais do Sodré, a 110 m, à tua esquerda").assertExists()
+        regra.onNodeWithText("Este telemóvel não tem bússola. Aqui vês só a distância e a direção.").assertDoesNotExist()
+
+        // Virado para a paragem, está em frente.
+        vetorDeitado(0.0).copyInto(leitura.values)
+        shadowOf(sensores).sendSensorEventToListeners(leitura)
+        regra.waitForIdle()
+        regra.onNodeWithContentDescription("Paragem Cais do Sodré, a 110 m, em frente").assertExists()
+    }
+
+    @Test fun comPoucaPrecisaoPedeParaCalibrar() {
+        darLocalizacao()
+        shadowOf(gestor()).setProviderEnabled(LocationManager.GPS_PROVIDER, true)
+        val sensores = app.getSystemService(SensorManager::class.java)
+        val sensor = ShadowSensor.newInstance(Sensor.TYPE_ROTATION_VECTOR)
+        shadowOf(sensores).addSensor(sensor)
+        ecra()
+        estouEm(lat, lon)
+        regra.onNodeWithText("Calibra a bússola: move o telemóvel num 8.").assertDoesNotExist()
+
+        fun precisao(p: Int) {
+            shadowOf(sensores).listeners.forEach { it.onAccuracyChanged(sensor, p) }
+            regra.waitForIdle()
+        }
+        precisao(SensorManager.SENSOR_STATUS_ACCURACY_LOW)
+        regra.onNodeWithText("Calibra a bússola: move o telemóvel num 8.").assertIsDisplayed()
+        precisao(SensorManager.SENSOR_STATUS_ACCURACY_HIGH)
+        regra.onNodeWithText("Calibra a bússola: move o telemóvel num 8.").assertDoesNotExist()
+    }
+}

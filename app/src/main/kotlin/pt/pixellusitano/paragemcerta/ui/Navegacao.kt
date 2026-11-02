@@ -46,6 +46,7 @@ import pt.pixellusitano.paragemcerta.BuildConfig
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
 import pt.pixellusitano.paragemcerta.dados.Ligacoes
+import pt.pixellusitano.paragemcerta.ui.bussola.BussolaEcra
 import pt.pixellusitano.paragemcerta.ui.eu.EuEcra
 import pt.pixellusitano.paragemcerta.ui.eu.LocaisEcra
 import pt.pixellusitano.paragemcerta.ui.inicio.InicioEcra
@@ -66,6 +67,9 @@ import pt.pixellusitano.paragemcerta.viagem.FicheirosViagem
 @Serializable data object Locais
 @Serializable data object Viagem
 @Serializable data class Paragem(val chave: String)
+
+/** "Encontrar a paragem": o nome e a posição do sítio para onde a seta aponta. */
+@Serializable data class Bussola(val nome: String, val lat: Double, val lon: Double)
 
 /** origem e destino codificados como "nome|lat|lon" (ver paraRota); origem null = "A minha posição". */
 @Serializable data class Rotas(val origem: String? = null, val destino: String? = null)
@@ -166,7 +170,9 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
             }
             composable<Paragem> { entrada ->
                 val ref = RefParagem.daChave(entrada.toRoute<Paragem>().chave)
-                if (ref == null) nav.popBackStack() else ParagemEcra(ref, repositorio, aoVoltar = { nav.popBackStack() })
+                if (ref == null) nav.popBackStack() else ParagemEcra(
+                    ref, repositorio, aoEncontrar = { nav.navigate(Bussola(it.nome, it.lat, it.lon)) }, aoVoltar = { nav.popBackStack() },
+                )
             }
             composable<Rotas> { entrada ->
                 val r = entrada.toRoute<Rotas>()
@@ -192,7 +198,13 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
                 }
             }
             composable<Locais> { LocaisEcra(repositorio, aoVoltar = { nav.popBackStack() }) }
-            composable<Viagem> { ViagemEcra(aoVoltar = { nav.popBackStack() }) }
+            composable<Viagem> {
+                ViagemEcra(aoVoltar = { nav.popBackStack() }, aoEncontrar = { nav.navigate(Bussola(it.nome, it.lat, it.lon)) })
+            }
+            composable<Bussola> { entrada ->
+                val b = entrada.toRoute<Bussola>()
+                BussolaEcra(b.nome, b.lat, b.lon, aoVoltar = { nav.popBackStack() })
+            }
             composable<Sobre> {
                 SobreEcra(versao = BuildConfig.VERSION_NAME, aoAbrir = { url ->
                     runCatching { contexto.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }

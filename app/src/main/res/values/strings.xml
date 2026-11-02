@@ -274,4 +274,29 @@
     <string name="eu_avisos">Avisos da viagem</string>
     <string name="eu_som_aviso">Som do aviso</string>
     <string name="eu_vibracao_aviso">Vibração do aviso</string>
+
+    <!-- Bússola: Encontrar a paragem -->
+    <string name="bussola_encontrar">Encontrar a paragem</string>
+    <string name="bussola_localizacao_texto">Para apontar para a paragem, a Paragem Certa precisa de saber onde estás. A posição fica no telemóvel e só é usada enquanto este ecrã está aberto.</string>
+    <string name="bussola_localizacao_recusada">Sem a localização não dá para apontar para a paragem. Podes dá-la nas definições do telemóvel.</string>
+    <string name="bussola_a_procurar">A procurar a tua posição…</string>
+    <string name="bussola_calibrar">Calibra a bússola: move o telemóvel num 8.</string>
+    <string name="bussola_sem_sensor">Este telemóvel não tem bússola. Aqui vês só a distância e a direção.</string>
+    <string name="bussola_descricao">Paragem %1$s, a %2$s, %3$s</string>
+    <string-array name="bussola_lados">
+        <item>em frente</item>
+        <item>à tua direita</item>
+        <item>atrás de ti</item>
+        <item>à tua esquerda</item>
+    </string-array>
+    <string-array name="bussola_rumos">
+        <item>a norte</item>
+        <item>a nordeste</item>
+        <item>a este</item>
+        <item>a sudeste</item>
+        <item>a sul</item>
+        <item>a sudoeste</item>
+        <item>a oeste</item>
+        <item>a noroeste</item>
+    </string-array>
 </resources>
