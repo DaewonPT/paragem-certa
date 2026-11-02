@@ -1,4 +1,6 @@
 import { confirmarCodigo, limparExpirados, pedirCodigo } from "./codigos";
+import { aceitarTermos, apagarConta } from "./conta";
+import { sincronizar } from "./favoritos";
 import { entrarComGoogle, novoNonce } from "./google";
 import { paginaPrivacidade } from "./privacidade";
 import { erro, json } from "./respostas";
@@ -16,7 +18,11 @@ export default {
       if (pathname === "/api/auth/sair") return sair(pedido, env);
       if (pathname === "/api/auth/google/nonce") return novoNonce(env);
       if (pathname === "/api/auth/google") return entrarComGoogle(pedido, env);
+      if (pathname === "/api/sincronizar") return sincronizar(pedido, env);
+      if (pathname === "/api/termos") return aceitarTermos(pedido, env);
     }
+
+    if (pathname === "/api/conta" && pedido.method === "DELETE") return apagarConta(pedido, env);
 
     if (pathname === "/privacidade" && (pedido.method === "GET" || pedido.method === "HEAD")) {
       const responsavel = env.RESPONSAVEL?.trim();
