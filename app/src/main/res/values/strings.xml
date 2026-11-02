@@ -186,9 +186,9 @@
 
     <!-- Viagem ao vivo: notificações -->
     <string name="viagem_canal_viagem">Viagem em curso</string>
-    <string name="viagem_canal_viagem_desc">Mostra a etapa da viagem e quantas paragens faltam.</string>
-    <string name="viagem_canal_avisos">Avisos de saída</string>
-    <string name="viagem_canal_avisos_desc">Os avisos Prepara-te e Sai agora. O som e a vibração seguem as definições de alarme do telemóvel.</string>
+    <string name="viagem_canal_viagem_desc">Mostra a etapa da viagem e quantas paragens faltam, ou as linhas que estás a vigiar numa paragem.</string>
+    <string name="viagem_canal_avisos">Avisos de saída e de chegada</string>
+    <string name="viagem_canal_avisos_desc">Os avisos Prepara-te e Sai agora, e o aviso de que a linha que pediste está a chegar. O som e a vibração seguem as definições de alarme do telemóvel.</string>
     <plurals name="viagem_faltam">
         <item quantity="one">Falta %1$d paragem · sais em %2$s</item>
         <item quantity="other">Faltam %1$d paragens · sais em %2$s</item>
@@ -208,6 +208,17 @@
     <string name="aviso_apanha">%1$s e apanha o %2$s</string>
     <string name="aviso_horario">%1$s (posição estimada, confirma a paragem)</string>
     <string name="aviso_chegou">Chegaste a %1$s</string>
+    <plurals name="vigia_linhas">
+        <item quantity="one">A vigiar %1$d linha em %2$s</item>
+        <item quantity="other">A vigiar %1$d linhas em %2$s</item>
+    </plurals>
+    <plurals name="vigia_paragens">
+        <item quantity="one">A vigiar %1$d linha em %2$d paragens</item>
+        <item quantity="other">A vigiar %1$d linhas em %2$d paragens</item>
+    </plurals>
+    <string name="aviso_chegada">O %1$s chega em %2$d min a %3$s</string>
+    <string name="aviso_chegada_agora">O %1$s chega agora a %2$s</string>
+    <string name="aviso_chegada_horario">%1$s (pelo horário)</string>
     <string name="viagem_liga_localizacao">Liga a localização para a Paragem Certa saber onde estás.</string>
 
     <!-- Viagem ao vivo: ecrã -->

@@ -18,6 +18,7 @@ import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
 import pt.pixellusitano.paragemcerta.core.rede.Http
 import pt.pixellusitano.paragemcerta.core.rede.Resposta
+import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import java.io.IOException
 import java.time.Instant
 
@@ -62,6 +63,27 @@ class RepositorioTest {
             assertEquals(primeira.atualizadoEm, segunda.atualizadoEm)
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    @Test fun chegadasAgoraFazUmaSoConsultaDaFonteDaParagem() = runTest {
+        val http = HttpPorUrl(
+            "arrivals" to listOf({ Resposta(200, fixture("cm-arrivals-060419.json")) }),
+            "stoptimes" to listOf({ Resposta(200, fixture("transitous-stoptimes.json")) }),
+        )
+        val cm = repo(http).chegadasAgora(terminal) as Resultado.Ok
+        assertEquals(3, cm.valor.size)
+        assertEquals(1, http.pedidos.size)
+        assertTrue(http.pedidos.single().contains("arrivals/by_stop/060419"))
+        val outra = repo(http).chegadasAgora(RefParagem(Fonte.TRANSITOUS, "pt-Carris_3803")) as Resultado.Ok
+        assertEquals(listOf("201"), outra.valor.map { it.linhaNome })
+        assertTrue(http.pedidos.last().contains("stoptimes"))
+    }
+
+    @Test fun chegadasAgoraDevolveAFalhaSemRepetir() = runTest {
+        val http = HttpPorUrl("arrivals" to listOf({ Resposta(503, "") }))
+        val r = repo(http).chegadasAgora(terminal)
+        assertEquals(Resultado.Falha(503, limite = true), r)
+        assertEquals(1, http.pedidos.size)
     }
 
     @Test fun limiteDePedidosEsperaAntesDeRepetir() = runTest {

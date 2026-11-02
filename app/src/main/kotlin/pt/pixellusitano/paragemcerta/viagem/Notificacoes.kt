@@ -11,6 +11,7 @@ import androidx.core.app.NotificationCompat
 import pt.pixellusitano.paragemcerta.MainActivity
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.core.modelo.Etapa
+import pt.pixellusitano.paragemcerta.core.viagem.AvisoChegada
 import pt.pixellusitano.paragemcerta.core.viagem.EstadoViagem
 import pt.pixellusitano.paragemcerta.core.viagem.Evento
 import pt.pixellusitano.paragemcerta.core.viagem.Fase
@@ -26,20 +27,31 @@ import java.time.format.DateTimeFormatter
 
 private val HORA = DateTimeFormatter.ofPattern("HH:mm")
 
-/** As notificações da viagem: a fixa do serviço (progresso) e a urgente (Prepara-te, Sai agora). Corre nos dois processos. */
+/**
+ * As notificações da viagem: a fixa do serviço (progresso) e a urgente (Prepara-te, Sai agora); e as dos avisos de chegada,
+ * que reutilizam os mesmos canais. Corre nos dois processos.
+ */
 object Notificacoes {
     const val CANAL_VIAGEM = "viagem"
     const val CANAL_AVISOS = "avisos"
     const val ID_PROGRESSO = 1
     const val ID_AVISO = 2
     const val ID_LOCALIZACAO = 3
+    const val ID_VIGIA = 4
+
+    /** Os avisos de chegada ficam todos (um id por aviso, a contar daqui), para um não apagar o outro. */
+    const val ID_CHEGADA = 100
 
     // As ações dos botões; quem as atende é o ServicoViagem (processo :trip), que fica no mesmo pacote.
     const val ACAO_SILENCIAR = "pt.pixellusitano.paragemcerta.viagem.SILENCIAR"
     const val ACAO_JA_SAI = "pt.pixellusitano.paragemcerta.viagem.JA_SAI"
     const val ACAO_PARAR = "pt.pixellusitano.paragemcerta.viagem.PARAR"
+
+    /** O botão Parar da vigia dos avisos de chegada, atendido pelo ServicoAvisoChegada (processo principal). */
+    const val ACAO_PARAR_VIGIA = "pt.pixellusitano.paragemcerta.aviso.PARAR"
     const val EXTRA_ABRIR_VIAGEM = "pt.pixellusitano.paragemcerta.ABRIR_VIAGEM"
     private const val SERVICO = "pt.pixellusitano.paragemcerta.viagem.ServicoViagem"
+    private const val SERVICO_AVISOS = "pt.pixellusitano.paragemcerta.aviso.ServicoAvisoChegada"
 
     /** Os dois canais; pode chamar-se sempre que o serviço ou a app arrancam. O dos avisos não tem som nem vibração: toca o Alarme. */
     fun criarCanais(c: Context) {
@@ -88,6 +100,42 @@ object Notificacoes {
             .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
             .setAutoCancel(true)
             .build()
+
+    /**
+     * A notificação fixa dos avisos de chegada: "A vigiar 2 linhas em Cais do Sodré", ou "em 2 paragens" quando são várias.
+     * [linhas] são as que ainda faltam avisar e [paragens] os nomes das paragens vigiadas (pelo menos uma).
+     */
+    fun vigia(c: Context, linhas: Int, paragens: List<String>): Notification =
+        NotificationCompat.Builder(c, CANAL_VIAGEM)
+            .setSmallIcon(R.drawable.ic_notificacao)
+            .setContentTitle(
+                if (paragens.size == 1) c.resources.getQuantityString(R.plurals.vigia_linhas, linhas, linhas, paragens[0])
+                else c.resources.getQuantityString(R.plurals.vigia_paragens, linhas, linhas, paragens.size),
+            )
+            .setContentIntent(abrirApp(c, viagem = false))
+            .setOngoing(true)
+            .setOnlyAlertOnce(true)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setForegroundServiceBehavior(NotificationCompat.FOREGROUND_SERVICE_IMMEDIATE)
+            .addAction(0, c.getString(R.string.viagem_parar), pedirAoServico(c, ACAO_PARAR_VIGIA, SERVICO_AVISOS))
+            .build()
+
+    /** O aviso urgente de que a linha pedida está a chegar à [paragem]; tocar nele abre a app. */
+    fun chegada(c: Context, aviso: AvisoChegada, paragem: String): Notification =
+        NotificationCompat.Builder(c, CANAL_AVISOS)
+            .setSmallIcon(R.drawable.ic_notificacao)
+            .setContentTitle(textoChegada(c, aviso, paragem))
+            .setContentIntent(abrirApp(c, viagem = false))
+            .setCategory(NotificationCompat.CATEGORY_ALARM)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .setAutoCancel(true)
+            .build()
+
+    internal fun textoChegada(c: Context, a: AvisoChegada, paragem: String): String {
+        val texto = if (a.minutos < 1) c.getString(R.string.aviso_chegada_agora, a.linhaNome, paragem)
+        else c.getString(R.string.aviso_chegada, a.linhaNome, a.minutos, paragem)
+        return if (a.peloHorario) c.getString(R.string.aviso_chegada_horario, texto) else texto
+    }
 
     /** "Liga a localização": toca-se nela para abrir as definições. O serviço cancela-a quando o GPS volta e quando a viagem acaba. */
     fun semLocalizacao(c: Context): Notification =
@@ -151,15 +199,18 @@ object Notificacoes {
         if (e.fase == Fase.A_BORDO || (e.fase == Fase.TERMINADA && !etapas[e.etapa].aPe)) e.etapa
         else etapas.subList(0, e.etapa).indexOfLast { !it.aPe }.takeIf { it >= 0 } ?: e.etapa
 
-    /** Tocar na notificação leva ao ecrã da viagem (o MainActivity trata do extra). */
-    private fun abrirApp(c: Context): PendingIntent = PendingIntent.getActivity(
-        c, 0,
+    /**
+     * Tocar na notificação leva ao ecrã da viagem (o MainActivity trata do extra), ou só abre a app (dos avisos de chegada).
+     * Outro requestCode, porque o Android compara os PendingIntent sem olhar para os extras e um apagava o extra do outro.
+     */
+    private fun abrirApp(c: Context, viagem: Boolean = true): PendingIntent = PendingIntent.getActivity(
+        c, if (viagem) 0 else 1,
         Intent(c, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP)
-            .putExtra(EXTRA_ABRIR_VIAGEM, true),
+            .apply { if (viagem) putExtra(EXTRA_ABRIR_VIAGEM, true) },
         PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
 
-    private fun pedirAoServico(c: Context, acao: String): PendingIntent = PendingIntent.getService(
-        c, 0, Intent(acao).setClassName(c, SERVICO), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
+    private fun pedirAoServico(c: Context, acao: String, servico: String = SERVICO): PendingIntent = PendingIntent.getService(
+        c, 0, Intent(acao).setClassName(c, servico), PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
     )
 }

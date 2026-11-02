@@ -6,6 +6,7 @@
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
@@ -38,5 +39,15 @@
             android:process=":trip"
             android:exported="false"
             android:foregroundServiceType="location" />
+
+        <!-- O "Avisa-me quando estiver a X min" corre no processo principal: só arranca a partir do ecrã visível. -->
+        <service
+            android:name=".aviso.ServicoAvisoChegada"
+            android:exported="false"
+            android:foregroundServiceType="specialUse">
+            <property
+                android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE"
+                android:value="User-requested transit arrival alert: polls live arrivals every 30 s, max 90 min, alerts when a chosen line is X min away." />
+        </service>
     </application>
 </manifest>

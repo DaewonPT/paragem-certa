@@ -89,11 +89,7 @@ class Repositorio(
         var tentativa = 0
         while (true) {
             val agora = relogio()
-            val r = when (ref.fonte) {
-                Fonte.CM -> cm.chegadas(ref.id, agora)
-                Fonte.TRANSITOUS -> transitous.chegadas(ref.id, agora)
-            }
-            when (r) {
+            when (val r = chegadasAgora(ref, agora)) {
                 is Resultado.Ok -> {
                     tentativa = 0
                     val json = JSON.encodeToString(r.valor.map { it.paraGuardar() })
@@ -108,6 +104,12 @@ class Repositorio(
                 }
             }
         }
+    }
+
+    /** Uma só consulta à fonte da paragem, sem repetir nem guardar nada (o aviso de chegada tem o seu próprio ritmo). */
+    suspend fun chegadasAgora(ref: RefParagem, agora: Instant = relogio()): Resultado<List<Chegada>> = when (ref.fonte) {
+        Fonte.CM -> cm.chegadas(ref.id, agora)
+        Fonte.TRANSITOUS -> transitous.chegadas(ref.id, agora)
     }
 
     private suspend fun guardadas(ref: RefParagem, agora: Instant): Pair<List<Chegada>, Instant>? {

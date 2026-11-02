@@ -26,6 +26,21 @@ class AtualizacaoAutomaticaTest {
     @Test fun confirmacaoPendenteGanhaMesmoComViagemEmCurso() =
         assertEquals(Decisao.NADA, decidir(nova, ligado = true, emPrimeiroPlano = false, pendente = nova.tag, emViagem = true))
 
+    // O mesmo com um aviso de chegada a correr: instalar mata o serviço e a vigia com ele.
+    @Test fun comUmAvisoDeChegadaAtivoEspera() =
+        assertEquals(Decisao.ESPERAR, decidir(nova, ligado = true, emPrimeiroPlano = false, comAviso = true))
+
+    @Test fun semVersaoNovaOuDesligadaOAvisoNaoMudaNada() {
+        assertEquals(Decisao.NADA, decidir(null, ligado = true, emPrimeiroPlano = false, comAviso = true))
+        assertEquals(Decisao.NADA, decidir(nova, ligado = false, emPrimeiroPlano = false, comAviso = true))
+    }
+
+    @Test fun confirmacaoPendenteGanhaMesmoComUmAvisoAtivo() =
+        assertEquals(Decisao.NADA, decidir(nova, ligado = true, emPrimeiroPlano = false, pendente = nova.tag, comAviso = true))
+
+    @Test fun semViagemNemAvisoNemAppEmUsoInstala() =
+        assertEquals(Decisao.INSTALAR, decidir(nova, ligado = true, emPrimeiroPlano = false, emViagem = false, comAviso = false))
+
     @Test fun semViagemENemAppEmUsoInstala() =
         assertEquals(Decisao.INSTALAR, decidir(nova, ligado = true, emPrimeiroPlano = false, emViagem = false))
 
