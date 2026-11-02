@@ -23,6 +23,8 @@ import pt.pixellusitano.paragemcerta.ui.tema.FrisoAzulejo
 
 const val URL_REPOSITORIO = "https://github.com/DaewonPT/paragem-certa"
 const val EMAIL_CONTACTO = "contact@pixellusitano.com"
+const val URL_TERMOS = "https://paragemcerta.pixellusitano.com/termos"
+const val URL_PRIVACIDADE = "https://paragemcerta.pixellusitano.com/privacidade"
 
 private val FONTES = listOf(
     R.string.sobre_fonte_cm to "https://carrismetropolitana.pt/open-data",
@@ -52,6 +54,9 @@ fun SobreEcra(versao: String, aoAbrir: (String) -> Unit) {
         Text(stringResource(R.string.sobre_contacto), style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.padding(top = 20.dp, bottom = 4.dp))
         Ligacao(null, "mailto:$EMAIL_CONTACTO", aoAbrir, textoFixo = EMAIL_CONTACTO)
+
+        Ligacao(R.string.ligacao_termos, URL_TERMOS, aoAbrir)
+        Ligacao(R.string.ligacao_privacidade, URL_PRIVACIDADE, aoAbrir)
     }
 }
 

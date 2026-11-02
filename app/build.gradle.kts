@@ -16,6 +16,11 @@ val propsChave = rootProject.file("../Chave Privada/keystore.properties")
 val chaveLocal = Properties().apply { if (propsChave.isFile) propsChave.inputStream().use(::load) }
 fun valorChave(env: String, prop: String): String? = System.getenv(env) ?: chaveLocal.getProperty(prop)
 
+// O id do cliente Web da Google não está no repositório: no CI vem dos segredos do GitHub, no PC de local.properties.
+// Sem ele o botão "Iniciar sessão com o Google" não aparece.
+val propsLocais = Properties().apply { rootProject.file("local.properties").takeIf { it.isFile }?.inputStream()?.use(::load) }
+val clienteWebGoogle = (System.getenv("GOOGLE_WEB_CLIENT_ID") ?: propsLocais.getProperty("GOOGLE_WEB_CLIENT_ID") ?: "").trim()
+
 android {
     namespace = "pt.pixellusitano.paragemcerta"
     compileSdk = 37
@@ -27,6 +32,7 @@ android {
         versionName = versao
         // Mesma regra que versionCodeFromTag no :core: major*10000 + minor*100 + patch.
         versionCode = versao.split('.').map(String::toInt).let { (a, b, c) -> a * 10000 + b * 100 + c }
+        buildConfigField("String", "GOOGLE_WEB_CLIENT_ID", "\"$clienteWebGoogle\"")
         // Só telemóveis ARM: as bibliotecas do mapa para x86 (emuladores, PCs) duplicavam o tamanho do APK.
         ndk { abiFilters += listOf("arm64-v8a", "armeabi-v7a") }
     }
@@ -107,6 +113,9 @@ dependencies {
     implementation(libs.serialization.json)
     implementation(libs.coroutines.android)
     implementation(libs.okhttp)
+    implementation(libs.credentials)
+    implementation(libs.credentials.play.services.auth)
+    implementation(libs.googleid)
 
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)

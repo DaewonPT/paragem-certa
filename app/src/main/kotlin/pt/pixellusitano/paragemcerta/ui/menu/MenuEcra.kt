@@ -54,10 +54,13 @@ fun MenuEcra(
     aoEnviarOpiniao: () -> Unit,
     aoAbrirSobre: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Só vem quando o interruptor `conta` do `config.json` está ligado; sem ele a entrada "Conta" não aparece. */
+    aoAbrirConta: (() -> Unit)? = null,
 ) {
     Column(modifier.background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState()).statusBarsPadding().padding(16.dp)) {
         Text(stringResource(R.string.nav_menu), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
         FrisoAzulejo(Modifier.fillMaxWidth().padding(vertical = 8.dp))
+        aoAbrirConta?.let { ItemMenu(R.string.menu_conta, it) }
         ItemMenu(R.string.menu_favoritos, aoAbrirFavoritos)
         ItemMenu(R.string.eu_definicoes, aoAbrirDefinicoes)
         ItemMenu(R.string.menu_ajuda, aoAbrirAjuda)

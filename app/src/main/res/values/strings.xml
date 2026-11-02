@@ -350,4 +350,39 @@
         <item>a oeste</item>
         <item>a noroeste</item>
     </string-array>
+
+    <!-- Conta -->
+    <string name="menu_conta">Conta</string>
+    <string name="conta_nota">A conta serve só para guardar os teus favoritos e passá-los entre telemóveis. A app funciona toda sem ela.</string>
+    <string name="conta_google">Iniciar sessão com o Google</string>
+    <string name="conta_entrar_email">Entrar com email</string>
+    <string name="conta_email">Email</string>
+    <string name="conta_enviar_codigo">Enviar código</string>
+    <string name="conta_codigo_enviado">Enviámos um código de 6 dígitos para %1$s. Vale 10 minutos.</string>
+    <string name="conta_codigo">Código de 6 dígitos</string>
+    <string name="conta_entrar">Entrar</string>
+    <string name="conta_mudar_email">Mudar o email</string>
+    <string name="conta_sincronizado_as">Sincronizado às %1$s</string>
+    <string name="conta_por_sincronizar">Ainda por sincronizar</string>
+    <string name="conta_sincronizar">Sincronizar agora</string>
+    <string name="conta_sair">Sair</string>
+    <string name="conta_apagar">Apagar conta</string>
+    <string name="conta_apagar_confirmar">Apagar a conta e os favoritos guardados nela? Os favoritos ficam neste telemóvel.</string>
+    <string name="conta_apagar_falhou">Não foi possível apagar a conta. Verifica a ligação e tenta outra vez.</string>
+    <string name="conta_apagada">Conta apagada</string>
+    <string name="conta_juntar_pergunta">Juntar os favoritos deste telemóvel à conta?</string>
+    <string name="conta_juntar">Juntar</string>
+    <string name="conta_nao_juntar">Não juntar</string>
+    <string name="conta_erro_codigo">Código errado</string>
+    <string name="conta_erro_expirou">O código expirou. Pede outro.</string>
+    <string name="conta_erro_muitos">Pediste muitos códigos. Tenta daqui a uma hora.</string>
+    <string name="conta_erro_sem_ligacao">Sem ligação</string>
+    <string name="conta_erro_email">Esse email não parece certo.</string>
+    <string name="conta_erro_envio">Não foi possível enviar o código. Tenta outra vez mais tarde ou entra com o Google.</string>
+    <string name="conta_erro_generico">Não foi possível entrar. Tenta outra vez.</string>
+    <string name="conta_erro_sincronizar">Não foi possível sincronizar. Tenta outra vez.</string>
+    <string name="conta_erro_google">Não foi possível entrar com o Google neste telemóvel. Usa o código por email.</string>
+    <string name="conta_sessao_terminou">A sessão terminou. Entra outra vez.</string>
+    <string name="ligacao_termos">Termos</string>
+    <string name="ligacao_privacidade">Política de privacidade</string>
 </resources>

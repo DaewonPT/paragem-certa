@@ -20,6 +20,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import pt.pixellusitano.paragemcerta.core.atraso.Limites
+import pt.pixellusitano.paragemcerta.core.fontes.servidor.CanalReclamacaoTexto
 import pt.pixellusitano.paragemcerta.core.modelo.Filtros
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.Lugar
@@ -57,7 +58,8 @@ class MenuScreenshotTest {
         modifier: Modifier = Modifier,
         aoAbrirFavoritos: () -> Unit = {}, aoAbrirDefinicoes: () -> Unit = {}, aoAbrirAjuda: () -> Unit = {},
         aoAbrirReclamar: () -> Unit = {}, aoEnviarOpiniao: () -> Unit = {}, aoAbrirSobre: () -> Unit = {},
-    ) =MenuEcra(aoAbrirFavoritos, aoAbrirDefinicoes, aoAbrirAjuda, aoAbrirReclamar, aoEnviarOpiniao, aoAbrirSobre, modifier)
+        aoAbrirConta: (() -> Unit)? = null,
+    ) =MenuEcra(aoAbrirFavoritos, aoAbrirDefinicoes, aoAbrirAjuda, aoAbrirReclamar, aoEnviarOpiniao, aoAbrirSobre, modifier, aoAbrirConta)
 
     @Composable
     private fun EcraFavoritos(modifier: Modifier = Modifier, aoAbrirFavorita: (Favorita) -> Unit = {}) = FavoritosConteudo(
@@ -81,6 +83,10 @@ class MenuScreenshotTest {
 
     @Test fun menu_escuro() = captureRoboImage("src/test/screenshots/menu_escuro.png") {
         TemaParagemCerta(ModoTema.ESCURO) { EcraMenu(modifier = Modifier.width(360.dp)) }
+    }
+
+    @Test fun menu_com_conta() = captureRoboImage("src/test/screenshots/menu_com_conta.png") {
+        TemaParagemCerta(ModoTema.CLARO) { EcraMenu(modifier = Modifier.width(360.dp), aoAbrirConta = {}) }
     }
 
     @Test fun favoritos_claro() = captureRoboImage("src/test/screenshots/favoritos_claro.png") {
@@ -123,6 +129,52 @@ class MenuScreenshotTest {
             regra.onNodeWithText(it).performClick()
         }
         assertEquals(listOf("favoritos", "definicoes", "ajuda", "reclamar", "opiniao", "sobre"), toques)
+    }
+
+    @Test @Config(qualifiers = "w360dp-h780dp")
+    fun menuSemInterruptorNaoMostraConta() {
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { EcraMenu(aoAbrirConta = null) } }
+        regra.onNodeWithText("Conta").assertDoesNotExist()
+        regra.onNodeWithText("Favoritos").assertExists()
+    }
+
+    @Test @Config(qualifiers = "w360dp-h780dp")
+    fun menuComInterruptorMostraConta() {
+        var aberta = 0
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { EcraMenu(aoAbrirConta = { aberta++ }) } }
+        regra.onNodeWithText("Conta").performClick()
+        assertEquals(1, aberta)
+    }
+
+    @Test @Config(qualifiers = "w360dp-h780dp")
+    fun reclamarUsaOsCanaisDaConfig() {
+        val abertos = mutableListOf<String>()
+        val canais = listOf(
+            CanalReclamacaoTexto("Operador Novo", "https://exemplo.pt/novo"),
+            CanalReclamacaoTexto("Outro Operador", "https://exemplo.pt/outro"),
+        )
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { ReclamarEcra(aoAbrir = { abertos += it }, aoVoltar = {}, canais = canais) } }
+        canais.forEach { regra.onNodeWithText(it.nome).performClick() }
+        assertEquals(canais.map { it.url }, abertos)
+        regra.onNodeWithText("Carris").assertDoesNotExist() // a lista da app só serve quando a do servidor vem vazia
+    }
+
+    @Test @Config(qualifiers = "w360dp-h780dp")
+    fun privacidadeComContaApagaAContaDepoisDeConfirmar() {
+        var apagou = 0
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Privacidade(aoApagarDados = {}, aoApagarConta = { apagou++ }) } }
+        regra.onNodeWithText("Apagar conta").performClick()
+        regra.onNodeWithText("Apagar a conta e os favoritos guardados nela? Os favoritos ficam neste telemóvel.").assertExists()
+        assertEquals(0, apagou)
+        regra.onNodeWithText("Apagar").performClick()
+        assertEquals(1, apagou)
+    }
+
+    @Test @Config(qualifiers = "w360dp-h780dp")
+    fun privacidadeSemContaNaoMostraApagarConta() {
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Privacidade(aoApagarDados = {}) } }
+        regra.onNodeWithText("Apagar conta").assertDoesNotExist()
+        regra.onNodeWithText("Apagar dados deste telemóvel").assertExists()
     }
 
     @Test @Config(qualifiers = "w360dp-h780dp")

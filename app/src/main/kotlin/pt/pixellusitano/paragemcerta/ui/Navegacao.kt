@@ -35,6 +35,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavController
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavGraph.Companion.findStartDestination
@@ -54,6 +55,7 @@ import pt.pixellusitano.paragemcerta.ui.comum.gelatina
 import pt.pixellusitano.paragemcerta.ui.inicio.InicioEcra
 import pt.pixellusitano.paragemcerta.ui.inicio.Painel
 import pt.pixellusitano.paragemcerta.ui.menu.AjudaEcra
+import pt.pixellusitano.paragemcerta.ui.menu.ContaEcra
 import pt.pixellusitano.paragemcerta.ui.menu.DefinicoesEcra
 import pt.pixellusitano.paragemcerta.ui.menu.FavoritosEcra
 import pt.pixellusitano.paragemcerta.ui.menu.MenuEcra
@@ -75,6 +77,7 @@ import pt.pixellusitano.paragemcerta.viagem.FicheirosViagem
 @Serializable data object Definicoes
 @Serializable data object Ajuda
 @Serializable data object Reclamar
+@Serializable data object ContaRota
 @Serializable data object Sobre
 @Serializable data object Viagem
 @Serializable data class Paragem(val chave: String)
@@ -117,6 +120,7 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
     val noMenu = destino?.hasRoute(Menu::class) == true
     val nasRotas = destino?.hasRoute(Rotas::class) == true
     val repositorio = ligacoes.repositorio
+    val config by ligacoes.configuracoes.atual.collectAsStateWithLifecycle()
 
     fun separador(rota: Any) = nav.irParaSeparador(rota)
     fun abrirUrl(url: String) {
@@ -227,15 +231,24 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
                         aoEnviarOpiniao = { runCatching { contexto.startActivity(intentOpiniao(BuildConfig.VERSION_NAME)) } },
                         aoAbrirSobre = { nav.navigate(Sobre) },
                         modifier = Modifier.fillMaxSize(),
+                        aoAbrirConta = if (config.interruptores.conta) ({ nav.navigate(ContaRota) }) else null,
                     )
                 }
             }
             composable<Favoritos> {
                 FavoritosEcra(repositorio, aoAbrirFavorita = { nav.navigate(Paragem(it.ref.chave)) }, aoVoltar = { nav.popBackStack() })
             }
-            composable<Definicoes> { DefinicoesEcra(repositorio, ligacoes.preferencias, aoVoltar = { nav.popBackStack() }) }
+            composable<Definicoes> { DefinicoesEcra(repositorio, ligacoes.preferencias, ligacoes.conta, aoVoltar = { nav.popBackStack() }) }
             composable<Ajuda> { AjudaEcra(aoVoltar = { nav.popBackStack() }, modifier = Modifier.fillMaxSize()) }
-            composable<Reclamar> { ReclamarEcra(aoAbrir = ::abrirUrl, aoVoltar = { nav.popBackStack() }, modifier = Modifier.fillMaxSize()) }
+            composable<Reclamar> {
+                ReclamarEcra(aoAbrir = ::abrirUrl, aoVoltar = { nav.popBackStack() }, modifier = Modifier.fillMaxSize(), canais = config.canaisReclamacao)
+            }
+            composable<ContaRota> {
+                ContaEcra(
+                    ligacoes.conta, repositorio, BuildConfig.GOOGLE_WEB_CLIENT_ID,
+                    aoAbrir = ::abrirUrl, aoVoltar = { nav.popBackStack() }, modifier = Modifier.fillMaxSize(),
+                )
+            }
             composable<Viagem> {
                 ViagemEcra(aoVoltar = { nav.popBackStack() }, aoEncontrar = { nav.navigate(Bussola(it.nome, it.lat, it.lon)) })
             }

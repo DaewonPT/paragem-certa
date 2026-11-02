@@ -42,16 +42,19 @@ import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.atualizar.Atualizacoes
 import pt.pixellusitano.paragemcerta.core.atraso.Limites
 import pt.pixellusitano.paragemcerta.core.modelo.Filtros
+import pt.pixellusitano.paragemcerta.dados.Conta
 import pt.pixellusitano.paragemcerta.dados.EcraInicial
+import pt.pixellusitano.paragemcerta.dados.EstadoConta
 import pt.pixellusitano.paragemcerta.dados.Preferencias
 import pt.pixellusitano.paragemcerta.dados.Repositorio
 import pt.pixellusitano.paragemcerta.ui.tema.FrisoAzulejo
 import pt.pixellusitano.paragemcerta.ui.tema.ModoTema
 
 @Composable
-fun DefinicoesEcra(repositorio: Repositorio, preferencias: Preferencias, aoVoltar: () -> Unit) {
+fun DefinicoesEcra(repositorio: Repositorio, preferencias: Preferencias, conta: Conta, aoVoltar: () -> Unit) {
     val contexto = LocalContext.current
     val escopo = rememberCoroutineScope()
+    val estadoConta by conta.estado.collectAsStateWithLifecycle()
     val modo by preferencias.modo.collectAsStateWithLifecycle(initialValue = ModoTema.SISTEMA)
     val limites by preferencias.limites.collectAsStateWithLifecycle(initialValue = Limites())
     val somAviso by preferencias.somAviso.collectAsStateWithLifecycle(initialValue = true)
@@ -78,6 +81,7 @@ fun DefinicoesEcra(repositorio: Repositorio, preferencias: Preferencias, aoVolta
             escopo.launch { repositorio.apagarDadosDoTelemovel() }
             Toast.makeText(contexto, apagados, Toast.LENGTH_SHORT).show()
         },
+        aoApagarConta = if (estadoConta is EstadoConta.Com) ({ escopo.launch { conta.apagarEAvisar(contexto) } }) else null,
         secaoAtualizacoes = { modificador ->
             if (Atualizacoes.disponivel) {
                 var sozinha by remember { mutableStateOf(Atualizacoes.atualizarSozinha(contexto)) }
@@ -117,6 +121,8 @@ fun DefinicoesConteudo(
     aoVoltar: () -> Unit,
     modifier: Modifier = Modifier,
     aoApagarDados: () -> Unit = {},
+    /** Só vem quando há conta: a Privacidade mostra "Apagar conta". */
+    aoApagarConta: (() -> Unit)? = null,
     /** Só a variante pessoal tem esta secção (as atualizações da Play Store vêm pela loja). */
     secaoAtualizacoes: @Composable (Modifier) -> Unit = {},
 ) {
@@ -126,7 +132,7 @@ fun DefinicoesConteudo(
         PreferenciasRotas(filtros, aoMudarFiltros, Modifier.padding(top = 24.dp))
         EcraInicialOpcoes(ecraInicial, aoMudarEcraInicial, Modifier.padding(top = 24.dp))
         secaoAtualizacoes(Modifier.padding(top = 24.dp))
-        Privacidade(aoApagarDados, Modifier.padding(top = 24.dp))
+        Privacidade(aoApagarDados, Modifier.padding(top = 24.dp), aoApagarConta)
     }
 }
 
@@ -163,13 +169,24 @@ fun SecaoAtualizacoes(
     }
 }
 
-/** Apagar dados deste telemóvel, depois de confirmar. */
+/** Apagar dados deste telemóvel e, quando há conta ([aoApagarConta] não nulo), apagar a conta; ambos depois de confirmar. */
 @Composable
-fun Privacidade(aoApagarDados: () -> Unit, modifier: Modifier = Modifier) {
+fun Privacidade(aoApagarDados: () -> Unit, modifier: Modifier = Modifier, aoApagarConta: (() -> Unit)? = null) {
     var confirmar by remember { mutableStateOf(false) }
+    var confirmarConta by remember { mutableStateOf(false) }
     Column(modifier.background(MaterialTheme.colorScheme.background)) {
         TituloSecao(stringResource(R.string.eu_privacidade))
         Ligacao(stringResource(R.string.eu_apagar_dados), { confirmar = true }, MaterialTheme.colorScheme.error)
+        if (aoApagarConta != null) Ligacao(stringResource(R.string.conta_apagar), { confirmarConta = true }, MaterialTheme.colorScheme.error)
+    }
+    if (confirmarConta && aoApagarConta != null) {
+        DialogoApagarConta(
+            aoConfirmar = {
+                confirmarConta = false
+                aoApagarConta()
+            },
+            aoCancelar = { confirmarConta = false },
+        )
     }
     if (confirmar) {
         AlertDialog(
