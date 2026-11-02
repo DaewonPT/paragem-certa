@@ -2,6 +2,14 @@
 
 A versão mais recente aparece primeiro.
 
+## 0.3.2 — Avisos de chegada
+
+- "Avisa-me" na paragem: escolhe as linhas e os minutos, e a app avisa-te quando o autocarro estiver a chegar, mesmo com a app fechada.
+- Na Carris Metropolitana, a viagem usa também a posição do próprio autocarro para te avisar a tempo.
+- "Encontrar a paragem": uma seta aponta-te para ela.
+- Durante a viagem, o mapa segue-te e mostra a próxima indicação a pé.
+- A app não se atualiza sozinha enquanto tens uma viagem ou um aviso ativos.
+
 ## 0.3.1 — Voltar ao início
 
 - Tocar em "Início" na barra de baixo volta sempre ao início, mesmo depois de abrir uma rota a partir de "Para onde vais?".
