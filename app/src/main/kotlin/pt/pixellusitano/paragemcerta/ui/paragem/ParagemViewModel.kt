@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
+import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.dados.EstadoChegadas
 import pt.pixellusitano.paragemcerta.ui.sobre.EMAIL_CONTACTO
 
@@ -20,18 +21,22 @@ class ParagemViewModel(chegadas: Flow<EstadoChegadas>) : ViewModel() {
     private val _filtro = MutableStateFlow<String?>(null)
     val filtro: StateFlow<String?> = _filtro.asStateFlow()
 
-    fun escolherFiltro(linhaId: String?) {
-        _filtro.value = linhaId
+    /** [nome] é o nome que se vê da linha: o filtro apanha todas as variantes dela. */
+    fun escolherFiltro(nome: String?) {
+        _filtro.value = nome
     }
 
-    /** (id, nome) de cada linha presente, pelo nome que se vê (no Transitous o id é "pt-Carris_60_0" e o nome "201"). */
+    /** O nome que se vê da linha. No Transitous o id é "pt-Carris_60_0" e o nome "201", e uma linha tem um id por variante. */
+    private val Chegada.nomeVisivel get() = linhaNome.ifBlank { linhaId }
+
+    /** Uma linha por nome (o id é o da primeira variante), as mais curtas primeiro. */
     fun linhasPresentes(e: EstadoChegadas): List<Pair<String, String>> =
-        e.chegadas.distinctBy { it.linhaId }.map { it.linhaId to it.linhaNome.ifBlank { it.linhaId } }
+        e.chegadas.distinctBy { it.nomeVisivel }.map { it.linhaId to it.nomeVisivel }
             .sortedWith(compareBy({ it.second.length }, { it.second }))
 
     fun aplicarFiltro(e: EstadoChegadas): EstadoChegadas {
         val f = _filtro.value ?: return e
-        return e.copy(chegadas = e.chegadas.filter { it.linhaId == f })
+        return e.copy(chegadas = e.chegadas.filter { it.nomeVisivel == f })
     }
 }
 

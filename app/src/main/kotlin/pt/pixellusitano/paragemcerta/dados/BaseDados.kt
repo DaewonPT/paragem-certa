@@ -103,6 +103,9 @@ interface ParagensDao {
     @Query("SELECT * FROM paragens WHERE chave IN (:chaves)")
     suspend fun porChaves(chaves: List<String>): List<ParagemEntidade>
 
+    @Query("SELECT * FROM paragens WHERE nomeNormalizado IN (:nomes)")
+    suspend fun porNomes(nomes: List<String>): List<ParagemEntidade>
+
     @Query("SELECT COUNT(*) FROM paragens WHERE fonte = 'CM'")
     suspend fun contarCm(): Int
 }

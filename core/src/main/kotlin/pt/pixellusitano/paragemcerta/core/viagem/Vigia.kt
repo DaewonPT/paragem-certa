@@ -2,6 +2,7 @@ package pt.pixellusitano.paragemcerta.core.viagem
 
 import pt.pixellusitano.paragemcerta.core.atraso.aindaPorChegar
 import pt.pixellusitano.paragemcerta.core.modelo.Chegada
+import pt.pixellusitano.paragemcerta.core.modelo.Modo
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
 import java.time.Duration
 import java.time.Instant
@@ -13,7 +14,7 @@ private val VIGIA_MAX = Duration.ofMinutes(90)
 data class PedidoAviso(val ref: RefParagem, val nomeParagem: String, val linhas: Set<String>, val minutos: Int, val desde: Instant)
 
 /** peloHorario: a linha não tem tempo real e o aviso vai pela hora do horário. */
-data class AvisoChegada(val linhaNome: String, val destino: String, val minutos: Long, val peloHorario: Boolean)
+data class AvisoChegada(val linhaNome: String, val destino: String, val minutos: Long, val peloHorario: Boolean, val modo: Modo)
 
 /**
  * Os avisos a dar agora: por cada linha pedida e ainda não avisada, a primeira chegada por chegar (a prevista, ou
@@ -24,7 +25,7 @@ fun aDisparar(p: PedidoAviso, chegadas: List<Chegada>, avisadas: Set<String>, ag
         .filter { it.linhaNome in p.linhas && it.linhaNome !in avisadas && aindaPorChegar(it, agora) }
         .groupBy { it.linhaNome }
         .map { (_, daLinha) -> daLinha.minBy { it.prevista ?: it.programada } }
-        .map { AvisoChegada(it.linhaNome, it.destino, Duration.between(agora, it.prevista ?: it.programada).seconds / 60, it.prevista == null) }
+        .map { AvisoChegada(it.linhaNome, it.destino, Duration.between(agora, it.prevista ?: it.programada).seconds / 60, it.prevista == null, it.modo) }
         .filter { it.minutos <= p.minutos }
         .sortedBy { it.minutos }
 

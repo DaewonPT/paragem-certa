@@ -25,8 +25,12 @@ fun ultimaPosicao(contexto: Context): Pair<Double, Double>? {
 }
 
 /** Pede uma posição atual (a última conhecida pode ser de outro sítio, ou nem existir depois de reiniciar). */
+fun pedirPosicaoAtual(contexto: Context, aoReceber: (Pair<Double, Double>) -> Unit) =
+    pedirLocalizacaoAtual(contexto) { aoReceber(it.latitude to it.longitude) }
+
+/** Como [pedirPosicaoAtual], mas entrega a localização inteira: a hora da medição diz qual de duas posições é a mais nova. */
 @SuppressLint("MissingPermission")
-fun pedirPosicaoAtual(contexto: Context, aoReceber: (Pair<Double, Double>) -> Unit) {
+fun pedirLocalizacaoAtual(contexto: Context, aoReceber: (Location) -> Unit) {
     if (!temLocalizacao(contexto)) return
     val gestor = contexto.getSystemService(LocationManager::class.java) ?: return
     val fornecedor = listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER, LocationManager.PASSIVE_PROVIDER)
@@ -34,9 +38,15 @@ fun pedirPosicaoAtual(contexto: Context, aoReceber: (Pair<Double, Double>) -> Un
     LocationManagerCompat.getCurrentLocation(
         gestor, fornecedor, null as android.os.CancellationSignal?, ContextCompat.getMainExecutor(contexto),
     ) { local: Location? ->
-        local?.let { aoReceber(it.latitude to it.longitude) }
+        local?.let(aoReceber)
     }
 }
+
+/** Uma posição com a hora da medição (ms desde 1970); hora 0 = não se sabe. */
+data class PosicaoComHora(val lat: Double, val lon: Double, val hora: Long)
+
+/** A mais nova das duas; sem hora ou na mesma hora fica a primeira. */
+fun maisRecente(a: PosicaoComHora?, b: PosicaoComHora?): PosicaoComHora? = if (a != null && (b == null || b.hora <= a.hora)) a else b
 
 private const val PREFS = "inicio"
 private const val CHAVE_PERGUNTADA = "localizacao_perguntada"

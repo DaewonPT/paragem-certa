@@ -173,8 +173,8 @@ fun ParagemConteudo(
             if (linhasPresentes.size > 1) {
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(selected = filtro == null, onClick = { aoFiltrar(null) }, label = { Text(stringResource(R.string.paragem_todas)) })
-                    linhasPresentes.forEach { (id, nome) ->
-                        FilterChip(selected = filtro == id, onClick = { aoFiltrar(id) }, label = { Text(nome) })
+                    linhasPresentes.forEach { (_, nome) ->
+                        FilterChip(selected = filtro == nome, onClick = { aoFiltrar(nome) }, label = { Text(nome) })
                     }
                 }
             }

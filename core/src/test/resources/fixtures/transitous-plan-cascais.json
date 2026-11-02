@@ -1,0 +1,316 @@
+{
+ "from": {
+  "name": "START",
+  "lat": 38.7062,
+  "lon": -9.1442
+ },
+ "to": {
+  "name": "END",
+  "lat": 38.7022,
+  "lon": -9.2292
+ },
+ "itineraries": [
+  {
+   "startTime": "2026-11-03T08:32:00Z",
+   "endTime": "2026-11-03T08:57:00Z",
+   "transfers": 0,
+   "legs": [
+    {
+     "mode": "WALK",
+     "from": {
+      "name": "START",
+      "lat": 38.7062,
+      "lon": -9.1442,
+      "departure": "2026-11-03T08:32:00Z",
+      "scheduledDeparture": "2026-11-03T08:32:00Z"
+     },
+     "to": {
+      "name": "Cais do Sodre",
+      "stopId": "pt-Comboios-de-Portugal(CP)_94_69005",
+      "lat": 38.70614200000001,
+      "lon": -9.145372999999998,
+      "arrival": "2026-11-03T08:35:00Z",
+      "scheduledArrival": "2026-11-03T08:35:00Z"
+     },
+     "startTime": "2026-11-03T08:32:00Z",
+     "endTime": "2026-11-03T08:35:00Z",
+     "scheduledStartTime": "2026-11-03T08:32:00Z",
+     "realTime": false,
+     "distance": 156.0
+    },
+    {
+     "mode": "SUBURBAN",
+     "from": {
+      "name": "Cais do Sodre",
+      "stopId": "pt-Comboios-de-Portugal(CP)_94_69005",
+      "lat": 38.70614200000001,
+      "lon": -9.145372999999998,
+      "departure": "2026-11-03T08:35:00Z",
+      "scheduledDeparture": "2026-11-03T08:35:00Z",
+      "cancelled": false
+     },
+     "to": {
+      "name": "Alges",
+      "stopId": "pt-Comboios-de-Portugal(CP)_94_69088",
+      "lat": 38.69833000000001,
+      "lon": -9.229453,
+      "arrival": "2026-11-03T08:46:00Z",
+      "scheduledArrival": "2026-11-03T08:46:00Z",
+      "cancelled": false
+     },
+     "startTime": "2026-11-03T08:35:00Z",
+     "endTime": "2026-11-03T08:46:00Z",
+     "scheduledStartTime": "2026-11-03T08:35:00Z",
+     "realTime": false,
+     "headsign": "Oeiras",
+     "routeId": "pt-Comboios-de-Portugal(CP)_25-94_69005-94_69179",
+     "routeColor": "ffa500",
+     "agencyName": "CP - Comboios de Portugal",
+     "tripId": "20261103_08:35_pt-Comboios-de-Portugal(CP)_19615_20260301",
+     "routeShortName": "Linha de Cascais",
+     "displayName": "Linha de Cascais",
+     "cancelled": false,
+     "intermediateStops": [
+      {
+       "name": "Santos",
+       "stopId": "pt-Comboios-de-Portugal(CP)_94_69013",
+       "lat": 38.706154000000005,
+       "lon": -9.155313,
+       "arrival": "2026-11-03T08:37:00Z",
+       "departure": "2026-11-03T08:37:00Z",
+       "scheduledArrival": "2026-11-03T08:37:00Z",
+       "scheduledDeparture": "2026-11-03T08:37:00Z",
+       "cancelled": false
+      },
+      {
+       "name": "Alcantara -  Mar",
+       "stopId": "pt-Comboios-de-Portugal(CP)_94_69039",
+       "lat": 38.70235000000001,
+       "lon": -9.174021999999999,
+       "arrival": "2026-11-03T08:39:00Z",
+       "departure": "2026-11-03T08:40:00Z",
+       "scheduledArrival": "2026-11-03T08:39:00Z",
+       "scheduledDeparture": "2026-11-03T08:40:00Z",
+       "cancelled": false
+      },
+      {
+       "name": "Belem",
+       "stopId": "pt-Comboios-de-Portugal(CP)_94_69054",
+       "lat": 38.696167,
+       "lon": -9.197621999999999,
+       "arrival": "2026-11-03T08:42:00Z",
+       "departure": "2026-11-03T08:43:00Z",
+       "scheduledArrival": "2026-11-03T08:42:00Z",
+       "scheduledDeparture": "2026-11-03T08:43:00Z",
+       "cancelled": false
+      }
+     ],
+     "bikesAllowed": false,
+     "wheelchairAccessible": "NOT_ACCESSIBLE",
+     "reservation": "NONE",
+     "alternatives": []
+    },
+    {
+     "mode": "WALK",
+     "from": {
+      "name": "Alges",
+      "stopId": "pt-Comboios-de-Portugal(CP)_94_69088",
+      "lat": 38.69833000000001,
+      "lon": -9.229453,
+      "arrival": "2026-11-03T08:46:00Z",
+      "departure": "2026-11-03T08:46:00Z",
+      "scheduledArrival": "2026-11-03T08:46:00Z",
+      "scheduledDeparture": "2026-11-03T08:46:00Z",
+      "cancelled": false
+     },
+     "to": {
+      "name": "END",
+      "lat": 38.7022,
+      "lon": -9.2292,
+      "arrival": "2026-11-03T08:57:00Z",
+      "scheduledArrival": "2026-11-03T08:57:00Z"
+     },
+     "startTime": "2026-11-03T08:46:00Z",
+     "endTime": "2026-11-03T08:57:00Z",
+     "scheduledStartTime": "2026-11-03T08:46:00Z",
+     "realTime": false,
+     "distance": 739.0
+    }
+   ]
+  },
+  {
+   "startTime": "2026-11-03T08:42:00Z",
+   "endTime": "2026-11-03T09:03:00Z",
+   "transfers": 1,
+   "legs": [
+    {
+     "mode": "WALK",
+     "from": {
+      "name": "START",
+      "lat": 38.7062,
+      "lon": -9.1442,
+      "departure": "2026-11-03T08:42:00Z",
+      "scheduledDeparture": "2026-11-03T08:42:00Z"
+     },
+     "to": {
+      "name": "Cais do Sodre",
+      "stopId": "pt-Comboios-de-Portugal(CP)_94_69005",
+      "lat": 38.70614200000001,
+      "lon": -9.145372999999998,
+      "arrival": "2026-11-03T08:45:00Z",
+      "scheduledArrival": "2026-11-03T08:45:00Z"
+     },
+     "startTime": "2026-11-03T08:42:00Z",
+     "endTime": "2026-11-03T08:45:00Z",
+     "scheduledStartTime": "2026-11-03T08:42:00Z",
+     "realTime": false,
+     "distance": 156.0
+    },
+    {
+     "mode": "SUBURBAN",
+     "from": {
+      "name": "Cais do Sodre",
+      "stopId": "pt-Comboios-de-Portugal(CP)_94_69005",
+      "lat": 38.70614200000001,
+      "lon": -9.145372999999998,
+      "departure": "2026-11-03T08:45:00Z",
+      "scheduledDeparture": "2026-11-03T08:45:00Z",
+      "cancelled": false
+     },
+     "to": {
+      "name": "Alges",
+      "stopId": "pt-Comboios-de-Portugal(CP)_94_69088",
+      "lat": 38.69833000000001,
+      "lon": -9.229453,
+      "arrival": "2026-11-03T08:53:00Z",
+      "scheduledArrival": "2026-11-03T08:53:00Z",
+      "cancelled": false
+     },
+     "startTime": "2026-11-03T08:45:00Z",
+     "endTime": "2026-11-03T08:53:00Z",
+     "scheduledStartTime": "2026-11-03T08:45:00Z",
+     "realTime": false,
+     "headsign": "Cascais",
+     "routeId": "pt-Comboios-de-Portugal(CP)_25-94_69005-94_69260",
+     "routeColor": "ffa500",
+     "agencyName": "CP - Comboios de Portugal",
+     "tripId": "20261103_08:45_pt-Comboios-de-Portugal(CP)_19215_20260301",
+     "routeShortName": "Linha de Cascais",
+     "displayName": "Linha de Cascais",
+     "cancelled": false,
+     "intermediateStops": [
+      {
+       "name": "Alcantara -  Mar",
+       "stopId": "pt-Comboios-de-Portugal(CP)_94_69039",
+       "lat": 38.70235000000001,
+       "lon": -9.174021999999999,
+       "arrival": "2026-11-03T08:48:00Z",
+       "departure": "2026-11-03T08:49:00Z",
+       "scheduledArrival": "2026-11-03T08:48:00Z",
+       "scheduledDeparture": "2026-11-03T08:49:00Z",
+       "cancelled": false
+      }
+     ],
+     "bikesAllowed": false,
+     "wheelchairAccessible": "NOT_ACCESSIBLE",
+     "reservation": "NONE",
+     "alternatives": []
+    },
+    {
+     "mode": "WALK",
+     "from": {
+      "name": "Alges",
+      "stopId": "pt-Comboios-de-Portugal(CP)_94_69088",
+      "lat": 38.69833000000001,
+      "lon": -9.229453,
+      "arrival": "2026-11-03T08:53:00Z",
+      "departure": "2026-11-03T08:53:00Z",
+      "scheduledArrival": "2026-11-03T08:53:00Z",
+      "scheduledDeparture": "2026-11-03T08:53:00Z",
+      "cancelled": false
+     },
+     "to": {
+      "name": "Algés",
+      "stopId": "pt-Carris_4220",
+      "lat": 38.699490000000004,
+      "lon": -9.227789999999999,
+      "arrival": "2026-11-03T08:55:00Z",
+      "scheduledArrival": "2026-11-03T08:55:00Z",
+      "stopCode": "4220"
+     },
+     "startTime": "2026-11-03T08:53:00Z",
+     "endTime": "2026-11-03T08:55:00Z",
+     "scheduledStartTime": "2026-11-03T08:53:00Z",
+     "realTime": false,
+     "distance": 332.0
+    },
+    {
+     "mode": "BUS",
+     "from": {
+      "name": "Algés",
+      "stopId": "pt-Carris_4220",
+      "lat": 38.699490000000004,
+      "lon": -9.227789999999999,
+      "departure": "2026-11-03T08:57:00Z",
+      "scheduledDeparture": "2026-11-03T08:57:00Z",
+      "stopCode": "4220",
+      "cancelled": false
+     },
+     "to": {
+      "name": "Algés - Pç. D. Manuel I",
+      "stopId": "pt-Carris_4218",
+      "lat": 38.69950500000001,
+      "lon": -9.228489999999999,
+      "arrival": "2026-11-03T08:57:00Z",
+      "scheduledArrival": "2026-11-03T08:57:00Z",
+      "stopCode": "4218",
+      "cancelled": false
+     },
+     "startTime": "2026-11-03T08:57:00Z",
+     "endTime": "2026-11-03T08:57:00Z",
+     "scheduledStartTime": "2026-11-03T08:57:00Z",
+     "realTime": false,
+     "headsign": "Cruz Quebrada (Clube Ténis Jamor)",
+     "routeId": "pt-Carris_193_0",
+     "agencyName": "Carris",
+     "tripId": "20261103_08:57_pt-Carris_7489_20260606_193_0_12",
+     "routeShortName": "776",
+     "displayName": "776",
+     "cancelled": false,
+     "intermediateStops": [],
+     "bikesAllowed": false,
+     "wheelchairAccessible": "NOT_ACCESSIBLE",
+     "reservation": "NONE",
+     "alternatives": []
+    },
+    {
+     "mode": "WALK",
+     "from": {
+      "name": "Algés - Pç. D. Manuel I",
+      "stopId": "pt-Carris_4218",
+      "lat": 38.69950500000001,
+      "lon": -9.228489999999999,
+      "arrival": "2026-11-03T08:57:00Z",
+      "departure": "2026-11-03T08:57:00Z",
+      "scheduledArrival": "2026-11-03T08:57:00Z",
+      "scheduledDeparture": "2026-11-03T08:57:00Z",
+      "stopCode": "4218",
+      "cancelled": false
+     },
+     "to": {
+      "name": "END",
+      "lat": 38.7022,
+      "lon": -9.2292,
+      "arrival": "2026-11-03T09:03:00Z",
+      "scheduledArrival": "2026-11-03T09:03:00Z"
+     },
+     "startTime": "2026-11-03T08:57:00Z",
+     "endTime": "2026-11-03T09:03:00Z",
+     "scheduledStartTime": "2026-11-03T08:57:00Z",
+     "realTime": false,
+     "distance": 387.0
+    }
+   ]
+  }
+ ]
+}

@@ -24,6 +24,21 @@ internal fun nomeModo(m: Modo) = when (m) {
     Modo.OUTRO -> "Transporte"
 }
 
+/**
+ * A linha para dizer depois de "o": o número chega ("736", "15E"); um nome próprio precisa do modo à frente, senão não se
+ * percebe o que é ("comboio da Linha de Cascais", "metro Azul"); sem nome, só o modo ("comboio").
+ */
+internal fun nomeDaLinha(modo: Modo, linhaNome: String?): String {
+    val nome = linhaNome?.trim().orEmpty()
+    val porModo = nomeModo(modo).lowercase()
+    return when {
+        nome.isEmpty() -> porModo
+        nome.any(Char::isDigit) && nome.none(Char::isWhitespace) -> nome
+        nome.startsWith("Linha", ignoreCase = true) -> "$porModo da $nome"
+        else -> "$porModo $nome"
+    }
+}
+
 /** "120 m" (às dezenas) ou "1,3 km". */
 internal fun textoDistancia(metros: Double): String =
     if (metros < 1000) "${(metros / 10).roundToInt() * 10} m" else String.format(PORTUGAL, "%.1f km", metros / 1000)

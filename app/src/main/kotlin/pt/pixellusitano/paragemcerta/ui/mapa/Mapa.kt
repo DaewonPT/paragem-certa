@@ -3,7 +3,9 @@ package pt.pixellusitano.paragemcerta.ui.mapa
 import android.annotation.SuppressLint
 import android.content.Context
 import android.view.Gravity
+import pt.pixellusitano.paragemcerta.ui.inicio.PosicaoComHora
 import pt.pixellusitano.paragemcerta.ui.inicio.Zona
+import pt.pixellusitano.paragemcerta.ui.inicio.maisRecente
 import pt.pixellusitano.paragemcerta.ui.inicio.temLocalizacao
 import android.graphics.Color as CorAndroid
 import androidx.compose.runtime.Composable
@@ -100,6 +102,8 @@ fun Mapa(
     mostrarPosicao: Boolean = false,
     /** Contador: cada vez que sobe, a câmara vai para a posição da pessoa. */
     centrarAgora: Int = 0,
+    /** A hora (ms) a que foi medida a posição de [centrarEm], para a comparar com a do ponto azul; 0 = não se sabe. */
+    horaCentrarEm: Long = 0L,
     /** As paragens da etapa atual da viagem, por cima dos percursos. */
     marcas: List<Marca> = emptyList(),
     /**
@@ -148,7 +152,10 @@ fun Mapa(
                 mapa.uiSettings.logoGravity = Gravity.TOP or Gravity.START
                 mapa.uiSettings.setLogoMargins((12 * px).toInt(), (180 * px).toInt(), 0, 0)
                 mapa.addOnCameraMoveStartedListener { razao ->
-                    if (razao == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) estado.utilizadorMexeu = true
+                    if (razao == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) {
+                        estado.utilizadorMexeu = true
+                        estado.centrarAoChegar = false
+                    }
                 }
                 mapa.addOnCameraIdleListener {
                     val b = mapa.projection.visibleRegion.latLngBounds
@@ -215,16 +222,22 @@ fun Mapa(
     LaunchedEffect(centrarAgora, estado.mapa) {
         val mapa = estado.mapa ?: return@LaunchedEffect
         if (centrarAgora <= 0) return@LaunchedEffect
-        val componente = mapa.locationComponent
-        val local = if (componente.isLocationComponentActivated) componente.lastKnownLocation else null
-        val destino = local?.let { LatLng(it.latitude, it.longitude) } ?: centrarEm ?: return@LaunchedEffect
+        val destino = posicaoMaisNova(mapa, centrarEm, horaCentrarEm) ?: return@LaunchedEffect
         mapa.easeCamera(CameraUpdateFactory.newLatLngZoom(destino, 16.0))
+        // A posição pedida ao mesmo tempo ainda vai a caminho e pode ser de outro sítio: quando chegar, centra outra vez.
+        estado.centrarAoChegar = true
     }
 
     // A primeira posição real chega depois do mapa: centra nela, a menos que a pessoa já tenha mexido no mapa.
+    // Logo a seguir a "Centrar", a posição nova centra sempre, se a pessoa não mexeu no mapa entretanto.
     LaunchedEffect(centrarEm, estado.mapa) {
         val mapa = estado.mapa ?: return@LaunchedEffect
-        if (centrarEm != null && !estado.utilizadorMexeu && enquadrar.isEmpty()) {
+        if (centrarEm == null) return@LaunchedEffect
+        if (estado.centrarAoChegar) {
+            estado.centrarAoChegar = false
+            val destino = posicaoMaisNova(mapa, centrarEm, horaCentrarEm) ?: centrarEm
+            mapa.easeCamera(CameraUpdateFactory.newLatLngZoom(destino, 16.0))
+        } else if (!estado.utilizadorMexeu && enquadrar.isEmpty()) {
             mapa.easeCamera(CameraUpdateFactory.newLatLngZoom(centrarEm, 15.5))
         }
     }
@@ -295,8 +308,19 @@ fun Mapa(
     AndroidView(factory = { vista }, modifier = modifier)
 }
 
+/** A posição mais nova entre a do ponto azul do mapa e [centrarEm]: depois de um salto grande, a do ponto pode ser a antiga. */
+@SuppressLint("MissingPermission")
+private fun posicaoMaisNova(mapa: MapLibreMap, centrarEm: LatLng?, hora: Long): LatLng? {
+    val componente = mapa.locationComponent
+    val doMapa = (if (componente.isLocationComponentActivated) componente.lastKnownLocation else null)
+        ?.let { PosicaoComHora(it.latitude, it.longitude, it.time) }
+    return maisRecente(doMapa, centrarEm?.let { PosicaoComHora(it.latitude, it.longitude, hora) })?.let { LatLng(it.lat, it.lon) }
+}
+
 private class EstadoMapa {
     var utilizadorMexeu = false
+    /** "Centrar" foi tocado e a posição pedida nessa altura ainda não chegou. */
+    var centrarAoChegar = false
     var mapa: MapLibreMap? by mutableStateOf(null)
     var estilo: Style? by mutableStateOf(null)
 }

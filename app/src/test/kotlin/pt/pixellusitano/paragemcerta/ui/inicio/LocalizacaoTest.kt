@@ -47,4 +47,44 @@ class LocalizacaoTest {
         ShadowLooper.idleMainLooper()
         assertEquals(38.7058 to -9.1431, recebida)
     }
+
+    @Test fun pedeAPosicaoComAHoraDaMedicao() {
+        val app = RuntimeEnvironment.getApplication() as Application
+        shadowOf(app).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
+        val gestor = app.getSystemService(LocationManager::class.java)
+        shadowOf(gestor).setProviderEnabled(LocationManager.GPS_PROVIDER, true)
+        var recebida: Location? = null
+        pedirLocalizacaoAtual(app) { recebida = it }
+        shadowOf(gestor).simulateLocation(
+            Location(LocationManager.GPS_PROVIDER).apply { latitude = 41.15; longitude = -8.61; time = 1_762_000_000_000L },
+        )
+        ShadowLooper.idleMainLooper()
+        assertEquals(1_762_000_000_000L, recebida?.time)
+    }
+
+    // "Centrar" depois de um salto grande (o telemóvel esteve sem GPS e agora está noutra cidade): a posição do componente do
+    // mapa ainda é a antiga, e a que o pedido traz é a certa.
+    private val lisboa = PosicaoComHora(38.7058, -9.1431, hora = 1_000)
+    private val porto = PosicaoComHora(41.1496, -8.6110, hora = 5_000)
+
+    @Test fun centrarEscolheAPosicaoMaisNova() {
+        assertEquals(porto, maisRecente(lisboa, porto)) // a do componente é a antiga
+        assertEquals(porto, maisRecente(porto, lisboa)) // e ao contrário, a do pedido é a antiga
+    }
+
+    @Test fun centrarComUmaSoPosicaoUsaEssa() {
+        assertEquals(lisboa, maisRecente(lisboa, null))
+        assertEquals(lisboa, maisRecente(null, lisboa))
+        assertEquals(null, maisRecente(null, null))
+    }
+
+    @Test fun umaPosicaoSemHoraPerdeContraUmaComHora() {
+        // A última conhecida do telemóvel, antes de haver pedido, não traz hora (0).
+        assertEquals(lisboa, maisRecente(lisboa, porto.copy(hora = 0)))
+        assertEquals(lisboa, maisRecente(porto.copy(hora = 0), lisboa))
+    }
+
+    @Test fun naHoraIgualFicaAPrimeira() {
+        assertEquals(lisboa, maisRecente(lisboa, porto.copy(hora = lisboa.hora)))
+    }
 }

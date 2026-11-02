@@ -150,11 +150,11 @@ fun modoDe(mode: String): Modo = when (mode) {
 
 @Serializable private class PlanoJson(val itineraries: List<ItinerarioJson> = emptyList())
 
-private fun PontoRotaJson.lugar() = Lugar(name, lat, lon, TipoLugar.LOCAL)
+private fun PontoRotaJson.lugar() = Lugar(name.espacosUnicos(), lat, lon, TipoLugar.LOCAL)
 
 /** A hora é a partida da paragem (ou a chegada, na última); sem nenhuma, a da etapa. */
 private fun PontoRotaJson.paragem(horaDaEtapa: String) =
-    ParagemEtapa(stopId, name, lat, lon, Instant.parse(departure ?: arrival ?: horaDaEtapa))
+    ParagemEtapa(stopId, name.espacosUnicos(), lat, lon, Instant.parse(departure ?: arrival ?: horaDaEtapa))
 
 // "RAIL" sozinho apanha também o metro no Transitous, por isso o comboio lista os seus modos um a um.
 private val ORDEM_MODOS = listOf(
@@ -239,8 +239,8 @@ object TransitousParser {
     fun paragensNoMapa(json: String): List<Paragem> =
         JSON.decodeFromString<List<LugarJson>>(json).mapNotNull { l ->
             val id = l.stopId?.takeUnless { it.startsWith(PREFIXO_CM_TRANSITOUS) } ?: return@mapNotNull null
-            Paragem(RefParagem(Fonte.TRANSITOUS, id), l.name, l.lat, l.lon, null)
-        }
+            Paragem(RefParagem(Fonte.TRANSITOUS, id), l.name.espacosUnicos(), l.lat, l.lon, null)
+        }.paragensComAcentos()
 
     /** Moradas, locais e paragens para origem/destino de rotas (aqui a Carris Metropolitana não é escondida). */
     fun lugares(json: String): List<Lugar> =
@@ -255,8 +255,8 @@ object TransitousParser {
                 l.areas.firstOrNull { it.adminLevel == NIVEL_FREGUESIA }?.name,
                 l.areas.firstOrNull { it.adminLevel == NIVEL_CONCELHO }?.name,
             )
-            Lugar(l.name, l.lat, l.lon, tipo, zona).takeIf { emPortugal(l.lat, l.lon) }
-        }
+            Lugar(l.name.espacosUnicos(), l.lat, l.lon, tipo, zona).takeIf { emPortugal(l.lat, l.lon) }
+        }.lugaresComAcentos()
 
     /** Nome para um ponto tocado no mapa: a 1.ª morada; sem ela, a paragem mais próxima.
      *  Os sítios soltos (contentores, esgotos, monumentos ao lado) não dão um nome que se reconheça. */
@@ -270,8 +270,8 @@ object TransitousParser {
         JSON.decodeFromString<List<LocalJson>>(json).mapNotNull { l ->
             val id = l.id?.takeIf { l.type == "STOP" && !it.startsWith(PREFIXO_CM_TRANSITOUS) && emPortugal(l.lat, l.lon) }
                 ?: return@mapNotNull null
-            Paragem(RefParagem(Fonte.TRANSITOUS, id), l.name, l.lat, l.lon, null)
-        }
+            Paragem(RefParagem(Fonte.TRANSITOUS, id), l.name.espacosUnicos(), l.lat, l.lon, null)
+        }.paragensComAcentos()
 }
 
 class Transitous(private val http: Http, private val base: String = "https://api.transitous.org") {

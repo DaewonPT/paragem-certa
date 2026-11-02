@@ -26,7 +26,7 @@ class VigiaTest {
 
     @Test fun linhaAQuatroMinutosComPedidoDeCincoAvisa() {
         val avisos = aDisparar(pedido("736"), listOf(chegada("736", 4 * 60 + 10)), emptySet(), agora)
-        assertEquals(listOf(AvisoChegada("736", "Algés", 4, false)), avisos)
+        assertEquals(listOf(AvisoChegada("736", "Algés", 4, false, Modo.AUTOCARRO)), avisos)
     }
 
     @Test fun linhaASeisMinutosNaoAvisa() {
@@ -60,7 +60,7 @@ class VigiaTest {
 
     @Test fun semTempoRealUsaOHorarioEDiz() {
         val avisos = aDisparar(pedido("736"), listOf(chegada("736", 3 * 60, tempoReal = false)), emptySet(), agora)
-        assertEquals(listOf(AvisoChegada("736", "Algés", 3, true)), avisos)
+        assertEquals(listOf(AvisoChegada("736", "Algés", 3, true, Modo.AUTOCARRO)), avisos)
     }
 
     @Test fun oTempoRealMandaOHorarioSoServeSemEle() {
@@ -68,13 +68,19 @@ class VigiaTest {
         val atrasada = Chegada(Fonte.CM, "736", "736", "Algés", agora.plusSeconds(120), agora.plusSeconds(480), null, null, Modo.AUTOCARRO, null, null)
         assertTrue(aDisparar(pedido("736"), listOf(atrasada), emptySet(), agora).isEmpty())
         val adiantada = Chegada(Fonte.CM, "736", "736", "Algés", agora.plusSeconds(1200), agora.plusSeconds(180), null, null, Modo.AUTOCARRO, null, null)
-        assertEquals(listOf(AvisoChegada("736", "Algés", 3, false)), aDisparar(pedido("736"), listOf(adiantada), emptySet(), agora))
+        assertEquals(listOf(AvisoChegada("736", "Algés", 3, false, Modo.AUTOCARRO)), aDisparar(pedido("736"), listOf(adiantada), emptySet(), agora))
+    }
+
+    @Test fun oAvisoLevaOModoDaChegada() {
+        // O texto do aviso precisa dele: "O comboio da Linha de Cascais", mas "O 736".
+        val comboio = chegada("Linha de Cascais", 3 * 60).copy(modo = Modo.COMBOIO)
+        assertEquals(Modo.COMBOIO, aDisparar(pedido("Linha de Cascais"), listOf(comboio), emptySet(), agora).single().modo)
     }
 
     @Test fun chegadaJaPassadaIgnoraSeEUsaAProximaDaLinha() {
         // O que passou há mais de 30 s não conta; a seguinte da mesma linha, a 4 min, é a que avisa (com o destino dela).
         val chegadas = listOf(chegada("736", -90, destino = "Odivelas"), chegada("736", 4 * 60, destino = "Algés"))
-        assertEquals(listOf(AvisoChegada("736", "Algés", 4, false)), aDisparar(pedido("736"), chegadas, emptySet(), agora))
+        assertEquals(listOf(AvisoChegada("736", "Algés", 4, false, Modo.AUTOCARRO)), aDisparar(pedido("736"), chegadas, emptySet(), agora))
         assertTrue(aDisparar(pedido("736"), listOf(chegada("736", -90)), emptySet(), agora).isEmpty())
     }
 

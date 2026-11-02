@@ -29,6 +29,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -107,6 +108,12 @@ fun InicioEcra(
     var explicar by remember { mutableStateOf(!comLocalizacao && !localizacaoJaPerguntada(contexto)) }
     var posicao by remember { mutableStateOf(ultimaPosicao(contexto)) }
     var centrarAgora by remember { mutableIntStateOf(0) }
+    // A hora da posição pedida: o mapa só centra nela se for mais nova que a do ponto azul (0 = a última conhecida, sem hora).
+    var horaPosicao by remember { mutableLongStateOf(0L) }
+    val receberPosicao = { l: android.location.Location ->
+        posicao = l.latitude to l.longitude
+        horaPosicao = l.time
+    }
     val pedir = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { r ->
         comLocalizacao = r.values.any { it }
     }
@@ -116,7 +123,7 @@ fun InicioEcra(
         onPauseOrDispose { }
     }
     LaunchedEffect(comLocalizacao) {
-        if (comLocalizacao) pedirPosicaoAtual(contexto) { posicao = it }
+        if (comLocalizacao) pedirLocalizacaoAtual(contexto, receberPosicao)
     }
 
     // O Android pode ter fechado o serviço da viagem enquanto a app esteve fora: vê-se sempre que se regressa.
@@ -169,6 +176,7 @@ fun InicioEcra(
             aoToqueLongo = vm::toqueLongo,
             mostrarPosicao = comLocalizacao,
             centrarAgora = centrarAgora,
+            horaCentrarEm = horaPosicao,
         )
         Column(Modifier.statusBarsPadding().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             BarraPesquisa(aoPesquisar)
@@ -190,7 +198,7 @@ fun InicioEcra(
             BotaoCentrar(Modifier.align(Alignment.End)) {
                 if (comLocalizacao) {
                     centrarAgora++
-                    pedirPosicaoAtual(contexto) { posicao = it }
+                    pedirLocalizacaoAtual(contexto, receberPosicao)
                 } else {
                     pedir.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
                 }

@@ -12,6 +12,8 @@ import pt.pixellusitano.paragemcerta.core.atraso.aindaPorChegar
 import pt.pixellusitano.paragemcerta.core.fontes.cm.CarrisMetropolitana
 import pt.pixellusitano.paragemcerta.core.fontes.cm.CmParser
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.Transitous
+import pt.pixellusitano.paragemcerta.core.fontes.transitous.chavesDosNomes
+import pt.pixellusitano.paragemcerta.core.fontes.transitous.comNomesAcentuados
 import pt.pixellusitano.paragemcerta.core.modelo.Alerta
 import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.modelo.Filtros
@@ -228,8 +230,17 @@ class Repositorio(
         return true
     }
 
+    /** As paragens vêm com os acentos que o Transitous às vezes tira: a base de paragens e os sítios pedidos sabem como se escrevem. */
     suspend fun planear(de: Lugar, para: Lugar, hora: Instant, chegarAs: Boolean, f: Filtros): Resultado<List<Itinerario>> =
-        transitous.planear(de, para, hora, chegarAs, f)
+        when (val r = transitous.planear(de, para, hora, chegarAs, f)) {
+            is Resultado.Ok -> {
+                // Aos bocados: o SQLite aceita poucas variáveis por consulta (999 no Android 8).
+                val daBase = r.valor.chavesDosNomes().chunked(500).flatMap { bd.paragens().porNomes(it) }
+                    .map { Lugar(it.nome, it.lat, it.lon, TipoLugar.PARAGEM) }
+                Resultado.Ok(r.valor.comNomesAcentuados(daBase + de + para))
+            }
+            is Resultado.Falha -> r
+        }
 
     /** Primeiro os locais guardados cujo nome tem o texto (sem ligar a acentos), depois moradas e sítios do Transitous
      *  (as paragens sem o cais no nome, e sem repetidas).

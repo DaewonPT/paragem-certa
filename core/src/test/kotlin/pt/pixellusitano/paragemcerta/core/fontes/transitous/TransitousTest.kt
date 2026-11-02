@@ -162,6 +162,83 @@ class TransitousTest {
         assertEquals(listOf("pt-Comboios-de-Portugal(CP)_94_69005", "pt-Transtejo-Soflusa_5"), p.map { it.ref.id })
     }
 
+    // Os dados reais da Linha de Cascais (pedido de 02/11/2026): a CP escreve "Cais do Sodre", "Alges" e "Alcantara -  Mar".
+    private fun cascais() = TransitousParser.rotas(fixture("transitous-plan-cascais.json"))
+
+    private fun nomesDasParagens(it: pt.pixellusitano.paragemcerta.core.modelo.Itinerario) =
+        it.etapas.first { e -> !e.aPe }.paragens.map { p -> p.nome }
+
+    @Test fun espacosRepetidosNosNomesPassamAUm() {
+        assertEquals(
+            listOf("Cais do Sodre", "Santos", "Alcantara - Mar", "Belem", "Alges"),
+            nomesDasParagens(cascais()[0]),
+        )
+    }
+
+    @Test fun nomeSemAcentosUsaOdeUmaParagemConhecidaPerto() {
+        // O Transtejo escreve "Cais do Sodré" a uns 100 m da estação da CP.
+        val conhecidas = listOf(Lugar("Cais do Sodré", 38.705, -9.1455, TipoLugar.PARAGEM))
+        val rota = cascais().comNomesAcentuados(conhecidas)[0]
+        val comboio = rota.etapas.first { !it.aPe }
+        assertEquals("Cais do Sodré", comboio.de.nome)
+        assertEquals("Cais do Sodré", comboio.paragens.first().nome)
+        assertEquals("Cais do Sodré", rota.etapas[0].para.nome) // a etapa a pé até lá
+        // O que não tem correspondência fica como vem.
+        assertEquals("Santos", comboio.paragens[1].nome)
+    }
+
+    @Test fun deUmaParagemConhecidaLongeNaoSeAproveitaOnome() {
+        val longe = listOf(Lugar("Cais do Sodré", 38.7050, -9.1250, TipoLugar.PARAGEM)) // a uns 1,7 km
+        assertEquals("Cais do Sodre", cascais().comNomesAcentuados(longe)[0].etapas.first { !it.aPe }.de.nome)
+    }
+
+    @Test fun soTrocaSeOutroNomeFoiSoDeAcentos() {
+        val outros = listOf(
+            Lugar("Cais do Sodré (Terminal)", 38.7062, -9.1454, TipoLugar.PARAGEM), // nome diferente, não só acentos
+            Lugar("CAIS DO SODRE", 38.7062, -9.1454, TipoLugar.PARAGEM), // não tem mais acentos
+        )
+        assertEquals("Cais do Sodre", cascais().comNomesAcentuados(outros)[0].etapas.first { !it.aPe }.de.nome)
+    }
+
+    @Test fun naoTiraAcentosAUmNomeQueOsTem() {
+        val rota = cascais()[1].let { r ->
+            r.copy(etapas = r.etapas.map { e -> e.copy(para = e.para.copy(nome = if (e.para.nome == "Alges") "Algés" else e.para.nome)) })
+        }
+        val sem = listOf(Lugar("Alges", 38.6983, -9.2295, TipoLugar.PARAGEM))
+        assertEquals("Algés", listOf(rota).comNomesAcentuados(sem)[0].etapas[1].para.nome)
+    }
+
+    @Test fun asParagensDaPropriaRotaServemDeConhecidas() {
+        // A rota 2 vai de comboio até "Alges" e depois a pé até uma paragem de autocarro chamada "Algés", a uns 190 m.
+        val rotas = cascais()
+        assertEquals("Alges", rotas[1].etapas[1].para.nome)
+        assertEquals("Algés", rotas[1].etapas[2].para.nome)
+        // Sem mais nada conhecido, o "Algés" da rota 2 chega para corrigir o "Alges" das duas.
+        val certas = rotas.comNomesAcentuados()
+        assertEquals(listOf("Algés", "Algés"), certas.map { it.etapas[1].para.nome })
+        assertEquals("Algés", certas[0].etapas[1].paragens.last().nome)
+        assertEquals("Cais do Sodre", certas[0].etapas[1].de.nome) // nada conhecido com acentos perto
+    }
+
+    @Test fun osNomesDaBaseProcuramSePelaChave() {
+        val chaves = cascais().chavesDosNomes()
+        assertTrue("cais do sodre" in chaves && "alcantara - mar" in chaves && "alges" in chaves && "belem" in chaves)
+        assertEquals("alcantara - mar", chaveDoNome("Alcântara -  Mar"))
+    }
+
+    @Test fun osResultadosDaPesquisaCorrigemSeEntreSi() {
+        // Na pesquisa "Cais do Sodre" vem da CP e "Cais do Sodré" do Transtejo, a 100 m um do outro.
+        val paragens = TransitousParser.pesquisa(fixture("transitous-geocode.json"))
+        assertEquals(listOf("Cais do Sodré", "Cais do Sodré"), paragens.map { it.nome })
+        val lugares = TransitousParser.lugares(fixture("transitous-geocode.json")).filter { it.tipo == TipoLugar.PARAGEM }
+        assertTrue("Cais do Sodre" !in lugares.map { it.nome })
+    }
+
+    @Test fun asParagensDoMapaTambemPerdemOsEspacosAMaisEGanhamOsAcentos() {
+        val json = """[{"stopId":"pt-CP_1","name":"Alcantara -  Mar","lat":38.7,"lon":-9.17},{"stopId":"pt-X_2","name":"Alcântara - Mar","lat":38.7002,"lon":-9.1702}]"""
+        assertEquals(listOf("Alcântara - Mar", "Alcântara - Mar"), TransitousParser.paragensNoMapa(json).map { it.nome })
+    }
+
     @Test fun pedeOsEnderecosCertos() = runTest {
         val http = HttpFalso({ Resposta(200, fixture("transitous-stoptimes.json")) })
         Transitous(http).chegadas("pt-Comboios-de-Portugal(CP)_94_69005", agora)

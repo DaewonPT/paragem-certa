@@ -50,8 +50,8 @@ class ServicoAvisoChegadaTest {
     @After fun acabar() = servicos.forEach { it.destroy() }
 
     /** Uma chegada da linha às T0 + s segundos; sem tempoReal só tem a hora do horário. */
-    private fun chegada(linha: String, s: Long, tempoReal: Boolean = true) = Chegada(
-        Fonte.CM, linha, linha, "Algés", T0.plusSeconds(s), if (tempoReal) T0.plusSeconds(s) else null, null, null, Modo.AUTOCARRO, null, null,
+    private fun chegada(linha: String, s: Long, tempoReal: Boolean = true, modo: Modo = Modo.AUTOCARRO) = Chegada(
+        Fonte.CM, linha, linha, "Algés", T0.plusSeconds(s), if (tempoReal) T0.plusSeconds(s) else null, null, null, modo, null, null,
     )
 
     private fun chegadas(ref: RefParagem, vararg lista: Chegada) {
@@ -157,6 +157,12 @@ class ServicoAvisoChegadaTest {
         chegadas(SODRE, chegada("736", 20))
         comecar(vigiar(SODRE, "Cais do Sodré", "736", "728"))
         assertEquals(listOf("O 736 chega agora a Cais do Sodré"), avisosPostados())
+    }
+
+    @Test fun umaLinhaComNomeProprioDizOModoAntesDoNome() {
+        chegadas(SODRE, chegada("Linha de Cascais", 3 * 60, modo = Modo.COMBOIO))
+        comecar(vigiar(SODRE, "Cais do Sodré", "Linha de Cascais"))
+        assertEquals(listOf("O comboio da Linha de Cascais chega em 3 min a Cais do Sodré"), avisosPostados())
     }
 
     @Test fun oSomEAVibracaoSaoOsDasDefinicoesDeAviso() {

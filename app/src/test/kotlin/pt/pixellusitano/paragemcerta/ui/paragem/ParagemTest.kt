@@ -60,7 +60,41 @@ class ParagemTest {
         assertEquals(listOf("pt-Carris_60_0" to "201", "pt-Carris_136_0" to "206"), ParagemViewModel(flowOf(e)).linhasPresentes(e))
     }
 
+    // No Transitous a 728 tem uma variante por sentido (ids diferentes, o mesmo nome): é uma só linha para quem a escolhe.
+    private fun tr(id: String, nome: String, destino: String, minutos: Long) =
+        Chegada(Fonte.TRANSITOUS, id, nome, destino, agora.plusSeconds(minutos * 60), null, null, null, Modo.AUTOCARRO, null, null)
+    private val duasVariantes = estado.copy(
+        chegadas = listOf(
+            tr("pt-Carris_728_0", "728", "Cais Sodré", 3), tr("pt-Carris_201_0", "201", "Odivelas", 5), tr("pt-Carris_728_1", "728", "Oriente", 7),
+        ),
+    )
+
+    @Test fun duasVariantesDaMesmaLinhaDaoUmaSoPastilha() {
+        val vm = ParagemViewModel(flowOf(duasVariantes))
+        assertEquals(listOf("201", "728"), vm.linhasPresentes(duasVariantes).map { it.second })
+    }
+
+    @Test fun filtrarPelaLinhaMostraTodasAsVariantes() {
+        val vm = ParagemViewModel(flowOf(duasVariantes))
+        vm.escolherFiltro("728")
+        assertEquals(listOf("Cais Sodré", "Oriente"), vm.aplicarFiltro(duasVariantes).chegadas.map { it.destino })
+        vm.escolherFiltro("201")
+        assertEquals(listOf("Odivelas"), vm.aplicarFiltro(duasVariantes).chegadas.map { it.destino })
+    }
+
     @get:org.junit.Rule val regra = androidx.compose.ui.test.junit4.v2.createComposeRule()
+
+    @Test fun tocarNaPastilhaFiltraPeloNomeDaLinha() {
+        val vm = ParagemViewModel(flowOf(duasVariantes))
+        var escolhida: String? = null
+        regra.setContent {
+            TemaParagemCerta(ModoTema.CLARO) {
+                Ecra(duasVariantes.copy(chegadas = emptyList()), presentes = vm.linhasPresentes(duasVariantes), aoFiltrar = { escolhida = it })
+            }
+        }
+        regra.onNodeWithText("728").performClick()
+        assertEquals("728", escolhida) // o nome da linha, não o id da primeira variante
+    }
 
     @Test fun chegadaQueJaPassouNaoAparece() {
         val passada = Chegada(Fonte.CM, "1625", "1625", "Rio de Mouro", agora.minusSeconds(180), agora.minusSeconds(120), null, null, Modo.AUTOCARRO, null, null)
@@ -124,10 +158,13 @@ class ParagemTest {
     }
 
     @Composable
-    private fun Ecra(e: EstadoChegadas, alertas: List<Alerta> = listOf(alerta), aoEncontrar: (() -> Unit)? = null) = ParagemConteudo(
+    private fun Ecra(
+        e: EstadoChegadas, alertas: List<Alerta> = listOf(alerta), aoEncontrar: (() -> Unit)? = null,
+        presentes: List<Pair<String, String>> = listOf("1001" to "1001", "3708" to "3708"), aoFiltrar: (String?) -> Unit = {},
+    ) = ParagemConteudo(
         nome = "Cais do Sodré (Terminal)", codigo = "060419", acessivel = true, favorita = true, vigiada = false,
-        estado = e, filtro = null, linhasPresentes = listOf("1001" to "1001", "3708" to "3708"), alertas = alertas, linhas = emptyMap(),
-        agora = agora, aoFiltrar = {}, aoFavoritar = {}, aoAvisaMe = {}, aoEncontrar = aoEncontrar, aoReportar = {}, aoVoltar = {},
+        estado = e, filtro = null, linhasPresentes = presentes, alertas = alertas, linhas = emptyMap(),
+        agora = agora, aoFiltrar = aoFiltrar, aoFavoritar = {}, aoAvisaMe = {}, aoEncontrar = aoEncontrar, aoReportar = {}, aoVoltar = {},
         modifier = Modifier.width(360.dp),
     )
 

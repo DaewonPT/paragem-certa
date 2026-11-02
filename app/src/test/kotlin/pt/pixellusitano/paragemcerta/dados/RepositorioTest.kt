@@ -14,8 +14,11 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import pt.pixellusitano.paragemcerta.core.fontes.cm.CarrisMetropolitana
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.Transitous
+import pt.pixellusitano.paragemcerta.core.modelo.Filtros
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
+import pt.pixellusitano.paragemcerta.core.modelo.Lugar
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
+import pt.pixellusitano.paragemcerta.core.modelo.TipoLugar
 import pt.pixellusitano.paragemcerta.core.rede.Http
 import pt.pixellusitano.paragemcerta.core.rede.Resposta
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
@@ -145,5 +148,33 @@ class RepositorioTest {
         assertTrue(r.atualizarRede())
         assertEquals(null, r.paragensDaLinha("3708"))
         assertTrue(r.paragensDaLinha("3708")!!.any { it.ref.id == "060419" })
+    }
+
+    @Test fun planearDaOsAcentosQueABaseEAPesquisaConhecem() = runTest {
+        // A CP escreve "Cais do Sodre" e "Alcantara -  Mar"; a base conhece o Cais do Sodré (a 100 m) e a pessoa escolheu o destino pela pesquisa.
+        bd.paragens().guardar(
+            listOf(
+                ParagemEntidade(
+                    "TRANSITOUS:pt-Transtejo-Soflusa_5", "TRANSITOUS", "pt-Transtejo-Soflusa_5", "Cais do Sodré", normalizar("Cais do Sodré"),
+                    38.705, -9.1455, null,
+                ),
+            ),
+        )
+        val http = HttpPorUrl("plan" to listOf({ Resposta(200, fixture("transitous-plan-cascais.json")) }))
+        val de = Lugar("A minha posição", 38.7062, -9.1442, TipoLugar.POSICAO)
+        val para = Lugar("Alcântara - Mar", 38.7024, -9.1741, TipoLugar.PARAGEM)
+        val rotas = (repo(http).planear(de, para, manha, false, Filtros()) as Resultado.Ok).valor
+        val comboio = rotas[0].etapas.first { !it.aPe }
+        assertEquals("Cais do Sodré", comboio.de.nome) // da base
+        assertEquals(listOf("Cais do Sodré", "Santos", "Alcântara - Mar", "Belem", "Algés"), comboio.paragens.map { it.nome })
+        // "Santos" e "Belem" não têm correspondência (e o "Algés" da rota seguinte corrige o "Alges"): ficam como vêm.
+    }
+
+    @Test fun planearSemNadaConhecidoDeixaOsNomesComoVem() = runTest {
+        val http = HttpPorUrl("plan" to listOf({ Resposta(200, fixture("transitous-plan-cascais.json")) }))
+        val de = Lugar("A minha posição", 38.7062, -9.1442, TipoLugar.POSICAO)
+        val para = Lugar("Casa", 38.7022, -9.2292, TipoLugar.LOCAL)
+        val rotas = (repo(http).planear(de, para, manha, false, Filtros()) as Resultado.Ok).valor
+        assertEquals(listOf("Cais do Sodre", "Santos", "Alcantara - Mar", "Belem", "Algés"), rotas[0].etapas.first { !it.aPe }.paragens.map { it.nome })
     }
 }

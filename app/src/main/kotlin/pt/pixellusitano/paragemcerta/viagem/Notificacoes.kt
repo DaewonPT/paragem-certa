@@ -19,7 +19,7 @@ import pt.pixellusitano.paragemcerta.core.viagem.Origem
 import pt.pixellusitano.paragemcerta.core.viagem.PlanoViagem
 import pt.pixellusitano.paragemcerta.core.viagem.Viagem
 import pt.pixellusitano.paragemcerta.ui.comum.LISBOA_FUSO
-import pt.pixellusitano.paragemcerta.ui.rotas.nomeModo
+import pt.pixellusitano.paragemcerta.ui.rotas.nomeDaLinha
 import pt.pixellusitano.paragemcerta.ui.rotas.textoDistancia
 import java.time.Duration
 import java.time.ZoneId
@@ -132,8 +132,8 @@ object Notificacoes {
             .build()
 
     internal fun textoChegada(c: Context, a: AvisoChegada, paragem: String): String {
-        val texto = if (a.minutos < 1) c.getString(R.string.aviso_chegada_agora, a.linhaNome, paragem)
-        else c.getString(R.string.aviso_chegada, a.linhaNome, a.minutos, paragem)
+        val texto = if (a.minutos < 1) c.getString(R.string.aviso_chegada_agora, nomeDaLinha(a.modo, a.linhaNome), paragem)
+        else c.getString(R.string.aviso_chegada, nomeDaLinha(a.modo, a.linhaNome), a.minutos, paragem)
         return if (a.peloHorario) c.getString(R.string.aviso_chegada_horario, texto) else texto
     }
 
@@ -167,7 +167,7 @@ object Notificacoes {
 
     /** "chega em M min" só quando há tempo real (da fonte, ou da paragem de embarque: o atraso mexeu); senão, a hora do horário. */
     internal fun textoEspera(c: Context, etapa: Etapa, e: EstadoViagem, zona: ZoneId): String {
-        val linha = etapa.linhaNome ?: nomeModo(etapa.modo)
+        val linha = nomeDaLinha(etapa.modo, etapa.linhaNome)
         val partida = (etapa.paragens.firstOrNull()?.hora ?: etapa.partida).plusSeconds(e.atrasoS)
         val minutos = (Duration.between(e.atualizado, partida).seconds + 59) / 60
         return if ((etapa.aoVivo || e.atrasoS != 0L) && minutos >= 1) c.getString(R.string.viagem_chega_em, linha, minutos)
@@ -187,7 +187,7 @@ object Notificacoes {
             Evento.CHEGOU -> return c.getString(R.string.aviso_chegou, etapas.last().para.nome)
         }
         // Num transbordo, diz o que apanhar a seguir (mesmo com uma etapa a pé pelo meio).
-        etapas.drop(i + 1).firstOrNull { !it.aPe }?.let { texto = c.getString(R.string.aviso_apanha, texto, it.linhaNome ?: nomeModo(it.modo)) }
+        etapas.drop(i + 1).firstOrNull { !it.aPe }?.let { texto = c.getString(R.string.aviso_apanha, texto, nomeDaLinha(it.modo, it.linhaNome)) }
         return if (e.origem == Origem.HORARIO) c.getString(R.string.aviso_horario, texto) else texto
     }
 

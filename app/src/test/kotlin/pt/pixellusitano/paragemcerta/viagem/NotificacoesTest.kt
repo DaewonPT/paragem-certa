@@ -78,6 +78,14 @@ class NotificacoesTest {
         autocarro("28", listOf("Oriente (Norte)", "Moscavide", "Sacavém"), T0.plusSeconds(1800)),
     )
 
+    // O comboio da Linha de Cascais (nome próprio, sem número) até Algés e, a pé até à paragem, o 750.
+    private val comLinhaComNome = itinerario(
+        aPe("Casa", "Cais do Sodré", T0, 140.0),
+        autocarro("Linha de Cascais", listOf("Cais do Sodré", "Santos", "Alcântara", "Algés"), T0.plusSeconds(180)).copy(modo = Modo.COMBOIO),
+        aPe("Algés", "Algés (Estação)", T0.plusSeconds(900), 90.0),
+        autocarro("750", listOf("Algés (Estação)", "Mercado", "Oeiras"), T0.plusSeconds(1200)),
+    )
+
     private fun plano(i: Itinerario) = PlanoViagem(i, som = true, vibrar = true)
 
     /** O estado a bordo da etapa i, com o veículo já para lá da paragem k (e antes da k + 1). */
@@ -195,6 +203,29 @@ class NotificacoesTest {
         assertEquals("avisos", n.channelId)
         assertEquals(Notification.CATEGORY_ALARM, n.category)
         assertEquals("Prepara-te — sais daqui a 1 paragem, em Oriente", titulo(aviso(simples, Evento.PREPARA_TE, aBordo(simples, 1, k = 4))))
+    }
+
+    @Test fun umaLinhaComNomeProprioDizOModoAntesDoNome() {
+        val espera = Viagem(comLinhaComNome).inicio(T0).copy(etapa = 1, fase = Fase.ESPERA, atualizado = T0.plusSeconds(60))
+        assertEquals("O comboio da Linha de Cascais parte às 11:03", titulo(progresso(comLinhaComNome, espera)))
+        assertEquals("O comboio da Linha de Cascais chega em 4 min", titulo(progresso(comLinhaComNome, espera.copy(atrasoS = 120))))
+        // Com número fica como estava: "O 750".
+        val outra = Viagem(comLinhaComNome).inicio(T0).copy(etapa = 3, fase = Fase.ESPERA, atualizado = T0.plusSeconds(60))
+        assertEquals("O 750 parte às 11:20", titulo(progresso(comLinhaComNome, outra)))
+    }
+
+    @Test fun oAvisoDeTransbordoTambemDizOModoAntesDoNomeProprio() {
+        // Do 750 para o comboio: a linha a apanhar tem nome próprio.
+        val inverso = itinerario(
+            aPe("Casa", "Algés", T0, 140.0),
+            autocarro("750", listOf("Algés", "Mercado", "Oeiras"), T0.plusSeconds(180)),
+            aPe("Oeiras", "Oeiras (Estação)", T0.plusSeconds(900), 90.0),
+            autocarro("Linha de Cascais", listOf("Oeiras (Estação)", "Paço de Arcos", "Cascais"), T0.plusSeconds(1200)).copy(modo = Modo.COMBOIO),
+        )
+        assertEquals(
+            "Sai agora — Oeiras e apanha o comboio da Linha de Cascais",
+            titulo(aviso(inverso, Evento.SAI_AGORA, aBordo(inverso, 1, k = 2))),
+        )
     }
 
     @Test fun avisoSaiAgora() {
