@@ -60,6 +60,8 @@ private val BLOQUEIO_MAX = Duration.ofHours(2).plusMinutes(30)
 private val CM_INTERVALO = Duration.ofSeconds(30)
 private const val CM_TOLERANCIA_S = 90L
 private const val CM_VIAGEM_S = 60L
+/** Quem continua à espera 2 min depois da partida ao vivo do autocarro perdeu-o. */
+private val CM_PERDIDO = Duration.ofMinutes(2)
 // vehicles tem 306 KB (42 KB comprimido): só a bordo, na reta final ou sem GPS, e no máximo a cada 15 s.
 private val VEICULOS_INTERVALO = Duration.ofSeconds(15)
 private const val VEICULO_IDADE_S = 60L
@@ -92,8 +94,8 @@ class ServicoViagem : Service() {
     /** Até quando o último aviso está a tocar (uptimeMillis): o serviço não pára antes, o Android calava o áudio. */
     private var alarmeAte = 0L
 
-    /** O trip_id do autocarro da etapa (índice, trip_id), tirado das chegadas enquanto se espera por ele. */
-    private var viagemCm: Pair<Int, String>? = null
+    /** O autocarro que a pessoa espera (trip_id e partida ao vivo), tirado das chegadas enquanto se espera por ele. */
+    private var viagemCm: AutocarroCm? = null
 
     /** A última posição que o motor aceitou: os autocarros perto dela podem ser o da viagem. */
     private var ultimaAceite: Entrada.Gps? = null
@@ -196,7 +198,7 @@ class ServicoViagem : Service() {
 
     /**
      * Enquanto espera um autocarro da Carris Metropolitana, as chegadas da paragem de embarque (a cada 30 s) dizem quando
-     * ele parte e qual é o trip_id dele.
+     * ele parte e qual é o trip_id dele. A cada volta (com ou sem consulta nova) vê se a pessoa já o perdeu.
      */
     private suspend fun chegadasCm() {
         var proxima = Instant.MIN
@@ -206,16 +208,18 @@ class ServicoViagem : Service() {
             val i = c.estado.etapa
             val etapa = c.plano.itinerario.etapas[i]
             val paragem = etapa.paragens.firstOrNull()?.id?.let(::cmParagemDeTransitous)
-            if (c.estado.fase == Fase.ESPERA && paragem != null && agora() >= proxima) {
-                when (val r = servidorCm().chegadas(paragem, agora())) {
+            if (c.estado.fase == Fase.ESPERA && paragem != null) {
+                var chegadas = emptyList<Chegada>()
+                if (agora() >= proxima) when (val r = servidorCm().chegadas(paragem, agora())) {
                     is Resultado.Ok -> {
                         falhas = 0
                         proxima = agora().plus(CM_INTERVALO)
-                        viagemAoVivo(r.valor, etapa)?.let { viagemCm = i to it }
+                        chegadas = r.valor
                         partidaAoVivo(r.valor, etapa)?.let { aplicar(Entrada.Partida(i, it, agora())) }
                     }
                     is Resultado.Falha -> proxima = agora().plus(maxOf(CM_INTERVALO, pausaDepoisDeFalha(Fonte.CM, falhas++)))
                 }
+                viagemCm = autocarroDaEspera(chegadas, etapa, i, viagemCm, agora())
             }
             delay(RELOGIO_MS)
         }
@@ -244,7 +248,7 @@ class ServicoViagem : Service() {
                         proxima = agora().plus(VEICULOS_INTERVALO)
                         val atual = corrida?.estado ?: return
                         if (atual.etapa == i) {
-                            val viagem = viagemCm?.takeIf { it.first == i }?.second
+                            val viagem = viagemCm?.takeIf { it.etapa == i && !it.perdido }?.viagem
                             val (x, perto) = escolherVeiculo(
                                 r.valor, etapa, i, viagem, ultimaAceite, atual.velocidade, agora(), candidato?.takeIf { it.first == i }?.second,
                             )
@@ -402,6 +406,25 @@ internal fun viagemAoVivo(chegadas: List<Chegada>, etapa: Etapa): String? =
         .map { it to abs(Duration.between(it.programada, etapa.partidaProgramada).seconds) }
         .filter { it.second <= CM_VIAGEM_S }
         .minByOrNull { it.second }?.first?.idViagem
+
+/** O autocarro que a pessoa espera na etapa: o trip_id e a partida ao vivo; perdido, o trip_id já não conta. */
+internal data class AutocarroCm(val etapa: Int, val viagem: String, val prevista: Instant, val perdido: Boolean = false)
+
+/**
+ * O autocarro que a pessoa espera na etapa i, depois de uma consulta (chegadas vazias sem consulta nova): o guardado, com
+ * a partida ao vivo dele se ainda aparecer; sem nenhum, o da etapa (viagemAoVivo). Quem continua à espera 2 min depois de
+ * ele partir perdeu-o: passa ao seguinte da mesma linha com tempo real e, até haver um, fica sem trip_id. O perdido ia à
+ * frente e, com 60 s sem GPS, puxava a viagem e dava o Sai agora antes do tempo; por isso nunca volta.
+ */
+internal fun autocarroDaEspera(chegadas: List<Chegada>, etapa: Etapa, i: Int, guardado: AutocarroCm?, agora: Instant): AutocarroCm? {
+    val vivas = chegadas.filter { it.linhaNome == etapa.linhaNome && it.prevista != null && it.idViagem != null }
+    val g = guardado?.takeIf { it.etapa == i }
+        ?: return viagemAoVivo(chegadas, etapa)?.let { v -> AutocarroCm(i, v, vivas.first { it.idViagem == v }.prevista!!) }
+    val atual = vivas.firstOrNull { !g.perdido && it.idViagem == g.viagem }?.let { g.copy(prevista = it.prevista!!) } ?: g
+    if (!atual.perdido && agora <= atual.prevista + CM_PERDIDO) return atual
+    val seguinte = vivas.filter { it.idViagem != atual.viagem && it.prevista!! > atual.prevista }.minByOrNull { it.prevista!! }
+    return seguinte?.let { AutocarroCm(i, it.idViagem!!, it.prevista!!) } ?: atual.copy(perdido = true)
+}
 
 /**
  * A leitura de vehicles a dar ao motor (etapa i) e o candidato para a consulta seguinte. O veículo da viagem é o que tem

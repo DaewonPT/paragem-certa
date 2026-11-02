@@ -477,6 +477,33 @@ class ServicoViagemTest {
         assertEquals("b", viagemAoVivo(listOf(chegada("736", partida.minusSeconds(50), partida, "a"), chegada("736", partida.plusSeconds(10), partida, "b")), etapa))
     }
 
+    @Test fun oAutocarroPerdidoEEsquecidoETrocadoPeloSeguinte() {
+        val etapa = autocarro("736", T0.plusSeconds(600))
+        val partida = etapa.partidaProgramada
+        fun chegada(linha: String, programada: Instant, prevista: Instant?, viagem: String?) =
+            Chegada(Fonte.CM, linha, linha, "Oriente", programada, prevista, viagem, null, Modo.AUTOCARRO, null, null)
+        val t1 = chegada("736", partida, partida.plusSeconds(60), "T1")
+        val t2 = chegada("736", partida.plusSeconds(600), partida.plusSeconds(660), "T2")
+        val outras = listOf(chegada("28", partida.plusSeconds(200), partida.plusSeconds(200), "L28"), chegada("736", partida.plusSeconds(300), null, null))
+        val guardado = AutocarroCm(0, "T1", partida.plusSeconds(60))
+        // Sem nada guardado, o da etapa (viagemAoVivo), com a hora ao vivo dele.
+        assertEquals(guardado, autocarroDaEspera(listOf(t2, t1), etapa, 0, null, T0))
+        // O de outra etapa não conta.
+        assertEquals(guardado, autocarroDaEspera(listOf(t1), etapa, 0, guardado.copy(etapa = 1, viagem = "X"), T0))
+        // Atrasado: a hora ao vivo segue-o, e os 2 min contam a partir dela.
+        val atrasado = autocarroDaEspera(listOf(t1.copy(prevista = partida.plusSeconds(400)), t2), etapa, 0, guardado, partida.plusSeconds(300))
+        assertEquals(guardado.copy(prevista = partida.plusSeconds(400)), atrasado)
+        // Já não aparece (ou não houve consulta nova): fica até 2 min depois de partir.
+        assertEquals(guardado, autocarroDaEspera(emptyList(), etapa, 0, guardado, partida.plusSeconds(180)))
+        // A pessoa continua à espera passados os 2 min: perdeu-o. O seguinte da mesma linha com tempo real fica no lugar dele.
+        assertEquals(AutocarroCm(0, "T2", partida.plusSeconds(660)), autocarroDaEspera(outras + t2, etapa, 0, guardado, partida.plusSeconds(181)))
+        // Sem o seguinte ao vivo, fica marcado como perdido até ele aparecer; o perdido não volta, mesmo que reapareça.
+        val perdido = autocarroDaEspera(outras, etapa, 0, guardado, partida.plusSeconds(181))
+        assertEquals(guardado.copy(perdido = true), perdido)
+        assertEquals(perdido, autocarroDaEspera(listOf(t1.copy(prevista = partida.plusSeconds(400))), etapa, 0, perdido, partida.plusSeconds(190)))
+        assertEquals(AutocarroCm(0, "T2", partida.plusSeconds(660)), autocarroDaEspera(listOf(t2), etapa, 0, perdido, partida.plusSeconds(220)))
+    }
+
     private fun veiculo(id: String, lat: Double, sinal: Instant, viagem: String? = null, paragem: String? = "020045", aChegar: Boolean = true, linha: String = "736") =
         Veiculo(id, linha, lat, -9.14, null, sinal, viagem = viagem, paragem = paragem, aChegar = aChegar)
 
@@ -548,6 +575,53 @@ class ServicoViagemTest {
         assertEquals(listOf(Evento.PREPARA_TE, Evento.SAI_AGORA), alarmes.map { it.first })
         assertEquals(Fase.A_BORDO, FicheirosViagem.lerEstado(c, agora)!!.fase)
         assertEquals(Origem.VEICULO, FicheirosViagem.lerEstado(c, agora)!!.origem)
+    }
+
+    @Test fun quemPerdeOAutocarroNaoEPuxadoPorEle() {
+        // À espera do 736 da etapa (T1, parte às 10:11 ao vivo) com o GPS na paragem: ele passa e a pessoa fica. 3 min
+        // depois continua à espera e apanha o seguinte (T2, às 10:21). A bordo, 60 s sem GPS: vehicles mostra o T1 a
+        // chegar ao destino e o T2 a caminho da paragem 2. Só o T2 conta: nada de Sai agora minutos antes do tempo.
+        shadowOf(c).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
+        shadowOf(localizacao).setProviderEnabled(LocationManager.GPS_PROVIDER, true)
+        val etapa = autocarro("736", T0.plusSeconds(600), idsCm = true)
+        val p = etapa.partidaProgramada.epochSecond
+        val chegadas = """[{"line_id":"[YA15B]736","headsign":"Oriente","scheduled_arrival_unix":$p,"estimated_arrival_unix":${p + 60},"trip_id":"T1"},
+            |{"line_id":"[YA15B]736","headsign":"Oriente","scheduled_arrival_unix":${p + 600},"estimated_arrival_unix":${p + 660},"trip_id":"T2"}]""".trimMargin()
+        fun veiculos() = """[{"id":"[YA15B]1","line_id":"736","lat":38.724,"lon":-9.14,"timestamp":${agora.toEpochMilli() - 15_000},
+            |"stop_id":"020045","current_status":"INCOMING_AT","trip_id":"T1"},
+            |{"id":"[YA15B]2","line_id":"736","lat":38.709,"lon":-9.14,"timestamp":${agora.toEpochMilli() - 15_000},
+            |"stop_id":"020042","current_status":"IN_TRANSIT_TO","trip_id":"T2"}]""".trimMargin()
+        val http = object : Http {
+            override suspend fun get(url: String) =
+                Resposta(200, if (url.endsWith("/vehicles")) veiculos() else if (url.endsWith("arrivals/by_stop/020040")) chegadas else "[]")
+        }
+        // O Robolectric só entrega uma posição com a hora do relógio do sistema um intervalo à frente da anterior.
+        fun gps(lat: Double) = shadowOf(localizacao).simulateLocation(posicao(lat).apply { elapsedRealtimeNanos = Duration.between(T0, agora).toNanos() })
+        comecar(itinerario(etapa), cm = CarrisMetropolitana(http, "https://cm.teste/"))
+        esperarAte { FicheirosViagem.lerEstado(c, agora)?.atrasoS == 60L } // o T1 ficou guardado
+        // Parada na paragem até o T2 partir (T0 + 1260): o T1 sai das chegadas às 10:11:30 e os 2 min passam às 10:13.
+        while (agora < T0.plusSeconds(1260)) {
+            passarOTempo(5)
+            if (agora.epochSecond % 10 == 0L) gps(38.70)
+        }
+        fio.idle()
+        assertEquals(Fase.ESPERA, FicheirosViagem.lerEstado(c, agora)!!.fase)
+        // Entra no T2: 100 m e 200 m ao longo da linha, 10 s entre cada.
+        for (lat in listOf(38.7009, 38.7018)) {
+            passarOTempo(10)
+            gps(lat)
+            fio.idle()
+        }
+        assertEquals(Fase.A_BORDO, FicheirosViagem.lerEstado(c, agora)!!.fase)
+        // 60 s sem GPS: vehicles passa a contar.
+        repeat(16) { passarOTempo(5) }
+        esperarAte { FicheirosViagem.lerEstado(c, agora)?.ultimoVeiculo != null }
+        val estado = FicheirosViagem.lerEstado(c, agora)!!
+        assertEquals(Origem.VEICULO, estado.origem)
+        assertTrue(alarmes.map { it.first }.toString(), alarmes.isEmpty())
+        val a = Percurso(emptyList(), etapa.paragens).noPercurso
+        // O T2 a caminho da paragem 2 já saiu da 1; o T1 tinha-a levado para lá da 4.
+        assertTrue("${estado.progresso}", estado.progresso >= a[1] + 31 && estado.progresso < a[3])
     }
 
     /** As respostas da CM voltam por outra thread: espera até 2 s que a condição se cumpra. */
