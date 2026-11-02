@@ -30,9 +30,14 @@ data class Chegada(
     val modo: Modo, val cor: String?, val acessivel: Boolean?,
 )
 
+/**
+ * id com o prefixo do operador (os números repetem-se entre operadores). viagem: o trip_id inteiro; paragem: a próxima ou
+ * a atual; aChegar: a chegar a ela ou parado nela.
+ */
 data class Veiculo(
     val id: String, val linhaId: String, val lat: Double, val lon: Double, val rumo: Int?,
     val ultimoSinal: Instant, val destino: String? = null,
+    val viagem: String? = null, val paragem: String? = null, val aChegar: Boolean = false,
 )
 
 enum class Gravidade { GRAVE, AVISO, INFO }

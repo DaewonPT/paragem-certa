@@ -518,6 +518,120 @@ class ViagemTest {
         assertTrue(chegou.entrada.hora < aPe.chegada.plusSeconds(atraso + 5))
     }
 
+    /** A bordo do autocarro da recta, a [progresso] m, com o último GPS aceite a [ultimoGps]. */
+    private fun aBordo(viagem: Viagem, progresso: Double, ultimoGps: Instant) =
+        viagem.inicio(t0).copy(fase = Fase.A_BORDO, progresso = progresso, ultimoGps = ultimoGps, velocidade = 7.0)
+
+    /**
+     * As leituras de vehicles de um autocarro que faz o horário da etapa atrasoS depois: a cada 15 s, de de a ate, cada uma
+     * com 15 s de idade (como na API). A caminho da paragem k (a primeira à frente); a chegar a menos de 150 m dela.
+     */
+    private fun leituras(etapa: Etapa, atrasoS: Double, de: Double, ate: Double): List<Entrada> {
+        val percurso = Percurso(etapa.desenho, etapa.paragens)
+        val a = percurso.noPercurso
+        return generateSequence(de) { it + 15 }.takeWhile { it < ate }.mapNotNull { s ->
+            val p = percurso.progressoEm(aos(s - 15 - atrasoS))
+            val k = a.indexOfFirst { it >= p }.takeIf { it > 0 } ?: return@mapNotNull null
+            Entrada.Veiculo(0, k, aChegar = a[k] - p < 150, hora = aos(s))
+        }.toList()
+    }
+
+    @Test fun veiculoAChegarAoDestinoTocaSaiAgora() {
+        val etapa = autocarro()
+        val viagem = Viagem(itinerario(etapa))
+        val a = Percurso(etapa.desenho, etapa.paragens).noPercurso
+        // Sem GPS há 70 s e ainda a meio (P a 1300 m; a penúltima aos 2400 e o destino aos 3000).
+        val h = aos(400.0)
+        val semGps = aBordo(viagem, 1300.0, ultimoGps = h.minusSeconds(70))
+        val (chega, eventos) = viagem.passo(semGps, Entrada.Veiculo(0, 5, aChegar = true, hora = h))
+        assertEquals(listOf(PREPARA_TE, SAI_AGORA), eventos)
+        assertEquals(a[4] + 31, chega.progresso, 0.0)
+        assertEquals(Origem.VEICULO, chega.origem)
+        assertFalse(chega.terminada)
+        // A caminho do destino (IN_TRANSIT_TO) só diz que já saiu da penúltima: o Sai agora espera pelos 150 m.
+        val (aCaminho, so) = viagem.passo(semGps, Entrada.Veiculo(0, 5, aChegar = false, hora = h))
+        assertEquals(listOf(PREPARA_TE), so)
+        assertEquals(a[4] + 31, aCaminho.progresso, 0.0)
+        // Com GPS recente e a pessoa perto da penúltima também conta, e a origem continua a ser o GPS.
+        val (comGps, eventosComGps) = viagem.passo(aBordo(viagem, 2350.0, ultimoGps = h.minusSeconds(5)), Entrada.Veiculo(0, 5, true, h))
+        assertEquals(listOf(PREPARA_TE, SAI_AGORA), eventosComGps)
+        assertEquals(Origem.GPS, comGps.origem)
+    }
+
+    @Test fun veiculoAvancaOProgressoSemNuncaRecuar() {
+        val etapa = autocarro()
+        val viagem = Viagem(itinerario(etapa))
+        val a = Percurso(etapa.desenho, etapa.paragens).noPercurso
+        val h = aos(300.0)
+        val semGps = aBordo(viagem, 700.0, ultimoGps = h.minusSeconds(70))
+        // A caminho da paragem 3: já saiu da 2.
+        val (na3, eventos) = viagem.passo(semGps, Entrada.Veiculo(0, 3, false, h))
+        assertEquals(a[2] + 31, na3.progresso, 0.0)
+        assertEquals(2, viagem.paragemPassada(na3))
+        assertTrue(eventos.isEmpty())
+        // Uma leitura de trás (a chegar à 2) não leva o progresso para trás.
+        val (atras, eventosAtras) = viagem.passo(na3, Entrada.Veiculo(0, 2, true, h.plusSeconds(15)))
+        assertEquals(a[2] + 31, atras.progresso, 0.0)
+        assertTrue(eventosAtras.isEmpty())
+        // A origem fica VEICULO enquanto chegam leituras; 60 s depois da última volta ao horário.
+        assertEquals(Origem.VEICULO, viagem.passo(atras, Entrada.Relogio(h.plusSeconds(70))).first.origem)
+        assertEquals(Origem.HORARIO, viagem.passo(atras, Entrada.Relogio(h.plusSeconds(75))).first.origem)
+    }
+
+    @Test fun leituraForaDaEtapaOuAEsperaNaoMudaNada() {
+        val viagem = Viagem(itinerario(autocarro()))
+        val h = aos(300.0)
+        val comGps = aBordo(viagem, 700.0, ultimoGps = h.minusSeconds(5))
+        // A primeira paragem, fora da lista, outra etapa; e à espera (o autocarro pode partir sem a pessoa).
+        val ignoradas = listOf(
+            comGps to Entrada.Veiculo(0, 0, true, h), comGps to Entrada.Veiculo(0, 6, true, h),
+            comGps to Entrada.Veiculo(0, -1, true, h), comGps to Entrada.Veiculo(1, 5, true, h),
+            comGps.copy(fase = Fase.ESPERA, progresso = 0.0) to Entrada.Veiculo(0, 5, true, h),
+        )
+        for ((e, x) in ignoradas) assertEquals("$x", e.copy(atualizado = h) to emptyList<Evento>(), viagem.passo(e, x))
+        // Sem GPS, uma leitura ignorada também não faz da origem o veículo.
+        val semGps = aBordo(viagem, 700.0, ultimoGps = h.minusSeconds(70))
+        val (depois, _) = viagem.passo(semGps, Entrada.Veiculo(0, 0, true, h))
+        assertEquals(Origem.HORARIO, depois.origem)
+        assertEquals(700.0, depois.progresso, 0.0)
+    }
+
+    @Test fun umVeiculoDeOutraViagemNaoConta() {
+        // GPS de há 5 s a 700 m: um autocarro já para lá da paragem 2 (1200 m) vai mais à frente do que a pessoa pode estar.
+        val viagem = Viagem(itinerario(autocarro()))
+        val h = aos(300.0)
+        val e = aBordo(viagem, 700.0, ultimoGps = h.minusSeconds(5))
+        for (k in 3..5) assertEquals("paragem $k", e.copy(atualizado = h) to emptyList<Evento>(), viagem.passo(e, Entrada.Veiculo(0, k, true, h)))
+    }
+
+    @Test fun oAutocarroQuePerdeuNaoTocaOSaiAgoraNoSeguinte() {
+        // Perde o autocarro do plano (o do trip_id guardado à espera) e apanha o seguinte, 5 min depois: as leituras do
+        // primeiro chegam enquanto ela vai no segundo e não podem mudar nada.
+        val etapa = autocarro()
+        val viagem = Viagem(itinerario(etapa))
+        val posicoes = tracoVeiculo(etapa, partidaS = 60.0 + 300)
+        val soGps = Tracos.correr(viagem, t0, posicoes)
+        val comLeituras = Tracos.correr(viagem, t0, posicoes, leituras(etapa, 0.0, 300.0, 700.0))
+        assertEquals(listOf(PREPARA_TE, SAI_AGORA, CHEGOU), eventos(comLeituras))
+        assertEquals(com(soGps, PREPARA_TE).entrada.hora, com(comLeituras, PREPARA_TE).entrada.hora)
+        assertEquals(com(soGps, SAI_AGORA).entrada.hora, com(comLeituras, SAI_AGORA).entrada.hora)
+        assertTrue(comLeituras.all { it.entrada !is Entrada.Veiculo || it.depois.progresso == it.antes.progresso })
+    }
+
+    @Test fun semGpsOProprioAutocarroDizQuandoSair() {
+        // O GPS cala-se aos 300 s (na paragem 3); as leituras do próprio autocarro continuam.
+        val etapa = autocarro()
+        val viagem = Viagem(itinerario(etapa))
+        val d = etapa.paragens.lastIndex
+        val passos = Tracos.correr(viagem, t0, tracoVeiculo(etapa).filter { it.s < 300 }, leituras(etapa, 0.0, 300.0, 700.0))
+        assertEquals(listOf(PREPARA_TE, SAI_AGORA, CHEGOU), eventos(passos))
+        val sai = com(passos, SAI_AGORA)
+        assertTrue(sai.entrada is Entrada.Veiculo)
+        assertEquals(Origem.VEICULO, sai.depois.origem)
+        assertTrue(sai.entrada.hora > etapa.paragens[d - 1].hora) // depois de o autocarro sair da penúltima
+        assertTrue(passos.zipWithNext().all { (x, y) -> y.depois.etapa != x.depois.etapa || y.depois.progresso >= x.depois.progresso })
+    }
+
     @Test fun gravacoesReais() {
         // Paragem Certa/gravacoes, fora do repositório: só existe no PC do autor.
         val pasta = File(System.getProperty("user.dir"), "../../gravacoes").canonicalFile

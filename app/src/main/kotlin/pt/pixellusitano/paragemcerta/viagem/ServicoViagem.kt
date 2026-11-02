@@ -31,16 +31,20 @@ import pt.pixellusitano.paragemcerta.core.fontes.cm.cmParagemDeTransitous
 import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.modelo.Etapa
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
+import pt.pixellusitano.paragemcerta.core.modelo.Veiculo
 import pt.pixellusitano.paragemcerta.core.rede.OkHttpHttp
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import pt.pixellusitano.paragemcerta.core.rede.userAgent
+import pt.pixellusitano.paragemcerta.core.regras.distanciaMetros
 import pt.pixellusitano.paragemcerta.core.regras.pausaDepoisDeFalha
 import pt.pixellusitano.paragemcerta.core.viagem.Entrada
 import pt.pixellusitano.paragemcerta.core.viagem.EstadoViagem
 import pt.pixellusitano.paragemcerta.core.viagem.Evento
 import pt.pixellusitano.paragemcerta.core.viagem.Fase
+import pt.pixellusitano.paragemcerta.core.viagem.Origem
 import pt.pixellusitano.paragemcerta.core.viagem.PlanoViagem
 import pt.pixellusitano.paragemcerta.core.viagem.Viagem
+import pt.pixellusitano.paragemcerta.core.viagem.paragensDe
 import java.io.IOException
 import java.time.Duration
 import java.time.Instant
@@ -55,6 +59,11 @@ private const val SEM_PRECISAO = 999f
 private val BLOQUEIO_MAX = Duration.ofHours(2).plusMinutes(30)
 private val CM_INTERVALO = Duration.ofSeconds(30)
 private const val CM_TOLERANCIA_S = 90L
+private const val CM_VIAGEM_S = 60L
+// vehicles tem 306 KB (42 KB comprimido): só a bordo, na reta final ou sem GPS, e no máximo a cada 15 s.
+private val VEICULOS_INTERVALO = Duration.ofSeconds(15)
+private const val VEICULO_IDADE_S = 60L
+private const val VEICULO_PERTO_M = 150.0
 
 /**
  * A viagem a correr, no processo :trip (ver o manifesto): alimenta o motor (core/viagem) com as posições do GPS e o
@@ -82,6 +91,12 @@ class ServicoViagem : Service() {
 
     /** Até quando o último aviso está a tocar (uptimeMillis): o serviço não pára antes, o Android calava o áudio. */
     private var alarmeAte = 0L
+
+    /** O trip_id do autocarro da etapa (índice, trip_id), tirado das chegadas enquanto se espera por ele. */
+    private var viagemCm: Pair<Int, String>? = null
+
+    /** A última posição que o motor aceitou: os autocarros perto dela podem ser o da viagem. */
+    private var ultimaAceite: Entrada.Gps? = null
 
     private val ouvinte = object : LocationListenerCompat {
         override fun onLocationChanged(location: Location) = posicao(location)
@@ -154,6 +169,7 @@ class ServicoViagem : Service() {
         trabalho = scope.launch {
             launch { relogio() }
             launch { chegadasCm() }
+            launch { veiculosCm() }
         }
     }
 
@@ -176,7 +192,12 @@ class ServicoViagem : Service() {
         }
     }
 
-    /** Enquanto espera um autocarro da Carris Metropolitana, as chegadas da paragem de embarque (a cada 30 s) dizem quando ele parte. */
+    private fun servidorCm() = cm ?: CarrisMetropolitana(OkHttpHttp(userAgent(BuildConfig.VERSION_NAME))).also { cm = it }
+
+    /**
+     * Enquanto espera um autocarro da Carris Metropolitana, as chegadas da paragem de embarque (a cada 30 s) dizem quando
+     * ele parte e qual é o trip_id dele.
+     */
     private suspend fun chegadasCm() {
         var proxima = Instant.MIN
         var falhas = 0
@@ -186,14 +207,52 @@ class ServicoViagem : Service() {
             val etapa = c.plano.itinerario.etapas[i]
             val paragem = etapa.paragens.firstOrNull()?.id?.let(::cmParagemDeTransitous)
             if (c.estado.fase == Fase.ESPERA && paragem != null && agora() >= proxima) {
-                val servidor = cm ?: CarrisMetropolitana(OkHttpHttp(userAgent(BuildConfig.VERSION_NAME))).also { cm = it }
-                when (val r = servidor.chegadas(paragem, agora())) {
+                when (val r = servidorCm().chegadas(paragem, agora())) {
                     is Resultado.Ok -> {
                         falhas = 0
                         proxima = agora().plus(CM_INTERVALO)
+                        viagemAoVivo(r.valor, etapa)?.let { viagemCm = i to it }
                         partidaAoVivo(r.valor, etapa)?.let { aplicar(Entrada.Partida(i, it, agora())) }
                     }
                     is Resultado.Falha -> proxima = agora().plus(maxOf(CM_INTERVALO, pausaDepoisDeFalha(Fonte.CM, falhas++)))
+                }
+            }
+            delay(RELOGIO_MS)
+        }
+    }
+
+    /**
+     * A bordo de um autocarro da Carris Metropolitana, na reta final (alta precisão) ou sem GPS: o veículo da viagem em
+     * vehicles (a cada 15 s) confirma onde vai e pode dar o Sai agora mais cedo.
+     */
+    private suspend fun veiculosCm() {
+        var proxima = Instant.MIN
+        var falhas = 0
+        var candidato: Pair<Int, String>? = null // (etapa, id do veículo) da consulta anterior
+        while (true) {
+            val c = corrida ?: return
+            val e = c.estado
+            val i = e.etapa
+            val etapa = c.plano.itinerario.etapas[i]
+            val daCm = etapa.paragens.firstOrNull()?.id?.let(::cmParagemDeTransitous) != null
+            if (e.fase != Fase.A_BORDO || !daCm || (!e.altaPrecisao && e.origem == Origem.GPS)) {
+                candidato = null // as 2 consultas seguidas recomeçam
+            } else if (agora() >= proxima) {
+                when (val r = servidorCm().veiculos()) {
+                    is Resultado.Ok -> {
+                        falhas = 0
+                        proxima = agora().plus(VEICULOS_INTERVALO)
+                        val atual = corrida?.estado ?: return
+                        if (atual.etapa == i) {
+                            val viagem = viagemCm?.takeIf { it.first == i }?.second
+                            val (x, perto) = escolherVeiculo(
+                                r.valor, etapa, i, viagem, ultimaAceite, atual.velocidade, agora(), candidato?.takeIf { it.first == i }?.second,
+                            )
+                            candidato = perto?.let { i to it }
+                            x?.let(::aplicar)
+                        }
+                    }
+                    is Resultado.Falha -> proxima = agora().plus(maxOf(VEICULOS_INTERVALO, pausaDepoisDeFalha(Fonte.CM, falhas++)))
                 }
             }
             delay(RELOGIO_MS)
@@ -274,6 +333,8 @@ class ServicoViagem : Service() {
         bloqueio = null
         corrida = null
         alarmeAte = 0L
+        viagemCm = null
+        ultimaAceite = null
     }
 
     /** O GPS a cada 10 s, ou a cada 1 s na reta final (altaPrecisao). Sem a permissão precisa a viagem corre pelo horário. */
@@ -300,7 +361,9 @@ class ServicoViagem : Service() {
         val hora = agora()
         val precisao = if (l.hasAccuracy()) l.accuracy else SEM_PRECISAO
         if (BuildConfig.DEBUG) gravarPosicao(hora, l, precisao)
-        aplicar(Entrada.Gps(l.latitude, l.longitude, precisao, hora))
+        val x = Entrada.Gps(l.latitude, l.longitude, precisao, hora)
+        aplicar(x)
+        if (corrida?.estado?.ultimoGps == hora) ultimaAceite = x
     }
 
     /** Só em depuração: s,lat,lon,acc (s em segundos desde 1970), o formato das gravações que o teste do motor lê. */
@@ -328,3 +391,35 @@ internal fun partidaAoVivo(chegadas: List<Chegada>, etapa: Etapa): Instant? =
         .map { it to abs(Duration.between(it.programada, etapa.partidaProgramada).seconds) }
         .filter { it.second <= CM_TOLERANCIA_S }
         .minByOrNull { it.second }?.first?.prevista
+
+/**
+ * O trip_id (inteiro, como aparece em vehicles) do autocarro da etapa: o da chegada com tempo real da mesma linha cuja hora
+ * programada difere até 60 s da do horário. Só as chegadas com tempo real trazem trip_id.
+ */
+internal fun viagemAoVivo(chegadas: List<Chegada>, etapa: Etapa): String? =
+    chegadas
+        .filter { it.linhaNome == etapa.linhaNome && it.prevista != null && it.idViagem != null }
+        .map { it to abs(Duration.between(it.programada, etapa.partidaProgramada).seconds) }
+        .filter { it.second <= CM_VIAGEM_S }
+        .minByOrNull { it.second }?.first?.idViagem
+
+/**
+ * A leitura de vehicles a dar ao motor (etapa i) e o candidato para a consulta seguinte. O veículo da viagem é o que tem
+ * o trip_id guardado à espera; sem ele, o da mesma linha mais perto da última posição aceite (a menos de 150 m +
+ * velocidade × o tempo entre as duas), mas só se for o mesmo em 2 consultas seguidas. Leituras com mais de 60 s (ou com a
+ * hora 60 s à frente) não contam, nem as de uma paragem que não é da etapa.
+ */
+internal fun escolherVeiculo(
+    veiculos: List<Veiculo>, etapa: Etapa, i: Int, viagem: String?, posicao: Entrada.Gps?, velocidade: Double, agora: Instant, candidato: String?,
+): Pair<Entrada.Veiculo?, String?> {
+    val frescos = veiculos.filter { abs(Duration.between(it.ultimoSinal, agora).seconds) <= VEICULO_IDADE_S }
+    val daViagem = viagem?.let { v -> frescos.firstOrNull { it.viagem == v } }
+    val perto = if (daViagem != null || posicao == null) null else frescos
+        .filter { it.linhaId == etapa.linhaNome }
+        .map { v -> Triple(v, distanciaMetros(v.lat, v.lon, posicao.lat, posicao.lon), abs(Duration.between(v.ultimoSinal, posicao.hora).toMillis()) / 1000.0) }
+        .filter { (_, m, s) -> s <= VEICULO_IDADE_S && m <= VEICULO_PERTO_M + velocidade * s }
+        .minByOrNull { it.second }?.first
+    val escolhido = daViagem ?: perto?.takeIf { it.id == candidato }
+    val k = paragensDe(etapa).indexOfFirst { p -> escolhido?.paragem != null && p.id?.let(::cmParagemDeTransitous) == escolhido.paragem }
+    return (if (escolhido != null && k >= 0) Entrada.Veiculo(i, k, escolhido.aChegar, agora) else null) to perto?.id
+}

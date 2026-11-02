@@ -2,6 +2,7 @@ package pt.pixellusitano.paragemcerta.core.fontes.cm
 
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -54,9 +55,24 @@ class CarrisMetropolitanaTest {
 
     @Test fun veiculos() {
         val v = CmParser.veiculos(fixture("cm-vehicles.json")).first()
-        assertEquals("2261", v.id)
+        // O número repete-se entre operadores ([BNA17]2208 e [YA15B]2208): o id fica com o prefixo.
+        assertEquals("[YA15B]2261", v.id)
         assertEquals("3708", v.linhaId)
         assertEquals(Instant.ofEpochMilli(1793065970000), v.ultimoSinal)
+        assertEquals("[PL3CL][YA15B]3708_0_1_2530_2559_0_ESC_DU", v.viagem) // inteiro: é igual ao das chegadas
+        assertEquals("020379", v.paragem)
+        assertTrue(v.aChegar) // INCOMING_AT
+    }
+
+    @Test fun veiculoAChegarSoAChegarOuParado() {
+        fun estado(status: String?) = CmParser.veiculos(
+            """[{"id":"[YA15B]1","line_id":"3708","lat":38.7,"lon":-9.1,"timestamp":1793065970000,"stop_id":"[X]020379","current_status":${status?.let { "\"$it\"" }}}]""",
+        ).single()
+        assertTrue(estado("STOPPED_AT").aChegar)
+        assertFalse(estado("IN_TRANSIT_TO").aChegar)
+        assertFalse(estado(null).aChegar)
+        assertEquals("020379", estado(null).paragem)
+        assertNull(estado(null).viagem)
     }
 
     @Test fun alertasAtivos() {

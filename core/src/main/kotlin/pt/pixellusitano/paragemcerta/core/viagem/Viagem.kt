@@ -30,6 +30,12 @@ private const val EMBARQUE_M = 60.0
 private const val EMBARQUE_MS = 3.0
 private const val CHEGOU_A_PE_M = 50.0
 
+// O veículo da etapa (vehicles da Carris Metropolitana)
+/** Na paragem k, o veículo já saiu da k − 1: P passa a A[k − 1] + 31, um metro além do saiu(). */
+private const val VEICULO_SAIU_M = SAIU_M + 1
+/** Com GPS recente, o veículo não pode ir mais à frente da pessoa do que isto mais a velocidade × a idade do GPS. */
+private const val VEICULO_PERTO_M = 150.0
+
 // Avisos
 /** "Prepara-te" ao sair da paragem duas antes do destino (a antepenúltima); decisão do autor de 01/11/2026. */
 const val PREPARA_ANTES = 2
@@ -55,10 +61,15 @@ sealed interface Entrada {
     data class Partida(val etapa: Int, val prevista: Instant, override val hora: Instant) : Entrada
     data class JaSai(override val hora: Instant) : Entrada
     data class Silenciar(override val hora: Instant) : Entrada
+    /**
+     * O veículo da etapa (Carris Metropolitana), já escolhido pelo serviço: a caminho, a chegar ou parado na paragem de
+     * índice paragemIndice da etapa; aChegar se a chegar ou parado.
+     */
+    data class Veiculo(val etapa: Int, val paragemIndice: Int, val aChegar: Boolean, override val hora: Instant) : Entrada
 }
 
 enum class Fase { A_PE, ESPERA, A_BORDO, TERMINADA }
-enum class Origem { GPS, HORARIO }
+enum class Origem { GPS, HORARIO, VEICULO }
 enum class Evento { PREPARA_TE, SAI_AGORA, ETAPA_SEGUINTE, CHEGOU }
 
 /**
@@ -68,13 +79,15 @@ enum class Evento { PREPARA_TE, SAI_AGORA, ETAPA_SEGUINTE, CHEGOU }
  * ultimoGps: a hora da última posição aceite; no início, a da viagem (o GPS tem 60 s para arrancar).
  * avisados: os avisos já dados na etapa atual.
  * avancou: à espera, a última posição aceite levou P para a frente e para lá de A[0] + 60 (meio embarque).
+ * ultimoVeiculo: a hora da última leitura aceite do veículo da etapa (Carris Metropolitana).
+ * origem: VEICULO quando, sem GPS há 60 s, as leituras do veículo continuam a chegar.
  */
 @Serializable
 data class EstadoViagem(
     val etapa: Int, val fase: Fase, val progresso: Double, val atrasoS: Long,
     val velocidade: Double, val origem: Origem, val ultimoGps: Instant?, val avisados: Set<Evento>,
     val altaPrecisao: Boolean, val silenciado: Boolean, val terminada: Boolean, val atualizado: Instant,
-    val avancou: Boolean = false,
+    val avancou: Boolean = false, val ultimoVeiculo: Instant? = null,
 )
 
 /** O trip-plan.json: a rota escolhida e as definições do aviso (o processo :trip não lê as definições da app). */
@@ -145,12 +158,14 @@ class Viagem(val plano: Itinerario) {
         val hora0 = paragens[e.etapa][0].hora
         var s = e
         var aceite = false
+        var chega = false
         when (x) {
             is Entrada.Gps -> aceitar(s, x, percurso)?.let { s = it; aceite = true }
             is Entrada.Partida -> if (x.etapa == s.etapa && s.fase == Fase.ESPERA) s = s.copy(atrasoS = segundosEntre(hora0, x.prevista))
+            is Entrada.Veiculo -> lerVeiculo(s, x, a)?.let { s = it; chega = x.paragemIndice == a.lastIndex && x.aChegar }
             else -> {}
         }
-        if (!aceite && semGps(s, x.hora)) s = s.copy(origem = Origem.HORARIO)
+        if (!aceite && semGps(s, x.hora)) s = s.copy(origem = if (semVeiculo(s, x.hora)) Origem.HORARIO else Origem.VEICULO)
         if (s.fase == Fase.ESPERA && s.origem == Origem.HORARIO && x.hora >= hora0.plusSeconds(s.atrasoS)) s = s.copy(fase = Fase.A_BORDO)
         if (x is Entrada.Relogio && s.fase == Fase.A_BORDO && s.origem == Origem.HORARIO) {
             s = s.copy(progresso = max(s.progresso, percurso.progressoEm(x.hora.minusSeconds(s.atrasoS))))
@@ -164,7 +179,20 @@ class Viagem(val plano: Itinerario) {
                 s = s.copy(fase = Fase.A_BORDO, atrasoS = segundosEntre(percurso.horaEm(s.progresso), x.hora))
             }
         }
-        return avaliar(s, x.hora, jaSai = x is Entrada.JaSai, emptyList())
+        return avaliar(s, x.hora, jaSai = x is Entrada.JaSai, emptyList(), chega)
+    }
+
+    /**
+     * Uma leitura do veículo da etapa, a bordo: na paragem k (a caminho, a chegar ou parado) já saiu da k − 1, e o P só
+     * anda para a frente. À espera não conta: o autocarro pode partir sem a pessoa. Com GPS recente, um veículo que já
+     * saiu de uma paragem mais à frente do que a pessoa pode estar é outro (o da viagem que ela perdeu, ou um mal
+     * escolhido) e também não conta.
+     */
+    private fun lerVeiculo(e: EstadoViagem, x: Entrada.Veiculo, a: DoubleArray): EstadoViagem? {
+        val k = x.paragemIndice
+        if (x.etapa != e.etapa || e.fase != Fase.A_BORDO || k !in 1..a.lastIndex) return null
+        if (!semGps(e, x.hora) && a[k - 1] > e.progresso + VEICULO_PERTO_M + e.velocidade * segundos(e.ultimoGps, x.hora)) return null
+        return e.copy(progresso = max(e.progresso, a[k - 1] + VEICULO_SAIU_M), ultimoVeiculo = x.hora)
     }
 
     /** A posição na linha, se for de confiança; o novo P, a velocidade e o atraso. */
@@ -189,7 +217,7 @@ class Viagem(val plano: Itinerario) {
     }
 
     /** Os avisos e o fim da etapa em veículo, pela posição (P) e pela hora. */
-    private fun avaliar(e: EstadoViagem, agora: Instant, jaSai: Boolean, antes: List<Evento>): Pair<EstadoViagem, List<Evento>> {
+    private fun avaliar(e: EstadoViagem, agora: Instant, jaSai: Boolean, antes: List<Evento>, chega: Boolean = false): Pair<EstadoViagem, List<Evento>> {
         val a = percursos[e.etapa]!!.noPercurso
         val d = a.lastIndex
         val eta = eta(e)
@@ -203,7 +231,8 @@ class Viagem(val plano: Itinerario) {
             if (Evento.PREPARA_TE !in s.avisados && (saiu(d - PREPARA_ANTES) || falta <= PREPARA_TEMPO)) eventos += Evento.PREPARA_TE
             // Mais margem que o saiu(): parado na penúltima, o ruído leva o P (que só anda para a frente) além de A[d − 1] + 30.
             val perto = s.progresso > a[(d - 1).coerceAtLeast(0)] + SAI_MARGEM_M && a[d] - s.progresso <= max(SAI_M, s.velocidade * SAI_S)
-            if (Evento.SAI_AGORA !in s.avisados && (perto || (horario && falta <= SAI_TEMPO))) eventos += Evento.SAI_AGORA
+            // chega: o veículo da etapa diz que está a chegar ao destino, ou parado nele.
+            if (Evento.SAI_AGORA !in s.avisados && (perto || chega || (horario && falta <= SAI_TEMPO))) eventos += Evento.SAI_AGORA
         }
         s = s.copy(avisados = s.avisados + eventos.filter { it == Evento.PREPARA_TE || it == Evento.SAI_AGORA })
         // Pelo horário a etapa fica aberta até 60 s depois da eta: o P estimado chega ao destino antes do veículo.
@@ -223,7 +252,7 @@ class Viagem(val plano: Itinerario) {
     private fun naEtapa(e: EstadoViagem, i: Int, agora: Instant): EstadoViagem {
         val etapa = plano.etapas[i]
         val percurso = percursos[i]
-        val base = e.copy(etapa = i, velocidade = 0.0, avisados = emptySet(), altaPrecisao = false, avancou = false)
+        val base = e.copy(etapa = i, velocidade = 0.0, avisados = emptySet(), altaPrecisao = false, avancou = false, ultimoVeiculo = null)
         if (percurso == null) {
             // A pé o atraso que trazia continua: a caminhada começa (e acaba) tão tarde como a etapa anterior.
             return base.copy(fase = Fase.A_PE, atrasoS = max(0, e.atrasoS), progresso = distanciaMetros(etapa.de.lat, etapa.de.lon, etapa.para.lat, etapa.para.lon))
@@ -235,6 +264,8 @@ class Viagem(val plano: Itinerario) {
     }
 
     private fun semGps(e: EstadoViagem, agora: Instant) = e.ultimoGps == null || Duration.between(e.ultimoGps, agora) >= SEM_GPS
+
+    private fun semVeiculo(e: EstadoViagem, agora: Instant) = e.ultimoVeiculo == null || Duration.between(e.ultimoVeiculo, agora) >= SEM_GPS
 }
 
 /**

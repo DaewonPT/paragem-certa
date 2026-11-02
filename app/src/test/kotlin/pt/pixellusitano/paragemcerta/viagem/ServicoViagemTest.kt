@@ -32,17 +32,21 @@ import pt.pixellusitano.paragemcerta.core.modelo.Lugar
 import pt.pixellusitano.paragemcerta.core.modelo.Modo
 import pt.pixellusitano.paragemcerta.core.modelo.ParagemEtapa
 import pt.pixellusitano.paragemcerta.core.modelo.TipoLugar
+import pt.pixellusitano.paragemcerta.core.modelo.Veiculo
 import pt.pixellusitano.paragemcerta.core.rede.Http
 import pt.pixellusitano.paragemcerta.core.rede.Resposta
+import pt.pixellusitano.paragemcerta.core.viagem.Entrada
 import pt.pixellusitano.paragemcerta.core.viagem.EstadoViagem
 import pt.pixellusitano.paragemcerta.core.viagem.Evento
 import pt.pixellusitano.paragemcerta.core.viagem.Fase
+import pt.pixellusitano.paragemcerta.core.viagem.Origem
 import pt.pixellusitano.paragemcerta.core.viagem.Percurso
 import pt.pixellusitano.paragemcerta.core.viagem.PlanoViagem
 import pt.pixellusitano.paragemcerta.core.viagem.Viagem
 import java.io.File
 import java.time.Duration
 import java.time.Instant
+import java.util.concurrent.CopyOnWriteArrayList
 
 private val T0 = Instant.parse("2026-07-01T10:00:00Z")
 
@@ -54,11 +58,15 @@ private fun aPe(de: Lugar, para: Lugar, partida: Instant) = Etapa(
     paragensIntermedias = 0, desenho = emptyList(), cor = null, distancia = 110.0,
 )
 
-/** Um autocarro em linha reta para norte: seis paragens a 0,005° (cerca de 550 m) umas das outras e 2 min entre cada. */
-private fun autocarro(linha: String, partida: Instant, idPrimeira: String? = null): Etapa {
+/**
+ * Um autocarro em linha reta para norte: seis paragens a 0,005° (cerca de 550 m) umas das outras e 2 min entre cada.
+ * Com idsCm, todas são da Carris Metropolitana: 020040 a 020045.
+ */
+private fun autocarro(linha: String, partida: Instant, idPrimeira: String? = null, idsCm: Boolean = false): Etapa {
     val nomes = listOf("Cais do Sodré", "Santos", "Alcântara", "Belém", "Algés", "Oriente")
     val paragens = nomes.mapIndexed { i, n ->
-        ParagemEtapa(if (i == 0) idPrimeira else null, n, 38.70 + i * 0.005, -9.14, partida.plusSeconds(i * 120L))
+        val id = if (idsCm) "pt-Carris-Metropolitana_32004$i" else if (i == 0) idPrimeira else null
+        ParagemEtapa(id, n, 38.70 + i * 0.005, -9.14, partida.plusSeconds(i * 120L))
     }
     return Etapa(
         aPe = false, modo = Modo.AUTOCARRO, linhaNome = linha, linhaId = "id$linha", destino = "Oriente",
@@ -452,6 +460,103 @@ class ServicoViagemTest {
         assertNull(partidaAoVivo(listOf(chegada("736", partida, null)), etapa))
         // 91 s de diferença já é outra viagem.
         assertNull(partidaAoVivo(listOf(chegada("736", partida.plusSeconds(91), partida.plusSeconds(120))), etapa))
+    }
+
+    @Test fun viagemAoVivoGuardaOTripIdDaPartidaDaEtapa() {
+        val etapa = autocarro("736", T0.plusSeconds(600))
+        val partida = etapa.partidaProgramada
+        fun chegada(linha: String, programada: Instant, prevista: Instant?, viagem: String?) =
+            Chegada(Fonte.CM, linha, linha, "Oriente", programada, prevista, viagem, null, Modo.AUTOCARRO, null, null)
+        // O trip_id inteiro, com os prefixos: é assim que aparece em vehicles.
+        assertEquals("[PL3CL][YA15B]736_1", viagemAoVivo(listOf(chegada("736", partida.plusSeconds(60), partida.plusSeconds(200), "[PL3CL][YA15B]736_1")), etapa))
+        // 61 s de diferença já é outra viagem; outra linha, ou sem tempo real (sem trip_id), também não.
+        assertNull(viagemAoVivo(listOf(chegada("736", partida.plusSeconds(61), partida, "x")), etapa))
+        assertNull(viagemAoVivo(listOf(chegada("28", partida, partida, "x")), etapa))
+        assertNull(viagemAoVivo(listOf(chegada("736", partida, null, null)), etapa))
+        // Das que servem, a de hora programada mais perto.
+        assertEquals("b", viagemAoVivo(listOf(chegada("736", partida.minusSeconds(50), partida, "a"), chegada("736", partida.plusSeconds(10), partida, "b")), etapa))
+    }
+
+    private fun veiculo(id: String, lat: Double, sinal: Instant, viagem: String? = null, paragem: String? = "020045", aChegar: Boolean = true, linha: String = "736") =
+        Veiculo(id, linha, lat, -9.14, null, sinal, viagem = viagem, paragem = paragem, aChegar = aChegar)
+
+    @Test fun oVeiculoDaViagemEOQueTemOTripId() {
+        val etapa = autocarro("736", T0, idsCm = true)
+        val agora = T0.plusSeconds(400)
+        val gps = Entrada.Gps(38.715, -9.14, 10f, agora.minusSeconds(5))
+        val daViagem = veiculo("[YA15B]2261", 38.72, agora.minusSeconds(15), viagem = "T1")
+        val maisPerto = veiculo("[YA15B]9", 38.715, agora.minusSeconds(15), paragem = "020043")
+        // O do trip_id conta logo, mesmo com outro mais perto (o motor é que vê se ele vai longe de mais da pessoa).
+        assertEquals(Entrada.Veiculo(0, 5, true, agora), escolherVeiculo(listOf(maisPerto, daViagem), etapa, 0, "T1", gps, 7.0, agora, null).first)
+        // Leitura com mais de 60 s, ou com a hora 1 h à frente (a API diz que usa a hora de verão): não conta.
+        for (sinal in listOf(agora.minusSeconds(61), agora.plusSeconds(3600))) {
+            assertNull("$sinal", escolherVeiculo(listOf(daViagem.copy(ultimoSinal = sinal)), etapa, 0, "T1", null, 7.0, agora, null).first)
+        }
+        // Uma paragem que não é da etapa (já passou o destino), ou nenhuma: nada.
+        assertNull(escolherVeiculo(listOf(daViagem.copy(paragem = "020046")), etapa, 0, "T1", null, 7.0, agora, null).first)
+        assertNull(escolherVeiculo(listOf(daViagem.copy(paragem = null)), etapa, 0, "T1", null, 7.0, agora, null).first)
+    }
+
+    @Test fun semTripIdOVeiculoMaisPertoEmDuasConsultasSeguidas() {
+        val etapa = autocarro("736", T0, idsCm = true)
+        val agora = T0.plusSeconds(400)
+        // A última posição aceite foi há 5 s e as leituras têm 15 s: 10 s entre as duas, o limite é 150 + 7 × 10 = 220 m.
+        val gps = Entrada.Gps(38.715, -9.14, 10f, agora.minusSeconds(5))
+        val este = veiculo("[YA15B]1", 38.716, agora.minusSeconds(15), paragem = "020043", aChegar = false) // a 111 m
+        val outro = veiculo("[YA15B]2", 38.7165, agora.minusSeconds(15)) // a 167 m
+        val doutraLinha = veiculo("[YA15B]3", 38.715, agora.minusSeconds(15), linha = "28")
+        val todos = listOf(outro, doutraLinha, este)
+        // Na primeira consulta fica só como candidato; na segunda, o mesmo, conta.
+        val (primeira, candidato) = escolherVeiculo(todos, etapa, 0, null, gps, 7.0, agora, null)
+        assertNull(primeira)
+        assertEquals("[YA15B]1", candidato)
+        assertEquals(Entrada.Veiculo(0, 3, false, agora) to "[YA15B]1", escolherVeiculo(todos, etapa, 0, null, gps, 7.0, agora, candidato))
+        // Com um trip_id que não aparece em vehicles também se escolhe assim.
+        assertEquals(Entrada.Veiculo(0, 3, false, agora) to "[YA15B]1", escolherVeiculo(todos, etapa, 0, "T9", gps, 7.0, agora, candidato))
+        // Se o mais perto mudar, recomeça.
+        assertEquals(null to "[YA15B]2", escolherVeiculo(listOf(outro), etapa, 0, null, gps, 7.0, agora, candidato))
+        // A 334 m é longe de mais; sem posição aceite, ou com ela a mais de 60 s da leitura, não há com que comparar.
+        val longe = veiculo("[YA15B]4", 38.718, agora.minusSeconds(15))
+        assertEquals(null to null, escolherVeiculo(listOf(longe), etapa, 0, null, gps, 7.0, agora, "[YA15B]4"))
+        assertEquals(null to null, escolherVeiculo(todos, etapa, 0, null, null, 7.0, agora, candidato))
+        assertEquals(null to null, escolherVeiculo(todos, etapa, 0, null, gps.copy(hora = agora.minusSeconds(80)), 7.0, agora, candidato))
+    }
+
+    @Test fun aBordoOAutocarroDaViagemTocaOSaiAgoraAntesDoHorario() {
+        // À espera, as chegadas dão o trip_id do 736 da etapa; a bordo (pelo horário: sem GPS), vehicles diz que esse
+        // autocarro está a chegar ao destino. O Sai agora toca já, e não 9 min depois, quando o horário o dizia.
+        val etapa = autocarro("736", T0.plusSeconds(600), idsCm = true)
+        val partida = etapa.partidaProgramada.epochSecond
+        val chegadas = """[{"line_id":"[YA15B]736","headsign":"Oriente","scheduled_arrival_unix":$partida,"estimated_arrival_unix":${partida + 60},
+            |"trip_id":"[PL3CL][YA15B]736_0_1","vehicle_id":"2261"}]""".trimMargin()
+        fun veiculos() = """[{"id":"[YA15B]2261","line_id":"736","lat":38.724,"lon":-9.14,"timestamp":${agora.toEpochMilli() - 15_000},
+            |"stop_id":"020045","current_status":"INCOMING_AT","trip_id":"[PL3CL][YA15B]736_0_1"}]""".trimMargin()
+        val pedidos = CopyOnWriteArrayList<String>()
+        val http = object : Http {
+            override suspend fun get(url: String): Resposta {
+                pedidos += url
+                return Resposta(200, if (url.endsWith("/vehicles")) veiculos() else if (url.endsWith("arrivals/by_stop/020040")) chegadas else "[]")
+            }
+        }
+        comecar(itinerario(etapa), cm = CarrisMetropolitana(http, "https://cm.teste/"))
+        esperarAte { FicheirosViagem.lerEstado(c, agora)?.atrasoS == 60L }
+        repeat(131) { passarOTempo(5) }
+        assertEquals(Fase.ESPERA, FicheirosViagem.lerEstado(c, agora)!!.fase)
+        assertTrue(pedidos.none { it.endsWith("/vehicles") }) // os 306 KB de vehicles só a bordo
+        passarOTempo(5) // T0 + 660: parte, com o minuto de atraso
+        esperarAte { alarmes.size == 2 }
+        assertEquals(listOf(Evento.PREPARA_TE, Evento.SAI_AGORA), alarmes.map { it.first })
+        assertEquals(Fase.A_BORDO, FicheirosViagem.lerEstado(c, agora)!!.fase)
+        assertEquals(Origem.VEICULO, FicheirosViagem.lerEstado(c, agora)!!.origem)
+    }
+
+    /** As respostas da CM voltam por outra thread: espera até 2 s que a condição se cumpra. */
+    private fun esperarAte(condicao: () -> Boolean) {
+        repeat(100) {
+            fio.idle()
+            if (condicao()) return
+            Thread.sleep(20)
+        }
     }
 
     /** O wake lock do serviço ficou preso? */

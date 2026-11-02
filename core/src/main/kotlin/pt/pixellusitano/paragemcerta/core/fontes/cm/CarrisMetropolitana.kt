@@ -56,12 +56,15 @@ object CmParser {
     fun veiculos(json: String): List<Veiculo> =
         JSON.decodeFromString<List<CmVeiculoJson>>(json).mapNotNull {
             Veiculo(
-                id = cmIdLimpo(it.id),
+                id = it.id, // os números repetem-se entre operadores: o prefixo fica
                 linhaId = cmIdLimpo(it.linha ?: return@mapNotNull null),
                 lat = it.lat ?: return@mapNotNull null,
                 lon = it.lon ?: return@mapNotNull null,
                 rumo = it.bearing,
                 ultimoSinal = Instant.ofEpochMilli(it.timestamp ?: return@mapNotNull null),
+                viagem = it.viagem,
+                paragem = it.paragem?.let(::cmIdLimpo),
+                aChegar = it.estado == "INCOMING_AT" || it.estado == "STOPPED_AT",
             )
         }
 
