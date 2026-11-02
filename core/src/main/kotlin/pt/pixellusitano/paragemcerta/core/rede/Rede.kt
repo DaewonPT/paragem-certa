@@ -22,7 +22,7 @@ sealed interface Resultado<out T> {
     data class Falha(val codigo: Int?, val limite: Boolean) : Resultado<Nothing>
 }
 
-fun userAgent(versao: String) = "ParagemCerta/$versao (contact@pixellusitano.com)"
+fun userAgent(versao: String) = "ParagemCerta/$versao (contact@pixellusitano.com; https://pixellusitano.com)"
 
 class OkHttpHttp(
     private val agente: String,

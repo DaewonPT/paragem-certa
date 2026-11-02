@@ -29,4 +29,11 @@ class SobreScreenshotTest {
         regra.onNodeWithText("Transitous — horários e rotas").assertHasClickAction().performClick()
         assertEquals("https://transitous.org/sources", aberto)
     }
+
+    @Test fun fonteGeoApi_temLigacao() {
+        var aberto: String? = null
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { SobreEcra(versao = "0.1.0", aoAbrir = { aberto = it }) } }
+        regra.onNodeWithText("Código postal via GEO API PT (geoapi.pt) · dados CTT/INE").assertHasClickAction().performClick()
+        assertEquals("https://geoapi.pt", aberto)
+    }
 }

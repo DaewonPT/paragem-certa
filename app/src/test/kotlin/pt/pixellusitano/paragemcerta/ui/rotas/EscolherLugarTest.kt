@@ -3,9 +3,11 @@ package pt.pixellusitano.paragemcerta.ui.rotas
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performTextInput
 import org.junit.Assert.assertEquals
@@ -26,14 +28,14 @@ class EscolherLugarTest {
 
     private val contexto = RuntimeEnvironment.getApplication()
 
-    /** Abre o ecrã, escreve "rua a" e deixa passar os 300 ms de espera antes da pesquisa. */
-    private fun pesquisarCom(pesquisar: suspend (String) -> List<Lugar>?) {
+    /** Abre o ecrã, escreve o texto ("rua a") e deixa passar os 300 ms de espera antes da pesquisa. */
+    private fun pesquisarCom(texto: String = "rua a", pesquisar: suspend (String) -> List<Lugar>?) {
         regra.setContent {
             TemaParagemCerta(ModoTema.CLARO) {
                 EscolherLugarEcra("Para", comPosicao = false, locais = emptyList(), recentes = emptyList(), pesquisar = pesquisar, aoEscolher = {}, aoVoltar = {})
             }
         }
-        regra.onNode(hasSetTextAction()).performTextInput("rua a")
+        regra.onNode(hasSetTextAction()).performTextInput(texto)
         regra.mainClock.advanceTimeBy(400)
         regra.waitForIdle()
     }
@@ -44,6 +46,18 @@ class EscolherLugarTest {
         no.assert(SemanticsMatcher.keyIsDefined(SemanticsActions.CustomActions))
         val esperadas = listOf(R.string.guardar_como_casa, R.string.guardar_como_trabalho, R.string.guardar_como_local).map(contexto::getString)
         assertEquals(esperadas, no.fetchSemanticsNode().config[SemanticsActions.CustomActions].map { it.label })
+    }
+
+    @Test fun resultadoDeCodigoPostalMostraAFonte() {
+        pesquisarCom { listOf(Lugar("1400-038 · Doca do Bom Sucesso", 38.69, -9.21, TipoLugar.MORADA, "Lisboa"), Lugar("Rua Augusta", 38.71, -9.137, TipoLugar.MORADA)) }
+        // Só o código postal leva a atribuição à GeoAPI.pt.
+        regra.onAllNodesWithText(contexto.getString(R.string.fonte_geoapi)).assertCountEquals(1)
+    }
+
+    @Test fun codigoPostalInexistenteDizNaoEncontrado() {
+        pesquisarCom("1400-099") { emptyList() }
+        regra.onNodeWithText(contexto.getString(R.string.pesquisa_cp_nao_encontrado)).assertIsDisplayed()
+        regra.onNodeWithText(contexto.getString(R.string.escolher_sem_resultados)).assertDoesNotExist()
     }
 
     @Test fun semRedeDizQueNaoFoiPossivelProcurar() {

@@ -20,6 +20,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import pt.pixellusitano.paragemcerta.core.fontes.cm.CarrisMetropolitana
+import pt.pixellusitano.paragemcerta.core.fontes.geoapi.GeoApi
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.Transitous
 import pt.pixellusitano.paragemcerta.core.rede.Http
 import pt.pixellusitano.paragemcerta.core.rede.Resposta
@@ -50,7 +51,7 @@ class AtualizacaoDiariaTest {
         "/lines" to listOf({ Resposta(200, fixture("cm-lines.json")) }),
     )
 
-    private fun repo(http: Http) = Repositorio(bd, CarrisMetropolitana(http), Transitous(http), relogio = { agora })
+    private fun repo(http: Http) = Repositorio(bd, CarrisMetropolitana(http), Transitous(http), GeoApi(http), relogio = { agora })
 
     private fun semRede() = object : Http {
         override suspend fun get(url: String): Resposta = throw IOException("sem rede")

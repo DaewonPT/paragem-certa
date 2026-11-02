@@ -13,6 +13,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import pt.pixellusitano.paragemcerta.core.fontes.cm.CarrisMetropolitana
+import pt.pixellusitano.paragemcerta.core.fontes.geoapi.GeoApi
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.Transitous
 import pt.pixellusitano.paragemcerta.core.modelo.Filtros
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
@@ -50,7 +51,7 @@ class RepositorioTest {
     private val manha = Instant.parse("2026-10-26T05:00:00Z")
     private val terminal = RefParagem(Fonte.CM, "060419")
 
-    private fun repo(http: Http) = Repositorio(bd, CarrisMetropolitana(http), Transitous(http), relogio = { manha })
+    private fun repo(http: Http) = Repositorio(bd, CarrisMetropolitana(http), Transitous(http), GeoApi(http), relogio = { manha })
 
     @After fun fechar() = bd.close()
 

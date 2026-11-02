@@ -11,6 +11,11 @@ import kotlinx.serialization.json.Json
 import pt.pixellusitano.paragemcerta.core.atraso.aindaPorChegar
 import pt.pixellusitano.paragemcerta.core.fontes.cm.CarrisMetropolitana
 import pt.pixellusitano.paragemcerta.core.fontes.cm.CmParser
+import pt.pixellusitano.paragemcerta.core.fontes.geoapi.CodigoPostal
+import pt.pixellusitano.paragemcerta.core.fontes.geoapi.GeoApi
+import pt.pixellusitano.paragemcerta.core.fontes.geoapi.ehCodigoPostal
+import pt.pixellusitano.paragemcerta.core.fontes.geoapi.normalizarCodigoPostal
+import pt.pixellusitano.paragemcerta.core.fontes.geoapi.paraLugar
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.Transitous
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.chavesDosNomes
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.comNomesAcentuados
@@ -80,6 +85,7 @@ class Repositorio(
     private val bd: BaseDados,
     private val cm: CarrisMetropolitana,
     private val transitous: Transitous,
+    private val geoApi: GeoApi,
     private val relogio: () -> Instant = Instant::now,
 ) {
     /** Consulta ao ritmo da fonte enquanto alguém recolhe o fluxo; sem rede ou com erro, emite o último resultado bom. */
@@ -245,14 +251,38 @@ class Repositorio(
     /** Primeiro os locais guardados cujo nome tem o texto (sem ligar a acentos), depois moradas e sítios do Transitous
      *  (as paragens sem o cais no nome, e sem repetidas).
      *  perto = a posição do utilizador: o Transitous põe os resultados mais próximos primeiro.
+     *  Um código postal completo ("1400-038", "1400 038") vai primeiro à GeoAPI.pt: devolve só esse sítio, ou lista vazia se não existe;
+     *  se a GeoAPI falhar, pesquisa-se como texto normal.
      *  null = o Transitous falhou e não há nenhum local guardado que sirva (sem ligação, não "sem resultados"). */
     suspend fun pesquisarLugares(texto: String, perto: Pair<Double, Double>? = null): List<Lugar>? {
+        if (ehCodigoPostal(texto)) lugaresDoCodigoPostal(texto)?.let { return it }
         val procura = normalizar(texto)
         val meus = bd.locais().lista().filter { normalizar(it.nome).contains(procura) }.map { it.lugar() }
         val outros = (transitous.pesquisarLugares(texto, perto) as? Resultado.Ok)?.valor
             ?.map { if (it.tipo == TipoLugar.PARAGEM) it.copy(nome = nomeBase(it.nome)) else it }
             ?.fold(emptyList<Lugar>()) { sem, l -> if (sem.any { it.repetidoDe(l) }) sem else sem + l }
         return if (outros == null && meus.isEmpty()) null else meus + outros.orEmpty()
+    }
+
+    private val codigosPostais = mutableMapOf<String, CodigoPostal>()
+
+    /** Só se guarda (nesta sessão) um código que existe: uma falha ou um 404 não ficam presos. */
+    private suspend fun codigoPostal(cp: String): Resultado<CodigoPostal?> {
+        codigosPostais[cp]?.let { return Resultado.Ok(it) }
+        return geoApi.codigoPostal(cp).also { r ->
+            val achado = (r as? Resultado.Ok)?.valor
+            if (achado != null) codigosPostais[cp] = achado
+        }
+    }
+
+    /** O código postal como sítio. Lista vazia = não existe (ou não se consegue localizar); null = a GeoAPI ou o Transitous falharam. */
+    private suspend fun lugaresDoCodigoPostal(texto: String): List<Lugar>? {
+        val achado = (codigoPostal(normalizarCodigoPostal(texto)) as? Resultado.Ok ?: return null).valor ?: return emptyList()
+        achado.paraLugar()?.let { return listOf(it) }
+        // Sem ponto na GeoAPI: o 1.º resultado do Transitous para "rua localidade" dá o ponto; o nome continua a ser o do código.
+        val procura = listOfNotNull(achado.rua, achado.localidade).joinToString(" ")
+        val ponto = (transitous.pesquisarLugares(procura) as? Resultado.Ok ?: return null).valor.firstOrNull() ?: return emptyList()
+        return listOfNotNull(achado.copy(lat = ponto.lat, lon = ponto.lon).paraLugar())
     }
 
     /** Mesmo tipo e nome e muito perto; ou, na mesma zona, até 2 km (a mesma rua aos bocados no OpenStreetMap). */

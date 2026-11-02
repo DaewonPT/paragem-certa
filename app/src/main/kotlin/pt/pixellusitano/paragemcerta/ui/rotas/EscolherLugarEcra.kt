@@ -37,6 +37,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
 import pt.pixellusitano.paragemcerta.R
+import pt.pixellusitano.paragemcerta.core.fontes.geoapi.ehCodigoPostal
+import pt.pixellusitano.paragemcerta.core.fontes.geoapi.ehLugarDeCodigoPostal
 import pt.pixellusitano.paragemcerta.core.modelo.Lugar
 import pt.pixellusitano.paragemcerta.core.modelo.TipoLugar
 import pt.pixellusitano.paragemcerta.dados.LocalGuardado
@@ -115,7 +117,8 @@ fun EscolherLugarEcra(
                 if (semRede) {
                     item { Text(stringResource(R.string.escolher_sem_rede), color = cores.onSurfaceVariant, modifier = Modifier.padding(16.dp)) }
                 } else if (r != null && r.isEmpty()) {
-                    item { Text(stringResource(R.string.escolher_sem_resultados), color = cores.onSurfaceVariant, modifier = Modifier.padding(16.dp)) }
+                    val mensagem = if (ehCodigoPostal(texto)) R.string.pesquisa_cp_nao_encontrado else R.string.escolher_sem_resultados
+                    item { Text(stringResource(mensagem), color = cores.onSurfaceVariant, modifier = Modifier.padding(16.dp)) }
                 }
                 items(r.orEmpty()) { l -> OpcaoGuardavel(l, aoEscolher = { aoEscolher(l) }, aoGuardar = { tipo -> aoGuardar(l, tipo) }) }
             }
@@ -158,6 +161,12 @@ private fun OpcaoGuardavel(l: Lugar, aoEscolher: () -> Unit, aoGuardar: (String)
                         Text(
                             it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall,
                             maxLines = 2, overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    if (ehLugarDeCodigoPostal(l)) {
+                        Text(
+                            stringResource(R.string.fonte_geoapi), color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            style = MaterialTheme.typography.bodySmall,
                         )
                     }
                 }

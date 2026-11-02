@@ -26,6 +26,10 @@ class RedeTest {
         assertTrue(resultado.exceptionOrNull() is kotlinx.coroutines.CancellationException)
     }
 
+    @Test fun agenteTemContactoESite() {
+        assertEquals("ParagemCerta/0.4.0 (contact@pixellusitano.com; https://pixellusitano.com)", userAgent("0.4.0"))
+    }
+
     @Test fun dadosEstranhosNaoRebentam() {
         val r = runBlocking { HttpFalso({ Resposta(200, "x") }).pedir("u") { java.time.Instant.parse(it) } }
         assertEquals(Resultado.Falha(200, limite = false), r)

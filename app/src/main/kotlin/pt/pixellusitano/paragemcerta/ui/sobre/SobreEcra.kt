@@ -29,6 +29,7 @@ private val FONTES = listOf(
     R.string.sobre_fonte_transitous to "https://transitous.org/sources",
     R.string.sobre_fonte_openfreemap to "https://openfreemap.org",
     R.string.sobre_fonte_osm to "https://www.openstreetmap.org/copyright",
+    R.string.fonte_geoapi to "https://geoapi.pt",
 )
 
 /** aoAbrir recebe um URL https:// ou mailto:; quem chama abre-o com Intent.ACTION_VIEW. */

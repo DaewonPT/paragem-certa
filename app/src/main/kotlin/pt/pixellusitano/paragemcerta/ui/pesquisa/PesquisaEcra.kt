@@ -34,6 +34,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.core.modelo.Linha
+import pt.pixellusitano.paragemcerta.core.fontes.geoapi.ehCodigoPostal
+import pt.pixellusitano.paragemcerta.core.fontes.geoapi.ehLugarDeCodigoPostal
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.operadorDe
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.Lugar
@@ -96,7 +98,8 @@ fun PesquisaConteudo(
         }
         // Sem rede, "experimenta o nome de uma rua" não ajuda: fica só o aviso de ligação, no fim da lista.
         if (texto.trim().length >= 2 && resultados.isEmpty() && !semRede) {
-            Text(stringResource(R.string.pesquisa_sem_resultados), color = MaterialTheme.colorScheme.onSurfaceVariant,
+            val mensagem = if (ehCodigoPostal(texto)) R.string.pesquisa_cp_nao_encontrado else R.string.pesquisa_sem_resultados
+            Text(stringResource(mensagem), color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(16.dp))
         }
         LazyColumn {
@@ -118,6 +121,12 @@ fun PesquisaConteudo(
                                 Text(
                                     it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall,
                                     maxLines = 2, overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                            if (ehLugarDeCodigoPostal(r.l)) {
+                                Text(
+                                    stringResource(R.string.fonte_geoapi), color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.bodySmall,
                                 )
                             }
                         }

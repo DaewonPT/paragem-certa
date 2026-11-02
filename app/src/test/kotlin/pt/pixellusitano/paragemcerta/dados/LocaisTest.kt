@@ -17,6 +17,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import pt.pixellusitano.paragemcerta.core.fontes.cm.CarrisMetropolitana
+import pt.pixellusitano.paragemcerta.core.fontes.geoapi.GeoApi
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.Transitous
 import pt.pixellusitano.paragemcerta.core.modelo.Lugar
 import pt.pixellusitano.paragemcerta.core.modelo.TipoLugar
@@ -31,7 +32,7 @@ class LocaisTest {
         .allowMainThreadQueries().setQueryExecutor { it.run() }.setTransactionExecutor { it.run() }.build()
     private var agora = Instant.parse("2026-11-01T08:00:00Z")
     private val http = HttpPorUrl("geocode" to listOf({ Resposta(200, "[]") }))
-    private val repo = Repositorio(bd, CarrisMetropolitana(http), Transitous(http), relogio = { agora })
+    private val repo = Repositorio(bd, CarrisMetropolitana(http), Transitous(http), GeoApi(http), relogio = { agora })
     private fun lugar(n: String, lat: Double = 38.7) = Lugar(n, lat, -9.14, TipoLugar.LOCAL)
 
     @After fun fechar() = bd.close()
@@ -64,7 +65,7 @@ class LocaisTest {
     }
 
     private val semRede = Repositorio(
-        bd, CarrisMetropolitana(http), Transitous(HttpPorUrl("geocode" to listOf({ Resposta(503, "") }))), relogio = { agora },
+        bd, CarrisMetropolitana(http), Transitous(HttpPorUrl("geocode" to listOf({ Resposta(503, "") }))), GeoApi(http), relogio = { agora },
     )
 
     @Test fun pesquisaSemRedeSemLocaisDevolveNull() = runTest {
@@ -83,7 +84,7 @@ class LocaisTest {
             {"type":"PLACE","name":"Estação Ferroviária de Algés","lat":38.6985,"lon":-9.2296}
         ]"""
         val comCais = Repositorio(
-            bd, CarrisMetropolitana(http), Transitous(HttpPorUrl("geocode" to listOf({ Resposta(200, resposta) }))), relogio = { agora },
+            bd, CarrisMetropolitana(http), Transitous(HttpPorUrl("geocode" to listOf({ Resposta(200, resposta) }))), GeoApi(http), relogio = { agora },
         )
         val lugares = comCais.pesquisarLugares("alges")!!
         assertEquals(listOf("Algés (Estação)"), lugares.filter { it.tipo == TipoLugar.PARAGEM }.map { it.nome })
@@ -95,7 +96,7 @@ class LocaisTest {
             """{"type":"ADDRESS","name":"Rua de Goa","lat":$lat,"lon":-8.9,"areas":[{"name":"$concelho","adminLevel":7.0}]}"""
         val resposta = "[${rua(40.9, "São João da Madeira")}, ${rua(40.9005, "São João da Madeira")}, ${rua(38.5, "Setúbal")}]"
         val repoGoa = Repositorio(
-            bd, CarrisMetropolitana(http), Transitous(HttpPorUrl("geocode" to listOf({ Resposta(200, resposta) }))), relogio = { agora },
+            bd, CarrisMetropolitana(http), Transitous(HttpPorUrl("geocode" to listOf({ Resposta(200, resposta) }))), GeoApi(http), relogio = { agora },
         )
         assertEquals(listOf("São João da Madeira", "Setúbal"), repoGoa.pesquisarLugares("rua de goa")!!.map { it.zona })
     }
@@ -103,7 +104,7 @@ class LocaisTest {
     private suspend fun pesquisarGoa(vararg ruas: String): List<Lugar> {
         val resposta = ruas.joinToString(prefix = "[", postfix = "]")
         val r = Repositorio(
-            bd, CarrisMetropolitana(http), Transitous(HttpPorUrl("geocode" to listOf({ Resposta(200, resposta) }))), relogio = { agora },
+            bd, CarrisMetropolitana(http), Transitous(HttpPorUrl("geocode" to listOf({ Resposta(200, resposta) }))), GeoApi(http), relogio = { agora },
         )
         return r.pesquisarLugares("rua de goa")!!
     }
@@ -126,6 +127,77 @@ class LocaisTest {
     @Test fun pedacosDaMesmaZonaMuitoLongeFicamSeparados() = runTest {
         // 0.03 graus = cerca de 3,3 km: já passa dos 2 km.
         assertEquals(2, pesquisarGoa(ruaGoa(38.70, "Barcarena"), ruaGoa(38.73, "Barcarena")).size)
+    }
+
+    /** Um repositório com a GeoAPI e o geocoder do Transitous falsos (as respostas pela ordem em que são pedidas). */
+    private fun comCodigosPostais(geoApi: () -> Resposta, geocode: () -> Resposta = { Resposta(200, "[]") }): Pair<Repositorio, HttpPorUrl> {
+        val h = HttpPorUrl("json.geoapi.pt" to listOf(geoApi), "geocode" to listOf(geocode))
+        return Repositorio(bd, CarrisMetropolitana(h), Transitous(h), GeoApi(h), relogio = { agora }) to h
+    }
+
+    private val daFixture = { Resposta(200, fixture("geoapi-cp-1400-038.json")) }
+
+    @Test fun codigoPostalUsaAGeoApi() = runTest {
+        val (r, h) = comCodigosPostais(daFixture)
+        val lugares = r.pesquisarLugares("1400-038")!!
+        assertEquals(listOf("1400-038 · Doca do Bom Sucesso"), lugares.map { it.nome })
+        assertEquals(TipoLugar.MORADA, lugares.single().tipo)
+        assertEquals(38.693, lugares.single().lat, 0.001)
+        assertEquals(listOf("https://json.geoapi.pt/cp/1400-038"), h.pedidos) // sem Transitous: a GeoAPI já deu o ponto
+    }
+
+    @Test fun codigoPostalComEspacoTambem() = runTest {
+        val (r, h) = comCodigosPostais(daFixture)
+        assertEquals("1400-038 · Doca do Bom Sucesso", r.pesquisarLugares(" 1400 038 ")!!.first().nome)
+        assertEquals("1400-038 · Doca do Bom Sucesso", r.pesquisarLugares("1400038")!!.first().nome)
+        assertEquals(1, h.pedidos.count { it.startsWith("https://json.geoapi.pt/cp/1400-038") }) // o segundo já estava guardado
+    }
+
+    @Test fun codigoPostalInexistenteDaListaVazia() = runTest {
+        val (r, h) = comCodigosPostais({ Resposta(404, """{"erro":"Postal Code not found!"}""") })
+        assertEquals(emptyList<Lugar>(), r.pesquisarLugares("9999-999"))
+        assertEquals(listOf("https://json.geoapi.pt/cp/9999-999"), h.pedidos) // 404 é "não existe": não se tenta a pesquisa normal
+    }
+
+    @Test fun codigoPostalInexistenteNaoFicaGuardado() = runTest {
+        // Uma falha ou um 404 não pode ficar preso: da próxima vez pergunta-se outra vez.
+        val (r, h) = comCodigosPostais({ Resposta(404, "") })
+        r.pesquisarLugares("9999-999")
+        r.pesquisarLugares("9999-999")
+        assertEquals(2, h.pedidos.count { it.startsWith("https://json.geoapi.pt") })
+    }
+
+    @Test fun geoApiEmBaixoUsaAPesquisaNormal() = runTest {
+        val rua = """[{"type":"ADDRESS","name":"Doca do Bom Sucesso","lat":38.6935,"lon":-9.2106}]"""
+        listOf(503, 429, 500).forEach { codigo ->
+            val (r, h) = comCodigosPostais({ Resposta(codigo, "") }, { Resposta(200, rua) })
+            assertEquals(codigo.toString(), listOf("Doca do Bom Sucesso"), r.pesquisarLugares("1400-038")!!.map { it.nome })
+            assertTrue(h.pedidos.any { it.contains("geocode?text=1400-038") })
+        }
+    }
+
+    @Test fun geoApiSemRedeENormalSemRedeDaNull() = runTest {
+        val (r, _) = comCodigosPostais({ throw java.io.IOException("sem rede") }, { throw java.io.IOException("sem rede") })
+        assertNull(r.pesquisarLugares("1400-038"))
+    }
+
+    @Test fun codigoPostalSemCoordenadasProcuraARuaNoTransitous() = runTest {
+        val semPontos = """{"CP":"1169-001","Concelho":"Lisboa","Localidade":"Lisboa","partes":[{"Artéria":"Rua dos Anjos"}],"pontos":[],"ruas":[]}"""
+        val achada = """[{"type":"ADDRESS","name":"Rua dos Anjos","lat":38.7228,"lon":-9.1337,"areas":[{"name":"Arroios","adminLevel":8.0},{"name":"Lisboa","adminLevel":7.0}]}]"""
+        val (r, h) = comCodigosPostais({ Resposta(200, semPontos) }, { Resposta(200, achada) })
+        val l = r.pesquisarLugares("1169-001")!!.single()
+        assertEquals("1169-001 · Rua dos Anjos", l.nome) // o nome é o do código; o ponto é o do Transitous
+        assertEquals(38.7228, l.lat, 1e-9)
+        assertEquals(-9.1337, l.lon, 1e-9)
+        assertEquals("Lisboa", l.zona)
+        assertTrue(h.pedidos.any { it.endsWith("geocode?text=Rua+dos+Anjos+Lisboa") })
+    }
+
+    @Test fun codigoPostalSemCoordenadasENadaNoTransitousDaListaVazia() = runTest {
+        val semPontos = """{"CP":"1169-001","Concelho":"Lisboa","Localidade":"Lisboa","partes":[{"Artéria":"Rua dos Anjos"}],"pontos":[],"ruas":[]}"""
+        val (r, h) = comCodigosPostais({ Resposta(200, semPontos) })
+        assertEquals(emptyList<Lugar>(), r.pesquisarLugares("1169-001"))
+        assertEquals(2, h.pedidos.size) // a GeoAPI e a rua no Transitous, nada mais
     }
 
     @Test fun apagarDadosDoTelemovel() = runTest {

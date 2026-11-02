@@ -56,8 +56,9 @@
 
     <!-- Pesquisa -->
     <string name="pesquisa_dica">Para onde vais?</string>
-    <string name="pesquisa_campo">Para onde vais?</string>
+    <string name="pesquisa_campo">Sítio, rua ou código postal</string>
     <string name="pesquisa_sem_resultados">Sem resultados. Experimenta o nome de uma rua, de um sítio ou de uma paragem, ou o número da linha.</string>
+    <string name="pesquisa_cp_nao_encontrado">Código postal não encontrado</string>
     <string name="pesquisa_sitios">Sítios e moradas</string>
     <string name="pesquisa_paragens">Paragens</string>
     <string name="pesquisa_chegadas">Chegadas</string>
@@ -67,6 +68,7 @@
         <item quantity="other">%1$d paragens</item>
     </plurals>
     <string name="pesquisa_sem_rede">Sem ligação: os sítios e moradas aparecem quando houver rede.</string>
+    <string name="fonte_geoapi">Código postal via GEO API PT (geoapi.pt) · dados CTT/INE</string>
 
     <!-- Navegação e Eu -->
     <string name="nav_inicio">Início</string>
@@ -149,7 +151,7 @@
     </plurals>
     <string name="rotas_sai_de">Sai de %1$s</string>
     <string name="rotas_aviso_linha">aviso numa linha</string>
-    <string name="escolher_procura">Morada, sítio ou paragem</string>
+    <string name="escolher_procura">Sítio, rua, código postal ou paragem</string>
     <string name="escolher_recentes">Recentes</string>
     <string name="escolher_sem_resultados">Sem resultados. Experimenta escrever a rua ou o nome do sítio.</string>
     <string name="escolher_sem_rede">Não foi possível procurar agora. Verifica a ligação e tenta outra vez.</string>
