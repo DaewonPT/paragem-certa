@@ -433,7 +433,8 @@ O estado de atraso da secção 5.4 é calculado a partir da `Departure` por uma 
 **Base local (Room):**
 
 - Guarda paragens, linhas, percursos, favoritos e as últimas chegadas vistas.
-- As paragens e as linhas (não os percursos) atualizam-se uma vez por dia, em segundo plano e só com rede.
+- As paragens e as linhas (não os percursos) atualizam-se quando a app é aberta, se as guardadas tiverem mais de 24 h, e só com rede.
+- Com a app fechada não corre nada, exceto a viagem e os avisos de chegada que a pessoa começa (com notificação). Decisão do autor de 02/11/2026 ("como a Moovit").
 
 **Sem rede:**
 
@@ -443,7 +444,7 @@ O estado de atraso da secção 5.4 é calculado a partir da `Departure` por uma 
 
 **Perturbações** (fase 4):
 
-- Uma tarefa periódica de 30 min, só com rede, lê os avisos das linhas favoritas.
+- Lê os avisos das linhas favoritas quando a app é aberta, só com rede (sem tarefa periódica: com a app fechada não corre nada, decisão de 02/11/2026; a fase 4 decide como mostrar os novos).
 - Notifica só os novos, guardando os ids já vistos.
 - Não usa servidor.
 
@@ -618,7 +619,7 @@ Esta é a parte mais importante.
 - `app`:
   - ecrãs em Compose Material 3, com o estilo próprio;
   - mapa MapLibre Android 13.x, com a versão que escolhe sozinha entre Vulkan e OpenGL;
-  - base de dados Room e tarefas em segundo plano (WorkManager);
+  - base de dados Room (sem tarefas em segundo plano desde a 0.3.2);
   - serviços da viagem e dos avisos de chegada;
   - widgets (Glance) e entrada com Google (Credential Manager).
 - **Ligações:** sem bibliotecas de injeção de dependências; as peças ligam-se à mão, com construtores simples.
