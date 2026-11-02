@@ -9,6 +9,7 @@ A versão mais recente aparece primeiro.
 - "Encontrar a paragem": uma seta aponta-te para ela.
 - Durante a viagem, o mapa segue-te e, na Carris Metropolitana, mostra o teu autocarro.
 - A app não se atualiza sozinha enquanto tens uma viagem ou um aviso ativos.
+- Com a app fechada não corre nada: só a viagem e os avisos que tu começares.
 
 ## 0.3.1 — Voltar ao início
 

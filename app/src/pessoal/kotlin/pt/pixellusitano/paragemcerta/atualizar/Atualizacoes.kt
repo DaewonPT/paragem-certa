@@ -12,14 +12,15 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageInstaller
 import android.content.pm.PackageManager
+import android.net.ConnectivityManager
 import android.os.Build
 import android.os.Process
-import androidx.work.Constraints
-import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.NetworkType
-import androidx.work.PeriodicWorkRequestBuilder
-import androidx.work.WorkManager
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -28,16 +29,17 @@ import okhttp3.OkHttpClient
 import okhttp3.Request
 import pt.pixellusitano.paragemcerta.BuildConfig
 import pt.pixellusitano.paragemcerta.R
+import pt.pixellusitano.paragemcerta.aviso.ServicoAvisoChegada
 import pt.pixellusitano.paragemcerta.core.isNewer
 import pt.pixellusitano.paragemcerta.core.rede.Http
 import pt.pixellusitano.paragemcerta.core.rede.OkHttpHttp
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import pt.pixellusitano.paragemcerta.core.rede.pedir
 import pt.pixellusitano.paragemcerta.core.rede.userAgent
+import pt.pixellusitano.paragemcerta.viagem.FicheirosViagem
 import java.io.File
 import java.time.Duration
 import java.time.Instant
-import java.util.concurrent.TimeUnit
 
 private const val ULTIMA_RELEASE = "https://api.github.com/repos/DaewonPT/paragem-certa/releases/latest"
 private val JSON = Json { ignoreUnknownKeys = true }
@@ -65,12 +67,14 @@ class VerificadorVersoes(private val http: Http) {
 }
 
 /**
- * Atualizador da variante pessoal. Em segundo plano (AtualizacaoAutomatica) verifica de 6 em 6 horas e instala sem perguntar;
- * quem desligar "Atualizar sozinha" fica com o aviso manual, no máximo uma vez por dia.
+ * Atualizador da variante pessoal. Com a app fechada não corre nada: ao abrir ([aoAbrir]) procura uma versão nova, no máximo de
+ * 6 em 6 horas, e descarrega-a; quando a pessoa sai da app ([aoSair]) instala-a sem perguntar.
+ * Quem desligar "Atualizar sozinha" fica com o aviso manual, no máximo uma vez por dia.
  */
 object Atualizacoes {
     private const val PREFS = "atualizacoes"
     private const val ULTIMA_VERIFICACAO = "ultima_verificacao"
+    private const val ULTIMA_PROCURA = "ultima_procura"
     private const val SOZINHA = "atualizar_sozinha"
     private const val DADOS_MOVEIS = "usar_dados_moveis"
     private const val NOVIDADES_TAG = "novidades_tag"
@@ -79,12 +83,21 @@ object Atualizacoes {
     private const val PENDENTE_URL = "pendente_url"
     private const val PENDENTE_NOTAS = "pendente_notas"
     private const val NOTIFICACOES_PEDIDAS = "notificacoes_pedidas"
-    private const val TRABALHO = "atualizacao-automatica"
+    private val PROCURA_A_CADA = Duration.ofHours(6)
 
     /** Canal das notificações de "atualização pronta". */
     const val CANAL = "atualizacoes"
 
     val disponivel: Boolean = true
+
+    /**
+     * A versão já descarregada (o APK está na cache) que espera que a pessoa saia da app. Vive no processo: se ele morrer antes,
+     * procura-se e descarrega-se outra vez na procura seguinte.
+     */
+    @Volatile internal var descarregada: NovaVersao? = null
+
+    /** Fora do ciclo da atividade: sair com "Voltar" destrói-a logo a seguir e a instalação não pode ficar a meio. */
+    private val escopo = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     private fun prefs(contexto: Context) = contexto.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
@@ -96,18 +109,64 @@ object Atualizacoes {
 
     fun definirUsarDadosMoveis(contexto: Context, valor: Boolean) = prefs(contexto).edit().putBoolean(DADOS_MOVEIS, valor).apply()
 
-    /** (Re)agenda a verificação em segundo plano com as definições atuais, ou cancela-a se "Atualizar sozinha" estiver desligado. */
-    fun agendar(contexto: Context) {
-        val trabalhos = WorkManager.getInstance(contexto)
-        if (!atualizarSozinha(contexto)) {
-            trabalhos.cancelUniqueWork(TRABALHO)
-            return
+    /**
+     * Ao abrir a app: com "Atualizar sozinha" ligado procura uma versão nova (só com Wi-Fi, a não ser que a pessoa tenha deixado
+     * os dados móveis) e descarrega-a. Se a pessoa sair a meio, quem chama cancela e o ficheiro incompleto nunca se instala.
+     */
+    suspend fun aoAbrir(contexto: Context, agora: Instant = Instant.now()) {
+        if (descarregada != null || !reservarProcura(contexto, agora)) return
+        try {
+            val nova = VerificadorVersoes(OkHttpHttp(userAgent(BuildConfig.VERSION_NAME))).verificar(BuildConfig.VERSION_CODE) ?: return
+            // A app está à frente, por isso o melhor que `decidir` diz é ESPERAR: descarrega já, instala à saída.
+            if (decidir(nova, atualizarSozinha(contexto), emPrimeiroPlano = true, pendente(contexto)?.tag) == Decisao.NADA) return
+            descarregar(contexto, nova)
+            descarregada = nova
+        } catch (e: CancellationException) {
+            // Saíste a meio: a abertura seguinte procura outra vez em vez de esperar 6 horas por uma transferência que não acabou.
+            liberarProcura(contexto)
+            throw e
         }
-        val rede = if (usarDadosMoveis(contexto)) NetworkType.CONNECTED else NetworkType.UNMETERED
-        val pedido = PeriodicWorkRequestBuilder<AtualizacaoAutomatica>(6, TimeUnit.HOURS)
-            .setConstraints(Constraints.Builder().setRequiredNetworkType(rede).setRequiresBatteryNotLow(true).build())
-            .build()
-        trabalhos.enqueueUniquePeriodicWork(TRABALHO, ExistingPeriodicWorkPolicy.UPDATE, pedido)
+    }
+
+    internal fun liberarProcura(contexto: Context) = prefs(contexto).edit().remove(ULTIMA_PROCURA).apply()
+
+    /** Diz se é altura de procurar e, se for, gasta já a tentativa: no máximo de 6 em 6 horas, mesmo que a procura falhe. */
+    internal fun reservarProcura(contexto: Context, agora: Instant): Boolean {
+        if (!atualizarSozinha(contexto)) return false
+        val prefs = prefs(contexto)
+        if (Duration.between(Instant.ofEpochSecond(prefs.getLong(ULTIMA_PROCURA, 0)), agora) < PROCURA_A_CADA) return false
+        // Sem rede não gasta a tentativa: a abertura seguinte procura.
+        val rede = contexto.getSystemService(ConnectivityManager::class.java)
+        if (rede.activeNetwork == null || (rede.isActiveNetworkMetered && !usarDadosMoveis(contexto))) return false
+        prefs.edit().putLong(ULTIMA_PROCURA, agora.epochSecond).apply()
+        return true
+    }
+
+    /**
+     * A pessoa saiu da app (a atividade parou sem ser por rodar o ecrã): é agora que se instala a versão que ficou descarregada,
+     * a não ser que haja uma viagem ou um aviso de chegada a correr (ver [decidir]).
+     */
+    fun aoSair(contexto: Context) {
+        if (descarregada == null) return
+        escopo.launch {
+            // Nada aqui pode deitar a app abaixo: ela já está fechada, e a procura seguinte repete.
+            runCatching { instalarAoSair(contexto, FicheirosViagem.porAcabar(contexto), ServicoAvisoChegada.aCorrer) }
+        }
+    }
+
+    @Synchronized
+    internal fun instalarAoSair(contexto: Context, emViagem: Boolean, comAviso: Boolean): Decisao {
+        val nova = descarregada ?: return Decisao.NADA
+        val decisao = decidir(nova, atualizarSozinha(contexto), emPrimeiroPlano = false, pendente(contexto)?.tag, emViagem, comAviso)
+        when (decisao) {
+            Decisao.NADA -> descarregada = null
+            Decisao.ESPERAR -> Unit // fica descarregada para a saída seguinte
+            Decisao.INSTALAR -> {
+                descarregada = null
+                abrirSessao(contexto, nova, ficheiroApk(contexto), semPerguntar = true)
+            }
+        }
+        return decisao
     }
 
     suspend fun verificar(contexto: Context): NovaVersao? {
@@ -118,18 +177,47 @@ object Atualizacoes {
         return VerificadorVersoes(OkHttpHttp(userAgent(BuildConfig.VERSION_NAME))).verificar(BuildConfig.VERSION_CODE)
     }
 
+    private fun ficheiroApk(contexto: Context) = File(contexto.cacheDir, "atualizacao.apk")
+
+    /** Descarrega o APK para a cache. Escreve num ficheiro à parte e só o renomeia no fim, por isso um descarregamento cortado nunca é instalado. */
+    private suspend fun descarregar(contexto: Context, nova: NovaVersao): File = withContext(Dispatchers.IO) {
+        val ficheiro = ficheiroApk(contexto)
+        val parte = File(contexto.cacheDir, "atualizacao.apk.parte")
+        try {
+            OkHttpClient().newCall(Request.Builder().url(nova.urlApk).header("User-Agent", userAgent(BuildConfig.VERSION_NAME)).build())
+                .execute().use { r ->
+                    check(r.isSuccessful) { "falha a descarregar a atualização (${r.code})" }
+                    val bloco = ByteArray(64 * 1024)
+                    r.body.byteStream().use { entrada ->
+                        parte.outputStream().use { saida ->
+                            while (true) {
+                                val lidos = entrada.read(bloco)
+                                if (lidos < 0) break
+                                ensureActive() // a pessoa saiu da app: pára de descarregar
+                                saida.write(bloco, 0, lidos)
+                            }
+                        }
+                    }
+                }
+            ficheiro.delete()
+            check(parte.renameTo(ficheiro)) { "falha a guardar a atualização" }
+        } finally {
+            parte.delete()
+        }
+        ficheiro
+    }
+
     /**
      * Descarrega o APK para a cache e entrega-o ao instalador; o Android recusa outra assinatura.
      * Com [semPerguntar] (Android 12+) pede para atualizar sem confirmação, o que só resulta se esta app foi quem instalou a atual;
      * senão o instalador devolve STATUS_PENDING_USER_ACTION e o [ResultadoInstalacao] trata disso.
      */
     suspend fun instalar(contexto: Context, nova: NovaVersao, semPerguntar: Boolean = false) = withContext(Dispatchers.IO) {
-        val ficheiro = File(contexto.cacheDir, "atualizacao.apk")
-        OkHttpClient().newCall(Request.Builder().url(nova.urlApk).header("User-Agent", userAgent(BuildConfig.VERSION_NAME)).build())
-            .execute().use { r ->
-                check(r.isSuccessful) { "falha a descarregar a atualização (${r.code})" }
-                ficheiro.outputStream().use { r.body.byteStream().copyTo(it) }
-            }
+        abrirSessao(contexto, nova, descarregar(contexto, nova), semPerguntar)
+    }
+
+    /** Entrega o APK já descarregado ao instalador e apaga-o: a sessão guarda a sua cópia, e assim uma saída seguinte não o instala outra vez. */
+    private fun abrirSessao(contexto: Context, nova: NovaVersao, ficheiro: File, semPerguntar: Boolean) {
         val instalador = contexto.packageManager.packageInstaller
         val parametros = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
         if (semPerguntar && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
@@ -148,6 +236,7 @@ object Atualizacoes {
             guardarNovidades(contexto, nova)
             s.commit(aviso.intentSender)
         }
+        ficheiro.delete()
     }
 
     /** Guarda as notas da versão que vai ser instalada, para as mostrar quando a app abrir já atualizada. */

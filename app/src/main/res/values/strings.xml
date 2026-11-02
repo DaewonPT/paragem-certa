@@ -100,6 +100,7 @@
     <string name="atualizacao_notificacoes">Para te avisar quando uma atualização precisar de um toque, a Paragem Certa pode mostrar notificações.</string>
     <string name="atualizacao_continuar">Continuar</string>
     <string name="eu_atualizacoes">Atualizações</string>
+    <string name="eu_atualizacoes_quando">Procura versões novas quando abres a app</string>
     <string name="eu_atualizar_sozinha">Atualizar sozinha</string>
     <string name="eu_atualizar_dados_moveis">Também com dados móveis</string>
 

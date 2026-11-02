@@ -14,7 +14,7 @@ class AtualizacaoAutomaticaTest {
 
     @Test fun comAppEmSegundoPlanoInstala() = assertEquals(Decisao.INSTALAR, decidir(nova, ligado = true, emPrimeiroPlano = false))
 
-    // Instalar mata o processo :trip e com ele o aviso da paragem: com uma viagem por acabar espera-se (o WorkManager repete).
+    // Instalar mata o processo :trip e com ele o aviso da paragem: com uma viagem por acabar espera-se (a versão fica descarregada para a saída seguinte).
     @Test fun comUmaViagemEmCursoEspera() =
         assertEquals(Decisao.ESPERAR, decidir(nova, ligado = true, emPrimeiroPlano = false, emViagem = true))
 

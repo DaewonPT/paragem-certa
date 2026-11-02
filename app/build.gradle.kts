@@ -111,6 +111,7 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.robolectric)
     testImplementation(libs.coroutines.test)
+    testImplementation(libs.work.testing)
     testImplementation(libs.turbine)
     testImplementation(libs.roborazzi)
     testImplementation(libs.roborazzi.compose)

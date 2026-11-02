@@ -107,7 +107,7 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
     fun separador(rota: Any) = nav.irParaSeparador(rota)
 
     // Uma atualização descarregada que o sistema ainda quer confirmar mostra-se sempre, tenha ou não "Atualizar sozinha" ligado.
-    // Sem ela: com "Atualizar sozinha" ligado a app trata disto em segundo plano; só quem o desligou recebe o aviso para confirmar.
+    // Sem ela: com "Atualizar sozinha" ligado a app descarrega ao abrir e instala quando saíres; só quem o desligou recebe o aviso para confirmar.
     val pendente = remember { Atualizacoes.pendente(contexto) }
     // Instalar mata o processo :trip e com ele o aviso da paragem: com uma viagem por acabar o aviso espera pela abertura seguinte
     // (e a verificação diária não se gasta). Começa escondido até se ler os ficheiros da viagem.

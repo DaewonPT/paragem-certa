@@ -59,6 +59,16 @@ class EuScreenshotTest {
     }
 
     @Test @Config(qualifiers = "w360dp-h780dp")
+    fun asAtualizacoesDizemQuandoProcuram() {
+        regra.setContent {
+            TemaParagemCerta(ModoTema.CLARO) {
+                SecaoAtualizacoes(sozinha = true, dadosMoveis = false, aoMudarSozinha = {}, aoMudarDadosMoveis = {})
+            }
+        }
+        regra.onNodeWithText("Procura versões novas quando abres a app").assertExists()
+    }
+
+    @Test @Config(qualifiers = "w360dp-h780dp")
     fun osInterruptoresDoAvisoMostramOEstadoEMudam() {
         val mudancas = mutableListOf<String>()
         regra.setContent {

@@ -4,7 +4,11 @@ import android.app.ActivityManager
 import android.app.NotificationManager
 import android.content.Intent
 import android.content.pm.PackageInstaller
+import android.net.ConnectivityManager
+import android.net.NetworkInfo
 import android.os.Process
+import kotlinx.coroutines.test.runTest
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -14,7 +18,11 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
+import org.robolectric.shadows.ShadowNetworkInfo
 import pt.pixellusitano.paragemcerta.BuildConfig
+import java.io.File
+import java.time.Duration
+import java.time.Instant
 
 @RunWith(RobolectricTestRunner::class)
 class AtualizacoesTest {
@@ -111,6 +119,126 @@ class AtualizacoesTest {
         assertNull(Atualizacoes.pendente(contexto))
         assertEquals(0, shadowOf(contexto.getSystemService(NotificationManager::class.java)).size())
         assertEquals(Intent.ACTION_VIEW, shadowOf(RuntimeEnvironment.getApplication()).nextStartedActivity?.action)
+    }
+
+    // Ao abrir a app: procura no máximo de 6 em 6 horas, só com Wi-Fi (salvo se a pessoa deixou os dados móveis).
+    private val agora = Instant.parse("2026-11-02T10:00:00Z")
+
+    private fun ligadoA(tipo: Int) = shadowOf(contexto.getSystemService(ConnectivityManager::class.java)).setActiveNetworkInfo(
+        ShadowNetworkInfo.newInstance(NetworkInfo.DetailedState.CONNECTED, tipo, 0, true, NetworkInfo.State.CONNECTED),
+    )
+
+    @Test fun procuraAoAbrirComWifi() {
+        ligadoA(ConnectivityManager.TYPE_WIFI)
+        assertTrue(Atualizacoes.reservarProcura(contexto, agora))
+    }
+
+    @Test fun nuncaProcuraDuasVezesEmSeisHoras() {
+        ligadoA(ConnectivityManager.TYPE_WIFI)
+        assertTrue(Atualizacoes.reservarProcura(contexto, agora))
+        assertFalse(Atualizacoes.reservarProcura(contexto, agora + Duration.ofMinutes(359)))
+        assertTrue(Atualizacoes.reservarProcura(contexto, agora + Duration.ofHours(6)))
+    }
+
+    // Saíres a meio da transferência cancela-a: a abertura seguinte procura outra vez, sem esperar 6 horas.
+    @Test fun aProcuraCortadaALiberaParaAAberturaSeguinte() {
+        ligadoA(ConnectivityManager.TYPE_WIFI)
+        assertTrue(Atualizacoes.reservarProcura(contexto, agora))
+        Atualizacoes.liberarProcura(contexto)
+        assertTrue(Atualizacoes.reservarProcura(contexto, agora + Duration.ofMinutes(1)))
+    }
+
+    // Com uma versão já descarregada à espera da saída (houve uma viagem) não se procura nem descarrega outra vez.
+    @Test fun comUmaVersaoJaDescarregadaAAberturaNaoProcura() = runTest {
+        ligadoA(ConnectivityManager.TYPE_WIFI)
+        Atualizacoes.descarregada = futura
+        Atualizacoes.aoAbrir(contexto, agora)
+        assertTrue("a tentativa não se gasta", Atualizacoes.reservarProcura(contexto, agora))
+    }
+
+    @Test fun comOpcaoDesligadaNaoProcura() {
+        ligadoA(ConnectivityManager.TYPE_WIFI)
+        Atualizacoes.definirAtualizarSozinha(contexto, false)
+        assertFalse(Atualizacoes.reservarProcura(contexto, agora))
+    }
+
+    @Test fun comDadosMoveisSoProcuraSeAPessoaDeixou() {
+        ligadoA(ConnectivityManager.TYPE_MOBILE)
+        assertFalse(Atualizacoes.reservarProcura(contexto, agora))
+        Atualizacoes.definirUsarDadosMoveis(contexto, true)
+        assertTrue(Atualizacoes.reservarProcura(contexto, agora))
+    }
+
+    // Sem rede não se gasta a tentativa: a abertura seguinte procura.
+    @Test fun semRedeNaoProcuraNemGastaATentativa() {
+        Atualizacoes.definirUsarDadosMoveis(contexto, true)
+        shadowOf(contexto.getSystemService(ConnectivityManager::class.java)).setActiveNetworkInfo(null)
+        assertFalse(Atualizacoes.reservarProcura(contexto, agora))
+        ligadoA(ConnectivityManager.TYPE_WIFI)
+        assertTrue(Atualizacoes.reservarProcura(contexto, agora))
+    }
+
+    // Ao sair da app: instala a versão que ficou descarregada, mas nunca durante uma viagem ou um aviso de chegada.
+    private val sessoes get() = contexto.packageManager.packageInstaller.allSessions
+
+    private fun comApkDescarregado() {
+        File(contexto.cacheDir, "atualizacao.apk").writeBytes(ByteArray(16))
+        Atualizacoes.descarregada = futura
+    }
+
+    @After fun esquecerADescarregada() {
+        Atualizacoes.descarregada = null
+    }
+
+    @Test fun aSaidaInstalaAVersaoDescarregada() {
+        comApkDescarregado()
+        assertEquals(Decisao.INSTALAR, Atualizacoes.instalarAoSair(contexto, emViagem = false, comAviso = false))
+        assertEquals(1, sessoes.size)
+        assertNull(Atualizacoes.descarregada)
+        assertFalse(File(contexto.cacheDir, "atualizacao.apk").exists()) // o instalador já tem a sua cópia
+    }
+
+    @Test fun comUmaViagemEmCursoAFicaDescarregadaParaAProximaSaida() {
+        comApkDescarregado()
+        assertEquals(Decisao.ESPERAR, Atualizacoes.instalarAoSair(contexto, emViagem = true, comAviso = false))
+        assertTrue(sessoes.isEmpty())
+        assertEquals(futura, Atualizacoes.descarregada)
+        assertEquals(Decisao.INSTALAR, Atualizacoes.instalarAoSair(contexto, emViagem = false, comAviso = false))
+        assertEquals(1, sessoes.size)
+    }
+
+    @Test fun comUmAvisoDeChegadaAtivoNaoInstala() {
+        comApkDescarregado()
+        assertEquals(Decisao.ESPERAR, Atualizacoes.instalarAoSair(contexto, emViagem = false, comAviso = true))
+        assertTrue(sessoes.isEmpty())
+        assertEquals(futura, Atualizacoes.descarregada)
+    }
+
+    @Test fun duasSaidasSeguidasInstalamUmaSoVez() {
+        comApkDescarregado()
+        Atualizacoes.instalarAoSair(contexto, emViagem = false, comAviso = false)
+        assertEquals(Decisao.NADA, Atualizacoes.instalarAoSair(contexto, emViagem = false, comAviso = false))
+        assertEquals(1, sessoes.size)
+    }
+
+    @Test fun semNadaDescarregadoASaidaNaoFazNada() {
+        assertEquals(Decisao.NADA, Atualizacoes.instalarAoSair(contexto, emViagem = false, comAviso = false))
+        assertTrue(sessoes.isEmpty())
+    }
+
+    @Test fun desligadaDepoisDeDescarregarNaoInstala() {
+        comApkDescarregado()
+        Atualizacoes.definirAtualizarSozinha(contexto, false)
+        assertEquals(Decisao.NADA, Atualizacoes.instalarAoSair(contexto, emViagem = false, comAviso = false))
+        assertTrue(sessoes.isEmpty())
+        assertNull(Atualizacoes.descarregada)
+    }
+
+    @Test fun versaoJaPendenteDeConfirmacaoNaoSeInstalaOutraVez() {
+        comApkDescarregado()
+        Atualizacoes.guardarPendente(contexto, futura)
+        assertEquals(Decisao.NADA, Atualizacoes.instalarAoSair(contexto, emViagem = false, comAviso = false))
+        assertTrue(sessoes.isEmpty())
     }
 
     private fun guardadoComoPendente() = contexto.getSharedPreferences("atualizacoes", 0).all.keys.any { it.startsWith("pendente") }

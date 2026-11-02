@@ -10,7 +10,9 @@ object Atualizacoes {
 
     suspend fun instalar(contexto: Context, nova: NovaVersao, semPerguntar: Boolean = false) = Unit
 
-    fun agendar(contexto: Context) = Unit
+    suspend fun aoAbrir(contexto: Context) = Unit
+
+    fun aoSair(contexto: Context) = Unit
 
     fun atualizarSozinha(contexto: Context): Boolean = false
 

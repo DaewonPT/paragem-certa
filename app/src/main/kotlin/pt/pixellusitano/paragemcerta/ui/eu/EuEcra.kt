@@ -109,12 +109,10 @@ fun EuEcra(
                     aoMudarSozinha = {
                         sozinha = it
                         Atualizacoes.definirAtualizarSozinha(contexto, it)
-                        Atualizacoes.agendar(contexto)
                     },
                     aoMudarDadosMoveis = {
                         dadosMoveis = it
                         Atualizacoes.definirUsarDadosMoveis(contexto, it)
-                        Atualizacoes.agendar(contexto)
                     },
                     modifier = modificador,
                 )
@@ -181,7 +179,7 @@ fun EuConteudo(
     }
 }
 
-/** Atualizar sozinha (instala as versões novas em segundo plano) e se pode gastar dados móveis; sem o primeiro, o segundo não conta. */
+/** Atualizar sozinha (procura ao abrir a app e instala quando saíres) e se pode gastar dados móveis; sem o primeiro, o segundo não conta. */
 @Composable
 fun SecaoAtualizacoes(
     sozinha: Boolean,
@@ -193,6 +191,7 @@ fun SecaoAtualizacoes(
     Column(modifier.background(MaterialTheme.colorScheme.background)) {
         Text(stringResource(R.string.eu_atualizacoes), style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
         FrisoAzulejo(Modifier.fillMaxWidth().padding(vertical = 8.dp))
+        Text(stringResource(R.string.eu_atualizacoes_quando), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Interruptor(stringResource(R.string.eu_atualizar_sozinha), sozinha, true, aoMudarSozinha)
         Interruptor(stringResource(R.string.eu_atualizar_dados_moveis), dadosMoveis, sozinha, aoMudarDadosMoveis)
     }
