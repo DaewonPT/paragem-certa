@@ -1,5 +1,6 @@
 package pt.pixellusitano.paragemcerta.ui.pesquisa
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -11,6 +12,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
@@ -19,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -32,6 +35,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.launch
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.core.modelo.Linha
 import pt.pixellusitano.paragemcerta.core.fontes.geoapi.ehCodigoPostal
@@ -63,10 +67,21 @@ fun PesquisaEcra(
     val texto by vm.texto.collectAsStateWithLifecycle()
     val resultados by vm.resultados.collectAsStateWithLifecycle()
     val semRede by vm.semRede.collectAsStateWithLifecycle()
-    PesquisaConteudo(texto, resultados, semRede, vm::escrever, aoAbrirLinha, aoIrPara, aoAbrirParagem, aoVoltar)
+    val escopo = rememberCoroutineScope()
+    val guardado = stringResource(R.string.local_guardado)
+    PesquisaConteudo(
+        texto, resultados, semRede, vm::escrever, aoAbrirLinha, aoIrPara, aoAbrirParagem, aoVoltar,
+        aoGuardar = { lugar ->
+            escopo.launch { repositorio.guardarLocal(lugar.nome, lugar, "OUTRO") }
+            Toast.makeText(contexto, guardado, Toast.LENGTH_SHORT).show()
+        },
+    )
 }
 
-/** "Para onde vais?": linhas, depois sítios e moradas, depois estações e paragens. Tocar num sítio ou estação escolhe o destino. */
+/**
+ * "Para onde vais?": linhas, depois sítios e moradas, depois estações e paragens. Tocar num sítio ou estação escolhe o destino;
+ * a ☆ de um sítio ou morada guarda-o nos favoritos ([aoGuardar]).
+ */
 @Composable
 fun PesquisaConteudo(
     texto: String,
@@ -78,6 +93,7 @@ fun PesquisaConteudo(
     aoAbrirParagem: (Paragem) -> Unit,
     aoVoltar: () -> Unit,
     modifier: Modifier = Modifier,
+    aoGuardar: (Lugar) -> Unit = {},
 ) {
     val foco = remember { FocusRequester() }
     LaunchedEffect(Unit) { foco.requestFocus() }
@@ -113,22 +129,31 @@ fun PesquisaConteudo(
             if (sitios.isNotEmpty()) {
                 item { Cabecalho(stringResource(R.string.pesquisa_sitios)) }
                 items(sitios) { r ->
-                    ItemLista(onClick = { aoIrPara(r.l) }) {
-                        Text("📍", color = MaterialTheme.colorScheme.primary)
-                        Column {
-                            Text(r.l.nome, color = MaterialTheme.colorScheme.onBackground)
-                            r.l.zona?.let {
-                                Text(
-                                    it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall,
-                                    maxLines = 2, overflow = TextOverflow.Ellipsis,
-                                )
+                    // A ☆ é irmã da linha, não filha, como o botão "Chegadas": cada uma tem o seu alvo.
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.weight(1f)) {
+                            ItemLista(onClick = { aoIrPara(r.l) }) {
+                                Text("📍", color = MaterialTheme.colorScheme.primary)
+                                Column {
+                                    Text(r.l.nome, color = MaterialTheme.colorScheme.onBackground)
+                                    r.l.zona?.let {
+                                        Text(
+                                            it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall,
+                                            maxLines = 2, overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
+                                    if (ehLugarDeCodigoPostal(r.l)) {
+                                        Text(
+                                            stringResource(R.string.fonte_geoapi), color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            style = MaterialTheme.typography.bodySmall,
+                                        )
+                                    }
+                                }
                             }
-                            if (ehLugarDeCodigoPostal(r.l)) {
-                                Text(
-                                    stringResource(R.string.fonte_geoapi), color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    style = MaterialTheme.typography.bodySmall,
-                                )
-                            }
+                        }
+                        val guardar = stringResource(R.string.pesquisa_guardar_favorito)
+                        IconButton(onClick = { aoGuardar(r.l) }, modifier = Modifier.semantics { contentDescription = guardar }) {
+                            Text("☆", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge)
                         }
                     }
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)

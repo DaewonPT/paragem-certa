@@ -26,7 +26,13 @@
 
     <!-- Painel do início -->
     <string name="painel_perto">Perto de ti</string>
-    <string name="painel_sem_favoritas">Toca na ★ de uma paragem para a veres aqui</string>
+    <string name="painel_favoritos">Favoritos</string>
+    <string name="painel_sem_favoritas">Toca na ★ de uma paragem ou de um sítio para o veres aqui</string>
+    <string name="painel_perto_local">Estás perto deste local</string>
+    <string name="painel_toca_para_ir">Toca para ver como ir</string>
+    <string name="painel_a_calcular">A calcular…</string>
+    <string name="painel_duracao_saida">%1$s · sai às %2$s</string>
+    <string name="painel_ver_mais_opcoes">Ver mais opções</string>
     <string name="painel_procura">Procura uma paragem</string>
     <string name="sem_chegadas">Não há chegadas nas próximas 2 horas</string>
     <string name="sem_ligacao">Sem ligação — atualizado há %1$d min</string>
@@ -63,6 +69,7 @@
     <string name="pesquisa_paragens">Paragens</string>
     <string name="pesquisa_chegadas">Chegadas</string>
     <string name="pesquisa_chegadas_em">Chegadas em %1$s</string>
+    <string name="pesquisa_guardar_favorito">Guardar nos favoritos</string>
     <plurals name="pesquisa_n_paragens">
         <item quantity="one">%1$d paragem</item>
         <item quantity="other">%1$d paragens</item>
@@ -209,10 +216,6 @@
     <string name="mais_opcoes">Mais opções</string>
     <string name="dialogo_nome">Nome</string>
     <string name="guardar">Guardar</string>
-    <string name="painel_ir_casa">Ir para casa</string>
-    <string name="painel_ir_trabalho">Ir para o trabalho</string>
-    <string name="painel_proxima">%1$s às %2$s · %3$s</string>
-    <string name="painel_ver_ligacoes">Toca para ver as ligações</string>
     <string name="painel_repetir">Repetir a última rota</string>
     <string name="painel_de_para">%1$s → %2$s</string>
     <string name="eu_privacidade">Privacidade</string>

@@ -5,10 +5,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -81,6 +84,34 @@ class PesquisaScreenshotTest {
         }
         // Só o resultado que é um código postal leva a atribuição à GeoAPI.pt.
         regra.onAllNodesWithText(contexto.getString(R.string.fonte_geoapi)).assertCountEquals(1)
+    }
+
+    @Test fun estrelaNaPesquisaGuardaOSitio() {
+        val guardados = mutableListOf<Lugar>()
+        val aoIrPara = mutableListOf<Lugar>()
+        regra.setContent {
+            TemaParagemCerta(ModoTema.CLARO) {
+                PesquisaConteudo(
+                    "1400-038", listOf(ResultadoPesquisa.DeLugar(codigoPostal), ResultadoPesquisa.DeLugar(estacao)), false,
+                    {}, {}, aoIrPara::add, {}, {}, aoGuardar = guardados::add,
+                )
+            }
+        }
+        // Uma ☆ por sítio ou morada; a da segunda linha guarda a segunda.
+        val estrelas = regra.onAllNodesWithContentDescription("Guardar nos favoritos")
+        estrelas.assertCountEquals(2)
+        estrelas[1].performClick()
+        assertEquals(listOf(estacao), guardados)
+        assertEquals(emptyList<Lugar>(), aoIrPara) // a ☆ não escolhe o destino
+    }
+
+    @Test fun estacoesEParagensNaoTemEstrela() {
+        regra.setContent {
+            TemaParagemCerta(ModoTema.CLARO) {
+                PesquisaConteudo("algés", listOf(ResultadoPesquisa.DeEstacao(varios), ResultadoPesquisa.DeEstacao(um)), false, {}, {}, {}, {}, {})
+            }
+        }
+        regra.onAllNodesWithContentDescription("Guardar nos favoritos").assertCountEquals(0)
     }
 
     @Test fun cpInexistenteDizNaoEncontrado() {
