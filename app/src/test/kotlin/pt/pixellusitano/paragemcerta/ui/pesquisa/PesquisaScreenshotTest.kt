@@ -3,10 +3,12 @@ package pt.pixellusitano.paragemcerta.ui.pesquisa
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
@@ -120,6 +122,22 @@ class PesquisaScreenshotTest {
         }
         regra.onNodeWithText(contexto.getString(R.string.pesquisa_cp_nao_encontrado)).assertIsDisplayed()
         regra.onNodeWithText(contexto.getString(R.string.pesquisa_sem_resultados)).assertDoesNotExist()
+    }
+
+    @Test fun aProcurarNaoDizNaoEncontrado() {
+        regra.setContent {
+            TemaParagemCerta(ModoTema.CLARO) { PesquisaConteudo("1400-038", emptyList(), false, {}, {}, {}, {}, {}, aProcurar = true) }
+        }
+        regra.onNodeWithText(contexto.getString(R.string.pesquisa_cp_nao_encontrado)).assertDoesNotExist()
+        regra.onNodeWithText(contexto.getString(R.string.pesquisa_sem_resultados)).assertDoesNotExist()
+    }
+
+    @Test fun estrelaLeSeUmaVezSo() {
+        regra.setContent {
+            TemaParagemCerta(ModoTema.CLARO) { PesquisaConteudo("1400-038", listOf(ResultadoPesquisa.DeLugar(codigoPostal)), false, {}, {}, {}, {}, {}) }
+        }
+        regra.onNodeWithContentDescription("Guardar nos favoritos").assertHasClickAction()
+        regra.onAllNodesWithText("☆").assertCountEquals(0) // o glifo não se lê além da descrição do botão
     }
 
     @Test fun textoQueNaoECodigoPostalContinuaSemResultados() {

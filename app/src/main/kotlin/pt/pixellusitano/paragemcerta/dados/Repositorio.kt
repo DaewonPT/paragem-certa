@@ -354,6 +354,7 @@ class Repositorio(
         paragensDasLinhas.clear()
         alertasEmCache = null
         chegadasParaPartidas.clear()
+        codigosPostais.clear()
     }
 
     private companion object {

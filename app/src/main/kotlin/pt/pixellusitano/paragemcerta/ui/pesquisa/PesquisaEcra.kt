@@ -29,6 +29,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -67,6 +68,7 @@ fun PesquisaEcra(
     val texto by vm.texto.collectAsStateWithLifecycle()
     val resultados by vm.resultados.collectAsStateWithLifecycle()
     val semRede by vm.semRede.collectAsStateWithLifecycle()
+    val aProcurar by vm.aProcurar.collectAsStateWithLifecycle()
     val escopo = rememberCoroutineScope()
     val guardado = stringResource(R.string.local_guardado)
     PesquisaConteudo(
@@ -75,12 +77,13 @@ fun PesquisaEcra(
             escopo.launch { repositorio.guardarLocal(lugar.nome, lugar, "OUTRO") }
             Toast.makeText(contexto, guardado, Toast.LENGTH_SHORT).show()
         },
+        aProcurar = aProcurar,
     )
 }
 
 /**
  * "Para onde vais?": linhas, depois sítios e moradas, depois estações e paragens. Tocar num sítio ou estação escolhe o destino;
- * a ☆ de um sítio ou morada guarda-o nos favoritos ([aoGuardar]).
+ * a ☆ de um sítio ou morada guarda-o nos favoritos ([aoGuardar]). Enquanto [aProcurar], ainda não há resultados finais: nenhuma mensagem de vazio.
  */
 @Composable
 fun PesquisaConteudo(
@@ -94,6 +97,7 @@ fun PesquisaConteudo(
     aoVoltar: () -> Unit,
     modifier: Modifier = Modifier,
     aoGuardar: (Lugar) -> Unit = {},
+    aProcurar: Boolean = false,
 ) {
     val foco = remember { FocusRequester() }
     LaunchedEffect(Unit) { foco.requestFocus() }
@@ -113,7 +117,7 @@ fun PesquisaConteudo(
             )
         }
         // Sem rede, "experimenta o nome de uma rua" não ajuda: fica só o aviso de ligação, no fim da lista.
-        if (texto.trim().length >= 2 && resultados.isEmpty() && !semRede) {
+        if (texto.trim().length >= 2 && resultados.isEmpty() && !semRede && !aProcurar) {
             val mensagem = if (ehCodigoPostal(texto)) R.string.pesquisa_cp_nao_encontrado else R.string.pesquisa_sem_resultados
             Text(stringResource(mensagem), color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(16.dp))
@@ -153,7 +157,8 @@ fun PesquisaConteudo(
                         }
                         val guardar = stringResource(R.string.pesquisa_guardar_favorito)
                         IconButton(onClick = { aoGuardar(r.l) }, modifier = Modifier.semantics { contentDescription = guardar }) {
-                            Text("☆", color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge)
+                            // O botão já se descreve; sem isto o TalkBack lê também "☆".
+                            Text("☆", Modifier.clearAndSetSemantics {}, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge)
                         }
                     }
                     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)

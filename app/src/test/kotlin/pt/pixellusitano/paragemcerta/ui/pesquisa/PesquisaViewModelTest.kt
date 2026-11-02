@@ -1,11 +1,13 @@
 package pt.pixellusitano.paragemcerta.ui.pesquisa
 
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
@@ -100,6 +102,46 @@ class PesquisaViewModelTest {
         advanceUntilIdle()
         assertTrue(pedidos.isEmpty())
         assertTrue(vm.resultados.value.isEmpty())
+    }
+
+    @Test fun aProcurarEnquantoEspera() = runTest(despachante) {
+        val vm = vm()
+        assertFalse(vm.aProcurar.value)
+        vm.escrever("1400-038")
+        assertTrue(vm.aProcurar.value) // a espera dos 300 ms e os pedidos ainda não começaram
+        assertTrue(vm.resultados.value.isEmpty())
+        advanceUntilIdle()
+        assertFalse(vm.aProcurar.value)
+        assertEquals(1, vm.resultados.value.size)
+    }
+
+    @Test fun aProcurarNaoSeAcendeAbaixoDoMinimo() = runTest(despachante) {
+        val vm = vm()
+        vm.escrever("s")
+        assertFalse(vm.aProcurar.value)
+        vm.escrever("sod")
+        assertTrue(vm.aProcurar.value)
+        vm.escrever("s") // apagou até ao mínimo antes de a pesquisa começar
+        assertFalse(vm.aProcurar.value)
+        advanceUntilIdle()
+        assertFalse(vm.aProcurar.value)
+    }
+
+    @Test fun aProcurarSoApagaQuandoChegamOsResultadosDoUltimoTexto() = runTest(despachante) {
+        val porta = CompletableDeferred<Unit>()
+        val vm = PesquisaViewModel(
+            pesquisarParagens = { pedidos += it; if (it == "sod") porta.await(); listOf(cais) },
+            linhasComecadasPor = { emptyList() },
+        )
+        vm.escrever("sod")
+        advanceTimeBy(350) // a pesquisa de "sod" arrancou e está à espera da resposta
+        vm.escrever("sodr") // escreveu mais antes de ela chegar
+        porta.complete(Unit)
+        runCurrent()
+        assertTrue(vm.aProcurar.value) // os resultados de "sod" chegaram, mas já não são os do texto atual
+        advanceUntilIdle()
+        assertFalse(vm.aProcurar.value)
+        assertEquals(listOf("sod", "sodr"), pedidos)
     }
 
     @Test fun escreverDepressaFazUmSoPedido() = runTest(despachante) {

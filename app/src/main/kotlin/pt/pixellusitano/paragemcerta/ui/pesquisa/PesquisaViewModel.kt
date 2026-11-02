@@ -41,11 +41,15 @@ class PesquisaViewModel(
     private val _semRede = MutableStateFlow(false)
     val semRede: StateFlow<Boolean> = _semRede.asStateFlow()
 
+    /** Há um texto a pesquisar (a espera de 300 ms e os pedidos): o ecrã não diz "sem resultados" enquanto isto durar. */
+    private val _aProcurar = MutableStateFlow(false)
+    val aProcurar: StateFlow<Boolean> = _aProcurar.asStateFlow()
+
     init {
         _texto.debounce(ESPERA_MS)
             .mapLatest { t ->
                 val limpo = t.trim()
-                if (limpo.length < MINIMO) emptyList<ResultadoPesquisa>() to false
+                val (lista, semRede) = if (limpo.length < MINIMO) emptyList<ResultadoPesquisa>() to false
                 else coroutineScope {
                     val lugares = async { pesquisarLugares(limpo) }
                     val paragens = async { pesquisarParagens(limpo) }
@@ -55,12 +59,20 @@ class PesquisaViewModel(
                         agruparPorEstacao(paragens.await(), { it.nome }, { it.lat }, { it.lon }).map { ResultadoPesquisa.DeEstacao(it) }
                     lista to (lugares.await() == null)
                 }
+                Triple(t, lista, semRede)
             }
-            .onEach { (lista, semRede) -> _resultados.value = lista; _semRede.value = semRede }
+            .onEach { (t, lista, semRede) ->
+                _resultados.value = lista
+                _semRede.value = semRede
+                // Se já escreveste mais, estes resultados são de um texto antigo e a pesquisa nova ainda vem a caminho.
+                if (t == _texto.value) _aProcurar.value = false
+            }
             .launchIn(viewModelScope)
     }
 
     fun escrever(t: String) {
+        if (t == _texto.value) return
+        _aProcurar.value = t.trim().length >= MINIMO
         _texto.value = t
     }
 

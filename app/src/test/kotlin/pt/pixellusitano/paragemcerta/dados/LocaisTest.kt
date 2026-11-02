@@ -209,6 +209,14 @@ class LocaisTest {
         assertTrue(repo.recentes().first().isEmpty())
         assertTrue(repo.favoritas().first().isEmpty())
     }
+
+    @Test fun apagarDadosEsqueceOsCodigosPostais() = runTest {
+        val (r, h) = comCodigosPostais(daFixture)
+        r.pesquisarLugares("1400-038")
+        r.apagarDadosDoTelemovel()
+        r.pesquisarLugares("1400-038")
+        assertEquals(2, h.pedidos.count { it.startsWith("https://json.geoapi.pt/cp/1400-038") }) // não ficou nada em memória
+    }
 }
 
 /** Abre uma base de dados criada com o esquema v1 exportado e confirma que a v2 a migra sem perder favoritas. */

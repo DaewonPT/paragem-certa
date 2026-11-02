@@ -77,6 +77,13 @@ class CartaoRotaTest {
         saiDe().assertDoesNotExist()
     }
 
+    @Test fun soHorasDizAs() {
+        // Só horário (Metro, CP): "dentro de 11:37" não é português; com horas lê-se "às 11:37".
+        cartao(listOf(horario, partida("2026-11-01T11:52:00Z", null)))
+        regra.onNodeWithText("Parte de Cais Sodré às 11:37, 11:52", useUnmergedTree = true).assertIsDisplayed()
+        regra.onNodeWithText("dentro de", substring = true, useUnmergedTree = true).assertDoesNotExist()
+    }
+
     @Test fun cartaoSemPartidasMostraSaiDe() {
         cartao(null)
         saiDe().assertIsDisplayed()

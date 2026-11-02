@@ -177,7 +177,11 @@ fun CartaoRota(
                 color = cores.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium,
             )
             if (primeira != null && proximas.isNotEmpty()) {
-                val parteDe = stringResource(R.string.rotas_parte_de, primeira.de.nome) + " "
+                // "dentro de 3, 18" lê-se bem; "dentro de 11:37" não: se a 1.ª partida é uma hora, "às 11:37".
+                val parteDe = stringResource(
+                    if (minutosPara(proximas.first(), agora) != null) R.string.rotas_parte_de else R.string.rotas_parte_de_as,
+                    primeira.de.nome,
+                ) + " "
                 val aHoras = CoresAtraso.cor(EstadoAtraso.A_HORAS, LocalEscuro.current)
                 val tempos = buildAnnotatedString {
                     append(parteDe)

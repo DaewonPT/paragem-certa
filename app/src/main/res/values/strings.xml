@@ -163,8 +163,8 @@
     <string name="etiqueta_mais_rapida">mais rápida</string>
     <string name="etiqueta_menos_a_pe">menos a pé</string>
     <string name="etiqueta_direta">direta</string>
-    <string name="etiqueta_chegada_mais_cedo">Chegada mais cedo</string>
-    <string name="etiqueta_caminhada_longa">Caminhada longa</string>
+    <string name="etiqueta_chegada_mais_cedo">chegada mais cedo</string>
+    <string name="etiqueta_caminhada_longa">caminhada longa</string>
     <string name="etiqueta_transbordo_apertado">transbordo apertado</string>
     <string name="rotas_dica">Escolhe para onde vais e mostramos-te as ligações.</string>
     <string name="rotas_a_procurar">A procurar ligações…</string>
@@ -182,6 +182,7 @@
     </plurals>
     <string name="rotas_sai_de">Sai de %1$s</string>
     <string name="rotas_parte_de">Parte de %1$s dentro de</string>
+    <string name="rotas_parte_de_as">Parte de %1$s às</string>
     <string name="rotas_mais_cedo">Mais cedo</string>
     <string name="rotas_mais_tarde">Mais tarde</string>
     <string name="rotas_erro_pagina">Não foi possível carregar mais rotas</string>
@@ -229,7 +230,7 @@
     <string name="ajuda_aviso_p">Como funciona o aviso de saída?</string>
     <string name="ajuda_aviso_r">Quando começas uma viagem, a app acompanha a tua posição. Avisa-te com “Prepara-te” quando estás a poucas paragens da tua e com “Sai agora” quando estás a chegar a ela. Sem localização, os avisos seguem só o horário.</string>
     <string name="ajuda_bateria_p">Porque devo tirar a app da poupança de bateria?</string>
-    <string name="ajuda_bateria_r">Alguns telemóveis fecham as apps quando o ecrã está desligado e a viagem pára sem avisar. Se a Paragem Certa não estiver na poupança de bateria, os avisos não falham.</string>
+    <string name="ajuda_bateria_r">Alguns telemóveis fecham as apps quando o ecrã está desligado e a viagem para sem avisar. Tira a Paragem Certa da poupança de bateria para os avisos chegarem a tempo.</string>
     <string name="ajuda_tempo_real_p">O que quer dizer “horário” e “tempo real”?</string>
     <string name="ajuda_tempo_real_r">“Tempo real” é a hora que o operador está a medir no veículo, por isso é a mais certa. “Horário” é a hora planeada, sem medição: o veículo pode chegar mais cedo ou mais tarde.</string>
     <string name="ajuda_favoritos_p">Como guardo um sítio nos favoritos?</string>
