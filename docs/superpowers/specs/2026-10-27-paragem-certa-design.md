@@ -6,6 +6,8 @@
 
 Os termos técnicos estão explicados no glossário (secção 13).
 
+> **Atualização de 02/11/2026:** o desenho da 0.4 (`2026-11-02-versao-0-4-design.md`) substitui aqui as secções 3 (Fase 4), 4 (linha "Comunidade Mooviter"), 5.1 e 5.2 ("Eu" passa a Menu), 6.1 (GIRA, Mapillary, ligações diretas), 6.3 (perturbações e widgets), 8 ("Âmbito" e "Privacidade") e 10 (Glance). Também desde 02/11/2026: com a app fechada não corre nada (secção 6.3).
+
 ## 1. Objetivo
 
 A Paragem Certa é uma app Android de transportes públicos para Portugal. Recria de raiz as funções da Moovit (pacote `com.tranzmate`), incluindo as da subscrição Moovit+, com estas regras:
@@ -129,6 +131,8 @@ Cada fase termina num APK que se usa no dia a dia, com nota de versão em portug
 
 ### Fase 4 — versão 0.4 "Conta e extras"
 
+> **Substituída** pelo desenho da 0.4 de 02/11/2026: `2026-11-02-versao-0-4-design.md` (comunidade, menu, favoritos, código postal e o resto desta fase).
+
 **Conteúdo:**
 
 - Entrar com Google ou com email, sincronizar favoritos e apagar conta (secção 8).
@@ -195,7 +199,7 @@ A Paragem Certa oferece de graça estas funções da subscrição Moovit+:
 | Função da Moovit | Motivo |
 |---|---|
 | Assistente de IA (MoovitAI) | O autor não quer: teria custo mensal |
-| Comunidade Mooviter (relatos, lotação, editores) | Não existe comunidade. Só se usam fontes oficiais. "Reportar erro" envia um email ao autor |
+| Comunidade Mooviter (relatos, lotação, editores) | **Revisto a 02/11/2026:** a 0.4 tem relatos da comunidade com confirmações e fotos e correções revistas pelo autor (ver `2026-11-02-versao-0-4-design.md`). Continua sem editores da comunidade nem lotação medida |
 | Comprar bilhetes, validar passes, carteira | Exigem acordos com os operadores e o cumprimento das regras sobre pagamentos |
 | Pedir TVDE ou táxi dentro da app | Exige parcerias. Fica só o atalho "Abrir app de TVDE" |
 | Parcerias de micromobilidade (mais de 300 empresas) | Só dados abertos (GBFS) e atalho para a app do operador |
