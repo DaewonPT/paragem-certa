@@ -33,6 +33,7 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -93,6 +94,7 @@ fun InicioEcra(
     painel: @Composable (posicao: Pair<Double, Double>?) -> Unit = {},
     aoIrPara: (Rotas) -> Unit = {},
     aoAbrirViagem: () -> Unit = {},
+    abrirFavoritos: Boolean = false,
 ) {
     val contexto = LocalContext.current
     val vm = viewModel { InicioViewModel(repositorio::paragensNaZona, repositorio::veiculos, repositorio::lugarEm) }
@@ -152,6 +154,14 @@ fun InicioEcra(
     }
 
     val folha = rememberBottomSheetScaffoldState()
+    // "Favoritos" como ecrã inicial: o painel abre uma só vez (rememberSaveable: voltar de outro ecrã não o reabre por cima do que a pessoa fez).
+    var favoritosAbertos by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(abrirFavoritos) {
+        if (abrirFavoritos && !favoritosAbertos) {
+            favoritosAbertos = true
+            folha.bottomSheetState.expand()
+        }
+    }
     Box(Modifier.fillMaxSize()) {
     BottomSheetScaffold(
         scaffoldState = folha,

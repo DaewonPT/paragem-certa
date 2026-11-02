@@ -14,6 +14,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import pt.pixellusitano.paragemcerta.dados.EcraInicial
 
 /** A barra de baixo com os destinos reais da app (os ecrãs trocados por texto: só interessa a pilha de navegação). */
 @RunWith(RobolectricTestRunner::class)
@@ -62,6 +63,13 @@ class NavegacaoTest {
             assertTrue(nasRotas())
             assertEquals("o separador Rotas volta como estava", entrada, nav.currentBackStackEntry!!.id)
         }
+    }
+
+    @Test fun destinoInicialDeCadaEscolha() {
+        assertEquals(Inicio(), destinoInicial(EcraInicial.MAPA))
+        assertEquals(Rotas(), destinoInicial(EcraInicial.ROTAS))
+        // Os favoritos são o Início com o painel aberto: o destino é o mesmo, o painel abre-se no InicioEcra.
+        assertEquals(Inicio(), destinoInicial(EcraInicial.FAVORITOS))
     }
 
     @Test fun inicioVoltaDepoisDoSeparadorMenu() {

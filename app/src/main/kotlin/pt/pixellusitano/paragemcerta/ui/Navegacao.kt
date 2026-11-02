@@ -17,6 +17,7 @@ import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import pt.pixellusitano.paragemcerta.atualizar.Atualizacoes
@@ -30,6 +31,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -45,8 +47,10 @@ import kotlinx.serialization.Serializable
 import pt.pixellusitano.paragemcerta.BuildConfig
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
+import pt.pixellusitano.paragemcerta.dados.EcraInicial
 import pt.pixellusitano.paragemcerta.dados.Ligacoes
 import pt.pixellusitano.paragemcerta.ui.bussola.BussolaEcra
+import pt.pixellusitano.paragemcerta.ui.comum.gelatina
 import pt.pixellusitano.paragemcerta.ui.inicio.InicioEcra
 import pt.pixellusitano.paragemcerta.ui.inicio.Painel
 import pt.pixellusitano.paragemcerta.ui.menu.AjudaEcra
@@ -80,6 +84,9 @@ import pt.pixellusitano.paragemcerta.viagem.FicheirosViagem
 
 /** origem e destino codificados como "nome|lat|lon" (ver paraRota); origem null = "A minha posição". */
 @Serializable data class Rotas(val origem: String? = null, val destino: String? = null)
+
+/** Onde a app abre para cada escolha das Definições; FAVORITOS é o Início, com o painel aberto pelo InicioEcra. */
+fun destinoInicial(e: EcraInicial): Any = if (e == EcraInicial.ROTAS) Rotas() else Inicio()
 
 /** Troca de separador na barra de baixo: guarda o que estava aberto no separador que se deixa e repõe o do separador escolhido. */
 fun NavController.irParaSeparador(rota: Any) = navigate(rota) {
@@ -116,6 +123,18 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
         runCatching { contexto.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
     }
 
+    // O ecrã inicial lê-se uma vez por arranque (rememberSaveable: rodar o ecrã não o repete) e nunca quando a app abre pela
+    // notificação da viagem. O Início é sempre o destino de partida: ROTAS segue para o separador Rotas, FAVORITOS abre o painel.
+    var ecraInicialAplicado by rememberSaveable { mutableStateOf(false) }
+    var abrirFavoritos by rememberSaveable { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        if (ecraInicialAplicado) return@LaunchedEffect
+        val ecra = if (abrirViagem) EcraInicial.MAPA else ligacoes.preferencias.ecraInicial.first()
+        ecraInicialAplicado = true
+        destinoInicial(ecra).let { if (it !is Inicio) separador(it) }
+        abrirFavoritos = ecra == EcraInicial.FAVORITOS
+    }
+
     // Uma atualização descarregada que o sistema ainda quer confirmar mostra-se sempre, tenha ou não "Atualizar sozinha" ligado.
     // Sem ela: com "Atualizar sozinha" ligado a app descarrega ao abrir e instala quando saíres; só quem o desligou recebe o aviso para confirmar.
     val pendente = remember { Atualizacoes.pendente(contexto) }
@@ -135,11 +154,11 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
             if (naInicio || nasRotas || noMenu) {
                 NavigationBar {
                     NavigationBarItem(selected = naInicio, onClick = { separador(Inicio()) },
-                        icon = { Text("🗺") }, label = { Text(stringResource(R.string.nav_inicio)) })
+                        icon = { Text("🗺", Modifier.gelatina(naInicio)) }, label = { Text(stringResource(R.string.nav_inicio)) })
                     NavigationBarItem(selected = nasRotas, onClick = { separador(Rotas()) },
-                        icon = { Text("🧭") }, label = { Text(stringResource(R.string.nav_rotas)) })
+                        icon = { Text("🧭", Modifier.gelatina(nasRotas)) }, label = { Text(stringResource(R.string.nav_rotas)) })
                     NavigationBarItem(selected = noMenu, onClick = { separador(Menu) },
-                        icon = { Text("☰") }, label = { Text(stringResource(R.string.nav_menu)) })
+                        icon = { Text("☰", Modifier.gelatina(noMenu)) }, label = { Text(stringResource(R.string.nav_menu)) })
                 }
             }
         },
@@ -156,6 +175,8 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
                         aoLimparLinha = { nav.popBackStack() },
                         aoIrPara = { nav.navigate(it) },
                         aoAbrirViagem = { nav.navigate(Viagem) },
+                        // Só o Início "limpo": a linha escolhida na pesquisa precisa do mapa à vista.
+                        abrirFavoritos = abrirFavoritos && linha == null,
                         painel = { posicao ->
                             Painel(
                                 repositorio, posicao,
