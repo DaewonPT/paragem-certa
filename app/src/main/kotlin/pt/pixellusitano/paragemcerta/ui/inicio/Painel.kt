@@ -188,7 +188,7 @@ fun Painel(
             val agora = Instant.now()
             val i = cache[l.id]?.takeIf { guardadoValido(it.first, it.second, agora, lat to lon) }?.third
                 ?: (repositorio.planear(Lugar(MINHA_POSICAO, lat, lon, TipoLugar.POSICAO), l.lugar, agora, false, Filtros()) as? Resultado.Ok)
-                    ?.valor?.minByOrNull { it.chegada }.also { cache[l.id] = Triple(agora, lat to lon, it) }
+                    ?.valor?.itinerarios?.minByOrNull { it.chegada }.also { cache[l.id] = Triple(agora, lat to lon, it) }
             value = value + (l.id to i)
         }
     }

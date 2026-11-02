@@ -80,7 +80,7 @@ fun RotasEcra(
     val vm = viewModel {
         RotasViewModel(
             repositorio::planear, repositorio::registarRecente, repositorio::linhasComAlerta,
-            preferencias.filtros, preferencias::definirFiltros, origem = origem, destino = destino,
+            preferencias.filtros, preferencias::definirFiltros, { repositorio.proximasPartidas(it) }, origem = origem, destino = destino,
         )
     }
     val pedido by vm.pedido.collectAsStateWithLifecycle()

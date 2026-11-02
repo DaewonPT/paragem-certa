@@ -7,6 +7,7 @@ import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -15,9 +16,13 @@ import org.robolectric.RuntimeEnvironment
 import pt.pixellusitano.paragemcerta.core.fontes.cm.CarrisMetropolitana
 import pt.pixellusitano.paragemcerta.core.fontes.geoapi.GeoApi
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.Transitous
+import pt.pixellusitano.paragemcerta.core.modelo.Chegada
+import pt.pixellusitano.paragemcerta.core.modelo.Etapa
 import pt.pixellusitano.paragemcerta.core.modelo.Filtros
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.Lugar
+import pt.pixellusitano.paragemcerta.core.modelo.Modo
+import pt.pixellusitano.paragemcerta.core.modelo.ParagemEtapa
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
 import pt.pixellusitano.paragemcerta.core.modelo.TipoLugar
 import pt.pixellusitano.paragemcerta.core.rede.Http
@@ -164,7 +169,7 @@ class RepositorioTest {
         val http = HttpPorUrl("plan" to listOf({ Resposta(200, fixture("transitous-plan-cascais.json")) }))
         val de = Lugar("A minha posição", 38.7062, -9.1442, TipoLugar.POSICAO)
         val para = Lugar("Alcântara - Mar", 38.7024, -9.1741, TipoLugar.PARAGEM)
-        val rotas = (repo(http).planear(de, para, manha, false, Filtros()) as Resultado.Ok).valor
+        val rotas = (repo(http).planear(de, para, manha, false, Filtros()) as Resultado.Ok).valor.itinerarios
         val comboio = rotas[0].etapas.first { !it.aPe }
         assertEquals("Cais do Sodré", comboio.de.nome) // da base
         assertEquals(listOf("Cais do Sodré", "Santos", "Alcântara - Mar", "Belem", "Algés"), comboio.paragens.map { it.nome })
@@ -175,7 +180,83 @@ class RepositorioTest {
         val http = HttpPorUrl("plan" to listOf({ Resposta(200, fixture("transitous-plan-cascais.json")) }))
         val de = Lugar("A minha posição", 38.7062, -9.1442, TipoLugar.POSICAO)
         val para = Lugar("Casa", 38.7022, -9.2292, TipoLugar.LOCAL)
-        val rotas = (repo(http).planear(de, para, manha, false, Filtros()) as Resultado.Ok).valor
+        val rotas = (repo(http).planear(de, para, manha, false, Filtros()) as Resultado.Ok).valor.itinerarios
         assertEquals(listOf("Cais do Sodre", "Santos", "Alcantara - Mar", "Belem", "Algés"), rotas[0].etapas.first { !it.aPe }.paragens.map { it.nome })
+    }
+
+    @Test fun planearDaOsCursoresDasPaginas() = runTest {
+        val http = HttpPorUrl("plan" to listOf({ Resposta(200, fixture("transitous-plan.json")) }))
+        val de = Lugar("A minha posição", 38.7062, -9.1442, TipoLugar.POSICAO)
+        val para = Lugar("Oriente", 38.7678, -9.0990, TipoLugar.LOCAL)
+        val plano = (repo(http).planear(de, para, manha, false, Filtros(), cursor = "LATER|1793503740") as Resultado.Ok).valor
+        assertEquals("EARLIER|1793498820", plano.anterior)
+        assertEquals("LATER|1793503740", plano.seguinte)
+        assertTrue(http.pedidos.single().contains("pageCursor=LATER%7C1793503740"))
+    }
+
+    /** Uma etapa em veículo que sai da paragem [id] (null = a fonte não o dá) às [partida]. */
+    private fun etapaEmVeiculo(id: String?, linha: String, destino: String?, partida: Instant) = Etapa(
+        aPe = false, modo = Modo.AUTOCARRO, linhaNome = linha, linhaId = null, destino = destino,
+        de = Lugar("Origem", 38.70, -9.14, TipoLugar.PARAGEM), para = Lugar("Destino", 38.75, -9.10, TipoLugar.PARAGEM),
+        partida = partida, chegada = partida.plusSeconds(900), partidaProgramada = partida, aoVivo = false,
+        paragensIntermedias = 3, desenho = emptyList(), cor = null,
+        paragens = listOfNotNull(id?.let { ParagemEtapa(it, "Origem", 38.70, -9.14, partida) }),
+    )
+
+    @Test fun proximasPartidasDaCmUsamACm() = runTest {
+        val http = HttpPorUrl(
+            "arrivals" to listOf({ Resposta(200, fixture("cm-arrivals-060419.json")) }),
+            "stoptimes" to listOf({ Resposta(200, fixture("transitous-stoptimes.json")) }),
+        )
+        // A paragem do Transitous "pt-Carris-Metropolitana_360419" é a 060419 da Carris Metropolitana.
+        val etapa = etapaEmVeiculo("pt-Carris-Metropolitana_360419", "3708", "Lisboa (C. Sodré)", Instant.parse("2026-10-26T05:25:00Z"))
+        val partidas = repo(http).proximasPartidas(etapa)!!
+        // A CM não separa por sentido (uma das três vai para a Costa da Caparica); ordem pela hora prevista ou, sem ela, a planeada.
+        assertEquals(listOf(1792992540L, 1792992600L, 1792995900L), partidas.map { (it.prevista ?: it.programada).epochSecond })
+        assertTrue(partidas.all { it.fonte == Fonte.CM && it.linhaNome == "3708" })
+        assertTrue(http.pedidos.single().contains("arrivals/by_stop/060419"))
+    }
+
+    @Test fun proximasPartidasDeOutroOperadorUsamOTransitous() = runTest {
+        val http = HttpPorUrl(
+            "arrivals" to listOf({ Resposta(200, fixture("cm-arrivals-060419.json")) }),
+            "stoptimes" to listOf({ Resposta(200, fixture("transitous-stoptimes.json")) }),
+        )
+        val repositorio = repo(http)
+        val etapa = etapaEmVeiculo("pt-Carris_3803", "201", "Cais Sodré", Instant.parse("2026-10-27T01:54:00Z"))
+        val partidas = repositorio.proximasPartidas(etapa)!!
+        assertEquals(listOf("201"), partidas.map { it.linhaNome })
+        assertTrue(partidas.all { it.fonte == Fonte.TRANSITOUS })
+        assertTrue(http.pedidos.single().contains("stoptimes?stopId=pt-Carris_3803"))
+        // Outra linha na mesma paragem: pedido feito, mas nenhuma partida serve (lista vazia, não nulo).
+        assertEquals(emptyList<Chegada>(), repositorio.proximasPartidas(etapa.copy(linhaNome = "999")))
+    }
+
+    @Test fun paragemRepetidaPedeUmaVez() = runTest {
+        val http = HttpPorUrl("stoptimes" to listOf({ Resposta(200, fixture("transitous-stoptimes.json")) }))
+        val repositorio = repo(http)
+        val etapa = etapaEmVeiculo("pt-Carris_3803", "201", "Cais Sodré", Instant.parse("2026-10-27T01:54:00Z"))
+        // Três rotas a sair da mesma paragem (linha e hora diferentes): as chegadas pedem-se uma vez.
+        repositorio.proximasPartidas(etapa, manha)
+        repositorio.proximasPartidas(etapa.copy(linhaNome = "999"), manha.plusSeconds(10))
+        repositorio.proximasPartidas(etapa.copy(partidaProgramada = etapa.partidaProgramada.plusSeconds(3600)), manha.plusSeconds(19))
+        assertEquals(1, http.pedidos.size)
+        // Passados 20 s já não servem: volta a perguntar.
+        repositorio.proximasPartidas(etapa, manha.plusSeconds(21))
+        assertEquals(2, http.pedidos.size)
+    }
+
+    @Test fun semIdDeParagemDaNulo() = runTest {
+        val http = HttpPorUrl("" to listOf({ Resposta(200, "[]") }))
+        val repositorio = repo(http)
+        assertNull(repositorio.proximasPartidas(etapaEmVeiculo(null, "201", null, manha)))
+        assertNull(repositorio.proximasPartidas(etapaEmVeiculo(null, "201", null, manha).copy(paragens = listOf(ParagemEtapa(null, "Origem", 38.70, -9.14, manha)))))
+        assertTrue(http.pedidos.isEmpty())
+    }
+
+    @Test fun falhaDaFonteDaNulo() = runTest {
+        val http = HttpPorUrl("stoptimes" to listOf({ Resposta(503, "") }))
+        val etapa = etapaEmVeiculo("pt-Carris_3803", "201", "Cais Sodré", manha)
+        assertNull(repo(http).proximasPartidas(etapa))
     }
 }

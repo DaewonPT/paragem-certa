@@ -11,6 +11,7 @@ import kotlinx.serialization.json.Json
 import pt.pixellusitano.paragemcerta.core.atraso.aindaPorChegar
 import pt.pixellusitano.paragemcerta.core.fontes.cm.CarrisMetropolitana
 import pt.pixellusitano.paragemcerta.core.fontes.cm.CmParser
+import pt.pixellusitano.paragemcerta.core.fontes.cm.cmParagemDeTransitous
 import pt.pixellusitano.paragemcerta.core.fontes.geoapi.CodigoPostal
 import pt.pixellusitano.paragemcerta.core.fontes.geoapi.GeoApi
 import pt.pixellusitano.paragemcerta.core.fontes.geoapi.ehCodigoPostal
@@ -21,13 +22,14 @@ import pt.pixellusitano.paragemcerta.core.fontes.transitous.chavesDosNomes
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.comNomesAcentuados
 import pt.pixellusitano.paragemcerta.core.modelo.Alerta
 import pt.pixellusitano.paragemcerta.core.modelo.Chegada
+import pt.pixellusitano.paragemcerta.core.modelo.Etapa
 import pt.pixellusitano.paragemcerta.core.modelo.Filtros
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
-import pt.pixellusitano.paragemcerta.core.modelo.Itinerario
 import pt.pixellusitano.paragemcerta.core.modelo.Linha
 import pt.pixellusitano.paragemcerta.core.modelo.Lugar
 import pt.pixellusitano.paragemcerta.core.modelo.Modo
 import pt.pixellusitano.paragemcerta.core.modelo.Paragem
+import pt.pixellusitano.paragemcerta.core.modelo.PlanoRotas
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
 import pt.pixellusitano.paragemcerta.core.modelo.TipoLugar
 import pt.pixellusitano.paragemcerta.core.modelo.Veiculo
@@ -37,6 +39,7 @@ import pt.pixellusitano.paragemcerta.core.regras.intervaloNormal
 import pt.pixellusitano.paragemcerta.core.regras.nomeBase
 import pt.pixellusitano.paragemcerta.core.regras.pausaDepoisDeFalha
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
+import pt.pixellusitano.paragemcerta.core.rotas.proximasPartidas as proximasDaLinha
 import java.time.Duration
 import java.time.Instant
 
@@ -236,18 +239,39 @@ class Repositorio(
         return true
     }
 
-    /** As paragens vêm com os acentos que o Transitous às vezes tira: a base de paragens e os sítios pedidos sabem como se escrevem. */
-    suspend fun planear(de: Lugar, para: Lugar, hora: Instant, chegarAs: Boolean, f: Filtros): Resultado<List<Itinerario>> =
-        when (val r = transitous.planear(de, para, hora, chegarAs, f)) {
+    /**
+     * As paragens vêm com os acentos que o Transitous às vezes tira: a base de paragens e os sítios pedidos sabem como se escrevem.
+     * [cursor] = a página "mais cedo" ou "mais tarde" de uma resposta anterior (o resto do pedido tem de ser igual).
+     */
+    suspend fun planear(
+        de: Lugar, para: Lugar, hora: Instant, chegarAs: Boolean, f: Filtros, cursor: String? = null,
+    ): Resultado<PlanoRotas> =
+        when (val r = transitous.planear(de, para, hora, chegarAs, f, cursor)) {
             is Resultado.Ok -> {
                 val itinerarios = r.valor.itinerarios
                 // Aos bocados: o SQLite aceita poucas variáveis por consulta (999 no Android 8).
                 val daBase = itinerarios.chavesDosNomes().chunked(500).flatMap { bd.paragens().porNomes(it) }
                     .map { Lugar(it.nome, it.lat, it.lon, TipoLugar.PARAGEM) }
-                Resultado.Ok(itinerarios.comNomesAcentuados(daBase + de + para))
+                Resultado.Ok(r.valor.copy(itinerarios = itinerarios.comNomesAcentuados(daBase + de + para)))
             }
             is Resultado.Falha -> r
         }
+
+    private val chegadasParaPartidas = mutableMapOf<RefParagem, Pair<Instant, List<Chegada>>>()
+
+    /**
+     * As próximas partidas da linha da primeira etapa em veículo, a partir das chegadas da paragem onde ela começa (as da
+     * Carris Metropolitana pela CM, as dos outros operadores pelo Transitous). null = a etapa não tem id de paragem ou a fonte falhou.
+     * Várias rotas a sair da mesma paragem fazem um só pedido: as chegadas ficam 20 s em memória.
+     */
+    suspend fun proximasPartidas(etapa: Etapa, agora: Instant = relogio()): List<Chegada>? {
+        val id = etapa.paragens.firstOrNull()?.id ?: return null
+        val ref = cmParagemDeTransitous(id)?.let { RefParagem(Fonte.CM, it) } ?: RefParagem(Fonte.TRANSITOUS, id)
+        val chegadas = chegadasParaPartidas[ref]?.takeIf { Duration.between(it.first, agora) < VALIDADE_PARTIDAS }?.second
+            ?: (chegadasAgora(ref, agora) as? Resultado.Ok)?.valor?.also { chegadasParaPartidas[ref] = agora to it }
+            ?: return null
+        return proximasDaLinha(chegadas, etapa, agora)
+    }
 
     /** Primeiro os locais guardados cujo nome tem o texto (sem ligar a acentos), depois moradas e sítios do Transitous
      *  (as paragens sem o cais no nome, e sem repetidas).
@@ -329,11 +353,13 @@ class Repositorio(
         bd.locais().apagarDadosPessoais()
         paragensDasLinhas.clear()
         alertasEmCache = null
+        chegadasParaPartidas.clear()
     }
 
     private companion object {
         val INTERVALO_VEICULOS: Duration = Duration.ofSeconds(15)
         val VALIDADE_ALERTAS: Duration = Duration.ofMinutes(5)
+        val VALIDADE_PARTIDAS: Duration = Duration.ofSeconds(20)
         const val RAIO_REPETIDOS_METROS = 400.0
         const val RAIO_PEDACOS_METROS = 2000.0
     }

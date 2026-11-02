@@ -12,6 +12,8 @@ import kotlinx.coroutines.flow.map
 import pt.pixellusitano.paragemcerta.core.atraso.Limites
 import pt.pixellusitano.paragemcerta.core.modelo.Filtros
 import pt.pixellusitano.paragemcerta.core.modelo.Modo
+import pt.pixellusitano.paragemcerta.core.modelo.Ordem
+import pt.pixellusitano.paragemcerta.core.modelo.Ritmo
 import pt.pixellusitano.paragemcerta.ui.tema.ModoTema
 
 /** Definições do utilizador (modo claro/escuro, limites de atraso, filtros das rotas e avisos da viagem), guardadas no telemóvel. */
@@ -24,12 +26,17 @@ class Preferencias(private val loja: DataStore<Preferences>) {
         Limites(p[ATRASADO] ?: Limites().atrasado, p[MUITO_ATRASADO] ?: Limites().muitoAtrasado)
     }
 
+    /** O que falta (a 0.3.2 não guardava o tempo a pé, o ritmo nem a ordem) ou não se conhece fica como em [Filtros]. */
     val filtros: Flow<Filtros> = loja.data.map { p ->
+        val omissao = Filtros()
         Filtros(
             menosAPe = p[MENOS_A_PE] ?: false,
             menosTransbordos = p[MENOS_TRANSBORDOS] ?: false,
             acessivel = p[ACESSIVEL] ?: false,
             modos = p[MODOS].orEmpty().mapNotNull { nome -> Modo.entries.firstOrNull { it.name == nome } }.toSet(),
+            maxAPeMin = p[MAX_A_PE_MIN]?.takeIf { it in A_PE_MIN_POSSIVEIS } ?: omissao.maxAPeMin,
+            ritmo = p[RITMO]?.let { nome -> Ritmo.entries.firstOrNull { it.name == nome } } ?: omissao.ritmo,
+            ordem = p[ORDEM]?.let { nome -> Ordem.entries.firstOrNull { it.name == nome } } ?: omissao.ordem,
         )
     }
 
@@ -58,6 +65,9 @@ class Preferencias(private val loja: DataStore<Preferences>) {
             it[MENOS_TRANSBORDOS] = f.menosTransbordos
             it[ACESSIVEL] = f.acessivel
             it[MODOS] = f.modos.map { m -> m.name }.toSet()
+            it[MAX_A_PE_MIN] = f.maxAPeMin
+            it[RITMO] = f.ritmo.name
+            it[ORDEM] = f.ordem.name
         }
     }
 
@@ -82,6 +92,10 @@ class Preferencias(private val loja: DataStore<Preferences>) {
         val MENOS_TRANSBORDOS = booleanPreferencesKey("filtro_menos_transbordos")
         val ACESSIVEL = booleanPreferencesKey("filtro_acessivel")
         val MODOS = stringSetPreferencesKey("filtro_modos")
+        val MAX_A_PE_MIN = intPreferencesKey("filtro_max_a_pe_min")
+        val RITMO = stringPreferencesKey("filtro_ritmo")
+        val ORDEM = stringPreferencesKey("filtro_ordem")
+        val A_PE_MIN_POSSIVEIS = setOf(5, 10, 15, 20)
         val SOM_AVISO = booleanPreferencesKey("som_aviso")
         val VIBRACAO_AVISO = booleanPreferencesKey("vibracao_aviso")
         val PRIMEIRA_VIAGEM_FEITA = booleanPreferencesKey("primeira_viagem_feita")
