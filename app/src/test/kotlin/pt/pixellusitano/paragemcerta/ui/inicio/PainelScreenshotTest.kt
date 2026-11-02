@@ -195,7 +195,7 @@ class PainelScreenshotTest {
                 PainelConteudo(emptyList(), emptyList(), linhas, agora, {}, {}, Modifier.width(360.dp))
             }
         }
-        regra.onNodeWithText("Toca na ★ de uma paragem ou de um sítio para o veres aqui").assertIsDisplayed()
+        regra.onNodeWithText("Toca na ☆ de uma paragem ou de um sítio para o veres aqui").assertIsDisplayed()
     }
 
     @Test fun semLocalizacaoOSitioContinuaAVista() {
@@ -207,7 +207,7 @@ class PainelScreenshotTest {
                 )
             }
         }
-        regra.onNodeWithText("Toca na ★ de uma paragem ou de um sítio para o veres aqui").assertDoesNotExist()
+        regra.onNodeWithText("Toca na ☆ de uma paragem ou de um sítio para o veres aqui").assertDoesNotExist()
         // Sem localização o sítio continua à vista e convida a tocar (as rotas pedem a origem).
         regra.onNodeWithText("Toca para ver como ir").assertIsDisplayed()
     }

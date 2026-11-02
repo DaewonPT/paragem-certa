@@ -27,7 +27,7 @@
     <!-- Painel do início -->
     <string name="painel_perto">Perto de ti</string>
     <string name="painel_favoritos">Favoritos</string>
-    <string name="painel_sem_favoritas">Toca na ★ de uma paragem ou de um sítio para o veres aqui</string>
+    <string name="painel_sem_favoritas">Toca na ☆ de uma paragem ou de um sítio para o veres aqui</string>
     <string name="painel_perto_local">Estás perto deste local</string>
     <string name="painel_toca_para_ir">Toca para ver como ir</string>
     <string name="painel_a_calcular">A calcular…</string>
