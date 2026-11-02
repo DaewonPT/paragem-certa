@@ -1,0 +1,22 @@
+{
+  "name": "paragem-certa-servidor",
+  "version": "0.4.0",
+  "private": true,
+  "type": "module",
+  "license": "GPL-3.0-only",
+  "description": "Servidor da Paragem Certa: conta, sincronização dos favoritos e páginas públicas (Cloudflare Worker + D1).",
+  "scripts": {
+    "dev": "wrangler dev",
+    "test": "vitest run",
+    "tipos": "wrangler types && tsc --noEmit"
+  },
+  "dependencies": {
+    "jose": "6.2.12"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-plugin": "1.4.5",
+    "typescript": "7.0.2",
+    "vitest": "5.0.5",
+    "wrangler": "4.151.2"
+  }
+}

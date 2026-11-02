@@ -8,3 +8,8 @@ build/
 *.apk
 CLAUDE.md
 **/CLAUDE.md
+worker/node_modules/
+worker/.wrangler/
+worker/.dev.vars
+worker/.env
+worker/worker-configuration.d.ts

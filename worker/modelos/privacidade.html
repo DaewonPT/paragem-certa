@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="pt-PT">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light dark">
+<title>Política de privacidade · Paragem Certa</title>
+<style>
+  body { font: 1rem/1.55 system-ui, sans-serif; margin: 0; }
+  main { max-width: 44rem; margin: 0 auto; padding: 1.25rem; }
+  h1 { font-size: 1.6rem; } h2 { font-size: 1.2rem; margin-top: 2rem; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { text-align: left; vertical-align: top; padding: .4rem .5rem; border-bottom: 1px solid #8884; }
+  a { color: #1a5fb4; } @media (prefers-color-scheme: dark) { a { color: #8ab4f8; } }
+</style>
+</head>
+<body>
+<main>
+<p><a href="#english">English</a></p>
+<h1>Política de privacidade</h1>
+<p>A Paragem Certa é uma app grátis e de código aberto para transportes públicos, feita pela Pixel Lusitano. Esta página diz o que o servidor da Paragem Certa guarda sobre ti, durante quanto tempo e quem mais recebe dados.</p>
+
+<h2>Quem é o responsável pelos dados</h2>
+<p>O responsável pelo tratamento dos dados é <strong>{{RESPONSAVEL}}</strong>, que faz a Paragem Certa sob o nome Pixel Lusitano. Contacto, em português e inglês: <a href="mailto:contact@pixellusitano.com">contact@pixellusitano.com</a>.</p>
+
+<h2>O essencial</h2>
+<ul>
+  <li>A app funciona sem conta. A conta é opcional: serve para sincronizar os teus favoritos entre telemóveis e, nas funções da comunidade, para relatar, confirmar e enviar fotos e correções.</li>
+  <li>Sem anúncios, sem rastreio e sem estatísticas.</li>
+  <li>A tua posição GPS nunca vai para o servidor da Paragem Certa. Mas um relato regista que a tua conta estava junto dessa paragem a essa hora (ver a tabela).</li>
+  <li>A idade mínima para ter conta é 13 anos.</li>
+</ul>
+
+<h2>O que o servidor guarda e durante quanto tempo</h2>
+<table>
+  <thead><tr><th>Dado</th><th>Para quê</th><th>Quanto tempo</th></tr></thead>
+  <tbody>
+    <tr><td>O teu email e, se entrares com o Google, o identificador que a Google dá à tua conta</td><td>Criar e reconhecer a tua conta</td><td>Até apagares a conta</td></tr>
+    <tr><td>Código de entrada por email (só uma marca do código, nunca o código)</td><td>Confirmar que o email é teu</td><td>Vale 10 minutos, com 5 tentativas</td></tr>
+    <tr><td>Sessão (só uma marca do código de sessão)</td><td>Manter-te dentro da conta</td><td>60 dias sem uso ou 180 dias no total</td></tr>
+    <tr><td>Favoritos: paragens, linhas e sítios, incluindo a Casa e o Trabalho, com nome e coordenadas</td><td>Sincronizar entre os teus telemóveis</td><td>Até apagares a conta</td></tr>
+    <tr><td>Versão dos termos que aceitaste e a data</td><td>Provar que aceitaste as regras antes de publicares</td><td>Até apagares a conta</td></tr>
+    <tr><td>Relatos e confirmações: tipo, paragem, linha, hora e a tua conta. Nunca a posição GPS</td><td>Mostrar problemas aos outros passageiros e evitar abusos</td><td>O relato deixa de se ver quando expira e é apagado 30 dias depois, com as confirmações</td></tr>
+    <tr><td>Fotos e correções aos dados</td><td>Mostrar a foto ou a correção depois de aprovada pelo autor</td><td>Fotos rejeitadas: apagadas na decisão. Não revistas: apagadas aos 30 dias. Aprovadas e correções: até apagares a conta</td></tr>
+    <tr><td>Denúncias, decisões e bloqueios, só com a marca (hash) do email</td><td>Cumprir a lei e impedir que alguém bloqueado volte só por apagar a conta</td><td>12 meses, mesmo depois de a conta ser apagada</td></tr>
+    <tr><td>Registos de envio de email</td><td>Saber se o email chegou</td><td>30 dias</td></tr>
+    <tr><td>Cópias de segurança da base de dados</td><td>Recuperar de uma avaria</td><td>7 dias</td></tr>
+  </tbody>
+</table>
+<p>Apagar a conta apaga os relatos, as confirmações, as fotos (incluindo as aprovadas), as correções, os favoritos guardados no servidor e a ligação das sessões. Os favoritos que estão no teu telemóvel ficam no telemóvel.</p>
+
+<h2>Porque podemos tratar estes dados</h2>
+<ul>
+  <li>Conta e sincronização: é o serviço que pedes ao criares a conta.</li>
+  <li>Moderação, denúncias, limites e prevenção de abusos: interesse legítimo em manter o serviço seguro e dentro da lei.</li>
+</ul>
+
+<h2>Onde ficam os dados</h2>
+<p>A base de dados e as fotos ficam guardadas na União Europeia. Os pedidos à API são tratados no ponto da Cloudflare mais próximo de ti, normalmente na União Europeia, mas isso não é garantido.</p>
+
+<h2>Quem mais recebe dados</h2>
+<p>O servidor corre na <strong>Cloudflare</strong> (alojamento, base de dados e fotos). Os dados ao vivo da Carris e do Metro passam pelo servidor da Paragem Certa. Além disso:</p>
+<ul>
+  <li><strong>Google</strong>, quando entras com o Google: trata o início de sessão. A Paragem Certa recebe o teu email verificado e um identificador.</li>
+  <li><strong>Resend</strong>: envia os emails de entrada, os recibos e as decisões, por isso recebe o teu email. Usamos a região de envio da União Europeia (Irlanda).</li>
+  <li><strong>GitHub</strong>: aloja o código e corre os trabalhos de dados. A app não lhe faz pedidos.</li>
+</ul>
+<p>Estes serviços recebem pedidos diretamente do teu telemóvel, sem passar pelo servidor da Paragem Certa:</p>
+<ul>
+  <li><strong>Transitous</strong>: a origem e o destino das rotas, as pesquisas e as paragens das próximas partidas.</li>
+  <li><strong>GeoAPI.pt</strong> (França): o código postal que escreves.</li>
+  <li><strong>dados.emel.pt</strong>: o pedido das estações GIRA.</li>
+  <li><strong>Panoramax</strong>: as miniaturas de fotos de rua que vês.</li>
+  <li><strong>OpenFreeMap</strong>: a zona do mapa que estás a ver.</li>
+</ul>
+
+<h2>Os teus direitos</h2>
+<p>Podes pedir acesso, correção ou apagamento dos teus dados, limitar ou opor-te ao tratamento e receber uma cópia deles. Escreve para <a href="mailto:contact@pixellusitano.com">contact@pixellusitano.com</a>. Para apagar a conta usa Menu → Conta → Apagar conta na app, ou a página <a href="/apagar-conta">Apagar conta</a>. Também podes queixar-te à Comissão Nacional de Proteção de Dados (<a href="https://www.cnpd.pt">cnpd.pt</a>).</p>
+<p>Os <a href="/termos">termos</a> explicam as regras da comunidade.</p>
+
+<hr>
+
+<section id="english" lang="en">
+<h1>Privacy policy</h1>
+<p>Paragem Certa is a free, open-source public transport app made by Pixel Lusitano. This page explains what the Paragem Certa server stores about you, for how long, and who else receives data.</p>
+
+<h2>Who is responsible for the data</h2>
+<p>The data controller is <strong>{{RESPONSAVEL}}</strong>, who makes Paragem Certa under the name Pixel Lusitano. Contact, in Portuguese and English: <a href="mailto:contact@pixellusitano.com">contact@pixellusitano.com</a>.</p>
+
+<h2>The essentials</h2>
+<ul>
+  <li>The app works without an account. An account is optional: it syncs your favourites between phones and, in the community features, lets you report, confirm and send photos and corrections.</li>
+  <li>No ads, no tracking, no statistics.</li>
+  <li>Your GPS position never goes to the Paragem Certa server. However, a report records that your account was near that stop at that time (see the table).</li>
+  <li>The minimum age for an account is 13.</li>
+</ul>
+
+<h2>What the server stores and for how long</h2>
+<table>
+  <thead><tr><th>Data</th><th>Why</th><th>How long</th></tr></thead>
+  <tbody>
+    <tr><td>Your email and, if you sign in with Google, the identifier Google gives your account</td><td>Create and recognise your account</td><td>Until you delete the account</td></tr>
+    <tr><td>Email sign-in code (only a hash of the code, never the code)</td><td>Confirm the email is yours</td><td>Valid for 10 minutes, 5 attempts</td></tr>
+    <tr><td>Session (only a hash of the session token)</td><td>Keep you signed in</td><td>60 days without use or 180 days in total</td></tr>
+    <tr><td>Favourites: stops, lines and places, including Home and Work, with name and coordinates</td><td>Sync between your phones</td><td>Until you delete the account</td></tr>
+    <tr><td>The version of the terms you accepted and the date</td><td>Prove you accepted the rules before posting</td><td>Until you delete the account</td></tr>
+    <tr><td>Reports and confirmations: type, stop, line, time and your account. Never the GPS position</td><td>Show problems to other passengers and prevent abuse</td><td>A report stops showing when it expires and is deleted 30 days later, with its confirmations</td></tr>
+    <tr><td>Photos and data corrections</td><td>Show the photo or correction once the author approves it</td><td>Rejected photos: deleted at the decision. Not reviewed: deleted after 30 days. Approved photos and corrections: until you delete the account</td></tr>
+    <tr><td>Reports of abuse, decisions and blocks, with only a hash of the email</td><td>Comply with the law and stop someone who was blocked from returning just by deleting the account</td><td>12 months, even after the account is deleted</td></tr>
+    <tr><td>Email delivery logs</td><td>Know whether the email arrived</td><td>30 days</td></tr>
+    <tr><td>Database backups</td><td>Recover from a failure</td><td>7 days</td></tr>
+  </tbody>
+</table>
+<p>Deleting the account deletes the reports, confirmations, photos (including approved ones), corrections, the favourites stored on the server and the sessions. The favourites on your phone stay on your phone.</p>
+
+<h2>Why we may process this data</h2>
+<ul>
+  <li>Account and sync: it is the service you ask for when you create the account.</li>
+  <li>Moderation, reports of abuse, limits and abuse prevention: legitimate interest in keeping the service safe and lawful.</li>
+</ul>
+
+<h2>Where the data is kept</h2>
+<p>The database and the photos are stored in the European Union. API requests are handled at the Cloudflare location closest to you, normally in the European Union, but that is not guaranteed.</p>
+
+<h2>Who else receives data</h2>
+<p>The server runs on <strong>Cloudflare</strong> (hosting, database and photos). Live Carris and Metro data goes through the Paragem Certa server. In addition:</p>
+<ul>
+  <li><strong>Google</strong>, when you sign in with Google: handles the sign-in. Paragem Certa receives your verified email and an identifier.</li>
+  <li><strong>Resend</strong>: sends the sign-in emails, receipts and decisions, so it receives your email. We use the European Union sending region (Ireland).</li>
+  <li><strong>GitHub</strong>: hosts the code and runs the data jobs. The app makes no requests to it.</li>
+</ul>
+<p>These services receive requests directly from your phone, not through the Paragem Certa server:</p>
+<ul>
+  <li><strong>Transitous</strong>: the origin and destination of routes, searches and the stops for upcoming departures.</li>
+  <li><strong>GeoAPI.pt</strong> (France): the postcode you type.</li>
+  <li><strong>dados.emel.pt</strong>: the request for GIRA stations.</li>
+  <li><strong>Panoramax</strong>: the street photo thumbnails you view.</li>
+  <li><strong>OpenFreeMap</strong>: the map area you are viewing.</li>
+</ul>
+
+<h2>Your rights</h2>
+<p>You can ask for access to, correction or deletion of your data, restrict or object to its processing and receive a copy. Write to <a href="mailto:contact@pixellusitano.com">contact@pixellusitano.com</a>. To delete the account use Menu → Conta → Apagar conta in the app, or the <a href="/apagar-conta">delete account</a> page. You can also complain to the Portuguese data protection authority (<a href="https://www.cnpd.pt">cnpd.pt</a>).</p>
+<p>The <a href="/termos">terms</a> explain the community rules.</p>
+</section>
+</main>
+</body>
+</html>

@@ -1,0 +1,27 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "paragem-certa",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-10-01",
+  // Só o domínio próprio (paragemcerta.pixellusitano.com); o endereço workers.dev fica desligado.
+  "workers_dev": false,
+  // Os ficheiros de public/ (termos, apagar conta, dados/config.json) saem sem passar pelo Worker;
+  // só a API e a política de privacidade (que leva o nome do responsável) passam por ele.
+  "assets": {
+    "directory": "./public",
+    "run_worker_first": ["/api/*", "/privacidade"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "paragem-certa",
+      // texto de exemplo; o id verdadeiro é criado pelo autor com `wrangler d1 create paragem-certa --jurisdiction=eu`
+      "database_id": "ID-DA-BASE-DE-DADOS-CRIADA-PELO-AUTOR",
+      "migrations_dir": "migrations"
+    }
+  ],
+  // Corre na Cloudflare, não no telemóvel: apaga o que passou os prazos.
+  "triggers": { "crons": ["0 3 * * *"] },
+  // Definidos pelo autor com `wrangler secret put`; nunca ficam no repositório.
+  "secrets": { "required": ["RESEND_API_KEY", "RESPONSAVEL"] }
+}

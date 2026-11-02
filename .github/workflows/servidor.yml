@@ -1,0 +1,51 @@
+# .github/workflows/servidor.yml
+# Testa o servidor (worker/). A publicação é um passo à parte do autor (ver docs/servidor.md).
+name: Servidor
+
+on:
+  push:
+    paths:
+      - 'worker/**'
+      - '.github/workflows/servidor.yml'
+  pull_request:
+    paths:
+      - 'worker/**'
+      - '.github/workflows/servidor.yml'
+
+# Least privilege: everything is read-only unless a job asks for more.
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  testes:
+    name: Tests and types
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: worker
+    env:
+      WRANGLER_SEND_METRICS: 'false'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+
+      - name: Install dependencies (exact versions from package-lock.json)
+        run: npm ci
+
+      - name: Tests (local D1, nothing leaves the runner)
+        run: npm test
+
+      - name: Types
+        run: npm run tipos
