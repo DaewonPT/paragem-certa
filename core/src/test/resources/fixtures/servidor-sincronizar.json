@@ -1,0 +1,8 @@
+{
+  "revisao": 12,
+  "alteracoes": [
+    { "chave": "CM:060419", "tipo": "PARAGEM", "nome": "Belém (Mosteiro)", "lat": 38.6975, "lon": -9.2062, "ordem": 0, "apagado": false, "revisao": 9 },
+    { "chave": "3f2a9c1e5b7d4e8aa1c0d9e8f7a6b5c4", "tipo": "CASA", "nome": "Casa antiga", "lat": 38.7223, "lon": -9.1393, "ordem": 1, "apagado": true, "revisao": 11 },
+    { "chave": "9b8a7c6d5e4f4a3b8c2d1e0f9a8b7c6d", "tipo": "CASA", "nome": "Casa", "lat": 38.7369, "lon": -9.1427, "ordem": 1, "apagado": false, "revisao": 12 }
+  ]
+}

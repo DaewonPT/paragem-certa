@@ -1,0 +1,19 @@
+{
+  "versao": 1,
+  "interruptores": {
+    "conta": false,
+    "comunidade": false,
+    "fotos": false,
+    "correcoes": false
+  },
+  "emails": {
+    "codigosPorDia": 70
+  },
+  "canaisReclamacao": [
+    { "nome": "Livro de Reclamações Eletrónico", "url": "https://www.livroreclamacoes.pt/Pedido/Reclamacao" },
+    { "nome": "Carris", "url": "https://www.carris.pt/atendimento/falar-connosco/" },
+    { "nome": "Carris Metropolitana", "url": "https://carrismetropolitana.pt/contacto" },
+    { "nome": "Metro de Lisboa", "url": "https://www.metrolisboa.pt/informar/reclamacoes/" },
+    { "nome": "CP", "url": "https://www.cp.pt/info/pt/w/reclamacao-cp" }
+  ]
+}
