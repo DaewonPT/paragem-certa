@@ -6,7 +6,7 @@ import { aleatorioBase64Url, apagarSessoesExpiradas, criarSessao, sha256Hex } fr
 const MINUTO = 60_000;
 const HORA = 60 * MINUTO;
 /** Um código (e um nonce do Google) vale 10 minutos. */
-const VALIDADE = 10 * MINUTO;
+export const VALIDADE = 10 * MINUTO;
 const MAX_TENTATIVAS = 5;
 const MAX_PEDIDOS_POR_HORA = 3;
 
@@ -19,7 +19,7 @@ function emailDe(valor: unknown): string | null {
   return email.length <= 254 && FORMATO_EMAIL.test(email) ? email : null;
 }
 
-async function corpoJson(pedido: Request): Promise<Record<string, unknown>> {
+export async function corpoJson(pedido: Request): Promise<Record<string, unknown>> {
   try {
     const corpo: unknown = await pedido.json();
     return corpo !== null && typeof corpo === "object" ? (corpo as Record<string, unknown>) : {};

@@ -1,4 +1,5 @@
 import { confirmarCodigo, limparExpirados, pedirCodigo } from "./codigos";
+import { entrarComGoogle, novoNonce } from "./google";
 import { paginaPrivacidade } from "./privacidade";
 import { erro, json } from "./respostas";
 import { sair } from "./sessoes";
@@ -13,6 +14,8 @@ export default {
       if (pathname === "/api/auth/email/pedir") return pedirCodigo(pedido, env);
       if (pathname === "/api/auth/email/confirmar") return confirmarCodigo(pedido, env);
       if (pathname === "/api/auth/sair") return sair(pedido, env);
+      if (pathname === "/api/auth/google/nonce") return novoNonce(env);
+      if (pathname === "/api/auth/google") return entrarComGoogle(pedido, env);
     }
 
     if (pathname === "/privacidade" && (pedido.method === "GET" || pedido.method === "HEAD")) {

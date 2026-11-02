@@ -23,5 +23,6 @@
   // Corre na Cloudflare, não no telemóvel: apaga o que passou os prazos.
   "triggers": { "crons": ["0 3 * * *"] },
   // Definidos pelo autor com `wrangler secret put`; nunca ficam no repositório.
-  "secrets": { "required": ["RESEND_API_KEY", "RESPONSAVEL"] }
+  // GOOGLE_WEB_CLIENT_ID é o id do cliente Web da consola da Google (o `aud` dos tokens).
+  "secrets": { "required": ["RESEND_API_KEY", "RESPONSAVEL", "GOOGLE_WEB_CLIENT_ID"] }
 }
