@@ -7,12 +7,14 @@ import android.content.IntentFilter
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
@@ -26,7 +28,9 @@ import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -37,7 +41,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,36 +57,53 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.LifecycleStartEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import org.maplibre.android.geometry.LatLng
 import pt.pixellusitano.paragemcerta.R
+import pt.pixellusitano.paragemcerta.core.modelo.Etapa
 import pt.pixellusitano.paragemcerta.core.modelo.Lugar
 import pt.pixellusitano.paragemcerta.core.regras.distanciaMetros
 import pt.pixellusitano.paragemcerta.core.viagem.Fase
+import pt.pixellusitano.paragemcerta.core.viagem.paragensDe
 import pt.pixellusitano.paragemcerta.ui.comum.LISBOA_FUSO
 import pt.pixellusitano.paragemcerta.ui.comum.SeloLinha
 import pt.pixellusitano.paragemcerta.ui.comum.corDaLinha
+import pt.pixellusitano.paragemcerta.ui.inicio.temLocalizacao
+import pt.pixellusitano.paragemcerta.ui.mapa.Mapa
+import pt.pixellusitano.paragemcerta.ui.mapa.Marca
 import pt.pixellusitano.paragemcerta.ui.rotas.horaLisboa
 import pt.pixellusitano.paragemcerta.ui.rotas.minutosDe
 import pt.pixellusitano.paragemcerta.ui.rotas.nomeModo
+import pt.pixellusitano.paragemcerta.ui.rotas.percursos
 import pt.pixellusitano.paragemcerta.ui.rotas.simboloModo
 import pt.pixellusitano.paragemcerta.ui.rotas.textoDistancia
 import pt.pixellusitano.paragemcerta.ui.rotas.textoPartilha
+import pt.pixellusitano.paragemcerta.ui.tema.LocalEscuro
 import pt.pixellusitano.paragemcerta.viagem.FicheirosViagem
 import pt.pixellusitano.paragemcerta.viagem.Notificacoes
 import pt.pixellusitano.paragemcerta.viagem.ServicoViagem
 import java.time.Duration
 
-/** O ecrã da viagem ligado aos ficheiros do serviço. Sem viagem (parou, ou o ficheiro era velho), sai. */
+/**
+ * O ecrã da viagem ligado aos ficheiros do serviço. Sem viagem (parou, ou o ficheiro era velho), sai.
+ * [mapa] só serve aos testes (o MapLibre não corre no Robolectric): sem ele, o mapa a sério.
+ */
 @Composable
-fun ViagemEcra(aoVoltar: () -> Unit, aoEncontrar: (Lugar) -> Unit = {}) {
+fun ViagemEcra(
+    aoVoltar: () -> Unit,
+    aoEncontrar: (Lugar) -> Unit = {},
+    mapa: (@Composable (seguir: Boolean, aoDeixarDeSeguir: () -> Unit) -> Unit)? = null,
+) {
     val contexto = LocalContext.current
     val vm = viewModel {
         val app = contexto.applicationContext // não a Activity: o ViewModel vive mais do que ela
         ViagemViewModel(ler = { FicheirosViagem.lerEstado(app)?.let { e -> FicheirosViagem.lerPlano(app)?.let { it to e } } })
     }
     val vista by vm.vista.collectAsStateWithLifecycle()
+    var comLocalizacao by remember { mutableStateOf(temLocalizacao(contexto)) }
 
     // O serviço (outro processo) avisa a cada passo. Ao voltar à app lê-se também: os avisos de enquanto esteve parada perderam-se.
     LifecycleStartEffect(vm) {
+        comLocalizacao = temLocalizacao(contexto) // a permissão pode ter sido dada nas definições
         val receptor = object : BroadcastReceiver() {
             override fun onReceive(c: Context, i: Intent) =
                 if (i.getBooleanExtra(FicheirosViagem.EXTRA_SEM_SERVICO, false)) vm.semServico() else vm.atualizar()
@@ -103,6 +126,8 @@ fun ViagemEcra(aoVoltar: () -> Unit, aoEncontrar: (Lugar) -> Unit = {}) {
             },
             aoVoltar = aoVoltar,
             aoEncontrar = aoEncontrar,
+            comLocalizacao = comLocalizacao,
+            mapa = mapa ?: { seguir, aoDeixarDeSeguir -> MapaDaViagem(v.ecra, seguir, aoDeixarDeSeguir, comLocalizacao) },
         )
         else -> {
             Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
@@ -116,7 +141,36 @@ internal fun pedirAoServico(c: Context, acao: String) {
     c.startService(Intent(c, ServicoViagem::class.java).setAction(acao))
 }
 
-/** Conteúdo puro do ecrã da viagem (testado com capturas). */
+/** O mapa da viagem: o percurso todo (a etapa atual em destaque), as paragens dela e o ponto "estás aqui" do MapLibre. */
+@Composable
+private fun MapaDaViagem(ecra: EcraViagem, seguir: Boolean, aoDeixarDeSeguir: () -> Unit, comLocalizacao: Boolean) {
+    val percursos = remember(ecra.itinerario, ecra.atual) { ecra.itinerario.percursos(ecra.atual) }
+    val marcas = remember(ecra.itinerario, ecra.atual) { marcasDe(ecra.itinerario.etapas[ecra.atual]) }
+    val inicio = percursos[ecra.atual].pontos.first()
+    Mapa(
+        paragens = emptyList(), enquadrar = emptyList(), veiculos = emptyList(), coresLinhas = emptyMap(),
+        escuro = LocalEscuro.current, centroInicial = LatLng(inicio.first, inicio.second), camaraInicial = null, centrarEm = null,
+        aoMoverCamara = { _, _, _, _, _ -> }, aoTocarParagem = {}, aoTocarVeiculo = {},
+        modifier = Modifier.fillMaxSize(), percursos = percursos, marcas = marcas,
+        mostrarPosicao = comLocalizacao, seguir = seguir, aoDeixarDeSeguir = aoDeixarDeSeguir,
+    )
+}
+
+/** As paragens da etapa no mapa, com a de saída destacada; a pé, só o fim da etapa (a paragem a apanhar, ou o destino). */
+internal fun marcasDe(etapa: Etapa): List<Marca> =
+    if (etapa.aPe) listOf(Marca(etapa.para.lat, etapa.para.lon, etapa.para.nome, sai = true))
+    else paragensDe(etapa).let { todas -> todas.mapIndexed { k, p -> Marca(p.lat, p.lon, p.nome, sai = k == todas.lastIndex) } }
+
+/** A altura do painel com o mapa por trás: o suficiente para o título da etapa e as primeiras paragens; o resto arrasta-se. */
+private val PAINEL_VISIVEL = 340.dp
+private val MAPA_VISIVEL_COM_PAINEL_ABERTO = 104.dp
+
+/**
+ * Conteúdo puro do ecrã da viagem (testado com capturas): o mapa em cima e, por baixo, o painel que se arrasta com o texto.
+ * [mapa] desenha o mapa (em teste, um retângulo: o MapLibre não desenha no Robolectric); a câmara segue a pessoa enquanto
+ * `seguir`, e [aoDeixarDeSeguir] diz que ela mexeu no mapa. Sem [comLocalizacao] não há o que seguir.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ViagemConteudo(
     ecra: EcraViagem,
@@ -127,6 +181,8 @@ fun ViagemConteudo(
     aoVoltar: () -> Unit,
     modifier: Modifier = Modifier,
     aoEncontrar: (Lugar) -> Unit = {},
+    comLocalizacao: Boolean = false,
+    mapa: @Composable (seguir: Boolean, aoDeixarDeSeguir: () -> Unit) -> Unit = { _, _ -> },
 ) {
     val cores = MaterialTheme.colorScheme
     val estado = ecra.estado
@@ -137,27 +193,48 @@ fun ViagemConteudo(
         if (pager.currentPage == anterior) pager.animateScrollToPage(ecra.atual)
         anterior = ecra.atual
     }
-    Column(modifier.fillMaxSize().background(cores.background)) {
-        TextButton(onClick = aoVoltar, Modifier.statusBarsPadding().padding(start = 4.dp)) {
-            Text("← " + stringResource(R.string.voltar))
-        }
-        if (ecra.horario) {
-            Surface(color = cores.secondaryContainer, shape = RoundedCornerShape(8.dp), modifier = Modifier.padding(horizontal = 16.dp)) {
-                Text(
-                    stringResource(R.string.viagem_selo_horario), Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                    style = MaterialTheme.typography.labelLarge,
-                )
+    var seguir by rememberSaveable { mutableStateOf(true) }
+    BoxWithConstraints(modifier.fillMaxSize()) {
+        // Aberto por inteiro, deixa à vista a linha de cima do mapa, com o "Voltar".
+        val alturaPainel = (maxHeight - MAPA_VISIVEL_COM_PAINEL_ABERTO).coerceAtLeast(PAINEL_VISIVEL)
+        BottomSheetScaffold(
+            sheetPeekHeight = PAINEL_VISIVEL,
+            sheetContainerColor = cores.background,
+            sheetContent = {
+                // Altura fixa: o pager e a lista de paragens só se esticam com um limite.
+                Column(Modifier.fillMaxWidth().height(alturaPainel)) {
+                    if (estado.terminada) {
+                        Text(
+                            stringResource(R.string.aviso_chegou, ecra.para), Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
+                            color = cores.onSurface, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold,
+                        )
+                    }
+                    HorizontalPager(pager, Modifier.weight(1f).fillMaxWidth()) { i -> Cartao(ecra, i, aoEncontrar) }
+                    HorizontalDivider(color = cores.outlineVariant)
+                    Rodape(ecra, aoSilenciar, aoJaSai, aoParar, aoPartilhar)
+                }
+            },
+        ) {
+            Box(Modifier.fillMaxSize()) {
+                mapa(seguir && comLocalizacao) { seguir = false }
+                Column(Modifier.statusBarsPadding().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
+                        Surface(shape = RoundedCornerShape(24.dp), shadowElevation = 4.dp) {
+                            TextButton(onClick = aoVoltar) { Text("← " + stringResource(R.string.voltar)) }
+                        }
+                        if (comLocalizacao && !seguir) Button(onClick = { seguir = true }) { Text(stringResource(R.string.viagem_seguir_me)) }
+                    }
+                    if (ecra.horario) {
+                        Surface(color = cores.secondaryContainer, shape = RoundedCornerShape(8.dp), shadowElevation = 4.dp) {
+                            Text(
+                                stringResource(R.string.viagem_selo_horario), Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                style = MaterialTheme.typography.labelLarge,
+                            )
+                        }
+                    }
+                }
             }
         }
-        if (estado.terminada) {
-            Text(
-                stringResource(R.string.aviso_chegou, ecra.para), Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
-                color = cores.onSurface, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold,
-            )
-        }
-        HorizontalPager(pager, Modifier.weight(1f).fillMaxWidth()) { i -> Cartao(ecra, i, aoEncontrar) }
-        HorizontalDivider(color = cores.outlineVariant)
-        Rodape(ecra, aoSilenciar, aoJaSai, aoParar, aoPartilhar)
     }
 }
 

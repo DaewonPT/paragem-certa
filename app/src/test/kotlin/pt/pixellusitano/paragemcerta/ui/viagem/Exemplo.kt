@@ -1,5 +1,9 @@
 package pt.pixellusitano.paragemcerta.ui.viagem
 
+import androidx.compose.ui.test.junit4.ComposeTestRule
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeUp
 import pt.pixellusitano.paragemcerta.core.modelo.Etapa
 import pt.pixellusitano.paragemcerta.core.modelo.Itinerario
 import pt.pixellusitano.paragemcerta.core.modelo.Lugar
@@ -13,6 +17,12 @@ import pt.pixellusitano.paragemcerta.core.viagem.Percurso
 import pt.pixellusitano.paragemcerta.core.viagem.PlanoViagem
 import pt.pixellusitano.paragemcerta.core.viagem.Viagem
 import java.time.Instant
+
+/** Puxa o painel da viagem para cima: por baixo do mapa só se vê o título da etapa e as primeiras paragens; os botões ficam mais abaixo. */
+internal fun ComposeTestRule.abrirPainel() {
+    onRoot().performTouchInput { swipeUp(startY = height * 0.9f, endY = height * 0.1f) }
+    waitForIdle()
+}
 
 /**
  * A viagem dos testes do ecrã, a começar em t0: a pé até ao Cais do Sodré, o 736 até ao Oriente (seis paragens), a pé até à

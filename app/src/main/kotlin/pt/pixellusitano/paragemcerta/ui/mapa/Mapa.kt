@@ -25,7 +25,9 @@ import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.geometry.LatLng
+import org.maplibre.android.location.LocationComponent
 import org.maplibre.android.location.LocationComponentActivationOptions
+import org.maplibre.android.location.OnCameraTrackingChangedListener
 import org.maplibre.android.location.modes.CameraMode
 import org.maplibre.android.location.modes.RenderMode
 import org.maplibre.android.maps.MapLibreMap
@@ -62,10 +64,20 @@ private const val CAMADA_VEICULOS_TEXTO = "camada-veiculos-texto"
 private const val FONTE_PERCURSOS = "fonte-percursos"
 private const val CAMADA_PERCURSOS = "camada-percursos"
 private const val CAMADA_A_PE = "camada-a-pe"
+private const val FONTE_MARCAS = "fonte-marcas"
+private const val CAMADA_MARCAS = "camada-marcas"
+private const val CAMADA_MARCAS_TEXTO = "camada-marcas-texto"
 private val SINAL_ANTIGO: Duration = Duration.ofMinutes(2)
+private const val ZOOM_A_SEGUIR = 16.5
 
-/** Um troço de uma rota no mapa: pontos (lat, lon), cor "#RRGGBB" e se é a pé (desenhado a tracejado). */
-data class Percurso(val pontos: List<Pair<Double, Double>>, val cor: String, val aPe: Boolean)
+/**
+ * Um troço de uma rota no mapa: pontos (lat, lon), cor "#RRGGBB" e se é a pé (desenhado a tracejado).
+ * esbatido: na viagem, as etapas que não são a atual (mais finas e claras; a câmara só enquadra as outras).
+ */
+data class Percurso(val pontos: List<Pair<Double, Double>>, val cor: String, val aPe: Boolean, val esbatido: Boolean = false)
+
+/** Uma paragem da etapa atual da viagem; sai: onde a pessoa sai (maior, com o nome). */
+data class Marca(val lat: Double, val lon: Double, val nome: String, val sai: Boolean = false)
 
 @SuppressLint("MissingPermission")
 @Composable
@@ -88,6 +100,14 @@ fun Mapa(
     mostrarPosicao: Boolean = false,
     /** Contador: cada vez que sobe, a câmara vai para a posição da pessoa. */
     centrarAgora: Int = 0,
+    /** As paragens da etapa atual da viagem, por cima dos percursos. */
+    marcas: List<Marca> = emptyList(),
+    /**
+     * Modo "seguir" (a viagem): a câmara acompanha a pessoa, virada para onde ela se move, até ela mexer no mapa
+     * (aoDeixarDeSeguir). Precisa de mostrarPosicao; a seguir, não enquadra os percursos.
+     */
+    seguir: Boolean = false,
+    aoDeixarDeSeguir: () -> Unit = {},
 ) {
     val contexto = LocalContext.current
     val ciclo = LocalLifecycleOwner.current.lifecycle
@@ -98,6 +118,15 @@ fun Mapa(
     val paragensAtuais by rememberUpdatedState(paragens)
     val veiculosAtuais by rememberUpdatedState(veiculos)
     val posicaoVisivel by rememberUpdatedState(mostrarPosicao)
+    val aSeguir by rememberUpdatedState(seguir)
+    val deixouDeSeguir by rememberUpdatedState(aoDeixarDeSeguir)
+    // O MapLibre avisa quando a pessoa mexe na câmara a meio de uma viagem e passa sozinho a NONE.
+    val ouvinteSeguir = remember {
+        object : OnCameraTrackingChangedListener {
+            override fun onCameraTrackingDismissed() = deixouDeSeguir()
+            override fun onCameraTrackingChanged(currentMode: Int) = Unit
+        }
+    }
 
     val estado = remember { EstadoMapa() }
     val vista = remember {
@@ -166,7 +195,7 @@ fun Mapa(
             prepararCamadas(estilo, escuro)
             estado.estilo = estilo
             // Mudar de estilo (claro/escuro) deita fora o ponto da posição: volta a ativá-lo.
-            if (posicaoVisivel) ativarPosicao(contexto, mapa, estilo)
+            if (posicaoVisivel) ativarPosicao(contexto, mapa, estilo, aSeguir, ouvinteSeguir)
         }
     }
 
@@ -174,7 +203,13 @@ fun Mapa(
     LaunchedEffect(mostrarPosicao) {
         val mapa = estado.mapa ?: return@LaunchedEffect
         val estilo = estado.estilo ?: return@LaunchedEffect
-        if (mostrarPosicao) ativarPosicao(contexto, mapa, estilo)
+        if (mostrarPosicao) ativarPosicao(contexto, mapa, estilo, aSeguir, ouvinteSeguir)
+    }
+
+    // "Seguir-me" volta a pôr a câmara na pessoa; mexer no mapa tira-a de lá.
+    LaunchedEffect(seguir, estado.estilo) {
+        val componente = estado.mapa?.locationComponent ?: return@LaunchedEffect
+        if (estado.estilo != null && componente.isLocationComponentActivated) seguirPosicao(componente, seguir)
     }
 
     LaunchedEffect(centrarAgora, estado.mapa) {
@@ -229,14 +264,29 @@ fun Mapa(
                 Feature.fromGeometry(LineString.fromLngLats(p.pontos.map { (lat, lon) -> Point.fromLngLat(lon, lat) })).apply {
                     addStringProperty("cor", p.cor)
                     addBooleanProperty("aPe", p.aPe)
+                    addBooleanProperty("esbatido", p.esbatido)
                 }
             }),
         )
     }
 
+    LaunchedEffect(marcas, estado.estilo) {
+        estado.estilo?.getSourceAs<GeoJsonSource>(FONTE_MARCAS)?.setGeoJson(
+            FeatureCollection.fromFeatures(marcas.map { m ->
+                Feature.fromGeometry(Point.fromLngLat(m.lon, m.lat)).apply {
+                    addStringProperty("nome", m.nome)
+                    addBooleanProperty("sai", m.sai)
+                }
+            }),
+        )
+    }
+
+    // A seguir a pessoa manda a câmara do MapLibre; senão (sem localização, ou depois de a pessoa mexer no mapa) enquadra-se
+    // o percurso, mas só quando ele muda: arrastar o mapa não o pode devolver ao sítio de onde a pessoa o tirou.
     LaunchedEffect(percursos, estado.mapa) {
         val mapa = estado.mapa ?: return@LaunchedEffect
-        val pontos = percursos.flatMap { it.pontos }.distinct()
+        if (aSeguir) return@LaunchedEffect
+        val pontos = percursos.filterNot { it.esbatido }.flatMap { it.pontos }.distinct()
         if (pontos.size < 2) return@LaunchedEffect
         val limites = LatLngBounds.Builder().includes(pontos.map { (lat, lon) -> LatLng(lat, lon) }).build()
         mapa.easeCamera(CameraUpdateFactory.newLatLngBounds(limites, 80))
@@ -253,29 +303,40 @@ private class EstadoMapa {
 
 /** Liga o ponto azul da posição (motor de localização do próprio MapLibre, sem serviços da Google). */
 @SuppressLint("MissingPermission")
-private fun ativarPosicao(contexto: Context, mapa: MapLibreMap, estilo: Style) {
+private fun ativarPosicao(contexto: Context, mapa: MapLibreMap, estilo: Style, seguir: Boolean, ouvinteSeguir: OnCameraTrackingChangedListener) {
     if (!temLocalizacao(contexto)) return
     try {
         mapa.locationComponent.apply {
             activateLocationComponent(LocationComponentActivationOptions.builder(contexto, estilo).useDefaultLocationEngine(true).build())
             isLocationComponentEnabled = true
-            renderMode = RenderMode.NORMAL
-            cameraMode = CameraMode.NONE
+            // Ativar outra vez (novo estilo, permissão dada depois) não pode deixar o aviso repetido.
+            removeOnCameraTrackingChangedListener(ouvinteSeguir)
+            addOnCameraTrackingChangedListener(ouvinteSeguir)
+            seguirPosicao(this, seguir)
         }
     } catch (_: SecurityException) {
         // A permissão foi retirada entre a verificação e a ativação: fica sem ponto.
     }
 }
 
+/** A seguir: a câmara fica na pessoa, virada para onde ela se move (seta no lugar do ponto); senão, só o ponto azul. */
+private fun seguirPosicao(componente: LocationComponent, seguir: Boolean) {
+    componente.renderMode = if (seguir) RenderMode.GPS else RenderMode.NORMAL
+    if (seguir) componente.setCameraMode(CameraMode.TRACKING_GPS, 750L, ZOOM_A_SEGUIR, null, 0.0, null)
+    else componente.cameraMode = CameraMode.NONE
+}
+
 private fun prepararCamadas(estilo: Style, escuro: Boolean) {
     estilo.addSource(GeoJsonSource(FONTE_PARAGENS))
     estilo.addSource(GeoJsonSource(FONTE_VEICULOS))
     estilo.addSource(GeoJsonSource(FONTE_PERCURSOS))
+    estilo.addSource(GeoJsonSource(FONTE_MARCAS))
     // Os percursos ficam por baixo das paragens e dos veículos.
     estilo.addLayer(
         LineLayer(CAMADA_PERCURSOS, FONTE_PERCURSOS).withProperties(
             PropertyFactory.lineColor(Expression.get("cor")),
-            PropertyFactory.lineWidth(5f),
+            PropertyFactory.lineWidth(Expression.switchCase(Expression.get("esbatido"), Expression.literal(3f), Expression.literal(5f))),
+            PropertyFactory.lineOpacity(Expression.switchCase(Expression.get("esbatido"), Expression.literal(0.45f), Expression.literal(1f))),
             PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
             PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
         ).withFilter(Expression.eq(Expression.get("aPe"), Expression.literal(false))),
@@ -284,6 +345,7 @@ private fun prepararCamadas(estilo: Style, escuro: Boolean) {
         LineLayer(CAMADA_A_PE, FONTE_PERCURSOS).withProperties(
             PropertyFactory.lineColor(if (escuro) "#8D9AB3" else "#627189"),
             PropertyFactory.lineWidth(3f),
+            PropertyFactory.lineOpacity(Expression.switchCase(Expression.get("esbatido"), Expression.literal(0.45f), Expression.literal(1f))),
             PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
             PropertyFactory.lineDasharray(arrayOf(1f, 2f)),
         ).withFilter(Expression.eq(Expression.get("aPe"), Expression.literal(true))),
@@ -295,6 +357,33 @@ private fun prepararCamadas(estilo: Style, escuro: Boolean) {
             PropertyFactory.circleStrokeWidth(2f),
             PropertyFactory.circleStrokeColor(if (escuro) "#0B1222" else "#FFFFFF"),
         ),
+    )
+    // As paragens da viagem: pequenas, e a de saída maior, de outra cor e com o nome.
+    estilo.addLayer(
+        CircleLayer(CAMADA_MARCAS, FONTE_MARCAS).withProperties(
+            PropertyFactory.circleRadius(Expression.switchCase(Expression.get("sai"), Expression.literal(10f), Expression.literal(5f))),
+            PropertyFactory.circleColor(
+                Expression.switchCase(
+                    Expression.get("sai"), Expression.literal(if (escuro) "#FFA94D" else "#D9480F"),
+                    Expression.literal(if (escuro) "#7FB0FF" else "#1F4FA3"),
+                ),
+            ),
+            PropertyFactory.circleStrokeWidth(2f),
+            PropertyFactory.circleStrokeColor(if (escuro) "#0B1222" else "#FFFFFF"),
+        ),
+    )
+    estilo.addLayer(
+        SymbolLayer(CAMADA_MARCAS_TEXTO, FONTE_MARCAS).withProperties(
+            PropertyFactory.textField(Expression.get("nome")),
+            PropertyFactory.textFont(arrayOf("Noto Sans Bold")),
+            PropertyFactory.textSize(12f),
+            PropertyFactory.textAnchor(Property.TEXT_ANCHOR_TOP),
+            PropertyFactory.textOffset(arrayOf(0f, 1f)),
+            PropertyFactory.textColor(if (escuro) "#FFFFFF" else "#0B1222"),
+            PropertyFactory.textHaloColor(if (escuro) "#0B1222" else "#FFFFFF"),
+            PropertyFactory.textHaloWidth(1.5f),
+            PropertyFactory.textAllowOverlap(true),
+        ).withFilter(Expression.eq(Expression.get("sai"), Expression.literal(true))),
     )
     val opacidade = Expression.switchCase(Expression.get("antigo"), Expression.literal(0.4f), Expression.literal(1f))
     estilo.addLayer(

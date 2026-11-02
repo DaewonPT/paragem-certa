@@ -2,6 +2,8 @@ package pt.pixellusitano.paragemcerta.ui.viagem
 
 import android.app.Application
 import android.content.Intent
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -75,6 +77,7 @@ class ViagemScreenshotTest {
         texto("Estás aqui").assertExists()
         texto("Chegada prevista às 11:34").assertExists() // 10:34 UTC, Lisboa no verão
         texto("Posição estimada pelo horário").assertDoesNotExist()
+        regra.abrirPainel()
         listOf("Estás aqui", "Silenciar", "Já saí", "Parar", "Partilhar chegada").forEach { texto(it).assertIsDisplayed() }
     }
 
@@ -85,6 +88,7 @@ class ViagemScreenshotTest {
                 TemaParagemCerta(ModoTema.CLARO) { Ecra(ex.aBordo(plano, 1, k = 2)) }
             }
         }
+        regra.abrirPainel()
         listOf("Faltam 3 paragens · sais em Oriente", "Silenciar", "Já saí", "Parar", "Partilhar chegada").forEach { texto(it).assertIsDisplayed() }
     }
 
@@ -146,7 +150,8 @@ class ViagemScreenshotTest {
 
     @Test fun deslizarMostraAEtapaSeguinte() {
         mostrar(ex.aBordo(plano, 1, k = 2))
-        regra.onRoot().performTouchInput { swipeLeft() }
+        // A etapa desliza-se no painel; no resto do ecrã é o mapa que se arrasta.
+        texto("Etapa 2 de 4 · Agora").performTouchInput { swipeLeft() }
         regra.waitForIdle()
         texto("Etapa 3 de 4 · A seguir").assertExists()
         texto("🚶 A pé até Oriente (Norte) · 90 m").assertExists()
@@ -163,6 +168,7 @@ class ViagemScreenshotTest {
                 )
             }
         }
+        regra.abrirPainel()
         listOf("Silenciar", "Já saí", "Parar", "Partilhar chegada").forEach { texto(it).performClick() }
         assertEquals(listOf("silenciar", "jaSai", "parar", "partilhar"), pedidos)
     }
@@ -194,7 +200,7 @@ class ViagemScreenshotTest {
         FicheirosViagem.gravarPlano(contexto, p)
         FicheirosViagem.gravarEstado(contexto, agora.aBordo(p, 1, k = 2))
         var saiu = false
-        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { ViagemEcra(aoVoltar = { saiu = true }) } }
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { ViagemEcra(aoVoltar = { saiu = true }, mapa = SEM_MAPA) } }
 
         esperarPor("Faltam 3 paragens · sais em Oriente") // ao abrir
         FicheirosViagem.gravarEstado(contexto, agora.aBordo(p, 1, k = 3))
@@ -213,7 +219,7 @@ class ViagemScreenshotTest {
         FicheirosViagem.gravarPlano(contexto, p)
         FicheirosViagem.gravarEstado(contexto, agora.aBordo(p, 1, k = 2))
         var saiu = false
-        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { ViagemEcra(aoVoltar = { saiu = true }) } }
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { ViagemEcra(aoVoltar = { saiu = true }, mapa = SEM_MAPA) } }
 
         esperarPor("Faltam 3 paragens · sais em Oriente")
         // O serviço recusou o RETOMAR: não apagou nada (é a "Viagem interrompida"), por isso ler os ficheiros outra vez não mudava o ecrã.
@@ -222,6 +228,9 @@ class ViagemScreenshotTest {
         assertTrue(saiu)
         assertNotNull(FicheirosViagem.lerEstado(contexto))
     }
+
+    // O MapLibre não desenha no Robolectric: no lugar do mapa fica um retângulo.
+    private val SEM_MAPA: @Composable (Boolean, () -> Unit) -> Unit = { _, _ -> Box(Modifier.fillMaxSize()) }
 
     private fun esperarPor(t: String) = regra.waitUntil(5_000) { regra.onAllNodesWithText(t).fetchSemanticsNodes().isNotEmpty() }
 

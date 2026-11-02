@@ -62,6 +62,10 @@ private fun Etapa.pontos() = desenho.ifEmpty { listOf(de.lat to de.lon, para.lat
 
 private fun hex(c: Color) = "#%06X".format(c.toArgb() and 0xFFFFFF)
 
+/** O percurso de cada etapa no mapa, com a cor da linha. Com [atual] (a etapa da viagem), as outras vão esbatidas. */
+internal fun Itinerario.percursos(atual: Int? = null) =
+    etapas.mapIndexed { i, e -> Percurso(e.pontos(), hex(corDaLinha(e.cor, e.modo)), e.aPe, esbatido = atual != null && i != atual) }
+
 /** O Transitous chama START e END às pontas dadas em coordenadas; nunca são o nome de uma paragem. */
 private val NOMES_DE_COORDENADA = setOf("START", "END")
 
@@ -86,7 +90,7 @@ fun DetalheRotaEcra(it: Itinerario, de: String, para: String, preferencias: Pref
     DetalheRotaConteudo(
         it, de, para,
         mapa = {
-            val percursos = it.etapas.map { e -> Percurso(e.pontos(), hex(corDaLinha(e.cor, e.modo)), e.aPe) }
+            val percursos = it.percursos()
             val inicio = percursos.first().pontos.first()
             Mapa(
                 paragens = emptyList(), enquadrar = emptyList(), veiculos = emptyList(), coresLinhas = emptyMap(),

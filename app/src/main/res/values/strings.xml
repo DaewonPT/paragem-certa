@@ -235,6 +235,7 @@
     <string name="viagem_agora">Agora</string>
     <string name="viagem_a_seguir">A seguir</string>
     <string name="viagem_selo_horario">Posição estimada pelo horário</string>
+    <string name="viagem_seguir_me">Seguir-me</string>
     <string name="viagem_estas_aqui">Estás aqui</string>
     <string name="viagem_sais_aqui">Sais aqui</string>
     <string name="viagem_chegada_prevista">Chegada prevista às %1$s</string>
