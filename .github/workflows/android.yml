@@ -158,6 +158,9 @@ jobs:
         env:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          # Id do cliente Web da Google: vai para o BuildConfig do APK (app/build.gradle.kts), não está no repositório.
+          # Sem o segredo fica vazio e o botão "Iniciar sessão com o Google" não aparece.
+          GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID }}
         run: ./gradlew --stacktrace :app:assemblePessoalRelease
 
       - name: Verify signature and attach APK to the Release

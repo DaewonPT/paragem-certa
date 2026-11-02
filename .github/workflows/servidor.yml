@@ -1,5 +1,5 @@
 # .github/workflows/servidor.yml
-# Testa o servidor (worker/). A publicação é um passo à parte do autor (ver docs/servidor.md).
+# Testa o servidor (worker/). Só publica quando o autor corre o workflow à mão (ver docs/servidor.md).
 name: Servidor
 
 on:
@@ -11,6 +11,7 @@ on:
     paths:
       - 'worker/**'
       - '.github/workflows/servidor.yml'
+  workflow_dispatch:
 
 # Least privilege: everything is read-only unless a job asks for more.
 permissions:
@@ -49,3 +50,53 @@ jobs:
 
       - name: Types
         run: npm run tipos
+
+  publicar:
+    name: Publish to Cloudflare
+    # Só à mão (Actions → Servidor → Run workflow) e só a partir do main. Os passos do autor estão em docs/servidor.md.
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    # Os testes e os tipos têm de passar antes de qualquer coisa sair daqui.
+    needs: testes
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      WRANGLER_SEND_METRICS: 'false'
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+
+      - name: Install dependencies (exact versions from package-lock.json)
+        working-directory: worker
+        run: npm ci
+
+      # As migrações vão primeiro: só acrescentam tabelas, por isso o código antigo continua a funcionar até ao deploy.
+      - name: Apply D1 migrations (remote, EU)
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker
+          command: d1 migrations apply DB --remote
+
+      - name: Deploy the Worker and its secrets
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker
+          command: deploy
+          secrets: |
+            RESEND_API_KEY
+            RESPONSAVEL
+            GOOGLE_WEB_CLIENT_ID
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESPONSAVEL: ${{ secrets.RESPONSAVEL }}
+          GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID }}
