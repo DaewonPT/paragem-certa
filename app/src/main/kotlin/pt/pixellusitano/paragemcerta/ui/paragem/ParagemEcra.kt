@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -42,6 +43,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import pt.pixellusitano.paragemcerta.BuildConfig
 import pt.pixellusitano.paragemcerta.R
+import pt.pixellusitano.paragemcerta.aviso.ServicoAvisoChegada
 import pt.pixellusitano.paragemcerta.core.atraso.aindaPorChegar
 import pt.pixellusitano.paragemcerta.core.modelo.Alerta
 import pt.pixellusitano.paragemcerta.core.modelo.Gravidade
@@ -79,11 +81,15 @@ fun ParagemEcra(ref: RefParagem, repositorio: Repositorio, aoVoltar: () -> Unit)
         }
     }
     val nome = paragem?.nome ?: ref.id
+    val vigiadas by ServicoAvisoChegada.paragensVigiadas.collectAsStateWithLifecycle()
+    val vigiada = ref.chave in vigiadas
+    var avisaMe by rememberSaveable { mutableStateOf(false) }
     ParagemConteudo(
         nome = nome,
         codigo = ref.id.substringAfterLast('_'),
         acessivel = paragem?.acessivel,
         favorita = favorita,
+        vigiada = vigiada,
         estado = estado?.let(vm::aplicarFiltro),
         filtro = filtro,
         linhasPresentes = presentes,
@@ -98,10 +104,19 @@ fun ParagemEcra(ref: RefParagem, repositorio: Repositorio, aoVoltar: () -> Unit)
                 favorita = repositorio.eFavorita(ref)
             }
         },
+        aoAvisaMe = {
+            if (vigiada) {
+                contexto.startService(ServicoAvisoChegada.cancelar(contexto, ref))
+            } else {
+                avisaMe = true
+            }
+        },
         aoReportar = { runCatching { contexto.startActivity(intentReportarErro(BuildConfig.VERSION_NAME, ref.chave, nome)) } },
         aoVoltar = aoVoltar,
         modifier = Modifier.fillMaxSize(),
     )
+    // O serviço vigia as linhas pelo nome que a pessoa vê (o do Transitous não é o id).
+    if (avisaMe) AvisaMe(ref, nome, presentes.map { it.second }.distinct(), aoFechar = { avisaMe = false })
 }
 
 /** Conteúdo puro do ecrã da paragem (testado com capturas). */
@@ -111,6 +126,7 @@ fun ParagemConteudo(
     codigo: String,
     acessivel: Boolean?,
     favorita: Boolean,
+    vigiada: Boolean,
     estado: EstadoChegadas?,
     filtro: String?,
     linhasPresentes: List<Pair<String, String>>,
@@ -119,6 +135,7 @@ fun ParagemConteudo(
     agora: Instant,
     aoFiltrar: (String?) -> Unit,
     aoFavoritar: () -> Unit,
+    aoAvisaMe: () -> Unit,
     aoReportar: () -> Unit,
     aoVoltar: () -> Unit,
     modifier: Modifier = Modifier,
@@ -169,6 +186,10 @@ fun ParagemConteudo(
                     Text(stringResource(R.string.sem_chegadas), color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(vertical = 16.dp))
                 else -> visiveis.orEmpty().forEach { LinhaChegada(it, linhas[it.linhaId], agora) }
+            }
+            // Sem linhas à vista não há o que escolher; se a paragem já está vigiada, "Parar" serve sempre.
+            Button(onClick = aoAvisaMe, enabled = vigiada || linhasPresentes.isNotEmpty(), modifier = Modifier.padding(top = 16.dp).fillMaxWidth()) {
+                Text(stringResource(if (vigiada) R.string.avisame_vigiar_parar else R.string.avisame))
             }
             OutlinedButton(onClick = aoReportar, modifier = Modifier.padding(top = 16.dp).fillMaxWidth()) {
                 Text(stringResource(R.string.paragem_reportar))

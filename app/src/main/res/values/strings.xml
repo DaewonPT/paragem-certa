@@ -40,6 +40,14 @@
     <string name="paragem_favorita">Tirar das favoritas</string>
     <string name="paragem_nao_favorita">Juntar às favoritas</string>
     <string name="paragem_reportar">Reportar erro</string>
+    <string name="avisame">Avisa-me</string>
+    <string name="avisame_vigiar_parar">A vigiar · Parar</string>
+    <string name="avisame_linhas">Escolhe as linhas</string>
+    <string name="avisame_quando">Avisa-me quando estiver a</string>
+    <string name="avisame_minutos">%1$d min</string>
+    <string name="avisame_avisar">Avisar</string>
+    <string name="avisame_sem_notificacoes">Os avisos vão só tocar e vibrar, sem aparecer no ecrã.</string>
+    <string name="avisame_falhou">Não deu para ativar o aviso. Tenta outra vez.</string>
     <string name="gravidade_grave">Grave</string>
     <string name="gravidade_aviso">Aviso</string>
     <string name="gravidade_info">Informação</string>

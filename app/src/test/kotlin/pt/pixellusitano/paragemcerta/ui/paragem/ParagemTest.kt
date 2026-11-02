@@ -88,9 +88,9 @@ class ParagemTest {
         regra.setContent {
             TemaParagemCerta(ModoTema.CLARO) {
                 ParagemConteudo(
-                    nome = "Cais do Sodré", codigo = "060419", acessivel = null, favorita = false, estado = null, filtro = null,
+                    nome = "Cais do Sodré", codigo = "060419", acessivel = null, favorita = false, vigiada = false, estado = null, filtro = null,
                     linhasPresentes = emptyList(), alertas = emptyList(), linhas = emptyMap(), agora = agora,
-                    aoFiltrar = {}, aoFavoritar = {}, aoReportar = {}, aoVoltar = {},
+                    aoFiltrar = {}, aoFavoritar = {}, aoAvisaMe = {}, aoReportar = {}, aoVoltar = {},
                 )
             }
         }
@@ -107,9 +107,9 @@ class ParagemTest {
 
     @Composable
     private fun Ecra(e: EstadoChegadas, alertas: List<Alerta> = listOf(alerta)) = ParagemConteudo(
-        nome = "Cais do Sodré (Terminal)", codigo = "060419", acessivel = true, favorita = true,
+        nome = "Cais do Sodré (Terminal)", codigo = "060419", acessivel = true, favorita = true, vigiada = false,
         estado = e, filtro = null, linhasPresentes = listOf("1001" to "1001", "3708" to "3708"), alertas = alertas, linhas = emptyMap(),
-        agora = agora, aoFiltrar = {}, aoFavoritar = {}, aoReportar = {}, aoVoltar = {},
+        agora = agora, aoFiltrar = {}, aoFavoritar = {}, aoAvisaMe = {}, aoReportar = {}, aoVoltar = {},
         modifier = Modifier.width(360.dp),
     )
 
