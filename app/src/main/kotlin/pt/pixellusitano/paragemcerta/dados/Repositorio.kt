@@ -240,10 +240,11 @@ class Repositorio(
     suspend fun planear(de: Lugar, para: Lugar, hora: Instant, chegarAs: Boolean, f: Filtros): Resultado<List<Itinerario>> =
         when (val r = transitous.planear(de, para, hora, chegarAs, f)) {
             is Resultado.Ok -> {
+                val itinerarios = r.valor.itinerarios
                 // Aos bocados: o SQLite aceita poucas variáveis por consulta (999 no Android 8).
-                val daBase = r.valor.chavesDosNomes().chunked(500).flatMap { bd.paragens().porNomes(it) }
+                val daBase = itinerarios.chavesDosNomes().chunked(500).flatMap { bd.paragens().porNomes(it) }
                     .map { Lugar(it.nome, it.lat, it.lon, TipoLugar.PARAGEM) }
-                Resultado.Ok(r.valor.comNomesAcentuados(daBase + de + para))
+                Resultado.Ok(itinerarios.comNomesAcentuados(daBase + de + para))
             }
             is Resultado.Falha -> r
         }

@@ -63,8 +63,10 @@ internal fun simboloModo(m: Modo) = when (m) {
 internal fun textoEtiqueta(e: Etiqueta) = stringResource(
     when (e) {
         Etiqueta.MAIS_RAPIDA -> R.string.etiqueta_mais_rapida
+        Etiqueta.CHEGADA_MAIS_CEDO -> R.string.etiqueta_chegada_mais_cedo
         Etiqueta.MENOS_A_PE -> R.string.etiqueta_menos_a_pe
         Etiqueta.DIRETA -> R.string.etiqueta_direta
+        Etiqueta.CAMINHADA_LONGA -> R.string.etiqueta_caminhada_longa
         Etiqueta.TRANSBORDO_APERTADO -> R.string.etiqueta_transbordo_apertado
     },
 )

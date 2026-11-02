@@ -134,6 +134,8 @@
     <string name="etiqueta_mais_rapida">mais rápida</string>
     <string name="etiqueta_menos_a_pe">menos a pé</string>
     <string name="etiqueta_direta">direta</string>
+    <string name="etiqueta_chegada_mais_cedo">Chegada mais cedo</string>
+    <string name="etiqueta_caminhada_longa">Caminhada longa</string>
     <string name="etiqueta_transbordo_apertado">transbordo apertado</string>
     <string name="rotas_dica">Escolhe para onde vais e mostramos-te as ligações.</string>
     <string name="rotas_a_procurar">A procurar ligações…</string>

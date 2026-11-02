@@ -13,7 +13,9 @@ import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.Modo
 import pt.pixellusitano.paragemcerta.core.modelo.Paragem
 import pt.pixellusitano.paragemcerta.core.modelo.ParagemEtapa
+import pt.pixellusitano.paragemcerta.core.modelo.PlanoRotas
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
+import pt.pixellusitano.paragemcerta.core.modelo.Ritmo
 import pt.pixellusitano.paragemcerta.core.rede.Http
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import pt.pixellusitano.paragemcerta.core.rede.pedir
@@ -148,7 +150,14 @@ fun modoDe(mode: String): Modo = when (mode) {
 
 @Serializable private class ItinerarioJson(val startTime: String, val endTime: String, val transfers: Int = 0, val legs: List<EtapaJson> = emptyList())
 
-@Serializable private class PlanoJson(val itineraries: List<ItinerarioJson> = emptyList())
+@Serializable private class PlanoJson(
+    val itineraries: List<ItinerarioJson> = emptyList(),
+    val previousPageCursor: String? = null,
+    val nextPageCursor: String? = null,
+)
+
+// Não usar URLEncoder.encode(String, Charset): só existe a partir do Android 13 e rebentava no Android 8-12.
+private fun enc(s: String): String = URLEncoder.encode(s, "UTF-8")
 
 private fun PontoRotaJson.lugar() = Lugar(name.espacosUnicos(), lat, lon, TipoLugar.LOCAL)
 
@@ -162,22 +171,40 @@ private val ORDEM_MODOS = listOf(
     Modo.COMBOIO to "HIGHSPEED_RAIL,LONG_DISTANCE,NIGHT_RAIL,REGIONAL_FAST_RAIL,REGIONAL_RAIL,SUBURBAN", Modo.BARCO to "FERRY",
 )
 
-/** Pedido de rotas do MOTIS (Transitous) com os filtros da Paragem Certa. */
-fun urlPlano(base: String, de: Lugar, para: Lugar, hora: Instant, chegarAs: Boolean, filtros: Filtros): String = buildString {
+private const val MAX_A_PE_MENOS_A_PE_MIN = 10
+
+/**
+ * Pedido de rotas do MOTIS (Transitous) com os filtros da Paragem Certa. O tempo máximo a pé vai sempre (o "menos a pé" nunca
+ * passa dos 10 min); a ordem não vai (faz-se na app). [cursor] pede a página "mais cedo" ou "mais tarde" de uma resposta anterior.
+ */
+fun urlPlano(base: String, de: Lugar, para: Lugar, hora: Instant, chegarAs: Boolean, filtros: Filtros, cursor: String? = null): String = buildString {
     append("$base/api/v6/plan?fromPlace=${de.lat},${de.lon}&toPlace=${para.lat},${para.lon}")
-    append("&time=${hora.truncatedTo(ChronoUnit.SECONDS)}&arriveBy=$chegarAs&numItineraries=5")
-    if (filtros.menosAPe) append("&maxPreTransitTime=600&maxPostTransitTime=600")
+    append("&time=${hora.truncatedTo(ChronoUnit.SECONDS)}&arriveBy=$chegarAs&numItineraries=5&maxItineraries=8&language=pt")
+    val aPeSegundos = (if (filtros.menosAPe) minOf(filtros.maxAPeMin, MAX_A_PE_MENOS_A_PE_MIN) else filtros.maxAPeMin) * 60
+    append("&maxPreTransitTime=$aPeSegundos&maxPostTransitTime=$aPeSegundos")
+    // O normal é o do servidor.
+    if (filtros.ritmo != Ritmo.NORMAL) append("&pedestrianSpeed=${filtros.ritmo.metrosPorSegundo}")
     if (filtros.menosTransbordos) append("&maxTransfers=1")
     if (filtros.acessivel) append("&pedestrianProfile=WHEELCHAIR")
     // Todos os modos ligados = sem filtro, para não excluir os que a app não lista (autocarros de longo curso, funiculares).
     if (filtros.modos.isNotEmpty() && !filtros.modos.containsAll(ORDEM_MODOS.map { it.first }))
         append("&transitModes=" + ORDEM_MODOS.filter { it.first in filtros.modos }.joinToString(",") { it.second })
+    // directModes vazio: as páginas não repetem a rota direta (a pé do princípio ao fim) da primeira.
+    if (cursor != null) append("&pageCursor=${enc(cursor)}&directModes=")
 }
 
 object TransitousParser {
     /** Itinerários do /api/v6/plan; um itinerário com uma etapa cancelada é descartado. */
-    fun rotas(json: String): List<Itinerario> =
-        JSON.decodeFromString<PlanoJson>(json).itineraries
+    fun rotas(json: String): List<Itinerario> = plano(json).itinerarios
+
+    /** Os itinerários do /api/v6/plan com os cursores das páginas "mais cedo" e "mais tarde". */
+    fun plano(json: String): PlanoRotas {
+        val plano = JSON.decodeFromString<PlanoJson>(json)
+        return PlanoRotas(itinerarios(plano), plano.previousPageCursor, plano.nextPageCursor)
+    }
+
+    private fun itinerarios(plano: PlanoJson): List<Itinerario> =
+        plano.itineraries
             .filter { it.legs.isNotEmpty() && it.legs.none { l -> l.cancelled } }
             .map { it ->
                 Itinerario(
@@ -275,17 +302,14 @@ object TransitousParser {
 }
 
 class Transitous(private val http: Http, private val base: String = "https://api.transitous.org") {
-    // Não usar URLEncoder.encode(String, Charset): só existe a partir do Android 13 e rebentava no Android 8-12.
-    private fun enc(s: String): String = URLEncoder.encode(s, "UTF-8")
-
     suspend fun chegadas(paragemId: String, agora: Instant): Resultado<List<Chegada>> =
         http.pedir("$base/api/v6/stoptimes?stopId=${enc(paragemId)}&n=30&radius=0&exactRadius=true") { TransitousParser.chegadas(it, paragemId, agora) }
 
     suspend fun paragensNaZona(minLat: Double, minLon: Double, maxLat: Double, maxLon: Double): Resultado<List<Paragem>> =
         http.pedir("$base/api/v6/map/stops?min=$minLat,$minLon&max=$maxLat,$maxLon", TransitousParser::paragensNoMapa)
 
-    suspend fun planear(de: Lugar, para: Lugar, hora: Instant, chegarAs: Boolean, filtros: Filtros): Resultado<List<Itinerario>> =
-        http.pedir(urlPlano(base, de, para, hora, chegarAs, filtros), TransitousParser::rotas)
+    suspend fun planear(de: Lugar, para: Lugar, hora: Instant, chegarAs: Boolean, filtros: Filtros, cursor: String? = null): Resultado<PlanoRotas> =
+        http.pedir(urlPlano(base, de, para, hora, chegarAs, filtros, cursor), TransitousParser::plano)
 
     suspend fun lugarEm(lat: Double, lon: Double): Resultado<Lugar?> =
         http.pedir("$base/api/v1/reverse-geocode?place=$lat,$lon", TransitousParser::lugarMaisProximo)
