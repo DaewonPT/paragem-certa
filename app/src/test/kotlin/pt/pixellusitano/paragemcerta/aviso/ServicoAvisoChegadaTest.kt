@@ -25,6 +25,8 @@ import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.Modo
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
+import pt.pixellusitano.paragemcerta.core.perturbacoes.FontePerturbacao
+import pt.pixellusitano.paragemcerta.core.perturbacoes.Perturbacao
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import pt.pixellusitano.paragemcerta.viagem.Notificacoes
 import java.time.Duration
@@ -54,6 +56,15 @@ class ServicoAvisoChegadaTest {
     private var respostaAvisos: Resultado<Avisos> = Resultado.Ok(Avisos())
     private val pedidosAvisos = mutableListOf<List<String>>()
 
+    // As perturbações oficiais do teste (as da CM): a preferência ligada, nenhuma perturbação e nenhuma vista por omissão.
+    private var preferencia = true
+    private var perturbacoesDaCm = emptyList<Perturbacao>()
+    private var vistas = emptySet<String>()
+    private val pedidosPerturbacoes = mutableListOf<Set<String>>()
+
+    private fun perturbacao(titulo: String, vararg linhas: String) =
+        Perturbacao("cm:$titulo", FontePerturbacao.CM, linhas.toSet(), titulo, "Mais sobre: $titulo", null, null)
+
     private fun relato(id: String, tipo: String = "desvio", linha: String = "736", confirmado: Boolean = true) =
         RelatoRemoto(id, tipo, SODRE.chave, linha, 0, 0, 2, confirmado)
 
@@ -82,6 +93,9 @@ class ServicoAvisoChegadaTest {
             it.get().avisosLigados = { comunidade }
             it.get().ocultos = { ocultos }
             it.get().avisos = { linhas -> pedidosAvisos += linhas; respostaAvisos }
+            it.get().perturbacoesLigadas = { preferencia }
+            it.get().perturbacoes = { chaves, _ -> pedidosPerturbacoes += chaves; perturbacoesDaCm.filter { p -> p.linhas.any(chaves::contains) } }
+            it.get().vistas = { vistas }
             servicos += it
         }
 
@@ -330,6 +344,27 @@ class ServicoAvisoChegadaTest {
             assertEquals(falha.toString(), 1, pedidosAvisos.size)
             pedir(s, Intent(c, ServicoAvisoChegada::class.java).setAction(Notificacoes.ACAO_PARAR_VIGIA))
         }
+    }
+
+    @Test fun avisaMeNotificaPerturbacao() {
+        // Com a comunidade desligada: as perturbações da CM continuam, sem nenhum pedido ao servidor.
+        perturbacoesDaCm = listOf(perturbacao("Obras na Rua Direita", "1604", "1009"), perturbacao("Desvio já visto", "1009"))
+        vistas = setOf("cm:Desvio já visto")
+        comecar(vigiar(SODRE, "Cais do Sodré", "1009", "736"))
+        assertEquals(listOf(setOf("1009", "736")), pedidosPerturbacoes)
+        val n = shadowOf(gestor).allNotifications.single { titulo(it)!!.startsWith("⚠") }
+        assertEquals("⚠ Perturbação na 1009", titulo(n))
+        assertEquals("Obras na Rua Direita", n.extras.getCharSequence(Notification.EXTRA_TEXT).toString())
+        assertEquals(Notificacoes.CANAL_AVISOS, n.channelId)
+        assertTrue(alarmes.isEmpty())
+        passarOTempo(5 * 60) // a mesma 5 min depois não avisa outra vez
+        assertEquals(2, pedidosPerturbacoes.size)
+        assertEquals(1, relatosPostados().size)
+        assertTrue(pedidosAvisos.isEmpty())
+        // Desligar a preferência pára os pedidos.
+        preferencia = false
+        passarOTempo(10 * 60)
+        assertEquals(2, pedidosPerturbacoes.size)
     }
 
     @Test fun pedidosSemNadaAVigiarSoPedemPararOServico() {

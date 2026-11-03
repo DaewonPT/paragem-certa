@@ -342,7 +342,7 @@
     <string name="eu_avisos">Avisos da viagem</string>
     <string name="eu_som_aviso">Som do aviso</string>
     <string name="eu_vibracao_aviso">Vibração do aviso</string>
-    <string name="eu_avisos_comunidade">Avisos da comunidade durante a viagem</string>
+    <string name="eu_avisos_comunidade">Perturbações e relatos das tuas linhas</string>
     <string name="eu_camadas_mapa">Camadas do mapa</string>
     <string name="eu_camada_ao_vivo">Autocarros ao vivo</string>
     <string name="eu_camada_gira">Estações GIRA</string>
@@ -556,4 +556,15 @@
     <string name="linha_nao_favorita">Juntar a linha às favoritas</string>
     <string name="linha_relatos">Relatos desta linha</string>
     <string name="linha_paragens">Paragens</string>
+    <!-- Perturbações oficiais -->
+    <plurals name="faixa_perturbacoes">
+        <item quantity="one">%d perturbação nova nas tuas linhas</item>
+        <item quantity="other">%d perturbações novas nas tuas linhas</item>
+    </plurals>
+    <string name="perturbacoes_titulo">Perturbações</string>
+    <string name="perturbacoes_minhas">Nas tuas linhas</string>
+    <string name="perturbacoes_ate">até %1$s</string>
+    <string name="perturbacoes_nenhuma">Não há perturbações para mostrar.</string>
+    <string name="linhas_perturbacoes">Perturbações (%1$d)</string>
+    <string name="perturbacao_na">⚠ Perturbação na %1$s</string>
 </resources>

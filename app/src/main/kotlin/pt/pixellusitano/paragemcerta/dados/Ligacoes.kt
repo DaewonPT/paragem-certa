@@ -34,6 +34,7 @@ class Ligacoes(contexto: Context) {
     val comunidade by lazy { Comunidade(servidor, conta, configuracoes, preferencias) }
     val detalheDasLinhas = DetalheDasLinhas(cm, transitous, catalogoLinhas, repositorio)
     val estacoesGira = EstacoesGira(contexto.filesDir, Gira(http), Instant::now)
+    val perturbacoes = FontePerturbacoes(cm)
 
     private companion object {
         // O mesmo do ServidorParagemCerta: o linhas.json está nos ficheiros de dados do servidor.

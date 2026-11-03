@@ -109,7 +109,35 @@ class ServicoViagemTest {
 
     private fun plano(i: Itinerario, som: Boolean = true, vibrar: Boolean = false) = PlanoViagem(i, som, vibrar)
 
-    private fun comAvisos(i: Itinerario, ocultos: Set<String> = emptySet()) = PlanoViagem(i, som = true, vibrar = false, avisosComunidade = true, ocultos = ocultos)
+    /** A preferência ligada e, com [relatos], a comunidade ligada ao começar a viagem. */
+    private fun comAvisos(i: Itinerario, ocultos: Set<String> = emptySet(), relatos: Boolean = true, vistas: Set<String> = emptySet()) =
+        PlanoViagem(i, som = true, vibrar = false, avisosComunidade = true, ocultos = ocultos, relatos = relatos, vistas = vistas)
+
+    // A Carris Metropolitana do teste para as perturbações: guarda os pedidos aos alertas e responde [alertas].
+    private val pedidosAlertas = CopyOnWriteArrayList<String>()
+    @Volatile private var alertas = "[]"
+    private val cmAlertas = CarrisMetropolitana(object : Http {
+        override suspend fun get(url: String): Resposta {
+            if (url.endsWith("alerts")) pedidosAlertas += url
+            return Resposta(200, if (url.endsWith("alerts")) alertas else "[]")
+        }
+    }, "https://cm.teste/")
+
+    /** Os avisos oficiais da CM, cada um com o título e as linhas dele (ativo de T0 − 1 h a T0 + 1 dia). */
+    private fun responderAlertas(vararg avisos: Pair<String, List<String>>) {
+        alertas = avisos.joinToString(",", "[", "]") { (titulo, linhas) ->
+            """{"active_period":[{"start":${T0.epochSecond - 3600},"end":${T0.epochSecond + 86400}}],
+               |"header_text":{"translation":[{"language":"pt","text":"$titulo"}]},
+               |"description_text":{"translation":[{"language":"pt","text":"Mais sobre: $titulo"}]},
+               |"informed_entity":[${linhas.joinToString(",") { """{"route_id":"${it}_0"}""" }}]}""".trimMargin()
+        }
+    }
+
+    /** O id de um aviso de [responderAlertas] na Paragem Certa. */
+    private fun idDoAlerta(titulo: String) = "cm:$titulo|${T0.epochSecond - 3600}"
+
+    /** A viagem de DO_TRANSITOUS noutra linha (1009, 1612: nomes de linhas da CM). */
+    private fun naLinha(linha: String) = itinerario(DO_TRANSITOUS.etapas[0].copy(linhaNome = linha))
 
     // O servidor da Paragem Certa do teste: guarda os endereços pedidos e responde sempre [respostaAvisos].
     private val pedidosAvisos = CopyOnWriteArrayList<String>()
@@ -743,6 +771,126 @@ class ServicoViagemTest {
         pedir(s, Notificacoes.ACAO_PARAR)
         repeat(120) { passarOTempo(5) }
         assertEquals(1, pedidosAvisos.size)
+    }
+
+    /** As notificações das perturbações postadas (o título começa por "⚠ Perturbação"). */
+    private fun perturbacoesPostadas() = shadowOf(gestor).allNotifications.filter { titulo(it)?.startsWith("⚠ Perturbação") == true }
+
+    @Test fun perturbacoesDe5Em5Minutos() {
+        val i = naLinha("1009")
+        comecar(i, comAvisos(i), cm = cmAlertas)
+        esperarAte { pedidosAlertas.size == 1 }
+        assertEquals(1, pedidosAlertas.size)
+        repeat(59) { passarOTempo(5) }
+        assertEquals(1, pedidosAlertas.size)
+        passarOTempo(5) // 5 min
+        esperarAte { pedidosAlertas.size == 2 }
+        repeat(60) { passarOTempo(5) } // 10 min
+        esperarAte { pedidosAlertas.size == 3 }
+        assertEquals(List(3) { "https://cm.teste/alerts" }, pedidosAlertas)
+    }
+
+    @Test fun perturbacaoDaCmNaLinhaNotifica() {
+        responderAlertas("Obras na Rua Direita" to listOf("1009"), "Desvio na Amadora" to listOf("1503"))
+        val i = naLinha("1009")
+        comecar(i, comAvisos(i), cm = cmAlertas)
+        esperarAte { perturbacoesPostadas().isNotEmpty() }
+        val n = perturbacoesPostadas().single()
+        assertEquals("⚠ Perturbação na 1009", titulo(n))
+        assertEquals("Obras na Rua Direita", n.extras.getCharSequence(Notification.EXTRA_TEXT).toString())
+        assertEquals("Obras na Rua Direita", n.extras.getCharSequence(Notification.EXTRA_BIG_TEXT).toString())
+        assertEquals(Notificacoes.CANAL_AVISOS, n.channelId)
+        assertEquals("⚠ Perturbação na 1009", titulo(shadowOf(gestor).getNotification(Notificacoes.ID_PERTURBACAO)))
+        assertTrue(alarmes.isEmpty())
+    }
+
+    @Test fun perturbacaoDeVariasLinhasDizALinhaDaViagem() {
+        responderAlertas("Obras em Odivelas" to listOf("1604", "1612"))
+        val i = naLinha("1612")
+        comecar(i, comAvisos(i), cm = cmAlertas)
+        esperarAte { perturbacoesPostadas().isNotEmpty() }
+        assertEquals(listOf("⚠ Perturbação na 1612"), perturbacoesPostadas().map(::titulo))
+    }
+
+    @Test fun mesmaPerturbacaoSoNotificaUmaVez() {
+        responderAlertas("Obras na Rua Direita" to listOf("1009"))
+        val i = naLinha("1009")
+        val s = comecar(i, comAvisos(i), cm = cmAlertas)
+        esperarAte { perturbacoesPostadas().isNotEmpty() }
+        repeat(120) { passarOTempo(5) }
+        esperarAte { pedidosAlertas.size == 3 }
+        assertEquals(1, perturbacoesPostadas().size)
+        assertEquals(setOf(idDoAlerta("Obras na Rua Direita")), FicheirosViagem.lerEstado(c, agora)!!.perturbacoesAvisadas)
+        // Fica no trip-state: o Android fecha o serviço e a viagem retomada não volta a avisar.
+        s.destroy()
+        gestor.cancelAll()
+        pedidosAlertas.clear()
+        servico(ServicoViagem.ACAO_RETOMAR, cmAlertas).create().startCommand(0, 1)
+        esperarAte { pedidosAlertas.isNotEmpty() }
+        fio.idle()
+        assertEquals(1, pedidosAlertas.size)
+        assertTrue(perturbacoesPostadas().isEmpty())
+    }
+
+    @Test fun perturbacaoJaVistaNaoNotificaNaViagem() {
+        responderAlertas("Obras na Rua Direita" to listOf("1009"))
+        val i = naLinha("1009")
+        comecar(i, comAvisos(i, vistas = setOf(idDoAlerta("Obras na Rua Direita"))), cm = cmAlertas)
+        esperarAte { pedidosAlertas.isNotEmpty() }
+        fio.idle()
+        assertEquals(1, pedidosAlertas.size)
+        assertTrue(perturbacoesPostadas().isEmpty())
+    }
+
+    @Test fun comunidadeDesligadaAindaAvisaDePerturbacoes() {
+        responderAlertas("Obras na Rua Direita" to listOf("1009"))
+        val i = naLinha("1009")
+        comecar(i, comAvisos(i, relatos = false), cm = cmAlertas)
+        esperarAte { perturbacoesPostadas().isNotEmpty() }
+        assertEquals(listOf("⚠ Perturbação na 1009"), perturbacoesPostadas().map(::titulo))
+    }
+
+    @Test fun semComunidadeSoPedeACm() {
+        responder(relato("r1", "TRANSITOUS:p3", linha = "1009"))
+        val i = naLinha("1009")
+        comecar(i, comAvisos(i, relatos = false), cm = cmAlertas)
+        repeat(120) { passarOTempo(5) }
+        esperarAte { pedidosAlertas.size == 3 }
+        assertEquals(3, pedidosAlertas.size)
+        assertTrue(pedidosAvisos.isEmpty())
+    }
+
+    @Test fun viagemSemLinhaDaCmNaoPedeAlertasDaCm() {
+        // O 736 da Carris: os relatos vão ao servidor, mas a CM não tem avisos dele.
+        comecar(DO_TRANSITOUS, comAvisos(DO_TRANSITOUS), cm = cmAlertas)
+        repeat(120) { passarOTempo(5) }
+        fio.idle()
+        assertEquals(3, pedidosAvisos.size)
+        assertTrue(pedidosAlertas.isEmpty())
+    }
+
+    @Test fun servidorEmPausaAvisaDaCm() {
+        respostaAvisos = Resposta(503, """{"erro":"em_pausa"}""")
+        responderAlertas("Obras na Rua Direita" to listOf("1009"))
+        val i = naLinha("1009")
+        comecar(i, comAvisos(i), cm = cmAlertas)
+        esperarAte { perturbacoesPostadas().isNotEmpty() }
+        repeat(120) { passarOTempo(5) }
+        esperarAte { pedidosAlertas.size == 3 }
+        assertEquals(1, pedidosAvisos.size) // o servidor pára até ao fim da viagem; a CM continua
+        assertEquals(3, pedidosAlertas.size)
+        assertEquals(listOf("⚠ Perturbação na 1009"), perturbacoesPostadas().map(::titulo))
+    }
+
+    @Test fun preferenciaDesligadaNaoPedeNada() {
+        responderAlertas("Obras na Rua Direita" to listOf("1009"))
+        val i = naLinha("1009")
+        comecar(i, comAvisos(i).copy(avisosComunidade = false), cm = cmAlertas)
+        repeat(120) { passarOTempo(5) }
+        fio.idle()
+        assertTrue(pedidosAlertas.isEmpty())
+        assertTrue(pedidosAvisos.isEmpty())
+        assertTrue(perturbacoesPostadas().isEmpty())
     }
 
     /** As respostas da CM voltam por outra thread: espera até 2 s que a condição se cumpra. */

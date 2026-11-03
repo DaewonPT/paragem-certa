@@ -29,6 +29,8 @@ import pt.pixellusitano.paragemcerta.core.fontes.servidor.Avisos
 import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
+import pt.pixellusitano.paragemcerta.core.perturbacoes.Perturbacao
+import pt.pixellusitano.paragemcerta.core.perturbacoes.novas
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import pt.pixellusitano.paragemcerta.core.rede.emPausa
 import pt.pixellusitano.paragemcerta.core.regras.pausaDepoisDeFalha
@@ -56,8 +58,8 @@ private val EVENTO_ALARME = Evento.PREPARA_TE
 /**
  * Os "Avisa-me quando estiver a X min" a correr, no processo principal (não pede o isolamento do :trip e usa o Repositorio):
  * consulta as chegadas de cada paragem vigiada (30 s na Carris Metropolitana, 60 s no Transitous), mostra a notificação fixa
- * "A vigiar 2 linhas em Cais do Sodré" e, quando uma linha está a X min, a notificação e o alarme; com os avisos da comunidade
- * ligados, também os relatos confirmados nessas linhas (ver avisosComunidade). Pára sozinho quando todos
+ * "A vigiar 2 linhas em Cais do Sodré" e, quando uma linha está a X min, a notificação e o alarme; com os avisos ligados, também
+ * as perturbações da CM e os relatos confirmados nessas linhas (ver avisarPerturbacoes e avisosComunidade). Pára sozinho quando todos
  * os avisos dispararam, quando a pessoa cancela, ou ao fim de 90 min (ver core/viagem/Vigia). Tudo corre na thread
  * principal (pedidos, relógio e respostas), por isso o estado não precisa de trincos.
  */
@@ -76,6 +78,12 @@ class ServicoAvisoChegada : Service() {
         { ligacoes.configuracoes.atual.value.interruptores.comunidade && ligacoes.preferencias.avisosComunidade.first() }
     internal var ocultos: suspend () -> Set<String> = { ligacoes.preferencias.ocultos.first() }
 
+    /** As perturbações da CM: só a preferência (não dependem do servidor), o pedido à CM e as já vistas na faixa. */
+    internal var perturbacoesLigadas: suspend () -> Boolean = { ligacoes.preferencias.avisosComunidade.first() }
+    internal var perturbacoes: suspend (Set<String>, Instant) -> List<Perturbacao> =
+        { chaves, hora -> ligacoes.perturbacoes.dasLinhas(chaves, hora) }
+    internal var vistas: suspend () -> Set<String> = { ligacoes.preferencias.perturbacoesVistas.first() }
+
     /** Uma paragem vigiada: o pedido, as linhas que já avisaram e a tarefa que a consulta. */
     private class Vigiada(val pedido: PedidoAviso, val avisadas: MutableSet<String> = mutableSetOf(), var tarefa: Job? = null)
 
@@ -89,6 +97,10 @@ class ServicoAvisoChegada : Service() {
     /** O pedido dos avisos da comunidade, um só para todas as paragens, e os relatos de que já avisou. */
     private var tarefaRelatos: Job? = null
     private val relatosAvisados = mutableSetOf<String>()
+
+    /** O mesmo para as perturbações oficiais. */
+    private var tarefaPerturbacoes: Job? = null
+    private val perturbacoesAvisadas = mutableSetOf<String>()
 
     /** Até quando o último alarme está a tocar (uptimeMillis): o serviço não pára antes, o Android calava o áudio. */
     private var alarmeAte = 0L
@@ -138,6 +150,7 @@ class ServicoAvisoChegada : Service() {
             prenderOTelemovel()
             // Depois de parar (pausa, desligada) não recomeça: só um serviço novo pede outra vez.
             if (tarefaRelatos == null) tarefaRelatos = scope.launch { avisosComunidade() }
+            if (tarefaPerturbacoes == null) tarefaPerturbacoes = scope.launch { avisarPerturbacoes() }
             it.tarefa = scope.launch { vigiar(it) }
         }
     }
@@ -210,6 +223,23 @@ class ServicoAvisoChegada : Service() {
         }
     }
 
+    /**
+     * As perturbações da Carris Metropolitana nas linhas vigiadas, pedidas à CM a cada 5 min (sem o servidor: continuam com a
+     * comunidade desligada ou em pausa), enquanto houver paragens e a preferência estiver ligada. Notifica as novas que não
+     * foram vistas na faixa nem avisadas, com a linha vigiada que tocam; sem uma linha da CM não se pede nada.
+     */
+    private suspend fun avisarPerturbacoes() {
+        while (paragens.isNotEmpty() && perturbacoesLigadas()) {
+            val nomes = paragens.values.flatMap { it.pedido.linhas }.distinct()
+            val lista = perturbacoes(nomes.mapTo(HashSet(), ::chaveLinha), agora())
+            novas(lista, vistas() + perturbacoesAvisadas).forEach { p ->
+                perturbacoesAvisadas += p.id
+                Notificacoes.perturbacao(this, perturbacoesAvisadas.size - 1, p, nomes.first { chaveLinha(it) in p.linhas }, viagem = false)
+            }
+            delay(AVISOS.toMillis())
+        }
+    }
+
     /** A notificação de cada linha e um só alarme (um segundo cortaria o primeiro). */
     private suspend fun avisar(v: Vigiada, avisos: List<AvisoChegada>) {
         if (avisos.isEmpty()) return
@@ -245,6 +275,9 @@ class ServicoAvisoChegada : Service() {
         tarefaRelatos?.cancel()
         tarefaRelatos = null
         relatosAvisados.clear()
+        tarefaPerturbacoes?.cancel()
+        tarefaPerturbacoes = null
+        perturbacoesAvisadas.clear()
         vigiadas.value = emptySet()
         bloqueio?.takeIf { it.isHeld }?.release()
         bloqueio = null

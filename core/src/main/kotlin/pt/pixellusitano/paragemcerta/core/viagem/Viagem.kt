@@ -86,7 +86,8 @@ enum class Evento { PREPARA_TE, SAI_AGORA, ETAPA_SEGUINTE, CHEGOU }
  * origem: VEICULO quando, sem GPS há 60 s, as leituras do veículo continuam a chegar.
  * veiculoLat, veiculoLon: onde o veículo da etapa estava na última leitura aceite (o mapa desenha-o); null sem leitura
  * há 60 s e ao mudar de etapa.
- * relatosAvisados: os ids dos relatos da comunidade de que a viagem já avisou (o motor não lhes toca).
+ * relatosAvisados, perturbacoesAvisadas: os ids dos relatos da comunidade e das perturbações oficiais de que a viagem já
+ * avisou (o motor não lhes toca).
  */
 @Serializable
 data class EstadoViagem(
@@ -95,18 +96,21 @@ data class EstadoViagem(
     val altaPrecisao: Boolean, val silenciado: Boolean, val terminada: Boolean, val atualizado: Instant,
     val avancou: Boolean = false, val ultimoVeiculo: Instant? = null,
     val veiculoLat: Double? = null, val veiculoLon: Double? = null,
-    val relatosAvisados: Set<String> = emptySet(),
+    val relatosAvisados: Set<String> = emptySet(), val perturbacoesAvisadas: Set<String> = emptySet(),
 )
 
 /**
  * O trip-plan.json: a rota escolhida e as definições do aviso (o processo :trip não lê as definições da app).
- * avisosComunidade: avisar dos relatos confirmados nas linhas da viagem; ocultos: os relatos que a pessoa escondeu ("relato:<id>").
- * Os dois têm omissão: o plano de uma viagem da 0.3.x lê-se sem eles.
+ * avisosComunidade: a preferência "Perturbações e relatos das tuas linhas"; relatos: a comunidade estava ligada quando a
+ * viagem começou (só então se pedem os relatos ao servidor); ocultos: os relatos que a pessoa escondeu ("relato:<id>");
+ * vistas: as perturbações já vistas na faixa, que a viagem também não avisa.
+ * Todos têm omissão: o plano de uma viagem de uma versão anterior lê-se sem eles.
  */
 @Serializable
 data class PlanoViagem(
     val itinerario: Itinerario, val som: Boolean, val vibrar: Boolean,
     val avisosComunidade: Boolean = false, val ocultos: Set<String> = emptySet(),
+    val relatos: Boolean = false, val vistas: Set<String> = emptySet(),
 )
 
 /**

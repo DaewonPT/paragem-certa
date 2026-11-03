@@ -13,6 +13,7 @@ import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.core.comunidade.TipoRelato
 import pt.pixellusitano.paragemcerta.core.fontes.servidor.RelatoRemoto
 import pt.pixellusitano.paragemcerta.core.modelo.Etapa
+import pt.pixellusitano.paragemcerta.core.perturbacoes.Perturbacao
 import pt.pixellusitano.paragemcerta.core.viagem.AvisoChegada
 import pt.pixellusitano.paragemcerta.core.viagem.EstadoViagem
 import pt.pixellusitano.paragemcerta.core.viagem.Evento
@@ -47,6 +48,9 @@ object Notificacoes {
 
     /** Os avisos da comunidade também ficam todos, um id por relato, a contar daqui. */
     const val ID_RELATO = 200
+
+    /** E as perturbações oficiais, uma por id, a contar daqui. */
+    const val ID_PERTURBACAO = 300
 
     // As ações dos botões; quem as atende é o ServicoViagem (processo :trip), que fica no mesmo pacote.
     const val ACAO_SILENCIAR = "pt.pixellusitano.paragemcerta.viagem.SILENCIAR"
@@ -166,6 +170,29 @@ object Notificacoes {
         val texto = c.getString(R.string.rotas_relato_confirmado, c.getString(nomeDoTipo(tipo)), r.linha)
         return if (aFrente) c.getString(R.string.relato_a_frente, texto) else texto
     }
+
+    /**
+     * Uma perturbação oficial nova (n a contar de 0), como os relatos: no canal dos avisos e sem alarme. O título diz a
+     * [linha] da viagem ou vigiada que ela toca; o corpo é o título da perturbação, inteiro quando se abre.
+     */
+    fun perturbacao(c: Context, n: Int, p: Perturbacao, linha: String, viagem: Boolean) {
+        c.getSystemService(NotificationManager::class.java).notify(
+            ID_PERTURBACAO + n,
+            NotificationCompat.Builder(c, CANAL_AVISOS)
+                .setSmallIcon(R.drawable.ic_notificacao)
+                .setContentTitle(textoPerturbacao(c, p, linha))
+                .setContentText(p.titulo)
+                .setStyle(NotificationCompat.BigTextStyle().bigText(p.titulo))
+                .setContentIntent(abrirApp(c, viagem))
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setAutoCancel(true)
+                .build(),
+        )
+    }
+
+    /** "⚠ Perturbação na 1009". Na 0.4 só há as da CM; as do Metro diriam a linha pelo nome (ver FontePerturbacoes). */
+    @Suppress("UNUSED_PARAMETER")
+    fun textoPerturbacao(c: Context, p: Perturbacao, linha: String): String = c.getString(R.string.perturbacao_na, linha)
 
     /** "Liga a localização": toca-se nela para abrir as definições. O serviço cancela-a quando o GPS volta e quando a viagem acaba. */
     fun semLocalizacao(c: Context): Notification =

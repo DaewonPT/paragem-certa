@@ -171,7 +171,7 @@ fun LinhasConteudo(
     }
 }
 
-private fun textoDoModo(m: Modo) = when (m) {
+internal fun textoDoModo(m: Modo) = when (m) {
     Modo.METRO -> R.string.modo_metro
     Modo.COMBOIO -> R.string.modo_comboio
     Modo.ELETRICO -> R.string.modo_eletrico

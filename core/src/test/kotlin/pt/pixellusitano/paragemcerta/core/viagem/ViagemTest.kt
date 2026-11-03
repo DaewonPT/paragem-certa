@@ -699,6 +699,23 @@ class ViagemTest {
         assertEquals(avisado, Json.decodeFromString<EstadoViagem>(Json.encodeToString(avisado)))
     }
 
+    @Test fun planoEEstadoAntigosLeem() {
+        // Os da etapa 3 da 0.4: com os avisos da comunidade e os relatos avisados, sem os relatos do servidor, as vistas e as perturbações avisadas.
+        val i = itinerario(autocarro())
+        val antigo = """{"itinerario":${Json.encodeToString(i)},"som":true,"vibrar":false,"avisosComunidade":true,"ocultos":["relato:r1"]}"""
+        val plano = Json.decodeFromString<PlanoViagem>(antigo)
+        assertEquals(PlanoViagem(i, som = true, vibrar = false, avisosComunidade = true, ocultos = setOf("relato:r1")), plano)
+        assertFalse(plano.relatos)
+        assertEquals(emptySet<String>(), plano.vistas)
+        val novo = plano.copy(relatos = true, vistas = setOf("cm:Obras|1"))
+        assertEquals(novo, Json.decodeFromString<PlanoViagem>(Json.encodeToString(novo)))
+        val estado = Json.encodeToString(Viagem(i).inicio(t0).copy(relatosAvisados = setOf("r1")))
+        assertFalse("perturbacoesAvisadas" in estado)
+        assertEquals(emptySet<String>(), Json.decodeFromString<EstadoViagem>(estado).perturbacoesAvisadas)
+        val avisado = Viagem(i).inicio(t0).copy(perturbacoesAvisadas = setOf("cm:Obras|1"))
+        assertEquals(avisado, Json.decodeFromString<EstadoViagem>(Json.encodeToString(avisado)))
+    }
+
     @Test fun gravacoesReais() {
         // Paragem Certa/gravacoes, fora do repositório: só existe no PC do autor.
         val pasta = File(System.getProperty("user.dir"), "../../gravacoes").canonicalFile

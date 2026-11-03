@@ -104,16 +104,16 @@ fun lerPreparacao(c: Context) = Preparacao(
  * Grava o plano e o primeiro estado e pede ao serviço (processo :trip) que comece. O estado vai já daqui: o ecrã da viagem
  * abre logo a seguir e, sem ele, achava que não há viagem e saía antes de o serviço escrever o dele. Falso se o Android
  * recusou o serviço, a rota não serve (Viagem e Percurso recusam-na com um require) ou não houve onde gravar; então não fica
- * nada, para não aparecer "Viagem interrompida" de uma viagem que nunca começou. Os avisos da comunidade e os ocultos
+ * nada, para não aparecer "Viagem interrompida" de uma viagem que nunca começou. Os avisos, os relatos, os ocultos e as vistas
  * vão no plano já lidos por quem chama: o serviço não lê as definições.
  */
 fun comecarViagem(
     c: Context, itinerario: Itinerario, som: Boolean, vibrar: Boolean,
-    avisosComunidade: Boolean = false, ocultos: Set<String> = emptySet(),
+    avisosComunidade: Boolean = false, ocultos: Set<String> = emptySet(), relatos: Boolean = false, vistas: Set<String> = emptySet(),
 ): Boolean {
     try {
         FicheirosViagem.apagar(c)
-        FicheirosViagem.gravarPlano(c, PlanoViagem(itinerario, som, vibrar, avisosComunidade, ocultos))
+        FicheirosViagem.gravarPlano(c, PlanoViagem(itinerario, som, vibrar, avisosComunidade, ocultos, relatos, vistas))
         FicheirosViagem.gravarEstado(c, Viagem(itinerario).inicio(Instant.now()))
         if (arrancarServico(c, ServicoViagem.ACAO_COMECAR)) return true
     } catch (_: IOException) {
@@ -163,6 +163,7 @@ fun viagemEmCurso(c: Context): Boolean = FicheirosViagem.porAcabar(c) && Ficheir
 
 private class Avisos(
     val primeiraViagem: Boolean, val som: Boolean, val vibrar: Boolean, val avisosComunidade: Boolean, val ocultos: Set<String>,
+    val relatos: Boolean, val vistas: Set<String>,
 )
 
 /**
@@ -170,7 +171,8 @@ private class Avisos(
  * Tocar fora de um aviso, ou "voltar", desiste (aoCancelar). Recusar uma permissão não impede de começar: sem a
  * localização precisa a viagem corre pelo horário, sem notificações os avisos só tocam e vibram. A exceção é o Android 14+
  * sem nenhuma localização: o serviço não arranca (ver servicoPodeArrancar) e a viagem não começa.
- * [comunidadeLigada]: o interruptor `comunidade` da config; sem ele a viagem não pede os avisos da comunidade.
+ * [comunidadeLigada]: o interruptor `comunidade` da config; sem ele a viagem não pede os relatos ao servidor (as perturbações
+ * da CM, só com a preferência, continuam).
  */
 @SuppressLint("InlinedApi") // o passo das notificações só chega a quem tem o Android 13 ou mais (ver lerPreparacao)
 @Composable
@@ -183,7 +185,7 @@ fun PreparacaoViagem(
     val avisos by produceState<Avisos?>(null) {
         value = Avisos(
             !preferencias.primeiraViagemFeita.first(), preferencias.somAviso.first(), preferencias.vibracaoAviso.first(),
-            comunidadeLigada && preferencias.avisosComunidade.first(), preferencias.ocultos.first(),
+            preferencias.avisosComunidade.first(), preferencias.ocultos.first(), comunidadeLigada, preferencias.perturbacoesVistas.first(),
         )
     }
     var feitos by remember { mutableStateOf(emptySet<Passo>()) }
@@ -198,7 +200,7 @@ fun PreparacaoViagem(
 
     LaunchedEffect(passo) {
         when (passo) {
-            null -> if (withContext(Dispatchers.IO) { comecarViagem(contexto, itinerario, a.som, a.vibrar, a.avisosComunidade, a.ocultos) }) {
+            null -> if (withContext(Dispatchers.IO) { comecarViagem(contexto, itinerario, a.som, a.vibrar, a.avisosComunidade, a.ocultos, a.relatos, a.vistas) }) {
                 preferencias.marcarPrimeiraViagemFeita()
                 aoComecou()
             } else {

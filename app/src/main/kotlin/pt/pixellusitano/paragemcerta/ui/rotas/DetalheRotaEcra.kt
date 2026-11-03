@@ -82,7 +82,7 @@ fun Itinerario.comNomes(de: String, para: String): Itinerario = copy(
     },
 )
 
-/** [comunidadeLigada]: o interruptor `comunidade` da config, para a viagem saber se pode pedir os avisos da comunidade. */
+/** [comunidadeLigada]: o interruptor `comunidade` da config, para a viagem saber se pode pedir os relatos ao servidor. */
 @Composable
 fun DetalheRotaEcra(
     it: Itinerario, de: String, para: String, preferencias: Preferencias, aoComecou: () -> Unit, aoVoltar: () -> Unit,

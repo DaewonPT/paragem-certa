@@ -37,6 +37,8 @@ import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.modelo.Etapa
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.Veiculo
+import pt.pixellusitano.paragemcerta.core.perturbacoes.Perturbacao
+import pt.pixellusitano.paragemcerta.core.perturbacoes.novas
 import pt.pixellusitano.paragemcerta.core.rede.OkHttpHttp
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import pt.pixellusitano.paragemcerta.core.rede.emPausa
@@ -51,6 +53,7 @@ import pt.pixellusitano.paragemcerta.core.viagem.Origem
 import pt.pixellusitano.paragemcerta.core.viagem.PlanoViagem
 import pt.pixellusitano.paragemcerta.core.viagem.Viagem
 import pt.pixellusitano.paragemcerta.core.viagem.paragensDe
+import pt.pixellusitano.paragemcerta.dados.FontePerturbacoes
 import java.io.IOException
 import java.time.Duration
 import java.time.Instant
@@ -72,15 +75,16 @@ private val CM_PERDIDO = Duration.ofMinutes(2)
 private val VEICULOS_INTERVALO = Duration.ofSeconds(15)
 private const val VEICULO_IDADE_S = 60L
 private const val VEICULO_PERTO_M = 150.0
-// Os relatos confirmados nas linhas da viagem: um pedido a cada 5 min, até 20 linhas (o máximo do /api/avisos).
+// Os relatos confirmados e as perturbações nas linhas da viagem: um pedido de cada a cada 5 min; os relatos até 20 linhas
+// (o máximo do /api/avisos).
 private const val AVISOS_MS = 300_000L
 private const val MAX_LINHAS_AVISOS = 20
 
 /**
  * A viagem a correr, no processo :trip (ver o manifesto): alimenta o motor (core/viagem) com as posições do GPS e o
  * relógio, escreve o trip-state.json, atualiza a notificação fixa e toca os avisos. Não usa a base de dados, as
- * definições nem o WorkManager: só o trip-plan.json que a app escreveu, a Carris Metropolitana, o servidor da Paragem
- * Certa (os avisos da comunidade) e o GPS. Tudo corre na thread principal (posições, relógio e respostas), por isso o
+ * definições nem o WorkManager: só o trip-plan.json que a app escreveu, a Carris Metropolitana (também as perturbações),
+ * o servidor da Paragem Certa (os relatos da comunidade) e o GPS. Tudo corre na thread principal (posições, relógio e respostas), por isso o
  * estado não precisa de trincos.
  */
 class ServicoViagem : Service() {
@@ -184,6 +188,7 @@ class ServicoViagem : Service() {
             launch { chegadasCm() }
             launch { veiculosCm() }
             launch { avisosComunidade() }
+            launch { perturbacoes() }
         }
     }
 
@@ -278,12 +283,12 @@ class ServicoViagem : Service() {
     private fun servidorPc() = servidor ?: ServidorParagemCerta(OkHttpHttp(userAgent(BuildConfig.VERSION_NAME))).also { servidor = it }
 
     /**
-     * Com os avisos da comunidade ligados no plano: os relatos confirmados nas linhas em veículo da viagem, um pedido logo e
-     * depois a cada 5 min. A quota em pausa ou a comunidade desligada no servidor param os pedidos até ao fim da viagem;
-     * outra falha espera os 5 min.
+     * Com os avisos ligados no plano e a comunidade ligada quando a viagem começou: os relatos confirmados nas linhas em
+     * veículo da viagem, um pedido logo e depois a cada 5 min. A quota em pausa ou a comunidade desligada no servidor param
+     * estes pedidos até ao fim da viagem (as perturbações da CM continuam); outra falha espera os 5 min.
      */
     private suspend fun avisosComunidade() {
-        val plano = corrida?.plano?.takeIf { it.avisosComunidade } ?: return
+        val plano = corrida?.plano?.takeIf { it.avisosComunidade && it.relatos } ?: return
         // Só chaves que o servidor aceita: uma má dava 400 ao pedido inteiro.
         val linhas = plano.itinerario.etapas.filter { !it.aPe }.mapNotNull { it.linhaNome?.let(::chaveLinha) }
             .filter(::chaveLinhaValida).distinct().take(MAX_LINHAS_AVISOS)
@@ -312,6 +317,39 @@ class ServicoViagem : Service() {
                 ?.let { Notificacoes.relatoComunidade(this, c.estado.relatosAvisados.size + i, it, viagem = true) }
         }
         c.estado = c.estado.copy(relatosAvisados = c.estado.relatosAvisados + novos.map { it.id })
+        publicar()
+    }
+
+    /**
+     * Com os avisos ligados no plano: as perturbações da Carris Metropolitana nas linhas em veículo da viagem, pedidas à CM
+     * (sem o servidor, por isso com a comunidade desligada ou em pausa também), logo e depois a cada 5 min. Sem uma linha
+     * da CM não se pede nada (ver FontePerturbacoes).
+     */
+    private suspend fun perturbacoes() {
+        val plano = corrida?.plano?.takeIf { it.avisosComunidade } ?: return
+        val nomes = plano.itinerario.etapas.filter { !it.aPe }.mapNotNull { it.linhaNome }.distinct()
+        val chaves = nomes.mapTo(HashSet(), ::chaveLinha)
+        val fonte = FontePerturbacoes(servidorCm())
+        var proxima = Instant.MIN
+        while (corrida?.estado?.terminada == false) {
+            if (agora() >= proxima) {
+                proxima = agora().plusMillis(AVISOS_MS)
+                avisarPerturbacoes(fonte.dasLinhas(chaves, agora()), nomes)
+            }
+            delay(RELOGIO_MS)
+        }
+    }
+
+    /** Uma notificação por perturbação nova (nem vista na faixa, nem já avisada), com a linha da viagem que ela toca. */
+    private fun avisarPerturbacoes(lista: List<Perturbacao>, nomes: List<String>) {
+        val c = corrida ?: return
+        val novas = novas(lista, c.plano.vistas + c.estado.perturbacoesAvisadas)
+        if (novas.isEmpty()) return
+        // Como nos relatos, o id conta as já avisadas: uma viagem retomada não tapa as de antes.
+        novas.forEachIndexed { i, p ->
+            Notificacoes.perturbacao(this, c.estado.perturbacoesAvisadas.size + i, p, nomes.first { chaveLinha(it) in p.linhas }, viagem = true)
+        }
+        c.estado = c.estado.copy(perturbacoesAvisadas = c.estado.perturbacoesAvisadas + novas.map { it.id })
         publicar()
     }
 

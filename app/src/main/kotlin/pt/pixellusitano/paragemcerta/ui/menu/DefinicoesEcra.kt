@@ -49,7 +49,7 @@ import pt.pixellusitano.paragemcerta.dados.Preferencias
 import pt.pixellusitano.paragemcerta.ui.tema.FrisoAzulejo
 import pt.pixellusitano.paragemcerta.ui.tema.ModoTema
 
-/** [comunidadeLigada]: o interruptor `comunidade` da config; sem ele não há a camada dos relatos nem os avisos da comunidade. */
+/** [comunidadeLigada]: o interruptor `comunidade` da config; sem ele não há a camada dos relatos. */
 @Composable
 fun DefinicoesEcra(preferencias: Preferencias, conta: Conta, aoVoltar: () -> Unit, comunidadeLigada: Boolean = false) {
     val contexto = LocalContext.current
@@ -98,7 +98,8 @@ fun DefinicoesEcra(preferencias: Preferencias, conta: Conta, aoVoltar: () -> Uni
         camadaGira = camadaGira,
         aoMudarCamadaGira = { escopo.launch { preferencias.definirCamadaGira(it) } },
         avisosComunidade = avisosComunidade,
-        aoMudarAvisosComunidade = if (comunidadeLigada) ({ escopo.launch { preferencias.definirAvisosComunidade(it) } }) else null,
+        // Sempre: as perturbações da CM não precisam da comunidade.
+        aoMudarAvisosComunidade = { escopo.launch { preferencias.definirAvisosComunidade(it) } },
         secaoAtualizacoes = { modificador ->
             if (Atualizacoes.disponivel) {
                 var sozinha by remember { mutableStateOf(Atualizacoes.atualizarSozinha(contexto)) }
@@ -150,7 +151,7 @@ fun DefinicoesConteudo(
     aoMudarCamadaGira: (Boolean) -> Unit = {},
     /** Só a variante pessoal tem esta secção (as atualizações da Play Store vêm pela loja). */
     secaoAtualizacoes: @Composable (Modifier) -> Unit = {},
-    /** Os avisos da comunidade na viagem; como a camada, [aoMudarAvisosComunidade] só vem com a comunidade ligada. */
+    /** As perturbações e os relatos na viagem e no "Avisa-me"; sem [aoMudarAvisosComunidade] o interruptor não aparece. */
     avisosComunidade: Boolean = true,
     aoMudarAvisosComunidade: ((Boolean) -> Unit)? = null,
 ) {
@@ -274,7 +275,7 @@ fun Definicoes(
     aoMudarSom: (Boolean) -> Unit,
     aoMudarVibracao: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
-    /** "Avisos da comunidade durante a viagem" (e no "Avisa-me"); [aoMudarAvisosComunidade] só vem com a comunidade ligada. */
+    /** "Perturbações e relatos das tuas linhas" (na viagem e no "Avisa-me"); sem [aoMudarAvisosComunidade] não aparece. */
     avisosComunidade: Boolean = true,
     aoMudarAvisosComunidade: ((Boolean) -> Unit)? = null,
 ) {

@@ -7,6 +7,10 @@ import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.MutableIntState
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.fillMaxSize
@@ -57,8 +61,12 @@ import pt.pixellusitano.paragemcerta.ui.bussola.BussolaEcra
 import pt.pixellusitano.paragemcerta.ui.comum.gelatina
 import pt.pixellusitano.paragemcerta.ui.inicio.InicioEcra
 import pt.pixellusitano.paragemcerta.ui.inicio.Painel
+import pt.pixellusitano.paragemcerta.ui.linhas.FaixaAoAbrir
 import pt.pixellusitano.paragemcerta.ui.linhas.LinhaEcra
+import pt.pixellusitano.paragemcerta.ui.linhas.LinhaPerturbacoes
 import pt.pixellusitano.paragemcerta.ui.linhas.LinhasEcra
+import pt.pixellusitano.paragemcerta.ui.linhas.PerturbacoesEcra
+import pt.pixellusitano.paragemcerta.ui.linhas.minhasLinhas
 import pt.pixellusitano.paragemcerta.ui.menu.AjudaEcra
 import pt.pixellusitano.paragemcerta.ui.menu.ContaEcra
 import pt.pixellusitano.paragemcerta.ui.menu.DefinicoesEcra
@@ -101,6 +109,9 @@ import pt.pixellusitano.paragemcerta.viagem.FicheirosViagem
  * e nessa paragem (as linhas favoritas). Não se chama "Linha": colide com `core.modelo.Linha`.
  */
 @Serializable data class LinhaRota(val chave: String, val sentido: Int? = null, val paragem: String? = null)
+
+/** O ecrã "Perturbações": as das tuas linhas primeiro, depois todas por operador. */
+@Serializable data object PerturbacoesRota
 
 /** Uma linha favorita abre o ecrã da linha no sentido e na paragem habitual dela. */
 fun LinhaFavorita.rotaDaLinha() = LinhaRota(ref.chave, sentido, paragem.chave)
@@ -170,18 +181,26 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
     // Instalar mata o processo :trip e com ele o aviso da paragem: com uma viagem por acabar o aviso espera pela abertura seguinte
     // (e a verificação diária não se gasta). Começa escondido até se ler os ficheiros da viagem.
     val semViagem by produceState(false) { value = withContext(Dispatchers.IO) { !FicheirosViagem.porAcabar(contexto) } }
+    // Os diálogos de abertura à vista: a faixa das perturbações espera que fechem.
+    val dialogos = remember { mutableIntStateOf(0) }
     if (semViagem) {
-        if (pendente != null) AvisoAtualizacao(pendente)
-        else if (!remember { Atualizacoes.atualizarSozinha(contexto) }) AvisoAtualizacao(null)
+        if (pendente != null) AvisoAtualizacao(pendente, dialogos)
+        else if (!remember { Atualizacoes.atualizarSozinha(contexto) }) AvisoAtualizacao(null, dialogos)
     }
-    AvisoNovidades()
+    AvisoNovidades(dialogos)
     // Não empilha a pergunta das notificações sobre outro aviso: fica para a abertura seguinte.
-    if (pendente == null && remember { Atualizacoes.novidadesPorMostrar(contexto) } == null) AvisoNotificacoes()
+    if (pendente == null && remember { Atualizacoes.novidadesPorMostrar(contexto) } == null) AvisoNotificacoes(dialogos)
+    val comBarra = naInicio || nasRotas || nasLinhas || noMenu
 
     Scaffold(
         bottomBar = {
-            if (naInicio || nasRotas || nasLinhas || noMenu) {
-                NavigationBar {
+            // Por cima da barra, em todos os separadores (o ecrã inicial pode ser qualquer um deles).
+            Column {
+                FaixaAoAbrir(
+                    ligacoes.perturbacoes, { minhasLinhas(repositorio) }, ligacoes.preferencias,
+                    escondida = !comBarra || dialogos.intValue > 0, aoAbrir = { nav.navigate(PerturbacoesRota) },
+                )
+                if (comBarra) NavigationBar {
                     NavigationBarItem(selected = naInicio, onClick = { separador(Inicio) },
                         icon = { Text("🗺", Modifier.gelatina(naInicio)) }, label = { Text(stringResource(R.string.nav_inicio)) })
                     NavigationBarItem(selected = nasRotas, onClick = { separador(Rotas()) },
@@ -255,8 +274,14 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
             }
             composable<Linhas> {
                 Box(Modifier.padding(bottom = margens.calculateBottomPadding())) {
-                    LinhasEcra(repositorio, ligacoes.catalogoLinhas, aoAbrirLinha = { nav.navigate(LinhaRota(it.chave)) })
+                    LinhasEcra(
+                        repositorio, ligacoes.catalogoLinhas, aoAbrirLinha = { nav.navigate(LinhaRota(it.chave)) },
+                        perturbacoes = { LinhaPerturbacoes(ligacoes.perturbacoes, aoAbrir = { nav.navigate(PerturbacoesRota) }) },
+                    )
                 }
+            }
+            composable<PerturbacoesRota> {
+                PerturbacoesEcra(ligacoes.perturbacoes, { minhasLinhas(repositorio) }, aoVoltar = { nav.popBackStack() })
             }
             composable<LinhaRota> { entrada ->
                 val r = entrada.toRoute<LinhaRota>()
@@ -322,12 +347,22 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
     }
 }
 
+/** Enquanto um diálogo de abertura está à vista, conta-o em [abertos]. */
+@Composable
+private fun ContarAberto(abertos: MutableIntState) {
+    DisposableEffect(Unit) {
+        abertos.intValue++
+        onDispose { abertos.intValue-- }
+    }
+}
+
 /** Depois de uma atualização, mostra uma só vez o que mudou. */
 @Composable
-private fun AvisoNovidades() {
+private fun AvisoNovidades(abertos: MutableIntState) {
     val contexto = LocalContext.current
     var novidades by remember { mutableStateOf(Atualizacoes.novidadesPorMostrar(contexto)) }
     val n = novidades ?: return
+    ContarAberto(abertos)
     val fechar = {
         Atualizacoes.marcarNovidadesVistas(contexto)
         novidades = null
@@ -342,11 +377,12 @@ private fun AvisoNovidades() {
 
 /** Pergunta, uma só vez, se a app pode mostrar notificações (Android 13+), para avisar quando uma atualização precisa de um toque. */
 @Composable
-private fun AvisoNotificacoes() {
+private fun AvisoNotificacoes(abertos: MutableIntState) {
     val contexto = LocalContext.current
     var aberto by remember { mutableStateOf(Atualizacoes.pedirNotificacoes(contexto)) }
     val pedir = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {}
     if (!aberto) return
+    ContarAberto(abertos)
     val fechar = {
         Atualizacoes.marcarNotificacoesPedidas(contexto)
         aberto = false
@@ -369,7 +405,7 @@ private fun AvisoNotificacoes() {
  * sem verificar nada. Sem ela, para quem desligou "Atualizar sozinha", verifica no máximo uma vez por dia no GitHub.
  */
 @Composable
-private fun AvisoAtualizacao(pendente: NovaVersao?) {
+private fun AvisoAtualizacao(pendente: NovaVersao?, abertos: MutableIntState) {
     val contexto = LocalContext.current
     val escopo = androidx.compose.runtime.rememberCoroutineScope()
     var nova by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(pendente) }
@@ -377,6 +413,7 @@ private fun AvisoAtualizacao(pendente: NovaVersao?) {
         if (pendente == null) nova = runCatching { Atualizacoes.verificar(contexto) }.getOrNull()
     }
     val n = nova ?: return
+    ContarAberto(abertos)
     val falhou = stringResource(R.string.atualizacao_falhou)
     AlertDialog(
         // "Agora não": a pendente fica guardada e volta a aparecer na abertura seguinte.
