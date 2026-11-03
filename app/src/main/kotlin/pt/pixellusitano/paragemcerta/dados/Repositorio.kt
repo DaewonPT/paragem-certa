@@ -286,13 +286,20 @@ class Repositorio(
      *  Só se guarda (nesta sessão) um resultado completo, para uma falha não ficar presa. */
     suspend fun paragensDaLinha(linhaId: String): List<Paragem>? {
         paragensDasLinhas[linhaId]?.let { return it }
-        val padroes = bd.linhas().porId(linhaId)?.padroes?.split(',')?.filter { it.isNotBlank() }.orEmpty()
-        val resultados = padroes.map { cm.padrao(it) }
+        val resultados = padroesDaLinhaCm(linhaId).map { cm.padrao(it) }
         if (resultados.isEmpty() || resultados.any { it !is Resultado.Ok }) return null
         val ids = resultados.flatMap { (it as Resultado.Ok).valor }.distinct()
         val porChave = bd.paragens().porChaves(ids.map { RefParagem(Fonte.CM, it).chave }).associateBy { it.id }
         return ids.mapNotNull { porChave[it]?.paraParagem() }.also { paragensDasLinhas[linhaId] = it }
     }
+
+    /** Os ids dos percursos (patterns) de uma linha da Carris Metropolitana, como a rede guardada os tem. */
+    suspend fun padroesDaLinhaCm(linhaId: String): List<String> =
+        bd.linhas().porId(linhaId)?.padroes?.split(',')?.filter { it.isNotBlank() }.orEmpty()
+
+    /** As paragens da CM pelo id (as que a rede guardada não tem ficam de fora). */
+    suspend fun paragensCm(ids: List<String>): Map<String, Paragem> =
+        bd.paragens().porChaves(ids.map { RefParagem(Fonte.CM, it).chave }).associate { it.id to it.paraParagem() }
 
     suspend fun linhasCmComecadasPor(prefixo: String): List<Linha> = bd.linhas().comecadasPor(prefixo).map { it.paraLinha() }
 

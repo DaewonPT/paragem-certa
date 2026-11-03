@@ -524,4 +524,19 @@
     <string name="linhas_sem_resultados">Nenhuma linha com esse nome.</string>
     <string name="linhas_todos">Todos</string>
     <string name="modo_outro">Outro</string>
+    <!-- Ecrã da linha -->
+    <string name="linha_sentido">Sentido %1$s</string>
+    <string name="linha_proximas">Próximas em %1$s</string>
+    <string name="linha_abrir_paragem">Abrir paragem</string>
+    <string name="linha_usar_habitual">Usar como paragem habitual</string>
+    <string name="linha_horario_hoje">Horário de hoje</string>
+    <string name="linha_primeira_ultima">Primeira às %1$s · última às %2$s</string>
+    <string name="linha_sem_horario">Hoje não há partidas desta linha aqui.</string>
+    <string name="linha_horario_falhou">Não foi possível carregar o horário. Tenta outra vez mais tarde.</string>
+    <string name="linha_mapa_oficial">Mapa oficial da rede</string>
+    <string name="linha_ja_nao_existe">Esta linha já não existe.</string>
+    <string name="linha_favorita">Tirar a linha das favoritas</string>
+    <string name="linha_nao_favorita">Juntar a linha às favoritas</string>
+    <string name="linha_relatos">Relatos desta linha</string>
+    <string name="linha_paragens">Paragens</string>
 </resources>

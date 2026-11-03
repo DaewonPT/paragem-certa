@@ -60,7 +60,7 @@ import java.time.Duration
 /** Sem desenho da fonte, o troço vai em linha reta de uma ponta à outra. */
 private fun Etapa.pontos() = desenho.ifEmpty { listOf(de.lat to de.lon, para.lat to para.lon) }
 
-private fun hex(c: Color) = "#%06X".format(c.toArgb() and 0xFFFFFF)
+internal fun hex(c: Color) = "#%06X".format(c.toArgb() and 0xFFFFFF)
 
 /** O percurso de cada etapa no mapa, com a cor da linha. Com [atual] (a etapa da viagem), as outras vão esbatidas. */
 internal fun Itinerario.percursos(atual: Int? = null) =

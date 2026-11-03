@@ -47,6 +47,7 @@ import androidx.navigation.toRoute
 import kotlinx.serialization.Serializable
 import pt.pixellusitano.paragemcerta.BuildConfig
 import pt.pixellusitano.paragemcerta.R
+import pt.pixellusitano.paragemcerta.core.linhas.RefLinha
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
 import pt.pixellusitano.paragemcerta.dados.EcraInicial
 import pt.pixellusitano.paragemcerta.dados.Ligacoes
@@ -54,6 +55,7 @@ import pt.pixellusitano.paragemcerta.ui.bussola.BussolaEcra
 import pt.pixellusitano.paragemcerta.ui.comum.gelatina
 import pt.pixellusitano.paragemcerta.ui.inicio.InicioEcra
 import pt.pixellusitano.paragemcerta.ui.inicio.Painel
+import pt.pixellusitano.paragemcerta.ui.linhas.LinhaEcra
 import pt.pixellusitano.paragemcerta.ui.linhas.LinhasEcra
 import pt.pixellusitano.paragemcerta.ui.menu.AjudaEcra
 import pt.pixellusitano.paragemcerta.ui.menu.ContaEcra
@@ -249,6 +251,16 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
                 Box(Modifier.padding(bottom = margens.calculateBottomPadding())) {
                     LinhasEcra(repositorio, ligacoes.catalogoLinhas, aoAbrirLinha = { nav.navigate(LinhaRota(it.chave)) })
                 }
+            }
+            composable<LinhaRota> { entrada ->
+                val r = entrada.toRoute<LinhaRota>()
+                val ref = RefLinha.daChave(r.chave)
+                if (ref == null) nav.popBackStack() else LinhaEcra(
+                    ref, r.sentido, r.paragem, ligacoes.detalheDasLinhas, repositorio, ligacoes.comunidade, ligacoes.configuracoes,
+                    aoAbrirParagem = { nav.navigate(Paragem(it.ref.chave)) },
+                    aoAbrirUrl = ::abrirUrl,
+                    aoVoltar = { nav.popBackStack() },
+                )
             }
             composable<Menu> {
                 Box(Modifier.padding(bottom = margens.calculateBottomPadding())) {

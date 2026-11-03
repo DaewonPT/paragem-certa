@@ -101,6 +101,17 @@ class Comunidade(
         return chaves.flatMap { linhas[it]?.dados.orEmpty() }.filter { it.confirmado && "relato:${it.id}" !in ocultos }
     }
 
+    /**
+     * O ecrã da linha: os relatos ativos da linha (confirmados e por confirmar), sem os que a pessoa ocultou. Sem a comunidade ligada, ou
+     * com um nome que o servidor recusaria, não pede nada; uma falha dá a lista vazia (a secção não aparece).
+     */
+    suspend fun daLinha(nome: String): List<RelatoRemoto> {
+        val chave = chaveLinha(nome).takeIf { comunidadeLigada && chaveLinhaValida(it) } ?: return emptyList()
+        val relatos = (servidor.relatosDasLinhas(listOf(chave)) as? Resultado.Ok)?.valor ?: return emptyList()
+        val ocultos = preferencias.ocultos.first()
+        return relatos.filter { "relato:${it.id}" !in ocultos }
+    }
+
     suspend fun relatar(tipo: TipoRelato, paragem: String, linha: String?): Resultado<RelatoCriado> =
         conta.comSessao { servidor.relatar(it, tipo, paragem, linha) }
 

@@ -218,6 +218,27 @@ class ComunidadeTest {
         assertEquals(listOf("r2"), comunidade.confirmadosNasLinhas(listOf("736")).map { it.id })
     }
 
+    @Test fun relatosDaLinhaSoComAComunidadeLigada() = runTest {
+        // Desligada: lista vazia e nem um pedido (o ecrã da linha não mostra a secção).
+        assertEquals(emptyList<RelatoRemoto>(), comunidade.daLinha("736"))
+        assertTrue(http.pedidos.isEmpty())
+        ligar("comunidade")
+        preferencias.ocultar("relato:$RELATO_ELEVADOR")
+        // Ligada: os relatos ativos da linha pelo nome que a pessoa vê, sem os que ela ocultou.
+        assertEquals(listOf(RELATO_DESVIO), comunidade.daLinha(" 736 ").map { it.id })
+        assertEquals(listOf(listOf("736")), chavesPedidas("/api/comunidade", "linhas"))
+    }
+
+    @Test fun relatosDaLinhaQueFalhamFicamVazios() = runTest {
+        ligar("comunidade")
+        http.rotas["/api/comunidade"] = { Resposta(500, "") }
+        assertEquals(emptyList<RelatoRemoto>(), comunidade.daLinha("736"))
+        // Um nome que o servidor recusaria (dava 400) nem se pede.
+        http.pedidos.clear()
+        assertEquals(emptyList<RelatoRemoto>(), comunidade.daLinha("1/2"))
+        assertTrue(http.pedidos.isEmpty())
+    }
+
     @Test fun mapaGuarda2Minutos() = runTest {
         ligar("comunidade", "fotos", "correcoes")
         val chaves = listOf("CM:060419", "CM:070001")

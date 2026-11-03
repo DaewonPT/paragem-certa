@@ -98,7 +98,7 @@ fun CartaoRelato(
 
 /** "agora mesmo", "há 4 min", "há 3 h", "há 2 dias": os relatos duram de 30 min a 7 dias. */
 @Composable
-private fun haQuanto(criado: Instant, agora: Instant): String {
+internal fun haQuanto(criado: Instant, agora: Instant): String {
     val minutos = Duration.between(criado, agora).toMinutes() // negativo se o relógio do telemóvel estiver atrasado
     return when {
         minutos < 1 -> stringResource(R.string.relato_agora)

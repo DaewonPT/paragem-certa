@@ -31,6 +31,7 @@ class Ligacoes(contexto: Context) {
     val conta = Conta(contexto, servidor, repositorio)
     val comunidade by lazy { Comunidade(servidor, conta, configuracoes, preferencias) }
     val catalogoLinhas = CatalogoLinhas(contexto.filesDir, http, BASE_SERVIDOR)
+    val detalheDasLinhas = DetalheDasLinhas(cm, transitous, catalogoLinhas, repositorio)
     val estacoesGira = EstacoesGira(contexto.filesDir, Gira(http), Instant::now)
 
     private companion object {
