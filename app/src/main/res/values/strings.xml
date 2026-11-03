@@ -515,4 +515,13 @@
     <string name="corrigir_desligada">As correções estão desligadas por agora.</string>
     <string name="corrigir_entrar_texto">Entra com Google ou email para corrigir dados</string>
     <string name="paragem_ja_nao_existe">Segundo os passageiros, esta paragem já não existe.</string>
+    <!-- Separador Linhas -->
+    <string name="nav_linhas">Linhas</string>
+    <string name="pref_ecra_linhas">Linhas</string>
+    <string name="linhas_procurar">Procurar uma linha</string>
+    <string name="linhas_a_carregar">A carregar as linhas…</string>
+    <string name="linhas_sem_catalogo">As linhas dos outros operadores ainda não chegaram. Abre a app com rede para as carregar.</string>
+    <string name="linhas_sem_resultados">Nenhuma linha com esse nome.</string>
+    <string name="linhas_todos">Todos</string>
+    <string name="modo_outro">Outro</string>
 </resources>

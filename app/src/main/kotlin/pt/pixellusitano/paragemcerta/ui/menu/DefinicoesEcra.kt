@@ -175,6 +175,7 @@ private fun EcraInicialOpcoes(escolhido: EcraInicial, aoEscolher: (EcraInicial) 
             listOf(
                 EcraInicial.MAPA to stringResource(R.string.pref_ecra_mapa),
                 EcraInicial.ROTAS to stringResource(R.string.pref_ecra_rotas),
+                EcraInicial.LINHAS to stringResource(R.string.pref_ecra_linhas),
                 EcraInicial.FAVORITOS to stringResource(R.string.pref_ecra_favoritos),
             ),
             escolhido, aoEscolher,

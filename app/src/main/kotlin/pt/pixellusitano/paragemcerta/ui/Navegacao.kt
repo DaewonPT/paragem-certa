@@ -54,6 +54,7 @@ import pt.pixellusitano.paragemcerta.ui.bussola.BussolaEcra
 import pt.pixellusitano.paragemcerta.ui.comum.gelatina
 import pt.pixellusitano.paragemcerta.ui.inicio.InicioEcra
 import pt.pixellusitano.paragemcerta.ui.inicio.Painel
+import pt.pixellusitano.paragemcerta.ui.linhas.LinhasEcra
 import pt.pixellusitano.paragemcerta.ui.menu.AjudaEcra
 import pt.pixellusitano.paragemcerta.ui.menu.ContaEcra
 import pt.pixellusitano.paragemcerta.ui.menu.DefinicoesEcra
@@ -88,8 +89,21 @@ import pt.pixellusitano.paragemcerta.viagem.FicheirosViagem
 /** origem e destino codificados como "nome|lat|lon" (ver paraRota); origem null = "A minha posição". */
 @Serializable data class Rotas(val origem: String? = null, val destino: String? = null)
 
+/** O separador Linhas: a lista das linhas por meio e operador. */
+@Serializable data object Linhas
+
+/**
+ * O ecrã de uma linha: [chave] é a `RefLinha.chave`; [sentido] e [paragem] (uma `RefParagem.chave`) abrem-no já nesse sentido
+ * e nessa paragem (as linhas favoritas). Não se chama "Linha": colide com `core.modelo.Linha`.
+ */
+@Serializable data class LinhaRota(val chave: String, val sentido: Int? = null, val paragem: String? = null)
+
 /** Onde a app abre para cada escolha das Definições; FAVORITOS é o Início, com o painel aberto pelo InicioEcra. */
-fun destinoInicial(e: EcraInicial): Any = if (e == EcraInicial.ROTAS) Rotas() else Inicio()
+fun destinoInicial(e: EcraInicial): Any = when (e) {
+    EcraInicial.ROTAS -> Rotas()
+    EcraInicial.LINHAS -> Linhas
+    else -> Inicio()
+}
 
 /** Troca de separador na barra de baixo: guarda o que estava aberto no separador que se deixa e repõe o do separador escolhido. */
 fun NavController.irParaSeparador(rota: Any) = navigate(rota) {
@@ -101,7 +115,7 @@ fun NavController.irParaSeparador(rota: Any) = navigate(rota) {
 }
 
 /**
- * Ecrãs com a barra de baixo. "Linhas" (fase 4) entra quando existir. abrirViagem: a notificação da viagem foi tocada, por isso
+ * Ecrãs com a barra de baixo (Início, Rotas, Linhas e Menu). abrirViagem: a notificação da viagem foi tocada, por isso
  * abre-se o ecrã da viagem e avisa-se (aoAbrirViagem) para o pedido não se repetir.
  */
 @Composable
@@ -119,6 +133,7 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
     val naInicio = destino?.hasRoute(Inicio::class) == true
     val noMenu = destino?.hasRoute(Menu::class) == true
     val nasRotas = destino?.hasRoute(Rotas::class) == true
+    val nasLinhas = destino?.hasRoute(Linhas::class) == true
     val repositorio = ligacoes.repositorio
     val config by ligacoes.configuracoes.atual.collectAsStateWithLifecycle()
 
@@ -155,12 +170,14 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
 
     Scaffold(
         bottomBar = {
-            if (naInicio || nasRotas || noMenu) {
+            if (naInicio || nasRotas || nasLinhas || noMenu) {
                 NavigationBar {
                     NavigationBarItem(selected = naInicio, onClick = { separador(Inicio()) },
                         icon = { Text("🗺", Modifier.gelatina(naInicio)) }, label = { Text(stringResource(R.string.nav_inicio)) })
                     NavigationBarItem(selected = nasRotas, onClick = { separador(Rotas()) },
                         icon = { Text("🧭", Modifier.gelatina(nasRotas)) }, label = { Text(stringResource(R.string.nav_rotas)) })
+                    NavigationBarItem(selected = nasLinhas, onClick = { separador(Linhas) },
+                        icon = { Text("🚏", Modifier.gelatina(nasLinhas)) }, label = { Text(stringResource(R.string.nav_linhas)) })
                     NavigationBarItem(selected = noMenu, onClick = { separador(Menu) },
                         icon = { Text("☰", Modifier.gelatina(noMenu)) }, label = { Text(stringResource(R.string.nav_menu)) })
                 }
@@ -226,6 +243,11 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
                         aoAbrirViagem = { nav.navigate(Viagem) },
                         comunidadeLigada = config.interruptores.comunidade,
                     )
+                }
+            }
+            composable<Linhas> {
+                Box(Modifier.padding(bottom = margens.calculateBottomPadding())) {
+                    LinhasEcra(repositorio, ligacoes.catalogoLinhas, aoAbrirLinha = { nav.navigate(LinhaRota(it.chave)) })
                 }
             }
             composable<Menu> {

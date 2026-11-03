@@ -29,6 +29,8 @@ class NavegacaoTest {
                 composable<Inicio> { Text("início") }
                 composable<Pesquisa> { Text("pesquisa") }
                 composable<Rotas> { Text("rotas") }
+                composable<Linhas> { Text("linhas") }
+                composable<LinhaRota> { Text("linha") }
                 composable<Viagem> { Text("viagem") }
                 composable<Menu> { Text("menu") }
             }
@@ -65,9 +67,29 @@ class NavegacaoTest {
         }
     }
 
+    @Test fun separadorLinhasGuardaOQueEstavaAberto() {
+        // A lista das linhas, uma linha aberta por cima, e para o Início: a linha fica à espera no separador Linhas.
+        regra.runOnIdle {
+            nav.irParaSeparador(Linhas)
+            nav.navigate(LinhaRota("CM:1009", sentido = 1, paragem = "CM:060419"))
+        }
+        val entrada = regra.runOnIdle { nav.currentBackStackEntry!!.id }
+        regra.runOnIdle { nav.irParaSeparador(Inicio()) }
+        regra.runOnIdle { assertTrue(naInicio()) }
+        regra.runOnIdle { nav.irParaSeparador(Linhas) }
+        regra.runOnIdle {
+            assertTrue(nav.currentDestination!!.hasRoute(LinhaRota::class))
+            assertEquals("o separador Linhas volta com a linha aberta", entrada, nav.currentBackStackEntry!!.id)
+        }
+        // E o separador Rotas não leva a linha atrás.
+        regra.runOnIdle { nav.irParaSeparador(Rotas()) }
+        regra.runOnIdle { assertTrue(nasRotas()) }
+    }
+
     @Test fun destinoInicialDeCadaEscolha() {
         assertEquals(Inicio(), destinoInicial(EcraInicial.MAPA))
         assertEquals(Rotas(), destinoInicial(EcraInicial.ROTAS))
+        assertEquals(Linhas, destinoInicial(EcraInicial.LINHAS))
         // Os favoritos são o Início com o painel aberto: o destino é o mesmo, o painel abre-se no InicioEcra.
         assertEquals(Inicio(), destinoInicial(EcraInicial.FAVORITOS))
     }

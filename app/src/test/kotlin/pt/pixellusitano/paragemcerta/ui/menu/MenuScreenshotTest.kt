@@ -3,6 +3,7 @@ package pt.pixellusitano.paragemcerta.ui.menu
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
 import androidx.compose.ui.test.assertIsSelected
@@ -276,6 +277,15 @@ class MenuScreenshotTest {
         assertEquals(EcraInicial.FAVORITOS, escolhido)
         regra.onNodeWithText("Rotas").performClick()
         assertEquals(EcraInicial.ROTAS, escolhido)
+    }
+
+    @Test @Config(qualifiers = "w360dp-h2200dp")
+    fun ecraInicialLinhasEscolheSeNasDefinicoes() {
+        var escolhido: EcraInicial? = null
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { EcraDefinicoes(ecraInicial = EcraInicial.ROTAS, aoMudarEcraInicial = { escolhido = it }) } }
+        regra.onNodeWithText("Linhas").assertIsNotSelected()
+        regra.onNodeWithText("Linhas").performClick()
+        assertEquals(EcraInicial.LINHAS, escolhido)
     }
 
     @Test @Config(qualifiers = "w360dp-h780dp")
