@@ -22,6 +22,7 @@ import pt.pixellusitano.paragemcerta.core.modelo.Filtros
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.Lugar
 import pt.pixellusitano.paragemcerta.core.modelo.Modo
+import pt.pixellusitano.paragemcerta.core.modelo.Paragem
 import pt.pixellusitano.paragemcerta.core.modelo.ParagemEtapa
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
 import pt.pixellusitano.paragemcerta.core.modelo.TipoLugar
@@ -128,6 +129,25 @@ class RepositorioTest {
         assertTrue(r.atualizarRede())
         assertTrue(r.pesquisar("sodre").any { it.nome == "Cais do Sodré (Terminal)" })
         assertEquals("#C61D23", r.linhaCm("3708")?.cor)
+    }
+
+    @Test fun paragemDoCatalogoQueFaltaFicaGuardada() = runTest {
+        // Uma estação da CP que o telemóvel nunca viu (o Transitous só chega à base por paragensNaZona e pesquisar).
+        val cascais = Paragem(RefParagem(Fonte.TRANSITOUS, "pt-CP_94-30007"), "Cascais", 38.6979, -9.4215, null)
+        val r = repo(semRede)
+        assertNull(r.paragem(cascais.ref))
+        r.guardarParagemSeFalta(cascais)
+        assertEquals(cascais, r.paragem(cascais.ref))
+    }
+
+    @Test fun paragemQueJaEstaGuardadaNaoEPisada() = runTest {
+        // A da CM leva as linhas que lá passam: guardar por cima apagava-as.
+        val guardada = ParagemEntidade(
+            terminal.chave, "CM", terminal.id, "Cais do Sodré (Terminal)", normalizar("Cais do Sodré (Terminal)"), 38.7058, -9.1448, null, "3708,1009",
+        )
+        bd.paragens().guardar(listOf(guardada))
+        repo(semRede).guardarParagemSeFalta(Paragem(terminal, "Cais do Sodré", 0.0, 0.0, true))
+        assertEquals(guardada, bd.paragens().porChave(terminal.chave))
     }
 
     @Test fun mostraOGuardadoAntesDeAPrimeiraRespostaChegar() = runTest {

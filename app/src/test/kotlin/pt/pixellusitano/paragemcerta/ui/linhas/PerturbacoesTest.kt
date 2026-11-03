@@ -39,6 +39,7 @@ import java.time.Instant
 private val AGORA = Instant.parse("2026-11-03T10:00:00Z")
 private val INICIO = AGORA.epochSecond - 3600
 private val DIA_12 = Instant.parse("2026-11-12T22:00:00Z")
+private const val NAO_CARREGOU = "Não foi possível carregar as perturbações. Tenta outra vez mais tarde."
 
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
@@ -49,12 +50,13 @@ class PerturbacoesTest {
     private val preferencias = Preferencias(LojaEmMemoria())
     private val pedidos = mutableListOf<String>()
     private var alertas = "[]"
+    private var codigo = 200
 
-    // A Carris Metropolitana do teste: responde [alertas] aos avisos.
+    // A Carris Metropolitana do teste: responde [alertas] aos avisos (com o [codigo]: fora de 200 é uma falha).
     private val fonte = FontePerturbacoes(CarrisMetropolitana(object : Http {
         override suspend fun get(url: String): Resposta {
             pedidos += url
-            return Resposta(200, alertas)
+            return Resposta(codigo, alertas)
         }
     }, "https://cm.teste/"))
 
@@ -157,6 +159,59 @@ class PerturbacoesTest {
         regra.onNodeWithText("Todos").performClick()
         assertNull(filtro)
         regra.onNodeWithText("Obras na Rua Direita").assertExists()
+    }
+
+    @Test fun falhaDaCmNaoEUmaListaVazia() {
+        codigo = 503
+        runBlocking { assertNull(fonte.todas(AGORA)) }
+        // A falha não fica guardada: o pedido seguinte tenta outra vez e já vê as perturbações.
+        codigo = 200
+        responder("Obras na Rua Direita" to listOf("1009"))
+        runBlocking { assertEquals(listOf("Obras na Rua Direita"), fonte.todas(AGORA)?.map { it.titulo }) }
+        assertEquals(2, pedidos.size)
+    }
+
+    @Test fun faixaEViagemTratamAFalhaDaCmComoSemPerturbacoes() {
+        codigo = 503
+        runBlocking { assertEquals(emptyList<Perturbacao>(), fonte.dasLinhas(minhas, AGORA)) }
+    }
+
+    @Test fun linhaPerturbacoesContaAsAtivas() {
+        responder("Obras na Rua Direita" to listOf("1009"), "Desvio em Odivelas" to listOf("1604"))
+        regra.setContent { LinhaPerturbacoes(fonte, aoAbrir = {}, agora = { AGORA }) }
+        esperarPor("Perturbações (2)")
+    }
+
+    @Test fun linhaPerturbacoesEscondidaQuandoACmFalha() {
+        codigo = 503
+        regra.setContent { LinhaPerturbacoes(fonte, aoAbrir = {}, agora = { AGORA }) }
+        // Dá tempo ao pedido de falhar: sem saber quantas há, a linha "Perturbações (0)" não pode aparecer.
+        regra.waitUntil(3_000) { pedidos.size == 1 }
+        regra.waitForIdle()
+        Thread.sleep(300)
+        regra.waitForIdle()
+        regra.onNodeWithText("Perturbações (0)").assertDoesNotExist()
+    }
+
+    @Test fun ecraSemPerturbacoesDizQueNaoHa() {
+        regra.setContent { PerturbacoesEcra(fonte, { minhas }, aoVoltar = {}, agora = { AGORA }) }
+        esperarPor("Não há perturbações para mostrar.")
+        regra.onNodeWithText(NAO_CARREGOU).assertDoesNotExist()
+    }
+
+    @Test fun ecraComFalhaDaCmDizQueNaoCarregou() {
+        codigo = 503
+        regra.setContent { PerturbacoesEcra(fonte, { minhas }, aoVoltar = {}, agora = { AGORA }) }
+        esperarPor(NAO_CARREGOU)
+        regra.onNodeWithText("Não há perturbações para mostrar.").assertDoesNotExist()
+    }
+
+    @Test fun ecraACarregarDizACarregar() {
+        regra.setContent {
+            PerturbacoesConteudo(emptyList(), emptyList(), null, {}, aoVoltar = {}, modifier = Modifier.width(360.dp), aCarregar = true)
+        }
+        regra.onNodeWithText("A carregar…").assertExists()
+        regra.onNodeWithText("Não há perturbações para mostrar.").assertDoesNotExist()
     }
 
     @Test fun faixa_perturbacoes_claro() = captureRoboImage("src/test/screenshots/faixa_perturbacoes_claro.png") {

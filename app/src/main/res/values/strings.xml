@@ -565,6 +565,7 @@
     <string name="perturbacoes_minhas">Nas tuas linhas</string>
     <string name="perturbacoes_ate">até %1$s</string>
     <string name="perturbacoes_nenhuma">Não há perturbações para mostrar.</string>
+    <string name="perturbacoes_falhou">Não foi possível carregar as perturbações. Tenta outra vez mais tarde.</string>
     <string name="linhas_perturbacoes">Perturbações (%1$d)</string>
     <string name="perturbacao_na">⚠ Perturbação na %1$s</string>
 </resources>

@@ -15,21 +15,21 @@ private val GUARDAR = Duration.ofMinutes(1)
 
 /**
  * As perturbações oficiais, pedidas pelo telemóvel à Carris Metropolitana: não dependem do servidor nem da comunidade, por
- * isso continuam com o servidor em pausa. Uma falha da CM dá a lista vazia (quem pergunta tenta outra vez mais tarde).
- * Corre nos dois processos (a viagem cria a sua).
+ * isso continuam com o servidor em pausa. Uma falha da CM dá null, que não é "sem perturbações" (a falha não fica guardada: quem
+ * pergunta de novo tenta outra vez). Corre nos dois processos (a viagem cria a sua).
  */
 class FontePerturbacoes(private val cm: CarrisMetropolitana) {
     private var guardadas: Pair<Instant, List<Perturbacao>>? = null
 
     // shortcut: só as da CM; as do Metro viriam das perturbacoes do /api/avisos, mas o Metro está fora da 0.4 (a porta 8243
     // dá 526, sem o certificado intermédio): juntá-las quando o Metro mandar a cadeia completa.
-    suspend fun todas(agora: Instant): List<Perturbacao> {
+    suspend fun todas(agora: Instant): List<Perturbacao>? {
         guardadas?.takeIf { Duration.between(it.first, agora) < GUARDAR }?.let { return it.second }
-        val r = cm.alertas(agora) as? Resultado.Ok ?: return emptyList()
+        val r = cm.alertas(agora) as? Resultado.Ok ?: return null
         return r.valor.map(::daCm).also { guardadas = agora to it }
     }
 
-    /** As que tocam nas [chaves] (chaveLinha); só pede à CM se uma delas for uma linha da CM. */
+    /** As que tocam nas [chaves] (chaveLinha); só pede à CM se uma delas for uma linha da CM. Uma falha da CM conta como nenhuma. */
     suspend fun dasLinhas(chaves: Set<String>, agora: Instant): List<Perturbacao> =
-        if (chaves.none(LINHA_CM::matches)) emptyList() else tocamEm(todas(agora), chaves)
+        if (chaves.none(LINHA_CM::matches)) emptyList() else tocamEm(todas(agora).orEmpty(), chaves)
 }

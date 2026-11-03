@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import pt.pixellusitano.paragemcerta.core.fontes.servidor.RelatoRemoto
 import pt.pixellusitano.paragemcerta.core.linhas.RefLinha
+import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.Paragem
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
@@ -167,6 +168,14 @@ class LinhaViewModel(
             // O que está à vista fica como está: sem favorita, o sentido e a paragem de partida passariam a ser outros.
             interno.update { it.copy(sentido = v.s.sentido, paragem = v.p.ref) }
             repositorio.alternarLinhaFavorita(v.d.ref, v.s.sentido, v.s.destino, v.p, v.d.nome)
+        }
+    }
+
+    /** Abre o ecrã da paragem [p]; uma do catálogo (Transitous) que a base ainda não tem guarda-se antes, porque o ecrã da paragem só lê a base. */
+    fun abrirParagem(p: Paragem, aoAbrir: (Paragem) -> Unit) {
+        viewModelScope.launch {
+            if (p.ref.fonte == Fonte.TRANSITOUS) repositorio.guardarParagemSeFalta(p)
+            aoAbrir(p)
         }
     }
 

@@ -161,7 +161,7 @@ fun LinhaEcra(
         estado = estado.copy(mapaOficial = mapaOficial, aoVivo = aoVivoDasProximas),
         aoMudarSentido = vm::mudarSentido,
         aoEscolherParagem = vm::escolherParagem,
-        aoAbrirParagem = aoAbrirParagem,
+        aoAbrirParagem = { vm.abrirParagem(it, aoAbrirParagem) },
         aoFavorita = vm::alternarFavorita,
         aoUsarComoHabitual = vm::usarComoHabitual,
         aoVerHorario = vm::verHorario,

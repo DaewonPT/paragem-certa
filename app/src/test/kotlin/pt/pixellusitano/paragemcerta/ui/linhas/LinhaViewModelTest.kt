@@ -304,6 +304,22 @@ class LinhaViewModelTest {
         assertTrue(e.semLinha)
     }
 
+    @Test fun abrirUmaParagemDoCatalogoGuardaAntesDeAbrir() = rodar {
+        // A 15E vem do catálogo: o telemóvel nunca viu as paragens dela, e o ecrã da paragem só lê o que está na base.
+        val m = Mundo(httpMetro(), catalogoPronto())
+        val vm = m.vm(l15e)
+        val p = vm.ate { it.detalhe != null }.detalhe!!.sentidos[0].paragens[1]
+        assertNull(m.repositorio.paragem(p.ref))
+        var daBaseAoAbrir: Paragem? = null
+        var aberta = false
+        vm.abrirParagem(p) {
+            daBaseAoAbrir = runBlocking { m.repositorio.paragem(it.ref) }
+            aberta = true
+        }
+        while (!aberta) delay(10)
+        assertEquals(p, daBaseAoAbrir)
+    }
+
     @Test fun relatosDaLinhaChegamDepoisDoDetalhe() = rodar {
         guardarLinhaCm()
         val pedidos = mutableListOf<String>()

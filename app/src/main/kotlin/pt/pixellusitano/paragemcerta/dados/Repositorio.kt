@@ -351,12 +351,19 @@ class Repositorio(
         val chaves = bd.favoritas().todas().first().map { it.chave }
         val cm = bd.paragens().porChaves(chaves).filter { it.fonte == Fonte.CM.name }.flatMap { it.linhas.split(',') }
         val outras = chaves.filter { RefParagem.daChave(it)?.fonte == Fonte.TRANSITOUS }.flatMap { c ->
-            bd.chegadas().porChave(c)?.let { g -> JSON.decodeFromString<List<ChegadaGuardada>>(g.json).map { it.linhaNome } }.orEmpty()
+            // Uma linha guardada que não se lê fica de fora: a faixa das perturbações chama isto em cada abertura e não pode deitar a app abaixo.
+            val guardadas = bd.chegadas().porChave(c)?.let { g -> runCatching { JSON.decodeFromString<List<ChegadaGuardada>>(g.json) }.getOrNull() }
+            guardadas.orEmpty().map { it.linhaNome }
         }
         return (cm + outras).filter { it.isNotBlank() }.mapTo(HashSet(), ::chaveLinha)
     }
 
     suspend fun paragem(ref: RefParagem): Paragem? = bd.paragens().porChave(ref.chave)?.paraParagem()
+
+    /** Guarda [p] (de uma linha do catálogo) para o ecrã da paragem a ler; a que já está guardada fica como está (a da CM leva as linhas dela). */
+    suspend fun guardarParagemSeFalta(p: Paragem) {
+        if (bd.paragens().porChave(p.ref.chave) == null) bd.paragens().guardar(listOf(p.paraEntidade()))
+    }
 
     /** Carris Metropolitana da base local mais as do Transitous pela rede (que ficam guardadas para o ecrã da paragem). */
     suspend fun paragensNaZona(minLat: Double, minLon: Double, maxLat: Double, maxLon: Double): List<Paragem> {

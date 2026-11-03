@@ -163,6 +163,23 @@ class LinhasFavoritasTest {
         assertEquals(setOf("3708", "728", "28E"), repo.linhasDasParagensFavoritas())
     }
 
+    @Test fun linhasDasParagensFavoritasSaltaAsChegadasGuardadasEstragadas() = runTest {
+        val praca = Paragem(RefParagem(Fonte.TRANSITOUS, "pt-Carris_920"), "Pç. Figueira", 38.7138, -9.1394, null)
+        repo.alternarFavorita(martim)
+        repo.alternarFavorita(praca)
+        // A da primeira não se lê; a da segunda é boa e as linhas dela voltam na mesma (a faixa das perturbações chama isto em cada abertura).
+        bd.chegadas().guardar(ChegadasGuardadasEntidade(martim.ref.chave, "isto não é JSON", 0))
+        bd.chegadas().guardar(
+            ChegadasGuardadasEntidade(
+                praca.ref.chave,
+                """[{"fonte":"TRANSITOUS","linhaId":"pt-Carris_76_0","linhaNome":"15E","destino":"Algés","programada":0,"prevista":null,
+                   |"idViagem":null,"idVeiculo":null,"modo":"ELETRICO","cor":null,"acessivel":null}]""".trimMargin(),
+                0,
+            ),
+        )
+        assertEquals(setOf("15E"), repo.linhasDasParagensFavoritas())
+    }
+
     @Test fun removerLinhaFavoritaSincroniza() = runTest {
         repo.comConta = true
         repo.alternarLinhaFavorita(l1009, 0, "Lisboa", cais, "1009")

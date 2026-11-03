@@ -27,6 +27,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -121,10 +122,10 @@ fun FaixaAoAbrir(
     FaixaPerturbacoes(lista.size, aoAbrir = { vistas(); aoAbrir() }, aoFechar = ::vistas)
 }
 
-/** A linha "Perturbações (N)" do separador Linhas: as ativas, pedidas quando o separador abre; tocar abre o ecrã delas. */
+/** A linha "Perturbações (N)" do separador Linhas: as ativas, pedidas quando o separador abre; tocar abre o ecrã delas. Se a CM falha, não há linha. */
 @Composable
 fun LinhaPerturbacoes(fonte: FontePerturbacoes, aoAbrir: () -> Unit, agora: () -> Instant = Instant::now) {
-    val n by produceState<Int?>(null) { value = fonte.todas(agora()).size }
+    val n by produceState<Int?>(null) { value = fonte.todas(agora())?.size }
     val total = n ?: return
     ItemLista(onClick = aoAbrir) {
         Text(stringResource(R.string.linhas_perturbacoes, total), color = MaterialTheme.colorScheme.onBackground)
@@ -135,20 +136,26 @@ fun LinhaPerturbacoes(fonte: FontePerturbacoes, aoAbrir: () -> Unit, agora: () -
 /** O ecrã "Perturbações": pede todas e separa as das tuas linhas ([minhas]). */
 @Composable
 fun PerturbacoesEcra(fonte: FontePerturbacoes, minhas: suspend () -> Set<String>, aoVoltar: () -> Unit, agora: () -> Instant = Instant::now) {
+    var falhou by remember { mutableStateOf(false) }
     val listas by produceState<Pair<List<Perturbacao>, List<Perturbacao>>?>(null) {
         val todas = fonte.todas(agora())
+        if (todas == null) {
+            falhou = true
+            return@produceState
+        }
         val dasMinhas = dasLinhas(todas, minhas())
         value = dasMinhas to todas.filter { it !in dasMinhas }
     }
     var filtro by rememberSaveable { mutableStateOf<Modo?>(null) }
     PerturbacoesConteudo(
-        listas?.first.orEmpty(), listas?.second.orEmpty(), filtro, { filtro = it }, aoVoltar, Modifier.fillMaxSize(), aCarregar = listas == null,
+        listas?.first.orEmpty(), listas?.second.orEmpty(), filtro, { filtro = it }, aoVoltar, Modifier.fillMaxSize(),
+        aCarregar = listas == null && !falhou, falhou = falhou,
     )
 }
 
 /**
  * As das tuas linhas ([minhas]) primeiro, depois as [outras] por operador, só do meio [filtro] (null = todos). Só os títulos
- * e a data do fim; o texto aparece ao tocar no título.
+ * e a data do fim; o texto aparece ao tocar no título. Sem nenhuma, diz porquê: [aCarregar], [falhou] (a CM não respondeu) ou não há.
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -160,6 +167,7 @@ fun PerturbacoesConteudo(
     aoVoltar: () -> Unit,
     modifier: Modifier = Modifier,
     aCarregar: Boolean = false,
+    falhou: Boolean = false,
 ) {
     val modos = (minhas + outras).map(::modoDe).distinct().sorted()
     val doMeio = { l: List<Perturbacao> -> l.filter { filtro == null || modoDe(it) == filtro } }
@@ -203,11 +211,17 @@ fun PerturbacoesConteudo(
                 item(key = "operador-$operador") { Titulo(operador) }
                 items(lista) { Item(it) }
             }
-            if (!aCarregar && minhasDoMeio.isEmpty() && porOperador.isEmpty()) {
-                item(key = "nenhuma") {
+            if (minhasDoMeio.isEmpty() && porOperador.isEmpty()) {
+                item(key = "sem-lista") {
                     Text(
-                        stringResource(R.string.perturbacoes_nenhuma), color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.fillMaxWidth().padding(16.dp),
+                        stringResource(
+                            when {
+                                aCarregar -> R.string.a_carregar
+                                falhou -> R.string.perturbacoes_falhou
+                                else -> R.string.perturbacoes_nenhuma
+                            },
+                        ),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.fillMaxWidth().padding(16.dp),
                     )
                 }
             }
