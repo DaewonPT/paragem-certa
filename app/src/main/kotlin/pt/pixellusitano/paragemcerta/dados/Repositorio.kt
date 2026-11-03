@@ -240,6 +240,17 @@ class Repositorio(
         dao.guardar(LinhaFavoritaEntidade(chave, ref.chave, sentido, paragem.ref.chave, nome, destino, dao.proximaOrdem(), paragem.lat, paragem.lon))
     }
 
+    suspend fun removerLinhaFavorita(f: LinhaFavorita) = bd.withTransaction {
+        val chave = chaveLinhaFavorita(f.ref, f.sentido, f.paragem)
+        apagado(chave, TIPO_LINHA)
+        bd.linhasFavoritas().apagar(chave)
+    }
+
+    /** A ordem de [ordem] passa a ser a da lista (e vai toda para a conta). */
+    suspend fun reordenarLinhasFavoritas(ordem: List<LinhaFavorita>) = bd.withTransaction {
+        ordem.forEachIndexed { i, f -> bd.linhasFavoritas().reordenar(chaveLinhaFavorita(f.ref, f.sentido, f.paragem), i) }
+    }
+
     /** A paragem faz parte da chave: na conta é apagar a antiga e criar a nova, no mesmo lugar da lista. */
     suspend fun mudarParagemHabitual(f: LinhaFavorita, paragem: Paragem) = bd.withTransaction {
         val antiga = chaveLinhaFavorita(f.ref, f.sentido, f.paragem)
@@ -278,19 +289,6 @@ class Repositorio(
         val outras = (transitous.pesquisar(texto) as? Resultado.Ok)?.valor.orEmpty()
         if (outras.isNotEmpty()) bd.paragens().guardar(outras.map { it.paraEntidade() })
         return locais + outras
-    }
-
-    private val paragensDasLinhas = mutableMapOf<String, List<Paragem>>()
-
-    /** Paragens de uma linha da Carris Metropolitana (todos os sentidos); null se não foi possível obtê-las.
-     *  Só se guarda (nesta sessão) um resultado completo, para uma falha não ficar presa. */
-    suspend fun paragensDaLinha(linhaId: String): List<Paragem>? {
-        paragensDasLinhas[linhaId]?.let { return it }
-        val resultados = padroesDaLinhaCm(linhaId).map { cm.padrao(it) }
-        if (resultados.isEmpty() || resultados.any { it !is Resultado.Ok }) return null
-        val ids = resultados.flatMap { (it as Resultado.Ok).valor }.distinct()
-        val porChave = bd.paragens().porChaves(ids.map { RefParagem(Fonte.CM, it).chave }).associateBy { it.id }
-        return ids.mapNotNull { porChave[it]?.paraParagem() }.also { paragensDasLinhas[linhaId] = it }
     }
 
     /** Os ids dos percursos (patterns) de uma linha da Carris Metropolitana, como a rede guardada os tem. */
@@ -538,7 +536,6 @@ class Repositorio(
     /** Favoritas (paragens e linhas), locais, viagens recentes e chegadas guardadas; também esquece o que tem em memória. */
     suspend fun apagarDadosDoTelemovel() {
         bd.locais().apagarDadosPessoais()
-        paragensDasLinhas.clear()
         alertasEmCache = null
         chegadasParaPartidas.clear()
         codigosPostais.clear()

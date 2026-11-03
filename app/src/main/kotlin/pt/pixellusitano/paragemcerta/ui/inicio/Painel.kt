@@ -18,6 +18,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateSetOf
 import androidx.compose.runtime.produceState
@@ -30,10 +31,18 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.core.atraso.aindaPorChegar
+import pt.pixellusitano.paragemcerta.core.comunidade.chaveLinha
+import pt.pixellusitano.paragemcerta.core.linhas.Catalogo
+import pt.pixellusitano.paragemcerta.core.linhas.LinhaCatalogo
+import pt.pixellusitano.paragemcerta.core.linhas.RefLinha
+import pt.pixellusitano.paragemcerta.core.linhas.daLinhaNoSentido
+import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.modelo.Filtros
+import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.Itinerario
 import pt.pixellusitano.paragemcerta.core.modelo.Linha
 import pt.pixellusitano.paragemcerta.core.modelo.Lugar
@@ -43,7 +52,10 @@ import pt.pixellusitano.paragemcerta.core.regras.distanciaMetros
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
 import pt.pixellusitano.paragemcerta.core.regras.favoritaPorOmissao
 import pt.pixellusitano.paragemcerta.core.regras.maisProximas
+import pt.pixellusitano.paragemcerta.dados.CatalogoLinhas
+import pt.pixellusitano.paragemcerta.dados.EstadoCatalogo
 import pt.pixellusitano.paragemcerta.dados.EstadoChegadas
+import pt.pixellusitano.paragemcerta.dados.LinhaFavorita
 import pt.pixellusitano.paragemcerta.dados.LocalGuardado
 import pt.pixellusitano.paragemcerta.dados.ViagemRecente
 import pt.pixellusitano.paragemcerta.ui.Rotas
@@ -64,6 +76,73 @@ import java.time.Instant
 
 /** Uma paragem no painel, com as suas chegadas (estado null enquanto carrega). */
 data class BlocoParagem(val ref: RefParagem, val nome: String, val estado: EstadoChegadas?, val maximo: Int)
+
+/**
+ * Uma linha favorita no painel e nos Favoritos: [paragem] é o nome da paragem habitual ("" se ainda não se sabe), [estado] as chegadas
+ * dela ali, já só da linha e do sentido (null enquanto carrega) e [existe] se a linha ainda existe (null = o catálogo ou as linhas da
+ * CM ainda não chegaram: não se sabe, e a favorita fica como está).
+ */
+data class BlocoLinha(val favorita: LinhaFavorita, val paragem: String, val estado: EstadoChegadas?, val existe: Boolean?)
+
+/**
+ * A chegada é da linha favorita no sentido dela. Com a [linha] do catálogo (as dos outros operadores) decidem as rotas e o sentido do
+ * catálogo ([daLinhaNoSentido]: num sentido que o gerador inventou só conta o destino); sem ela (a CM) o nome da linha e o sentido da
+ * chegada, ou o destino guardado se a chegada não traz o sentido.
+ */
+internal fun daLinhaFavorita(c: Chegada, f: LinhaFavorita, linha: LinhaCatalogo?): Boolean {
+    val s = linha?.sentidos?.firstOrNull { it.sentido == f.sentido }
+    if (linha != null && s != null) return daLinhaNoSentido(c, linha.rotas, s)
+    return chaveLinha(c.linhaNome) == chaveLinha(f.nome) &&
+        (c.sentido?.let { it == f.sentido } ?: c.destino.equals(f.destino, ignoreCase = true))
+}
+
+/** O bloco da favorita [f] com as chegadas da paragem habitual filtradas por ela; sem pedir o detalhe da linha (a [linha] do catálogo já está na memória). */
+fun blocoDaLinha(
+    f: LinhaFavorita, chegadasDaParagem: EstadoChegadas?, existe: Boolean?, nomeParagem: String = "", linha: LinhaCatalogo? = null,
+): BlocoLinha = BlocoLinha(
+    f, nomeParagem, chegadasDaParagem?.let { e -> e.copy(chegadas = e.chegadas.filter { daLinhaFavorita(it, f, linha) }) }, existe,
+)
+
+/** A linha ainda existe? null = não se sabe (catálogo ou linhas da CM por chegar): uma favorita boa nunca passa por perdida por isso. */
+internal fun linhaExiste(ref: RefLinha, cm: List<Linha>, catalogo: Catalogo?): Boolean? = when (ref.fonte) {
+    Fonte.CM -> if (cm.isEmpty()) null else cm.any { it.id == ref.id }
+    Fonte.TRANSITOUS -> catalogo?.let { c -> c.linhas.any { it.ref == ref } }
+}
+
+/** "728 → Restelo em Cais do Sodré"; sem o nome da paragem (ainda não se sabe), só "728 → Restelo". */
+@Composable
+internal fun tituloDaLinha(b: BlocoLinha): String = with(b.favorita) {
+    if (b.paragem.isEmpty()) stringResource(R.string.painel_de_para, nome, destino)
+    else stringResource(R.string.linha_favorita_em, nome, destino, b.paragem)
+}
+
+/**
+ * Um só fluxo de chegadas por paragem, por mais vezes que ela apareça (favorita, habitual de uma linha, perto de ti). Cada fluxo
+ * só recolhe com o ecrã visível e sai quando a paragem sai da lista.
+ */
+@Composable
+internal fun estadosDasParagens(chegadas: (RefParagem) -> Flow<EstadoChegadas>, refs: Collection<RefParagem>): Map<RefParagem, EstadoChegadas?> =
+    refs.distinct().associateWith { ref -> key(ref) { remember { chegadas(ref) }.collectAsStateWithLifecycle(initialValue = null).value } }
+
+/**
+ * As linhas favoritas com o que o ecrã precisa: se existem, o nome da paragem habitual (a CM e as paragens já vistas estão no Room;
+ * as outras, no catálogo) e as chegadas dela em [estados] (sem elas, o bloco fica sem chegadas: os Favoritos não as pedem).
+ */
+@Composable
+internal fun rememberBlocosDeLinhas(
+    repositorio: Repositorio, catalogo: CatalogoLinhas, favoritas: List<LinhaFavorita>, estados: Map<RefParagem, EstadoChegadas?> = emptyMap(),
+): List<BlocoLinha> {
+    val cm by remember(repositorio) { repositorio.linhasCmFlow() }.collectAsStateWithLifecycle(initialValue = emptyList())
+    val pronto = (catalogo.estado.collectAsStateWithLifecycle().value as? EstadoCatalogo.Pronto)?.c
+    val nomes by produceState(emptyMap<RefParagem, String>(), favoritas) {
+        value = favoritas.map { it.paragem }.distinct().mapNotNull { r -> repositorio.paragem(r)?.let { r to it.nome } }.toMap()
+    }
+    return favoritas.map { f ->
+        val linha = pronto?.linhas?.firstOrNull { it.ref == f.ref }
+        val nome = nomes[f.paragem] ?: linha?.sentidos?.firstNotNullOfOrNull { s -> s.paragens.firstOrNull { it.ref == f.paragem } }?.nome.orEmpty()
+        blocoDaLinha(f, estados[f.paragem], linhaExiste(f.ref, cm, pronto), nome, linha)
+    }
+}
 
 private val VALIDADE_AUTOMATICO: Duration = Duration.ofMinutes(10)
 private val VALIDADE_AO_TOQUE: Duration = Duration.ofMinutes(15)
@@ -159,8 +238,10 @@ fun PainelConteudo(
     aoTocarLocal: (BlocoLocal) -> Unit = {},
     aoVerMaisLocal: (BlocoLocal) -> Unit = {},
     aoRepetir: (ViagemRecente) -> Unit = {},
+    linhasFavoritas: List<BlocoLinha> = emptyList(),
+    aoAbrirLinha: (LinhaFavorita) -> Unit = {},
 ) {
-    // "Favoritos" por esta ordem: Casa, Trabalho, as paragens e os outros sítios (cada grupo pela ordem em que o utilizador o pôs).
+    // "Favoritos" por esta ordem: Casa, Trabalho, as paragens, as linhas e os outros sítios (cada grupo pela ordem em que o utilizador o pôs).
     val casaETrabalho = listOf("CASA", "TRABALHO").mapNotNull { t -> locais.firstOrNull { it.local.tipo == t } }
     val outros = locais.filter { it.local.tipo != "CASA" && it.local.tipo != "TRABALHO" }
     Column(modifier.background(MaterialTheme.colorScheme.surface).padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
@@ -172,12 +253,13 @@ fun PainelConteudo(
         }
         Text(stringResource(R.string.painel_favoritos), style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
-        if (favoritas.isEmpty() && locais.isEmpty()) {
+        if (favoritas.isEmpty() && locais.isEmpty() && linhasFavoritas.isEmpty()) {
             Text(stringResource(R.string.painel_sem_favoritas), color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(vertical = 8.dp))
         }
         CartoesLocais(casaETrabalho, aoTocarLocal, aoVerMaisLocal)
         favoritas.forEach { Bloco(it, "★ ", linhas, agora, aoAbrirParagem) }
+        linhasFavoritas.forEach { BlocoDeLinha(it, linhas, agora, aoAbrirLinha) }
         CartoesLocais(outros, aoTocarLocal, aoVerMaisLocal)
 
         Text(stringResource(R.string.painel_perto), style = MaterialTheme.typography.titleMedium,
@@ -207,22 +289,47 @@ private fun CartoesLocais(locais: List<BlocoLocal>, aoTocar: (BlocoLocal) -> Uni
 private fun Bloco(b: BlocoParagem, prefixo: String, linhas: Map<String, Linha>, agora: Instant, aoAbrir: (RefParagem) -> Unit) {
     Column(Modifier.fillMaxWidth().clickable(role = Role.Button) { aoAbrir(b.ref) }.padding(vertical = 6.dp)) {
         Text(prefixo + b.nome, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
-        val e = b.estado
-        if (e == null) {
-            Text(stringResource(R.string.a_carregar), color = MaterialTheme.colorScheme.onSurfaceVariant,
+        Chegadas(b.estado, b.maximo, linhas, agora)
+        HorizontalDivider(Modifier.padding(top = 6.dp), color = MaterialTheme.colorScheme.outlineVariant)
+    }
+}
+
+/**
+ * Uma linha favorita: "★ 728 → Restelo em Cais do Sodré" e as 2 próximas chegadas dela ali. Sem saber se a linha existe mostra o
+ * nome guardado com "A carregar…" (tocar abre-a); uma que já não existe só diz isso (tirá-la é nos Favoritos) e não abre nada.
+ */
+@Composable
+private fun BlocoDeLinha(b: BlocoLinha, linhas: Map<String, Linha>, agora: Instant, aoAbrir: (LinhaFavorita) -> Unit) {
+    val abre = if (b.existe == false) Modifier else Modifier.clickable(role = Role.Button) { aoAbrir(b.favorita) }
+    Column(Modifier.fillMaxWidth().then(abre).padding(vertical = 6.dp)) {
+        Text("★ " + tituloDaLinha(b), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+        when (b.existe) {
+            true -> Chegadas(b.estado, 2, linhas, agora)
+            false -> Text(stringResource(R.string.linha_ja_nao_existe), color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 6.dp))
-        } else {
-            FaixaEstado(e, agora, Modifier.padding(vertical = 4.dp))
-            // Filtra outra vez com o relógio do ecrã: sem rede, a próxima resposta pode demorar minutos.
-            val visiveis = e.chegadas.filter { aindaPorChegar(it, agora) }
-            if (visiveis.isEmpty() && !e.semLigacao && !e.tempoRealIndisponivel) {
-                Text(stringResource(R.string.sem_chegadas), color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 6.dp))
-            }
-            visiveis.take(b.maximo).forEach { LinhaChegada(it, linhas[it.linhaId], agora) }
+            null -> Text(stringResource(R.string.a_carregar), color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 6.dp))
         }
         HorizontalDivider(Modifier.padding(top = 6.dp), color = MaterialTheme.colorScheme.outlineVariant)
     }
+}
+
+/** As [maximo] primeiras chegadas de [e] (null = ainda a carregar) com o estado da ligação. */
+@Composable
+private fun Chegadas(e: EstadoChegadas?, maximo: Int, linhas: Map<String, Linha>, agora: Instant) {
+    if (e == null) {
+        Text(stringResource(R.string.a_carregar), color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 6.dp))
+        return
+    }
+    FaixaEstado(e, agora, Modifier.padding(vertical = 4.dp))
+    // Filtra outra vez com o relógio do ecrã: sem rede, a próxima resposta pode demorar minutos.
+    val visiveis = e.chegadas.filter { aindaPorChegar(it, agora) }
+    if (visiveis.isEmpty() && !e.semLigacao && !e.tempoRealIndisponivel) {
+        Text(stringResource(R.string.sem_chegadas), color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 6.dp))
+    }
+    visiveis.take(maximo).forEach { LinhaChegada(it, linhas[it.linhaId], agora) }
 }
 
 /** A sugestão do momento guardada para um sítio: quando e de onde foi pedida (null = o pedido falhou). */
@@ -251,8 +358,8 @@ private suspend fun sugerir(
 }
 
 /**
- * Painel ligado aos dados: Favoritos (Casa, Trabalho, as paragens — a por omissão com 3 chegadas, as outras com 2 — e os outros sítios)
- * e até 5 paragens a 800 m.
+ * Painel ligado aos dados: Favoritos (Casa, Trabalho, as paragens — a por omissão com 3 chegadas, as outras com 2 —, as linhas
+ * favoritas e os outros sítios) e até 5 paragens a 800 m.
  */
 @Composable
 fun Painel(
@@ -260,9 +367,12 @@ fun Painel(
     posicao: Pair<Double, Double>?,
     aoAbrirParagem: (RefParagem) -> Unit,
     aoPesquisar: () -> Unit,
+    catalogo: CatalogoLinhas,
     aoAbrirRotas: (Rotas) -> Unit = {},
+    aoAbrirLinha: (LinhaFavorita) -> Unit = {},
 ) {
     val favoritas by remember { repositorio.favoritas() }.collectAsStateWithLifecycle(initialValue = emptyList())
+    val linhasGuardadas by remember { repositorio.linhasFavoritas() }.collectAsStateWithLifecycle(initialValue = emptyList())
     val locais by remember { repositorio.locais() }.collectAsStateWithLifecycle(initialValue = emptyList())
     val recentes by remember { repositorio.recentes() }.collectAsStateWithLifecycle(initialValue = emptyList())
     val agora by produceState(Instant.now()) {
@@ -300,12 +410,12 @@ fun Painel(
     }
     val primeira = remember(favoritas, posicao) { favoritaPorOmissao(favoritas, posicao) }
     val ordenadas = listOfNotNull(primeira) + favoritas.filter { it.ref != primeira?.ref }
+    // Um só pedido de chegadas por paragem, mesmo que seja favorita, a habitual de uma linha e uma das que estão perto de ti.
+    val estados = estadosDasParagens(repositorio::chegadas, ordenadas.map { it.ref } + linhasGuardadas.map { it.paragem } + perto.orEmpty().map { it.ref })
 
     PainelConteudo(
-        favoritas = ordenadas.map { f ->
-            BlocoParagem(f.ref, f.nome, estadoDe(repositorio, f.ref), maximo = if (f.ref == primeira?.ref) 3 else 2)
-        },
-        pertoDeTi = perto?.map { p -> BlocoParagem(p.ref, p.nome, estadoDe(repositorio, p.ref), maximo = 1) },
+        favoritas = ordenadas.map { f -> BlocoParagem(f.ref, f.nome, estados[f.ref], maximo = if (f.ref == primeira?.ref) 3 else 2) },
+        pertoDeTi = perto?.map { p -> BlocoParagem(p.ref, p.nome, estados[p.ref], maximo = 1) },
         linhas = linhas,
         agora = agora,
         aoAbrirParagem = aoAbrirParagem,
@@ -322,12 +432,7 @@ fun Painel(
         aoVerMaisLocal = { b -> abrirRotas(b.local) },
         // "A minha posição" não se guarda como origem: volta a ser a posição de agora.
         aoRepetir = { r -> aoAbrirRotas(Rotas(origem = r.de.takeIf { it.nome != MINHA_POSICAO }?.paraRota(), destino = r.para.paraRota())) },
+        linhasFavoritas = rememberBlocosDeLinhas(repositorio, catalogo, linhasGuardadas, estados),
+        aoAbrirLinha = aoAbrirLinha,
     )
-}
-
-@Composable
-private fun estadoDe(repositorio: Repositorio, ref: RefParagem): EstadoChegadas? {
-    val fluxo = remember(ref) { repositorio.chegadas(ref) }
-    // Só consulta enquanto o ecrã está visível (a recolha pára abaixo de STARTED).
-    return fluxo.collectAsStateWithLifecycle(initialValue = null).value
 }

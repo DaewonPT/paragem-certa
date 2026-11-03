@@ -175,18 +175,6 @@ class RepositorioTest {
         }
     }
 
-    @Test fun linhaQueFalhaNaoFicaGuardadaVazia() = runTest {
-        val http = HttpPorUrl(
-            "/stops" to listOf({ Resposta(200, fixture("cm-stops.json")) }),
-            "/lines" to listOf({ Resposta(200, fixture("cm-lines.json")) }),
-            "patterns" to listOf({ throw IOException("sem rede") }, { Resposta(200, fixture("cm-pattern-3708_0_1.json")) }),
-        )
-        val r = repo(http)
-        assertTrue(r.atualizarRede())
-        assertEquals(null, r.paragensDaLinha("3708"))
-        assertTrue(r.paragensDaLinha("3708")!!.any { it.ref.id == "060419" })
-    }
-
     @Test fun planearDaOsAcentosQueABaseEAPesquisaConhecem() = runTest {
         // A CP escreve "Cais do Sodre" e "Alcantara -  Mar"; a base conhece o Cais do Sodré (a 100 m) e a pessoa escolheu o destino pela pesquisa.
         bd.paragens().guardar(

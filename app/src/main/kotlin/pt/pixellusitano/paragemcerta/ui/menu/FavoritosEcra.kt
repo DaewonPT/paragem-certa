@@ -36,16 +36,28 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.core.regras.Favorita
+import pt.pixellusitano.paragemcerta.dados.CatalogoLinhas
+import pt.pixellusitano.paragemcerta.dados.LinhaFavorita
 import pt.pixellusitano.paragemcerta.dados.LocalGuardado
 import pt.pixellusitano.paragemcerta.dados.Repositorio
 import pt.pixellusitano.paragemcerta.ui.comum.DialogoNome
+import pt.pixellusitano.paragemcerta.ui.inicio.BlocoLinha
+import pt.pixellusitano.paragemcerta.ui.inicio.rememberBlocosDeLinhas
+import pt.pixellusitano.paragemcerta.ui.inicio.tituloDaLinha
 import pt.pixellusitano.paragemcerta.ui.rotas.simboloLocal
 
 @Composable
-fun FavoritosEcra(repositorio: Repositorio, aoAbrirFavorita: (Favorita) -> Unit, aoVoltar: () -> Unit) {
+fun FavoritosEcra(
+    repositorio: Repositorio,
+    catalogo: CatalogoLinhas,
+    aoAbrirFavorita: (Favorita) -> Unit,
+    aoAbrirLinha: (LinhaFavorita) -> Unit,
+    aoVoltar: () -> Unit,
+) {
     val escopo = rememberCoroutineScope()
     val favoritas by remember { repositorio.favoritas() }.collectAsStateWithLifecycle(initialValue = emptyList())
     val locais by remember { repositorio.locais() }.collectAsStateWithLifecycle(initialValue = emptyList())
+    val linhas by remember { repositorio.linhasFavoritas() }.collectAsStateWithLifecycle(initialValue = emptyList())
     FavoritosConteudo(
         favoritas, locais, aoAbrirFavorita,
         aoSubirFavorita = { f ->
@@ -63,10 +75,22 @@ fun FavoritosEcra(repositorio: Repositorio, aoAbrirFavorita: (Favorita) -> Unit,
         aoApagarLocal = { l -> escopo.launch { repositorio.apagarLocal(l.id) } },
         aoVoltar = aoVoltar,
         modifier = Modifier.fillMaxSize(),
+        linhas = rememberBlocosDeLinhas(repositorio, catalogo, linhas),
+        aoAbrirLinha = aoAbrirLinha,
+        aoSubirLinha = { f ->
+            val i = linhas.indexOf(f)
+            if (i > 0) escopo.launch {
+                repositorio.reordenarLinhasFavoritas(linhas.toMutableList().apply { add(i - 1, removeAt(i)) })
+            }
+        },
+        aoRemoverLinha = { f -> escopo.launch { repositorio.removerLinhaFavorita(f) } },
     )
 }
 
-/** As paragens favoritas (subir, remover) e os sítios guardados (subir, mudar o nome, apagar). */
+/**
+ * As paragens favoritas (subir, remover), as linhas favoritas (abrir, subir, remover) e os sítios guardados (subir, mudar o nome,
+ * apagar). Uma linha que já não existe só se pode remover; sem saber se existe (o catálogo ainda carrega) mantém todas as ações.
+ */
 @Composable
 fun FavoritosConteudo(
     favoritas: List<Favorita>,
@@ -79,6 +103,10 @@ fun FavoritosConteudo(
     aoApagarLocal: (LocalGuardado) -> Unit,
     aoVoltar: () -> Unit,
     modifier: Modifier = Modifier,
+    linhas: List<BlocoLinha> = emptyList(),
+    aoAbrirLinha: (LinhaFavorita) -> Unit = {},
+    aoSubirLinha: (LinhaFavorita) -> Unit = {},
+    aoRemoverLinha: (LinhaFavorita) -> Unit = {},
 ) {
     var renomear by remember { mutableStateOf<LocalGuardado?>(null) }
     val cores = MaterialTheme.colorScheme
@@ -86,7 +114,7 @@ fun FavoritosConteudo(
         CabecalhoEcra(stringResource(R.string.menu_favoritos), aoVoltar)
 
         Subtitulo(stringResource(R.string.favoritos_paragens))
-        if (favoritas.isEmpty()) Text(stringResource(R.string.eu_sem_favoritas), color = cores.onSurfaceVariant)
+        if (favoritas.isEmpty() && linhas.isEmpty()) Text(stringResource(R.string.eu_sem_favoritas), color = cores.onSurfaceVariant)
         favoritas.forEachIndexed { i, f ->
             Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -96,6 +124,25 @@ fun FavoritosConteudo(
                 )
                 if (i > 0) TextButton(onClick = { aoSubirFavorita(f) }) { Text("↑ " + stringResource(R.string.eu_subir)) }
                 TextButton(onClick = { aoRemoverFavorita(f) }) { Text(stringResource(R.string.eu_remover)) }
+            }
+            HorizontalDivider(color = cores.outlineVariant)
+        }
+
+        if (linhas.isNotEmpty()) Subtitulo(stringResource(R.string.favoritos_linhas), Modifier.padding(top = 24.dp))
+        linhas.forEachIndexed { i, b ->
+            val existe = b.existe != false
+            Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
+                val abrir = if (existe) Modifier.clickable(role = Role.Button) { aoAbrirLinha(b.favorita) } else Modifier
+                Column(Modifier.weight(1f).then(abrir).padding(vertical = 12.dp)) {
+                    Text("★ " + tituloDaLinha(b), color = cores.onBackground)
+                    when (b.existe) {
+                        false -> Text(stringResource(R.string.linha_ja_nao_existe), color = cores.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                        null -> Text(stringResource(R.string.a_carregar), color = cores.onSurfaceVariant, style = MaterialTheme.typography.bodySmall)
+                        true -> Unit
+                    }
+                }
+                if (i > 0 && existe) TextButton(onClick = { aoSubirLinha(b.favorita) }) { Text("↑ " + stringResource(R.string.eu_subir)) }
+                TextButton(onClick = { aoRemoverLinha(b.favorita) }) { Text(stringResource(R.string.eu_remover)) }
             }
             HorizontalDivider(color = cores.outlineVariant)
         }

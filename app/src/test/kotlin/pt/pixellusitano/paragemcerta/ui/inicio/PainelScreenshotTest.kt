@@ -23,6 +23,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.GraphicsMode
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.TransitousParser
+import pt.pixellusitano.paragemcerta.core.linhas.RefLinha
 import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.modelo.Lugar
 import pt.pixellusitano.paragemcerta.core.modelo.TipoLugar
@@ -32,6 +33,7 @@ import pt.pixellusitano.paragemcerta.core.modelo.Linha
 import pt.pixellusitano.paragemcerta.core.modelo.Modo
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
 import pt.pixellusitano.paragemcerta.dados.EstadoChegadas
+import pt.pixellusitano.paragemcerta.dados.LinhaFavorita
 import pt.pixellusitano.paragemcerta.dados.LocalGuardado
 import pt.pixellusitano.paragemcerta.dados.ViagemRecente
 import pt.pixellusitano.paragemcerta.dados.fixture
@@ -189,13 +191,30 @@ class PainelScreenshotTest {
         assertEquals(4, ordem.toSet().size)
     }
 
+    // A 728 do Restelo, tirada das chegadas do Cais do Sodré (sem o sentido: pelo destino), e uma linha que o catálogo já não tem.
+    private val f728 = LinhaFavorita(RefLinha(Fonte.CM, "728"), 0, cais, "728", "Restelo", 0)
+    private val sumida = LinhaFavorita(RefLinha(Fonte.TRANSITOUS, "pt-Carris:999"), 0, RefParagem(Fonte.TRANSITOUS, "pt-Carris_3803"), "999", "Algés", 1)
+
+    @Test fun painel_com_linha_claro() = captureRoboImage("src/test/screenshots/painel_com_linha_claro.png") {
+        TemaParagemCerta(ModoTema.CLARO) {
+            PainelConteudo(
+                favoritas = blocos(bom), pertoDeTi = emptyList(), linhas = linhas, agora = agora,
+                aoAbrirParagem = {}, aoPesquisar = {}, modifier = Modifier.width(360.dp),
+                linhasFavoritas = listOf(
+                    blocoDaLinha(f728, bom, existe = true, nomeParagem = "Cais do Sodré"),
+                    BlocoLinha(sumida, "Cais Sodré", null, existe = false),
+                ),
+            )
+        }
+    }
+
     @Test fun semFavoritosDizOndeGuardar() {
         regra.setContent {
             TemaParagemCerta(ModoTema.CLARO) {
                 PainelConteudo(emptyList(), emptyList(), linhas, agora, {}, {}, Modifier.width(360.dp))
             }
         }
-        regra.onNodeWithText("Toca na ☆ de uma paragem ou de um sítio para o veres aqui").assertIsDisplayed()
+        regra.onNodeWithText("Toca na ☆ de uma paragem, de uma linha ou de um sítio para o veres aqui").assertIsDisplayed()
     }
 
     @Test fun semLocalizacaoOSitioContinuaAVista() {
@@ -207,7 +226,7 @@ class PainelScreenshotTest {
                 )
             }
         }
-        regra.onNodeWithText("Toca na ☆ de uma paragem ou de um sítio para o veres aqui").assertDoesNotExist()
+        regra.onNodeWithText("Toca na ☆ de uma paragem, de uma linha ou de um sítio para o veres aqui").assertDoesNotExist()
         // Sem localização o sítio continua à vista e convida a tocar (as rotas pedem a origem).
         regra.onNodeWithText("Toca para ver como ir").assertIsDisplayed()
     }

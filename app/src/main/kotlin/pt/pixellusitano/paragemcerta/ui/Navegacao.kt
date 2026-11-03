@@ -48,8 +48,10 @@ import kotlinx.serialization.Serializable
 import pt.pixellusitano.paragemcerta.BuildConfig
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.core.linhas.RefLinha
+import pt.pixellusitano.paragemcerta.core.modelo.Linha
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
 import pt.pixellusitano.paragemcerta.dados.EcraInicial
+import pt.pixellusitano.paragemcerta.dados.LinhaFavorita
 import pt.pixellusitano.paragemcerta.dados.Ligacoes
 import pt.pixellusitano.paragemcerta.ui.bussola.BussolaEcra
 import pt.pixellusitano.paragemcerta.ui.comum.gelatina
@@ -73,7 +75,7 @@ import pt.pixellusitano.paragemcerta.ui.sobre.SobreEcra
 import pt.pixellusitano.paragemcerta.ui.viagem.ViagemEcra
 import pt.pixellusitano.paragemcerta.viagem.FicheirosViagem
 
-@Serializable data class Inicio(val linha: String? = null)
+@Serializable data object Inicio
 @Serializable data object Pesquisa
 @Serializable data object Menu
 @Serializable data object Favoritos
@@ -100,11 +102,17 @@ import pt.pixellusitano.paragemcerta.viagem.FicheirosViagem
  */
 @Serializable data class LinhaRota(val chave: String, val sentido: Int? = null, val paragem: String? = null)
 
+/** Uma linha favorita abre o ecrã da linha no sentido e na paragem habitual dela. */
+fun LinhaFavorita.rotaDaLinha() = LinhaRota(ref.chave, sentido, paragem.chave)
+
+/** O resultado "linha" da pesquisa abre o ecrã da linha por cima dos resultados: "voltar" regressa a eles. */
+fun NavController.abrirLinhaPesquisada(l: Linha) = navigate(LinhaRota(RefLinha(l.fonte, l.id).chave))
+
 /** Onde a app abre para cada escolha das Definições; FAVORITOS é o Início, com o painel aberto pelo InicioEcra. */
 fun destinoInicial(e: EcraInicial): Any = when (e) {
     EcraInicial.ROTAS -> Rotas()
     EcraInicial.LINHAS -> Linhas
-    else -> Inicio()
+    else -> Inicio
 }
 
 /** Troca de separador na barra de baixo: guarda o que estava aberto no separador que se deixa e repõe o do separador escolhido. */
@@ -174,7 +182,7 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
         bottomBar = {
             if (naInicio || nasRotas || nasLinhas || noMenu) {
                 NavigationBar {
-                    NavigationBarItem(selected = naInicio, onClick = { separador(Inicio()) },
+                    NavigationBarItem(selected = naInicio, onClick = { separador(Inicio) },
                         icon = { Text("🗺", Modifier.gelatina(naInicio)) }, label = { Text(stringResource(R.string.nav_inicio)) })
                     NavigationBarItem(selected = nasRotas, onClick = { separador(Rotas()) },
                         icon = { Text("🧭", Modifier.gelatina(nasRotas)) }, label = { Text(stringResource(R.string.nav_rotas)) })
@@ -186,27 +194,25 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
             }
         },
     ) { margens ->
-        NavHost(nav, startDestination = Inicio(), modifier = Modifier.fillMaxSize()) {
-            composable<Inicio> { entrada ->
-                val linha = entrada.toRoute<Inicio>().linha
+        NavHost(nav, startDestination = Inicio, modifier = Modifier.fillMaxSize()) {
+            composable<Inicio> {
                 Box(Modifier.padding(bottom = margens.calculateBottomPadding())) {
                     InicioEcra(
                         repositorio = repositorio,
                         comunidade = ligacoes.comunidade, configuracoes = ligacoes.configuracoes, preferencias = ligacoes.preferencias,
                         aoAbrirParagem = { nav.navigate(Paragem(it.ref.chave)) },
                         aoPesquisar = { nav.navigate(Pesquisa) },
-                        linhaId = linha,
-                        aoLimparLinha = { nav.popBackStack() },
                         aoIrPara = { nav.navigate(it) },
                         aoAbrirViagem = { nav.navigate(Viagem) },
-                        // Só o Início "limpo": a linha escolhida na pesquisa precisa do mapa à vista.
-                        abrirFavoritos = abrirFavoritos && linha == null,
+                        abrirFavoritos = abrirFavoritos,
                         painel = { posicao ->
                             Painel(
                                 repositorio, posicao,
                                 aoAbrirParagem = { nav.navigate(Paragem(it.chave)) },
                                 aoPesquisar = { nav.navigate(Pesquisa) },
+                                catalogo = ligacoes.catalogoLinhas,
                                 aoAbrirRotas = { nav.navigate(it) },
+                                aoAbrirLinha = { nav.navigate(it.rotaDaLinha()) },
                             )
                         },
                     )
@@ -216,8 +222,7 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
                 PesquisaEcra(
                     repositorio = repositorio,
                     aoAbrirParagem = { nav.navigate(Paragem(it.ref.chave)) },
-                    // Fica [Início, Início(linha)]: "voltar" regressa ao mapa normal em vez de fechar a app.
-                    aoAbrirLinha = { nav.navigate(Inicio(linha = it.id)) { popUpTo<Inicio>() } },
+                    aoAbrirLinha = nav::abrirLinhaPesquisada,
                     // Também sai da pesquisa: "voltar" das rotas regressa ao mapa.
                     aoIrPara = { nav.navigate(Rotas(destino = it.paraRota())) { popUpTo<Inicio>() } },
                     aoVoltar = { nav.popBackStack() },
@@ -277,7 +282,12 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
                 }
             }
             composable<Favoritos> {
-                FavoritosEcra(repositorio, aoAbrirFavorita = { nav.navigate(Paragem(it.ref.chave)) }, aoVoltar = { nav.popBackStack() })
+                FavoritosEcra(
+                    repositorio, ligacoes.catalogoLinhas,
+                    aoAbrirFavorita = { nav.navigate(Paragem(it.ref.chave)) },
+                    aoAbrirLinha = { nav.navigate(it.rotaDaLinha()) },
+                    aoVoltar = { nav.popBackStack() },
+                )
             }
             composable<Definicoes> {
                 DefinicoesEcra(ligacoes.preferencias, ligacoes.conta, aoVoltar = { nav.popBackStack() }, comunidadeLigada = config.interruptores.comunidade)

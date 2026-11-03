@@ -27,7 +27,7 @@
     <!-- Painel do início -->
     <string name="painel_perto">Perto de ti</string>
     <string name="painel_favoritos">Favoritos</string>
-    <string name="painel_sem_favoritas">Toca na ☆ de uma paragem ou de um sítio para o veres aqui</string>
+    <string name="painel_sem_favoritas">Toca na ☆ de uma paragem, de uma linha ou de um sítio para o veres aqui</string>
     <string name="painel_perto_local">Estás perto deste local</string>
     <string name="painel_toca_para_ir">Toca para ver como ir</string>
     <string name="painel_a_calcular">A calcular…</string>
@@ -86,7 +86,10 @@
     <string name="menu_sobre">Sobre</string>
     <string name="favoritos_paragens">Paragens</string>
     <string name="favoritos_sitios">Sítios</string>
-    <string name="eu_sem_favoritas">Ainda não tens favoritas. Abre uma paragem e toca na ☆.</string>
+    <string name="favoritos_linhas">Linhas</string>
+    <!-- Uma linha favorita: "728 → Restelo em Cais do Sodré" (linha, destino, paragem habitual) -->
+    <string name="linha_favorita_em">%1$s → %2$s em %3$s</string>
+    <string name="eu_sem_favoritas">Ainda não tens favoritas. Abre uma paragem ou uma linha e toca na ☆.</string>
     <string name="eu_subir">Subir</string>
     <string name="eu_remover">Remover</string>
     <string name="eu_definicoes">Definições</string>
@@ -118,7 +121,6 @@
     <string name="pref_ecra_favoritos">Favoritos — o Início com os favoritos abertos</string>
     <string name="menos">Menos</string>
     <string name="mais">Mais</string>
-    <string name="linha_no_mapa">Linha %1$s no mapa</string>
 
     <!-- Atualizações (variante pessoal) -->
     <string name="atualizacao_titulo">Há uma versão nova (%1$s)</string>
@@ -223,7 +225,7 @@
     <string name="painel_de_para">%1$s → %2$s</string>
     <string name="eu_privacidade">Privacidade</string>
     <string name="eu_apagar_dados">Apagar dados deste telemóvel</string>
-    <string name="eu_apagar_confirmar">Isto apaga as favoritas, os locais e as viagens recentes deste telemóvel. Continuar?</string>
+    <string name="eu_apagar_confirmar">Isto apaga as favoritas, as linhas favoritas, os locais e as viagens recentes deste telemóvel. Continuar?</string>
     <string name="eu_dados_apagados">Dados apagados</string>
     <string name="ok">OK</string>
     <string name="cancelar">Cancelar</string>
@@ -236,7 +238,7 @@
     <string name="ajuda_tempo_real_p">O que quer dizer “horário” e “tempo real”?</string>
     <string name="ajuda_tempo_real_r">“Tempo real” é a hora que o operador está a medir no veículo, por isso é a mais certa. “Horário” é a hora planeada, sem medição: o veículo pode chegar mais cedo ou mais tarde.</string>
     <string name="ajuda_favoritos_p">Como guardo um sítio nos favoritos?</string>
-    <string name="ajuda_favoritos_r">Toca sem largar num ponto do mapa, ou guarda um resultado quando escolhes para onde vais. As paragens guardam-se com a ☆ no ecrã da paragem. Depois ordenas, mudas o nome e apagas em Menu → Favoritos.</string>
+    <string name="ajuda_favoritos_r">Toca sem largar num ponto do mapa, ou guarda um resultado quando escolhes para onde vais. As paragens guardam-se com a ☆ no ecrã da paragem e as linhas com a ☆ no ecrã da linha. Depois ordenas, mudas o nome e apagas em Menu → Favoritos.</string>
     <string name="reclamar_nota" tools:ignore="Typos">A Paragem Certa não é o operador. As reclamações vão diretamente para eles.</string>
     <string name="reclamar_livro">Livro de Reclamações Eletrónico</string>
     <string name="reclamar_carris">Carris</string>

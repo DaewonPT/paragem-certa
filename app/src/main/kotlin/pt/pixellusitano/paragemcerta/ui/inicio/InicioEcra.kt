@@ -50,10 +50,6 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.repeatOnLifecycle
-import pt.pixellusitano.paragemcerta.core.atraso.aindaPorChegar
-import pt.pixellusitano.paragemcerta.ui.comum.FaixaEstado
-import pt.pixellusitano.paragemcerta.core.regras.maisProximas
-import pt.pixellusitano.paragemcerta.ui.comum.LinhaChegada
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -135,8 +131,6 @@ fun InicioEcra(
     preferencias: Preferencias,
     aoAbrirParagem: (Paragem) -> Unit,
     aoPesquisar: () -> Unit = {},
-    linhaId: String? = null,
-    aoLimparLinha: () -> Unit = {},
     painel: @Composable (posicao: Pair<Double, Double>?) -> Unit = {},
     aoIrPara: (Rotas) -> Unit = {},
     aoAbrirViagem: () -> Unit = {},
@@ -189,21 +183,15 @@ fun InicioEcra(
         onPauseOrDispose { leitura.cancel() }
     }
 
-    var linhaFalhou by remember(linhaId) { mutableStateOf(false) }
-    val paragensDaLinha by produceState<List<Paragem>?>(null, linhaId) {
-        value = linhaId?.let { l -> repositorio.paragensDaLinha(l).also { if (it == null) linhaFalhou = true } }
-    }
-
     LaunchedEffect(Unit) {
         // Primeira utilização: as paragens da Carris Metropolitana ainda não estão na base local.
         if (repositorio.redeEmFalta()) repositorio.atualizarRede()
     }
 
-    // As paragens que o mapa mostra (as da linha escolhida ou as da zona), como a comunidade as corrigiu e com o triângulo nas de relato confirmado.
-    val mostradas = paragensDaLinha ?: paragens
-    val relatos = rememberRelatosDoMapa(mostradas, comunidade, configuracoes, preferencias)
-    val desenhadas = remember(mostradas, relatos) {
-        val pontos = paragensDoMapa(mostradas, relatos)
+    // As paragens da zona, como a comunidade as corrigiu e com o triângulo nas de relato confirmado.
+    val relatos = rememberRelatosDoMapa(paragens, comunidade, configuracoes, preferencias)
+    val desenhadas = remember(paragens, relatos) {
+        val pontos = paragensDoMapa(paragens, relatos)
         pontos.map { it.first } to pontos.filter { it.second }.map { it.first.ref.chave }.toSet()
     }
 
@@ -227,7 +215,7 @@ fun InicioEcra(
         Mapa(
             paragens = desenhadas.first,
             comRelato = desenhadas.second,
-            enquadrar = paragensDaLinha.orEmpty(),
+            enquadrar = emptyList(),
             veiculos = veiculos,
             coresLinhas = cores,
             escuro = LocalEscuro.current,
@@ -256,9 +244,6 @@ fun InicioEcra(
                 )
             }
             if (emCurso) AvisoViagem(R.string.viagem_em_curso, aoAbrir = aoAbrirViagem)
-            linhaId?.let { l ->
-                CartaoLinha(repositorio, l, paragensDaLinha, linhaFalhou, posicao, aoLimparLinha)
-            }
             escolhido?.let { CartaoVeiculo(it, aoFechar = { vm.escolherVeiculo(null) }) }
             BotaoCentrar(Modifier.align(Alignment.End)) {
                 if (comLocalizacao) {
@@ -377,50 +362,6 @@ private fun BotaoCentrar(modifier: Modifier, aoTocar: () -> Unit) {
         Box(contentAlignment = Alignment.Center) {
             // O leitor de ecrã lê a descrição, não o símbolo.
             Text("◎", Modifier.clearAndSetSemantics {}, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge)
-        }
-    }
-}
-
-/** Linha escolhida na pesquisa: as paragens dela estão no mapa e mostra-se a 1.ª chegada na paragem dela mais próxima. */
-@Composable
-private fun CartaoLinha(
-    repositorio: Repositorio,
-    linhaId: String,
-    paragens: List<Paragem>?,
-    falhou: Boolean,
-    posicao: Pair<Double, Double>?,
-    aoFechar: () -> Unit,
-) {
-    val maisProxima = remember(paragens, posicao) {
-        val lista = paragens.orEmpty()
-        posicao?.let { (lat, lon) -> maisProximas(lista, lat, lon, limite = 1, raioMetros = Double.MAX_VALUE).firstOrNull() }
-            ?: lista.firstOrNull()
-    }
-    val estado by remember(maisProxima) { maisProxima?.let { repositorio.chegadas(it.ref) } ?: kotlinx.coroutines.flow.emptyFlow() }
-        .collectAsStateWithLifecycle(initialValue = null)
-    val agora = Instant.now()
-    val primeira = estado?.chegadas?.firstOrNull { it.linhaId == linhaId && aindaPorChegar(it, agora) }
-    Surface(Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), shadowElevation = 6.dp) {
-        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.linha_no_mapa, linhaId), style = MaterialTheme.typography.titleMedium)
-                val e = estado
-                when {
-                    falhou -> Text(stringResource(R.string.linha_falhou), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    paragens == null || (maisProxima != null && e == null) ->
-                        Text(stringResource(R.string.a_carregar), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    else -> {
-                        maisProxima?.let { Text(it.nome, color = MaterialTheme.colorScheme.onSurfaceVariant) }
-                        e?.let { FaixaEstado(it, agora, Modifier.padding(vertical = 4.dp)) }
-                        when {
-                            primeira != null -> LinhaChegada(primeira, null, agora)
-                            e != null && !e.semLigacao && !e.tempoRealIndisponivel ->
-                                Text(stringResource(R.string.sem_chegadas), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                }
-            }
-            TextButton(onClick = aoFechar) { Text(stringResource(R.string.fechar)) }
         }
     }
 }

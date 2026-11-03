@@ -193,6 +193,9 @@ interface LinhasFavoritasDao {
     @Query("DELETE FROM linhas_favoritas WHERE chave = :chave")
     suspend fun apagar(chave: String)
 
+    @Query("UPDATE linhas_favoritas SET ordem = :ordem, pendente = 1 WHERE chave = :chave")
+    suspend fun reordenar(chave: String, ordem: Int)
+
     @Query("SELECT * FROM linhas_favoritas WHERE pendente")
     suspend fun pendentes(): List<LinhaFavoritaEntidade>
 

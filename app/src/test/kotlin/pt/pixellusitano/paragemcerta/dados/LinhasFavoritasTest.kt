@@ -163,6 +163,40 @@ class LinhasFavoritasTest {
         assertEquals(setOf("3708", "728", "28E"), repo.linhasDasParagensFavoritas())
     }
 
+    @Test fun removerLinhaFavoritaSincroniza() = runTest {
+        repo.comConta = true
+        repo.alternarLinhaFavorita(l1009, 0, "Lisboa", cais, "1009")
+        repo.alternarLinhaFavorita(l728, 1, "Restelo", martim, "728")
+        repo.aplicarSincronizacao(repo.porSincronizar(), emptyList(), emptySet())
+        assertTrue(repo.porSincronizar().isEmpty())
+
+        repo.removerLinhaFavorita(repo.linhasFavoritas().first().first())
+        assertEquals(listOf(l728 to 1), repo.linhasFavoritas().first().map { it.ref to it.sentido })
+        // A conta fica a saber que a outra saiu.
+        assertEquals(setOf("LINHA|CM:1009|0|CM:060419" to true), repo.porSincronizar().map { it.chave to it.apagado }.toSet())
+    }
+
+    @Test fun reordenarLinhasFavoritasGuardaAOrdemEMarcaPorEnviar() = runTest {
+        repo.comConta = true
+        repo.alternarLinhaFavorita(l1009, 0, "Lisboa", cais, "1009")
+        repo.alternarLinhaFavorita(l1009, 1, "Setúbal", cais, "1009")
+        repo.alternarLinhaFavorita(l728, 0, "Portela", martim, "728")
+        repo.aplicarSincronizacao(repo.porSincronizar(), emptyList(), emptySet())
+        assertTrue(repo.porSincronizar().isEmpty())
+
+        val antes = repo.linhasFavoritas().first()
+        repo.reordenarLinhasFavoritas(listOf(antes[2], antes[0], antes[1])) // a terceira sobe duas vezes
+        val depois = repo.linhasFavoritas().first()
+        assertEquals(listOf(l728 to 0, l1009 to 0, l1009 to 1), depois.map { it.ref to it.sentido })
+        assertEquals(listOf(0, 1, 2), depois.map { it.ordem })
+        // Só a ordem mudou: nenhuma paragem habitual, nome ou destino se perde, e vai tudo para a conta com a ordem nova.
+        assertEquals(antes.map { it.copy(ordem = 0) }.toSet(), depois.map { it.copy(ordem = 0) }.toSet())
+        assertEquals(
+            listOf("LINHA|TRANSITOUS:pt-Carris:728|0|TRANSITOUS:pt-Carris_3803", "LINHA|CM:1009|0|CM:060419", "LINHA|CM:1009|1|CM:060419"),
+            repo.porSincronizar().sortedBy { it.ordem }.map { it.chave },
+        )
+    }
+
     @Test fun linhasCmFlowMudaQuandoARedeChega() = runTest {
         assertTrue(repo.linhasCmFlow().first().isEmpty())
         repo.atualizarRede()
