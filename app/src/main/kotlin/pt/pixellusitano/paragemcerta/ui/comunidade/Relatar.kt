@@ -24,6 +24,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -39,6 +40,7 @@ import kotlinx.coroutines.withContext
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.core.comunidade.TipoRelato
 import pt.pixellusitano.paragemcerta.core.comunidade.chaveLinha
+import pt.pixellusitano.paragemcerta.core.comunidade.chaveLinhaValida
 import pt.pixellusitano.paragemcerta.core.modelo.Paragem
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import pt.pixellusitano.paragemcerta.dados.Comunidade
@@ -55,7 +57,16 @@ internal fun nomeDoTipo(t: TipoRelato) = when (t) {
     TipoRelato.PROBLEMA_PARAGEM -> R.string.relato_problema_paragem
 }
 
-private fun avisarRelato(c: Context, r: Resultado<*>) = avisar(c, if (r is Resultado.Falha) erroDaComunidade(r) else R.string.relatar_enviado)
+private fun relatosDesligados(r: Resultado<*>) = r is Resultado.Falha && r.erro == "desligado"
+
+private fun avisarRelato(c: Context, r: Resultado<*>) = avisar(c, when {
+    r !is Resultado.Falha -> R.string.relatar_enviado
+    relatosDesligados(r) -> R.string.relatar_desligado
+    else -> erroDaComunidade(r)
+})
+
+/** Uma linha cuja chave o servidor recusa dava sempre 400: não se oferece. */
+internal fun linhaQueSeRelata(nome: String) = chaveLinhaValida(chaveLinha(nome))
 
 /**
  * A folha "Relatar": a grelha dos 7 tipos e, nos de linha, a linha (entre [linhas]). Com [linhaFixa] (a bordo) a linha já
@@ -126,21 +137,26 @@ internal fun FolhaRelatarConteudo(
 @Composable
 fun RelatarNaParagem(paragem: Paragem?, linhas: List<String>, comunidade: Comunidade, configuracoes: Configuracoes, aoAbrirConta: () -> Unit) {
     val config by configuracoes.atual.collectAsStateWithLifecycle()
-    if (!config.interruptores.comunidade) return
+    // Um 403 `desligado` (a config da app é a antiga) esconde o botão até a config mudar.
+    var desligada by remember(config) { mutableStateOf(false) }
+    if (!config.interruptores.comunidade || desligada) return
     val contexto = LocalContext.current
     val publicar = rememberPublicar(comunidade, aoAbrirConta)
     val verificarPerto = rememberVerificarPerto(paragem)
     var folha by rememberSaveable { mutableStateOf(false) }
 
     fun enviar(p: Paragem, tipo: TipoRelato, linha: String?) =
-        publicar.correr({ comunidade.relatar(tipo, p.ref.chave, linha?.let(::chaveLinha)) }) { avisarRelato(contexto, it) }
+        publicar.correr({ comunidade.relatar(tipo, p.ref.chave, linha?.let(::chaveLinha)) }) {
+            avisarRelato(contexto, it)
+            if (relatosDesligados(it)) desligada = true
+        }
 
     // Precisa das coordenadas da paragem: enquanto ela não carrega, não se relata.
     OutlinedButton(onClick = { folha = true }, enabled = paragem != null, modifier = Modifier.padding(top = 16.dp).fillMaxWidth()) {
         Text(stringResource(R.string.relatar))
     }
     if (folha) {
-        FolhaRelatar(linhas, null, aoEscolher = { t, l ->
+        FolhaRelatar(linhas.filter(::linhaQueSeRelata), null, aoEscolher = { t, l ->
             folha = false
             paragem?.let { p -> verificarPerto(l) { enviar(p, t, l) } }
         }, aoFechar = { folha = false })
@@ -153,7 +169,7 @@ fun RelatarNaParagem(paragem: Paragem?, linhas: List<String>, comunidade: Comuni
  * desaparecerem com a folha.
  */
 @Composable
-fun RelatarNaViagem(comunidade: Comunidade, linha: String, aberta: Boolean, aoAbrirConta: () -> Unit, aoFechar: () -> Unit) {
+fun RelatarNaViagem(comunidade: Comunidade, linha: String, aberta: Boolean, aoAbrirConta: () -> Unit, aoFechar: () -> Unit, aoDesligar: () -> Unit = {}) {
     val contexto = LocalContext.current
     val escopo = rememberCoroutineScope()
     val publicar = rememberPublicar(comunidade, aoAbrirConta)
@@ -164,7 +180,10 @@ fun RelatarNaViagem(comunidade: Comunidade, linha: String, aberta: Boolean, aoAb
             // Lê-se agora: a viagem pode ter passado mais paragens desde que o ecrã abriu.
             val (paragem, nome) = withContext(Dispatchers.IO) { ultimaParagemDaViagem(contexto) }
                 ?: return@launch avisar(contexto, R.string.relatar_sem_paragem)
-            publicar.correr({ comunidade.relatar(tipo, paragem, chaveLinha(nome)) }) { avisarRelato(contexto, it) }
+            publicar.correr({ comunidade.relatar(tipo, paragem, chaveLinha(nome)) }) {
+                avisarRelato(contexto, it)
+                if (relatosDesligados(it)) aoDesligar()
+            }
         }
     }, aoFechar = aoFechar)
 }

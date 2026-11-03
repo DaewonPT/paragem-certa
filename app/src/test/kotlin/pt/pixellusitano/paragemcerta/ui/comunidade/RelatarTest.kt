@@ -357,6 +357,32 @@ class RelatarTest {
         assertEquals("Algumas funções estão em pausa até à meia-noite", toast())
     }
 
+    @Test fun servidorDesligadoEscondeOBotao() {
+        // A config da app ainda diz ligada, mas o servidor já desligou os relatos: "Tenta outra vez" era mentira.
+        ligar()
+        entrar()
+        aDistancia(10.0)
+        http.rotas["/api/relatos"] = { Resposta(403, """{"erro":"desligado"}""") }
+        abrirParagem()
+        relatarDesvio()
+        assertEquals("Os relatos estão desligados por agora.", toast())
+        regra.onNodeWithText("Relatar").assertDoesNotExist()
+    }
+
+    @Test fun linhaQueOServidorRecusaNaoAparece() {
+        // O servidor recusa sempre esta chave (parênteses e mais de 16 caracteres): escolhê-la dava sempre "Tenta outra vez".
+        ligar()
+        regra.setContent {
+            TemaParagemCerta(ModoTema.CLARO) {
+                RelatarNaParagem(cais, listOf("736", "Lisboa (Rossio) - Sintra"), comunidade, configuracoes, aoAbrirConta = {})
+            }
+        }
+        regra.onNodeWithText("Relatar").performClick()
+        regra.onNodeWithText("Desvio").performClick()
+        regra.onNodeWithText("736").assertExists()
+        regra.onNodeWithText("Lisboa (Rossio) - Sintra").assertDoesNotExist()
+    }
+
     @Test fun pedidoEmPausaNaoDizSemLigacao() {
         ligar()
         entrar()
@@ -375,11 +401,12 @@ class RelatarTest {
     // ---- a bordo, no ecrã da viagem ----
 
     /** Uma viagem de agora, a bordo do 736 logo depois da terceira paragem, que na Carris Metropolitana é a 020047. */
-    private fun viagemNa736(): PlanoViagem {
+    private fun viagemNa736(linhaNome: String? = null): PlanoViagem {
         val ex = Exemplo(Instant.now())
         val base = ex.plano()
         val etapas = base.itinerario.etapas.toMutableList()
         etapas[1] = etapas[1].copy(paragens = etapas[1].paragens.mapIndexed { i, p -> p.copy(id = "pt-Carris-Metropolitana_32004${5 + i}") })
+        if (linhaNome != null) etapas[1] = etapas[1].copy(linhaNome = linhaNome)
         val plano = base.copy(itinerario = base.itinerario.copy(etapas = etapas))
         val estado = ex.aBordo(plano, 1, k = 2)
         assertEquals(2, Viagem(plano.itinerario).paragemPassada(estado))
@@ -406,6 +433,35 @@ class RelatarTest {
         assertEquals("Relato enviado", toast())
         assertEquals("""{"tipo":"desvio","paragem":"CM:020047","linha":"736"}""", http.a("/api/relatos").single().third)
         assertEquals(0, posicoesPedidas)
+    }
+
+    @Test fun aBordoServidorDesligadoEscondeOBotao() {
+        ligar()
+        entrar()
+        viagemNa736()
+        http.rotas["/api/relatos"] = { Resposta(403, """{"erro":"desligado"}""") }
+        regra.setContent {
+            TemaParagemCerta(ModoTema.CLARO) {
+                ViagemEcra(aoVoltar = {}, mapa = semMapa, comunidade = comunidade, comunidadeLigada = true, aoAbrirConta = {})
+            }
+        }
+        esperarPor("Relatar")
+        regra.onNodeWithText("Relatar").performClick()
+        regra.onNodeWithText("Desvio").performClick()
+        assertEquals("Os relatos estão desligados por agora.", toast())
+        regra.onNodeWithText("Relatar").assertDoesNotExist()
+    }
+
+    @Test fun aBordoDeUmaLinhaQueOServidorRecusaNaoHaRelatar() {
+        ligar()
+        viagemNa736(linhaNome = "Lisboa (Rossio) - Sintra")
+        regra.setContent {
+            TemaParagemCerta(ModoTema.CLARO) {
+                ViagemEcra(aoVoltar = {}, mapa = semMapa, comunidade = comunidade, comunidadeLigada = true, aoAbrirConta = {})
+            }
+        }
+        esperarPor("Faltam 3 paragens · sais em Oriente")
+        regra.onNodeWithText("Relatar").assertDoesNotExist()
     }
 
     @Test fun comunidadeDesligadaEscondeOBotao() {

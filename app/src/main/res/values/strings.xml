@@ -408,6 +408,7 @@
     <string name="relatar_localizacao_texto">Para relatar, a Paragem Certa vê se estás a menos de 300 m da paragem. A tua posição não sai do telemóvel.</string>
     <string name="relatar_sem_localizacao">Sem a localização só podes relatar a bordo, durante uma viagem.</string>
     <string name="relatar_sem_paragem">Não dá para saber em que paragem vais. Relata no ecrã da paragem.</string>
+    <string name="relatar_desligado">Os relatos estão desligados por agora.</string>
     <string name="comunidade_entrar_texto">Entra com Google ou email para relatar</string>
     <string name="comunidade_entrar">Entrar</string>
     <string name="comunidade_agora_nao">Agora não</string>

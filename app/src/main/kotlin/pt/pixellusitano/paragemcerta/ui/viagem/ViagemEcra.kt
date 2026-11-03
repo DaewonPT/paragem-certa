@@ -71,6 +71,7 @@ import pt.pixellusitano.paragemcerta.ui.comum.LISBOA_FUSO
 import pt.pixellusitano.paragemcerta.ui.comum.SeloLinha
 import pt.pixellusitano.paragemcerta.ui.comum.corDaLinha
 import pt.pixellusitano.paragemcerta.ui.comunidade.RelatarNaViagem
+import pt.pixellusitano.paragemcerta.ui.comunidade.linhaQueSeRelata
 import pt.pixellusitano.paragemcerta.ui.inicio.temLocalizacao
 import pt.pixellusitano.paragemcerta.ui.mapa.Mapa
 import pt.pixellusitano.paragemcerta.ui.mapa.Marca
@@ -122,11 +123,15 @@ fun ViagemEcra(
     }
 
     var relatar by rememberSaveable { mutableStateOf(false) }
+    // Um 403 `desligado` (a config da app é a antiga) tira o "Relatar" deste ecrã.
+    var relatosDesligados by rememberSaveable { mutableStateOf(false) }
     when (val v = vista) {
         is VistaViagem.Ativa -> {
             // A pé não há linha: o "Relatar" é só nas etapas em veículo.
-            val linha = v.ecra.itinerario.etapas[v.ecra.atual].linhaNome?.takeIf { comunidadeLigada }
-            if (comunidade != null && linha != null) RelatarNaViagem(comunidade, linha, relatar, aoAbrirConta, aoFechar = { relatar = false })
+            val linha = v.ecra.itinerario.etapas[v.ecra.atual].linhaNome?.takeIf { comunidadeLigada && !relatosDesligados && linhaQueSeRelata(it) }
+            if (comunidade != null && linha != null) {
+                RelatarNaViagem(comunidade, linha, relatar, aoAbrirConta, aoFechar = { relatar = false }, aoDesligar = { relatosDesligados = true })
+            }
             ViagemConteudo(
                 v.ecra,
                 aoSilenciar = { pedirAoServico(contexto, Notificacoes.ACAO_SILENCIAR) },
