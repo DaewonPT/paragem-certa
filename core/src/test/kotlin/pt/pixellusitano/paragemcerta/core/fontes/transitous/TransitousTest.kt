@@ -282,14 +282,25 @@ class TransitousTest {
         assertTrue(TransitousParser.chegadas(json.replace("\"parentId\": \"pt-Metro-Lisboa_MP\"", "\"parentId\": \"pt-Carris_805\""), "pt-Carris_805", tarde).isEmpty())
     }
 
+    @Test fun caisDoMetroPedeORaioEFicaSoComOSeu() = runTest {
+        val http = HttpFalso({ Resposta(200, fixture("transitous-stoptimes-metro-mae.json")) })
+        val c = (Transitous(http).chegadas("pt-Metro-Lisboa_MP1", tarde) as Resultado.Ok).valor
+        // Um cais também dá 0 com radius=0 (MP1 real a 03/11/2026: 0 assim, 8 com o raio): pede como a mãe e fica só com as dele.
+        assertEquals(
+            "https://api.transitous.org/api/v6/stoptimes?stopId=pt-Metro-Lisboa_MP1&n=30&radius=80&mode=SUBWAY",
+            http.pedidos.single(),
+        )
+        assertEquals(listOf("Santa Apolónia", "Santa Apolónia"), c.map { it.destino })
+    }
+
     @Test fun paragemNormalContinuaComRadius0() = runTest {
         val http = HttpFalso({ Resposta(200, "{}") })
         val t = Transitous(http)
         t.chegadas("pt-Carris_805", tarde)
-        t.chegadas("pt-Metro-Lisboa_CS1", tarde) // um cais (letras e número) não é uma estação-mãe
+        t.chegadas("pt-Metro-Lisboa_CS12", tarde) // dois algarismos já não é um cais do Metro
         t.chegadas("pt-Metro-Do-Porto_CS", tarde)
         assertEquals(
-            listOf("pt-Carris_805", "pt-Metro-Lisboa_CS1", "pt-Metro-Do-Porto_CS").map {
+            listOf("pt-Carris_805", "pt-Metro-Lisboa_CS12", "pt-Metro-Do-Porto_CS").map {
                 "https://api.transitous.org/api/v6/stoptimes?stopId=$it&n=30&radius=0&exactRadius=true"
             },
             http.pedidos,

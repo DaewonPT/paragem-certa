@@ -12,6 +12,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasSetTextAction
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -239,6 +240,12 @@ class LinhasEcraTest {
         regra.onNodeWithText("Todos").performClick()
         assertEquals(listOf("texto=15", "meio=COMBOIO", "meio=null"), pedidos)
         regra.onNodeWithText("Todos").assertIsSelected()
+    }
+
+    @Test fun caixaComTextoAindaDizParaQueServe() {
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Ecra(agruparLinhas(cm, catalogo, "15", null), filtro = "15") } }
+        // Com só um placeholder, o TalkBack perde o nome da caixa assim que se escreve.
+        regra.onNode(hasSetTextAction() and hasText("Procurar uma linha")).assertExists()
     }
 
     @Test fun linhas_claro() = captureRoboImage("src/test/screenshots/linhas_claro.png") {

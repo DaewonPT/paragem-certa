@@ -123,7 +123,7 @@ fun LinhasConteudo(
             value = filtro,
             onValueChange = aoFiltrar,
             singleLine = true,
-            placeholder = { Text(stringResource(R.string.linhas_procurar)) },
+            label = { Text(stringResource(R.string.linhas_procurar)) },
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
         )
         LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 16.dp)) {

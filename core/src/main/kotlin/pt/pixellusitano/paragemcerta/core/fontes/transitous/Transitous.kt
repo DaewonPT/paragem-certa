@@ -325,14 +325,14 @@ object TransitousParser {
         }.paragensComAcentos()
 }
 
-// As estações do Metro de Lisboa (as de correspondência têm cais, MP1 a MP4, e a estação é a mãe): o id é "pt-Metro-Lisboa_" e duas letras.
-private val ESTACAO_METRO = Regex("^pt-Metro-Lisboa_[A-Z]{2}$")
+// As estações do Metro de Lisboa ("pt-Metro-Lisboa_" e duas letras) e os cais das de correspondência (MP1 a MP4, a mãe é MP).
+private val ESTACAO_METRO = Regex("^pt-Metro-Lisboa_[A-Z]{2}\\d?$")
 
 private val LISBOA = ZoneId.of("Europe/Lisbon")
 
 /**
- * Só a própria paragem (radius=0 e exactRadius). Uma estação do Metro dá 0 assim quando é a mãe de cais (verificado a 03/11/2026 em
- * MP): leva o raio de 80 m só com o Metro e o parser fica com as partidas dos cais dela. [modos] só filtra quando há radius=0.
+ * Só a própria paragem (radius=0 e exactRadius). Uma estação do Metro dá 0 assim quando é a mãe de cais ou um cais (verificado a
+ * 03/11/2026 em MP e MP1): leva o raio de 80 m só com o Metro e o parser fica com as partidas dela. [modos] só filtra quando há radius=0.
  */
 private fun zonaDaParagem(paragemId: String, modos: String? = null) =
     if (ESTACAO_METRO.matches(paragemId)) "radius=80&mode=SUBWAY" else "radius=0&exactRadius=true" + (modos?.let { "&mode=$it" } ?: "")
