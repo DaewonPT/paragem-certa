@@ -6,6 +6,7 @@ import { denunciar } from "./denuncias";
 import { sincronizar } from "./favoritos";
 import { enviarFoto } from "./fotos";
 import { entrarComGoogle, novoNonce } from "./google";
+import { aplicarPrazos } from "./prazos";
 import { paginaPrivacidade } from "./privacidade";
 import { criarRelato, votar } from "./relatos";
 import { erro, json } from "./respostas";
@@ -57,8 +58,8 @@ export default {
     }
   },
 
-  // Cron Trigger diário (corre na Cloudflare, não no telemóvel).
-  async scheduled(_controlo, env, ctx): Promise<void> {
-    ctx.waitUntil(limparExpirados(env));
+  // Cron Trigger diário (corre na Cloudflare, não no telemóvel). A hora vem do controlador, para os testes a poderem escolher.
+  async scheduled(controlo, env, ctx): Promise<void> {
+    ctx.waitUntil(Promise.all([limparExpirados(env, controlo.scheduledTime), aplicarPrazos(env, controlo.scheduledTime)]));
   },
 } satisfies ExportedHandler<Env>;

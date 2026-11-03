@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { contaDaSessao, criarSessao } from "../src/sessoes";
 import { pedidoComToken, pedir } from "./ajudas";
 
@@ -67,6 +67,118 @@ describe("apagar conta", () => {
       expect((await pedir("/api/conta", { metodo, token: tokenDaAna })).status, metodo).toBe(404);
     }
     expect(await contar("contas", "ana")).toBe(1);
+  });
+});
+
+/** Ana: um relato com o voto do Rui, um voto no relato do Rui, uma foto pendente e outra aprovada (com os ficheiros) e uma correção. O Rui: o seu relato e uma foto aprovada. */
+async function comunidadeDaAnaEDoRui(): Promise<void> {
+  await env.DB.batch([
+    env.DB.prepare("INSERT INTO relatos (id, tipo, paragem, linha, conta_id, criado_em, expira_em) VALUES ('r-ana', 'desvio', 'CM:1', '736', 'ana', 1, 2), ('r-rui', 'desvio', 'CM:2', '736', 'rui', 1, 2)"),
+    env.DB.prepare("INSERT INTO confirmacoes (relato_id, conta_id, voto, em) VALUES ('r-ana', 'ana', 'ainda_esta', 1), ('r-ana', 'rui', 'ainda_esta', 1), ('r-rui', 'ana', 'ja_nao_esta', 1), ('r-rui', 'rui', 'ainda_esta', 1)"),
+    env.DB.prepare(
+      "INSERT INTO fotos (id, paragem, conta_id, chave, estado, criada_em) VALUES ('f-pendente', 'CM:3', 'ana', 'pendente.jpg', 'pendente', 1), ('f-aprovada', 'CM:4', 'ana', 'aprovada.jpg', 'aprovada', 1), ('f-rui', 'CM:5', 'rui', 'rui.jpg', 'aprovada', 1)",
+    ),
+    env.DB.prepare("INSERT INTO correcoes (id, paragem, conta_id, tipo, nome, criada_em) VALUES ('k-ana', 'CM:1', 'ana', 'nome', 'Outro nome', 1)"),
+  ]);
+  await env.FOTOS_PENDENTES.put("pendente.jpg", "jpeg");
+  await env.FOTOS.put("aprovada.jpg", "jpeg");
+  await env.FOTOS.put("rui.jpg", "jpeg");
+}
+
+async function chavesNoR2(bucket: R2Bucket): Promise<string[]> {
+  return (await bucket.list()).objects.map((objeto) => objeto.key);
+}
+
+const PURGA: Partial<Env> = { CF_PURGE_TOKEN: "t", CF_ZONA: "z" };
+
+describe("apagar conta com a comunidade", () => {
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("apagarContaApagaRelatosFotosR2ELimpaACache", async () => {
+    await comunidadeDaAnaEDoRui();
+    const fetchFalso = vi.spyOn(globalThis, "fetch").mockImplementation(async () => new Response('{"success":true}', { status: 200 }));
+
+    const resposta = await pedir("/api/conta", { metodo: "DELETE", token: tokenDaAna, segredos: PURGA });
+    expect(resposta.status).toBe(204);
+
+    for (const tabela of ["contas", "relatos", "confirmacoes", "fotos", "correcoes"]) {
+      expect(await contar(tabela, "ana"), tabela).toBe(0);
+    }
+    expect(await chavesNoR2(env.FOTOS_PENDENTES)).toEqual([]);
+    expect(await chavesNoR2(env.FOTOS)).toEqual(["rui.jpg"]);
+    // Só a aprovada esteve no ar; a pendente nunca passou pela cache.
+    expect(fetchFalso).toHaveBeenCalledTimes(1);
+    const [endereco, opcoes] = fetchFalso.mock.calls[0];
+    expect(String(endereco)).toBe("https://api.cloudflare.com/client/v4/zones/z/purge_cache");
+    expect(JSON.parse(String(opcoes?.body))).toEqual({ files: ["https://fotos.pixellusitano.com/aprovada.jpg"] });
+
+    // O que é do Rui fica.
+    expect(await contar("relatos", "rui")).toBe(1);
+    expect(await contar("fotos", "rui")).toBe(1);
+    expect(await env.DB.prepare("SELECT conta_id FROM confirmacoes").all()).toMatchObject({ results: [{ conta_id: "rui" }] });
+  });
+
+  it("apagarContaApagaOsVotosDosOutrosNosSeusRelatos", async () => {
+    await comunidadeDaAnaEDoRui();
+
+    expect((await pedir("/api/conta", { metodo: "DELETE", token: tokenDaAna })).status).toBe(204);
+
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM confirmacoes WHERE relato_id = 'r-ana'").first<number>("n")).toBe(0);
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM confirmacoes WHERE relato_id = 'r-rui' AND conta_id = 'rui'").first<number>("n")).toBe(1);
+    expect(await contar("contas", "rui")).toBe(1);
+  });
+
+  it("apagarContaGuardaDenunciasEBloqueios", async () => {
+    await comunidadeDaAnaEDoRui();
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO denuncias (id, conteudo, motivo, nome, email, email_hash, criada_em) VALUES ('d1', 'relato:r-rui', 'falso', 'Ana', 'ana@exemplo.pt', 'h-ana', 1)"),
+      env.DB.prepare("INSERT INTO decisoes (id, acao, conteudo, email_hash, motivo, regra, criada_em) VALUES ('x1', 'bloquear', 'relato:r-ana', 'h-ana', 'm', 'r', 1)"),
+      env.DB.prepare("INSERT INTO bloqueios (email_hash, motivo, criado_em) VALUES ('h-ana', 'm', 1)"),
+    ]);
+    const antes = await Promise.all(["denuncias", "decisoes", "bloqueios"].map((tabela) => env.DB.prepare(`SELECT * FROM ${tabela}`).all()));
+
+    expect((await pedir("/api/conta", { metodo: "DELETE", token: tokenDaAna })).status).toBe(204);
+
+    const depois = await Promise.all(["denuncias", "decisoes", "bloqueios"].map((tabela) => env.DB.prepare(`SELECT * FROM ${tabela}`).all()));
+    expect(depois.map((linhas) => linhas.results)).toEqual(antes.map((linhas) => linhas.results));
+    expect(await contar("contas", "ana")).toBe(0);
+  });
+
+  it("r2EmBaixoNaoApagaMetade", async () => {
+    await comunidadeDaAnaEDoRui();
+    const fetchFalso = vi.spyOn(globalThis, "fetch");
+    const r2EmBaixo = {
+      delete: async () => {
+        throw new Error("R2 em baixo");
+      },
+    } as unknown as R2Bucket;
+
+    const resposta = await pedir("/api/conta", { metodo: "DELETE", token: tokenDaAna, segredos: { ...PURGA, FOTOS: r2EmBaixo } });
+    expect(resposta.status).toBe(502);
+    expect(await resposta.json()).toEqual({ erro: "apagar_falhou" });
+
+    for (const tabela of ["contas", "sessoes", "relatos", "fotos", "correcoes"]) {
+      expect(await contar(tabela, "ana"), tabela).toBeGreaterThan(0);
+    }
+    expect(await chavesNoR2(env.FOTOS)).toContain("aprovada.jpg");
+    expect(fetchFalso).not.toHaveBeenCalled();
+    // A Ana pode tentar outra vez, e da segunda já vai.
+    expect((await pedir("/api/conta", { metodo: "DELETE", token: tokenDaAna })).status).toBe(204);
+    expect(await contar("fotos", "ana")).toBe(0);
+  });
+
+  it("cacheEmBaixoNaoImpedeApagar", async () => {
+    await comunidadeDaAnaEDoRui();
+    vi.spyOn(globalThis, "fetch").mockImplementation(async () => new Response('{"success":false}', { status: 500 }));
+
+    expect((await pedir("/api/conta", { metodo: "DELETE", token: tokenDaAna, segredos: PURGA })).status).toBe(204);
+
+    for (const tabela of ["contas", "relatos", "confirmacoes", "fotos", "correcoes"]) {
+      expect(await contar(tabela, "ana"), tabela).toBe(0);
+    }
+    expect(await chavesNoR2(env.FOTOS)).toEqual(["rui.jpg"]);
   });
 });
 
