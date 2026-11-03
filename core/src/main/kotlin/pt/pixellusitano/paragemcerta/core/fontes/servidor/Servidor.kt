@@ -30,6 +30,8 @@ private val JSON = Json { ignoreUnknownKeys = true }
     val canaisReclamacao: List<CanalReclamacaoTexto>,
     /** Os termos em vigor: quem relata, vota ou envia fotos tem de os ter aceitado (senão 403 `termos_por_aceitar`). */
     val versaoTermos: String = "1",
+    /** Os mapas da rede de cada operador (`operador` = "CM" ou o id do Transitous, como `pt-Carris`). Um config antigo não os tem. */
+    val mapasOficiais: List<MapaOficial> = emptyList(),
 )
 
 /** Tudo desligado por omissão: um interruptor que o servidor não conhece fica desligado. */
@@ -38,7 +40,11 @@ private val JSON = Json { ignoreUnknownKeys = true }
     val comunidade: Boolean = false,
     val fotos: Boolean = false,
     val correcoes: Boolean = false,
+    val carrisAoVivo: Boolean = false,
+    val metro: Boolean = false,
 )
+
+@Serializable data class MapaOficial(val operador: String, val url: String)
 
 @Serializable data class Emails(val codigosPorDia: Int)
 
@@ -94,6 +100,27 @@ private val JSON = Json { ignoreUnknownKeys = true }
 
 @Serializable data class Voto(val confirmacoes: Int, val confirmado: Boolean, val ativo: Boolean)
 
+/** O estado de uma linha do Metro que não está normal. `id` = "metro:VD:<8 hex>", o mesmo enquanto o texto não mudar. */
+@Serializable data class PerturbacaoRemota(val id: String, val linha: String, val texto: String)
+
+/** O `/api/avisos`: um servidor da 0.3 só manda `relatos`. */
+@Serializable data class Avisos(val relatos: List<RelatoRemoto> = emptyList(), val perturbacoes: List<PerturbacaoRemota> = emptyList())
+
+/** Um autocarro ou elétrico da Carris. `rota` é o `route_id` do GTFS-RT (sem o prefixo do Transitous); `ts` e `atualizado` em segundos. */
+@Serializable data class VeiculoCarrisRemoto(
+    val id: String,
+    val rota: String,
+    val viagem: String,
+    val sentido: Int,
+    val lat: Double,
+    val lon: Double,
+    val seq: Int,
+    val paragem: String? = null,
+    val ts: Long,
+)
+
+@Serializable data class AoVivoCarris(val atualizado: Long, val veiculos: List<VeiculoCarrisRemoto>)
+
 @Serializable private class RelatosJson(val relatos: List<RelatoRemoto> = emptyList())
 
 @Serializable private class FotoEnviada(val id: String)
@@ -106,6 +133,7 @@ private val JSON = Json { ignoreUnknownKeys = true }
  * Quando a quota grátis do dia acaba (503 `em_pausa`, ou o 429 sem JSON da página 1027 da Cloudflare) os pedidos à API
  * param até à próxima 00:00 UTC e devolvem `Falha(null, true, "em_pausa")` sem pedir (spec 5.4). Ficam de fora o `config()`
  * (um ficheiro estático, não gasta quota) e as rotas de `/api/auth/` (entrar, sair), onde o 429 é da regra WAF de 10 s e não da quota.
+ * Uma fonte externa em baixo (a Carris) dá 502 `fonte_falhou`: falha normal, nunca pausa.
  */
 class ServidorParagemCerta(
     private val http: Http,
@@ -141,9 +169,25 @@ class ServidorParagemCerta(
     suspend fun comunidade(paragens: List<String>): Resultado<DadosComunidade> =
         enviar("GET", "/api/comunidade?paragens=${juntar(paragens)}", null) { JSON.decodeFromString<DadosComunidade>(it) }
 
-    /** Leitura pública: os relatos confirmados e ativos das linhas pedidas (até 20, pelo nome visível em maiúsculas). */
-    suspend fun avisos(linhas: List<String>): Resultado<List<RelatoRemoto>> =
-        enviar("GET", "/api/avisos?linhas=${juntar(linhas)}", null) { JSON.decodeFromString<RelatosJson>(it).relatos }
+    /**
+     * Leitura pública: os relatos confirmados e ativos das linhas pedidas (até 20, pelo nome visível em maiúsculas) e as
+     * perturbações oficiais do Metro. Sem a comunidade ligada no servidor, `relatos` vem vazio (já não dá 403).
+     */
+    suspend fun avisos(linhas: List<String>): Resultado<Avisos> =
+        enviar("GET", "/api/avisos?linhas=${juntar(linhas)}", null) { JSON.decodeFromString<Avisos>(it) }
+
+    /** Leitura pública (o ecrã da linha): os relatos ativos das linhas pedidas (até 20), confirmados e por confirmar; 403 sem a comunidade. */
+    suspend fun relatosDasLinhas(linhas: List<String>): Resultado<List<RelatoRemoto>> =
+        enviar("GET", "/api/comunidade?linhas=${juntar(linhas)}", null) { JSON.decodeFromString<RelatosJson>(it).relatos }
+
+    /**
+     * Leitura pública: as posições da Carris (o servidor guarda-as 30 s e já tirou as velhas); 403 `desligado` com `carrisAoVivo`
+     * desligado. Uma fonte em baixo dá 502 `fonte_falhou`: falha normal, não pausa (a app volta ao horário).
+     */
+    suspend fun carrisAoVivo(): Resultado<AoVivoCarris> =
+        enviar("GET", "/api/rt/carris", null) { JSON.decodeFromString<AoVivoCarris>(it) }
+
+    // shortcut: sem `metroTempos` (/api/metro/tempos) até à Task 2 (a porta 8243 do Metro ainda não foi testada); chega com ela.
 
     suspend fun relatar(token: String, tipo: TipoRelato, paragem: String, linha: String?): Resultado<RelatoCriado> =
         enviar("POST", "/api/relatos", buildJsonObject {

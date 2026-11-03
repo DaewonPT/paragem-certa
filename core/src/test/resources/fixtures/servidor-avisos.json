@@ -1,0 +1,21 @@
+{
+  "relatos": [
+    {
+      "id": "6f1c2a9e-3b7d-4c58-9a10-5d2e8b7f4a11",
+      "tipo": "desvio",
+      "paragem": "CM:060419",
+      "linha": "736",
+      "criadoEm": 1793700000000,
+      "expiraEm": 1793710800000,
+      "confirmacoes": 2,
+      "confirmado": true
+    }
+  ],
+  "perturbacoes": [
+    {
+      "id": "metro:VD:3f2a9c1e",
+      "linha": "VD",
+      "texto": "Circulação com perturbações. Tempo de espera superior ao normal."
+    }
+  ]
+}

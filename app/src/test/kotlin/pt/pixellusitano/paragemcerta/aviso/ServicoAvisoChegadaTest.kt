@@ -19,6 +19,7 @@ import org.robolectric.android.controller.ServiceController
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowPowerManager
 import pt.pixellusitano.paragemcerta.MainActivity
+import pt.pixellusitano.paragemcerta.core.fontes.servidor.Avisos
 import pt.pixellusitano.paragemcerta.core.fontes.servidor.RelatoRemoto
 import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
@@ -50,7 +51,7 @@ class ServicoAvisoChegadaTest {
     // Os avisos da comunidade do teste: desligados por omissão, para os outros testes não pedirem nada.
     private var comunidade = false
     private var ocultos = emptySet<String>()
-    private var respostaAvisos: Resultado<List<RelatoRemoto>> = Resultado.Ok(emptyList())
+    private var respostaAvisos: Resultado<Avisos> = Resultado.Ok(Avisos())
     private val pedidosAvisos = mutableListOf<List<String>>()
 
     private fun relato(id: String, tipo: String = "desvio", linha: String = "736", confirmado: Boolean = true) =
@@ -276,7 +277,7 @@ class ServicoAvisoChegadaTest {
     @Test fun avisaMeNotificaRelatoConfirmado() {
         comunidade = true
         ocultos = setOf("relato:r3")
-        respostaAvisos = Resultado.Ok(listOf(relato("r1"), relato("r2", confirmado = false), relato("r3", tipo = "acidente")))
+        respostaAvisos = Resultado.Ok(Avisos(listOf(relato("r1"), relato("r2", confirmado = false), relato("r3", tipo = "acidente"))))
         comecar(vigiar(SODRE, "Cais do Sodré", "736"))
         // No "Avisa-me" nunca diz "à frente": não há viagem a dizer onde vais.
         assertEquals(listOf("⚠ Desvio confirmado na 736"), relatosPostados())
@@ -312,7 +313,7 @@ class ServicoAvisoChegadaTest {
     }
 
     @Test fun comunidadeDesligadaNaoPedeAvisos() {
-        respostaAvisos = Resultado.Ok(listOf(relato("r1")))
+        respostaAvisos = Resultado.Ok(Avisos(listOf(relato("r1"))))
         comecar(vigiar(SODRE, "Cais do Sodré", "736"))
         passarOTempo(10 * 60)
         assertTrue(pedidosAvisos.isEmpty())

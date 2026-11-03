@@ -40,6 +40,12 @@ class ConfiguracaoTest {
         assertEquals(duracoes.keys, TipoRelato.entries.map { it.chave }.toSet())
     }
 
+    @Test fun leOsMapasOficiaisDoServidor() = runTest {
+        val config = ler(doServidor.readText())
+        assertTrue(config.mapasOficiais.isNotEmpty())
+        assertTrue(config.mapasOficiais.all { it.operador.isNotBlank() && it.url.startsWith("https://") })
+    }
+
     @Test fun leAVersaoDosTermos() = runTest {
         assertEquals("1", ler(doServidor.readText()).versaoTermos)
         val futura = """{"versao":2,"versaoTermos":"2","interruptores":{},"emails":{"codigosPorDia":70},"canaisReclamacao":[]}"""

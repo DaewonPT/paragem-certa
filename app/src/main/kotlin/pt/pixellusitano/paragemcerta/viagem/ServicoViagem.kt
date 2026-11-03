@@ -293,7 +293,7 @@ class ServicoViagem : Service() {
             if (agora() >= proxima) {
                 proxima = agora().plusMillis(AVISOS_MS)
                 when (val r = servidorPc().avisos(linhas)) {
-                    is Resultado.Ok -> avisarRelatos(r.valor)
+                    is Resultado.Ok -> avisarRelatos(r.valor.relatos)
                     is Resultado.Falha -> if (r.emPausa || r.erro == "desligado") return
                 }
             }

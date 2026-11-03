@@ -93,7 +93,7 @@ class Comunidade(
         // Só chaves que o servidor aceita: uma má (um nome com "/" ou com mais de 16 letras) dava 400 ao grupo inteiro e aos seguintes.
         val chaves = nomes.map(::chaveLinha).filter(::chaveLinhaValida).distinct()
         for (grupo in chaves.filter { !recente(linhas[it], agora) }.chunked(MAX_LINHAS)) {
-            val relatos = (servidor.avisos(grupo) as? Resultado.Ok)?.valor ?: break
+            val relatos = (servidor.avisos(grupo) as? Resultado.Ok)?.valor?.relatos ?: break
             // Uma linha sem relatos também fica guardada (vazia): não se pergunta outra vez nos 2 min seguintes.
             grupo.forEach { linha -> linhas[linha] = Guardado(agora, relatos.filter { it.linha == linha }) }
         }

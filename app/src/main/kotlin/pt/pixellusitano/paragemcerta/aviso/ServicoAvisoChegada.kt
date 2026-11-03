@@ -25,7 +25,7 @@ import kotlinx.coroutines.launch
 import pt.pixellusitano.paragemcerta.ParagemCertaApp
 import pt.pixellusitano.paragemcerta.core.comunidade.chaveLinha
 import pt.pixellusitano.paragemcerta.core.comunidade.chaveLinhaValida
-import pt.pixellusitano.paragemcerta.core.fontes.servidor.RelatoRemoto
+import pt.pixellusitano.paragemcerta.core.fontes.servidor.Avisos
 import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
@@ -71,7 +71,7 @@ class ServicoAvisoChegada : Service() {
     internal var alarme: (Boolean, Boolean) -> Unit = { som, vibrar -> Alarme.tocar(this, EVENTO_ALARME, som, vibrar) }
 
     /** Os avisos da comunidade: o pedido ao /api/avisos, se estão ligados (na config e nas definições) e os relatos ocultados. */
-    internal var avisos: suspend (List<String>) -> Resultado<List<RelatoRemoto>> = { linhas -> ligacoes.servidor.avisos(linhas) }
+    internal var avisos: suspend (List<String>) -> Resultado<Avisos> = { linhas -> ligacoes.servidor.avisos(linhas) }
     internal var avisosLigados: suspend () -> Boolean =
         { ligacoes.configuracoes.atual.value.interruptores.comunidade && ligacoes.preferencias.avisosComunidade.first() }
     internal var ocultos: suspend () -> Set<String> = { ligacoes.preferencias.ocultos.first() }
@@ -198,7 +198,7 @@ class ServicoAvisoChegada : Service() {
             if (linhas.isNotEmpty()) when (val r = avisos(linhas)) {
                 is Resultado.Ok -> {
                     val escondidos = ocultos()
-                    r.valor.filter { it.confirmado && it.id !in relatosAvisados && "relato:${it.id}" !in escondidos }.forEach { relato ->
+                    r.valor.relatos.filter { it.confirmado && it.id !in relatosAvisados && "relato:${it.id}" !in escondidos }.forEach { relato ->
                         relatosAvisados += relato.id
                         Notificacoes.textoRelato(this, relato, aFrente = false)
                             ?.let { Notificacoes.relatoComunidade(this, relatosAvisados.size - 1, it, viagem = false) }
