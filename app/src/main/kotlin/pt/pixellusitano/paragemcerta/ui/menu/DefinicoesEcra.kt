@@ -49,13 +49,15 @@ import pt.pixellusitano.paragemcerta.dados.Preferencias
 import pt.pixellusitano.paragemcerta.ui.tema.FrisoAzulejo
 import pt.pixellusitano.paragemcerta.ui.tema.ModoTema
 
-/** [comunidadeLigada]: o interruptor `comunidade` da config; sem ele não há "Camadas do mapa" (só há uma, a dos relatos) nem os avisos da comunidade. */
+/** [comunidadeLigada]: o interruptor `comunidade` da config; sem ele não há a camada dos relatos nem os avisos da comunidade. */
 @Composable
 fun DefinicoesEcra(preferencias: Preferencias, conta: Conta, aoVoltar: () -> Unit, comunidadeLigada: Boolean = false) {
     val contexto = LocalContext.current
     val escopo = rememberCoroutineScope()
     val estadoConta by conta.estado.collectAsStateWithLifecycle()
     val camadaRelatos by preferencias.camadaRelatos.collectAsStateWithLifecycle(initialValue = true)
+    val camadaAoVivo by preferencias.camadaAoVivo.collectAsStateWithLifecycle(initialValue = true)
+    val camadaGira by preferencias.camadaGira.collectAsStateWithLifecycle(initialValue = true)
     val avisosComunidade by preferencias.avisosComunidade.collectAsStateWithLifecycle(initialValue = true)
     val modo by preferencias.modo.collectAsStateWithLifecycle(initialValue = ModoTema.SISTEMA)
     val limites by preferencias.limites.collectAsStateWithLifecycle(initialValue = Limites())
@@ -91,6 +93,10 @@ fun DefinicoesEcra(preferencias: Preferencias, conta: Conta, aoVoltar: () -> Uni
         aoApagarConta = if (estadoConta is EstadoConta.Com) ({ escopo.launch { conta.apagarEAvisar(contexto) } }) else null,
         camadaRelatos = camadaRelatos,
         aoMudarCamadaRelatos = if (comunidadeLigada) ({ escopo.launch { preferencias.definirCamadaRelatos(it) } }) else null,
+        camadaAoVivo = camadaAoVivo,
+        aoMudarCamadaAoVivo = { escopo.launch { preferencias.definirCamadaAoVivo(it) } },
+        camadaGira = camadaGira,
+        aoMudarCamadaGira = { escopo.launch { preferencias.definirCamadaGira(it) } },
         avisosComunidade = avisosComunidade,
         aoMudarAvisosComunidade = if (comunidadeLigada) ({ escopo.launch { preferencias.definirAvisosComunidade(it) } }) else null,
         secaoAtualizacoes = { modificador ->
@@ -134,9 +140,14 @@ fun DefinicoesConteudo(
     aoApagarDados: () -> Unit = {},
     /** Só vem quando há conta: a Privacidade mostra "Apagar conta". */
     aoApagarConta: (() -> Unit)? = null,
-    /** Se o mapa marca as paragens com relatos confirmados; [aoMudarCamadaRelatos] só vem com a comunidade ligada (sem ele não há "Camadas do mapa"). */
+    /** Se o mapa marca as paragens com relatos confirmados; [aoMudarCamadaRelatos] só vem com a comunidade ligada (sem ele não há essa camada). */
     camadaRelatos: Boolean = true,
     aoMudarCamadaRelatos: ((Boolean) -> Unit)? = null,
+    /** As camadas que não dependem do servidor: os autocarros ao vivo (CM e Carris) e as estações GIRA. */
+    camadaAoVivo: Boolean = true,
+    aoMudarCamadaAoVivo: (Boolean) -> Unit = {},
+    camadaGira: Boolean = true,
+    aoMudarCamadaGira: (Boolean) -> Unit = {},
     /** Só a variante pessoal tem esta secção (as atualizações da Play Store vêm pela loja). */
     secaoAtualizacoes: @Composable (Modifier) -> Unit = {},
     /** Os avisos da comunidade na viagem; como a camada, [aoMudarAvisosComunidade] só vem com a comunidade ligada. */
@@ -149,7 +160,9 @@ fun DefinicoesConteudo(
             modo, limites, somAviso, vibracaoAviso, aoMudarModo, aoMudarLimites, aoMudarSom, aoMudarVibracao,
             avisosComunidade = avisosComunidade, aoMudarAvisosComunidade = aoMudarAvisosComunidade,
         )
-        if (aoMudarCamadaRelatos != null) CamadasDoMapa(camadaRelatos, aoMudarCamadaRelatos, Modifier.padding(top = 16.dp))
+        CamadasDoMapa(
+            camadaAoVivo, aoMudarCamadaAoVivo, camadaGira, aoMudarCamadaGira, camadaRelatos, aoMudarCamadaRelatos, Modifier.padding(top = 16.dp),
+        )
         PreferenciasRotas(filtros, aoMudarFiltros, Modifier.padding(top = 24.dp))
         EcraInicialOpcoes(ecraInicial, aoMudarEcraInicial, Modifier.padding(top = 24.dp))
         secaoAtualizacoes(Modifier.padding(top = 24.dp))
@@ -157,12 +170,17 @@ fun DefinicoesConteudo(
     }
 }
 
-/** O que o mapa desenha por cima das paragens: por agora só os relatos da comunidade (a etapa 4 junta as outras camadas). */
+/** O que o mapa desenha por cima das paragens. Desligar uma camada não pede nada nem desenha nada; a dos relatos só aparece com [aoMudarRelatos]. */
 @Composable
-private fun CamadasDoMapa(relatos: Boolean, aoMudarRelatos: (Boolean) -> Unit, modifier: Modifier = Modifier) {
+private fun CamadasDoMapa(
+    aoVivo: Boolean, aoMudarAoVivo: (Boolean) -> Unit, gira: Boolean, aoMudarGira: (Boolean) -> Unit,
+    relatos: Boolean, aoMudarRelatos: ((Boolean) -> Unit)?, modifier: Modifier = Modifier,
+) {
     Column(modifier.background(MaterialTheme.colorScheme.background)) {
         Subtitulo(stringResource(R.string.eu_camadas_mapa))
-        Interruptor(stringResource(R.string.eu_camada_relatos), relatos, aoMudarRelatos)
+        Interruptor(stringResource(R.string.eu_camada_ao_vivo), aoVivo, aoMudarAoVivo)
+        Interruptor(stringResource(R.string.eu_camada_gira), gira, aoMudarGira)
+        if (aoMudarRelatos != null) Interruptor(stringResource(R.string.eu_camada_relatos), relatos, aoMudarRelatos)
     }
 }
 

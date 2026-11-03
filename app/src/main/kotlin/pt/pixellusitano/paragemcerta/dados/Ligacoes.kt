@@ -24,13 +24,14 @@ class Ligacoes(contexto: Context) {
     val transitous = Transitous(http)
     val servidor = ServidorParagemCerta(http)
     val configuracoes = Configuracoes(contexto, servidor)
+    val catalogoLinhas = CatalogoLinhas(contexto.filesDir, http, BASE_SERVIDOR)
     val repositorio = Repositorio(
         bd, cm, transitous, GeoApi(http), servidor = servidor, interruptores = { configuracoes.atual.value.interruptores },
+        catalogo = { catalogoLinhas.atual },
     )
     val preferencias = Preferencias(contexto.applicationContext.lojaPreferencias)
     val conta = Conta(contexto, servidor, repositorio)
     val comunidade by lazy { Comunidade(servidor, conta, configuracoes, preferencias) }
-    val catalogoLinhas = CatalogoLinhas(contexto.filesDir, http, BASE_SERVIDOR)
     val detalheDasLinhas = DetalheDasLinhas(cm, transitous, catalogoLinhas, repositorio)
     val estacoesGira = EstacoesGira(contexto.filesDir, Gira(http), Instant::now)
 

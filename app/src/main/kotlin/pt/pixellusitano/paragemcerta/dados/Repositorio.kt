@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import pt.pixellusitano.paragemcerta.core.atraso.aindaPorChegar
+import pt.pixellusitano.paragemcerta.core.aovivo.veiculoDaCarris
 import pt.pixellusitano.paragemcerta.core.comunidade.chaveLinha
 import pt.pixellusitano.paragemcerta.core.fontes.cm.CarrisMetropolitana
 import pt.pixellusitano.paragemcerta.core.fontes.cm.CmParser
@@ -26,6 +27,7 @@ import pt.pixellusitano.paragemcerta.core.fontes.servidor.ServidorParagemCerta
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.Transitous
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.chavesDosNomes
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.comNomesAcentuados
+import pt.pixellusitano.paragemcerta.core.linhas.Catalogo
 import pt.pixellusitano.paragemcerta.core.linhas.RefLinha
 import pt.pixellusitano.paragemcerta.core.modelo.Alerta
 import pt.pixellusitano.paragemcerta.core.modelo.Chegada
@@ -129,6 +131,8 @@ class Repositorio(
     // As leituras do servidor (Carris ao vivo) e os interruptores do config.json; com omissão, para os testes que não os usam.
     private val servidor: ServidorParagemCerta? = null,
     private val interruptores: () -> Interruptores = { Interruptores() },
+    // O catálogo de linhas (se já chegou): dá o nome da linha aos autocarros da Carris ao vivo.
+    private val catalogo: () -> Catalogo? = { null },
 ) {
     /** Consulta ao ritmo da fonte enquanto alguém recolhe o fluxo; sem rede ou com erro, emite o último resultado bom. */
     fun chegadas(ref: RefParagem): Flow<EstadoChegadas> = flow {
@@ -179,6 +183,35 @@ class Repositorio(
                     delay(INTERVALO_VEICULOS.toMillis())
                 }
                 is Resultado.Falha -> delay(pausaDepoisDeFalha(Fonte.CM, tentativa++).toMillis())
+            }
+        }
+    }
+
+    /**
+     * Os autocarros da Carris ao vivo (do servidor, que guarda o GTFS-RT 30 s) de 30 em 30 s. Sem servidor ou com o `carrisAoVivo`
+     * desligado dá a lista vazia sem pedir, e volta a ver o interruptor daí a pouco (o config.json pode chegar depois de o mapa
+     * abrir); numa falha dá a lista vazia e espera como a CM.
+     */
+    fun veiculosCarris(): Flow<List<Veiculo>> = flow {
+        var tentativa = 0
+        while (true) {
+            val doServidor = servidor
+            if (doServidor == null || !interruptores().carrisAoVivo) {
+                emit(emptyList())
+                delay(ESPERA_SEM_CARRIS.toMillis())
+                continue
+            }
+            when (val r = doServidor.carrisAoVivo()) {
+                is Resultado.Ok -> {
+                    tentativa = 0
+                    val catalogo = catalogo()
+                    emit(r.valor.veiculos.map { veiculoDaCarris(it, catalogo) })
+                    delay(INTERVALO_CARRIS.toMillis())
+                }
+                is Resultado.Falha -> {
+                    emit(emptyList())
+                    delay(pausaDepoisDeFalha(Fonte.CM, tentativa++).toMillis())
+                }
             }
         }
     }
@@ -543,6 +576,8 @@ class Repositorio(
 
     private companion object {
         val INTERVALO_VEICULOS: Duration = Duration.ofSeconds(15)
+        val INTERVALO_CARRIS: Duration = Duration.ofSeconds(30)
+        val ESPERA_SEM_CARRIS: Duration = Duration.ofSeconds(5)
         val VALIDADE_ALERTAS: Duration = Duration.ofMinutes(5)
         val VALIDADE_PARTIDAS: Duration = Duration.ofSeconds(20)
         const val RAIO_REPETIDOS_METROS = 400.0

@@ -11,6 +11,10 @@
     <string name="sobre_fonte_transitous">Transitous — horários e rotas</string>
     <string name="sobre_fonte_openfreemap">OpenFreeMap</string>
     <string name="sobre_fonte_osm">© OpenStreetMap contributors</string>
+    <string name="sobre_fonte_emel">Estações GIRA: EMEL (dados.emel.pt), CC BY-SA 4.0</string>
+    <string name="sobre_fonte_metro">Metropolitano de Lisboa (CC BY 4.0)</string>
+    <string name="sobre_fonte_operadores">Linhas dos outros operadores: GTFS processados pelo Transitous</string>
+    <string name="sobre_fonte_carris">Carris (posições ao vivo)</string>
     <string name="sobre_contacto">Contacto</string>
 
     <!-- Início e localização -->
@@ -22,6 +26,9 @@
     <string name="veiculo_linha">Linha %1$s</string>
     <string name="veiculo_destino">para %1$s</string>
     <string name="veiculo_sinal">último sinal há %1$d s</string>
+    <string name="veiculo_carris">Carris · ao vivo</string>
+    <string name="gira_ver_disponibilidade">Ver disponibilidade na app GIRA</string>
+    <string name="gira_credito">Estações GIRA: EMEL (dados.emel.pt), CC BY-SA 4.0</string>
     <string name="fechar">Fechar</string>
 
     <!-- Painel do início -->
@@ -331,6 +338,8 @@
     <string name="eu_vibracao_aviso">Vibração do aviso</string>
     <string name="eu_avisos_comunidade">Avisos da comunidade durante a viagem</string>
     <string name="eu_camadas_mapa">Camadas do mapa</string>
+    <string name="eu_camada_ao_vivo">Autocarros ao vivo</string>
+    <string name="eu_camada_gira">Estações GIRA</string>
     <string name="eu_camada_relatos">Relatos da comunidade</string>
 
     <!-- Bússola: Encontrar a paragem -->

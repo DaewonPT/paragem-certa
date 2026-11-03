@@ -26,17 +26,23 @@ const val EMAIL_CONTACTO = "contact@pixellusitano.com"
 const val URL_TERMOS = "https://paragemcerta.pixellusitano.com/termos"
 const val URL_PRIVACIDADE = "https://paragemcerta.pixellusitano.com/privacidade"
 
-private val FONTES = listOf(
+// O crédito da Carris só aparece com as posições ao vivo ligadas (carrisAoVivo): sem elas a app não usa nada dela. O do Metro está sempre:
+// o catálogo de linhas, com os horários dele, já vem dos seus dados.
+private fun fontes(carrisAoVivo: Boolean) = listOfNotNull(
     R.string.sobre_fonte_cm to "https://carrismetropolitana.pt/open-data",
     R.string.sobre_fonte_transitous to "https://transitous.org/sources",
+    R.string.sobre_fonte_operadores to "https://transitous.org/sources/",
+    R.string.sobre_fonte_metro to "https://www.metrolisboa.pt/dados-abertos/",
+    (R.string.sobre_fonte_carris to "https://www.carris.pt").takeIf { carrisAoVivo },
+    R.string.sobre_fonte_emel to "https://dados.emel.pt",
     R.string.sobre_fonte_openfreemap to "https://openfreemap.org",
     R.string.sobre_fonte_osm to "https://www.openstreetmap.org/copyright",
     R.string.fonte_geoapi to "https://geoapi.pt",
 )
 
-/** aoAbrir recebe um URL https:// ou mailto:; quem chama abre-o com Intent.ACTION_VIEW. */
+/** aoAbrir recebe um URL https:// ou mailto:; quem chama abre-o com Intent.ACTION_VIEW. [carrisAoVivo]: o interruptor da config. */
 @Composable
-fun SobreEcra(versao: String, aoAbrir: (String) -> Unit) {
+fun SobreEcra(versao: String, aoAbrir: (String) -> Unit, carrisAoVivo: Boolean = false) {
     Column(
         Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState()).padding(16.dp),
@@ -49,7 +55,7 @@ fun SobreEcra(versao: String, aoAbrir: (String) -> Unit) {
 
         Text(stringResource(R.string.sobre_fontes), style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.padding(top = 20.dp, bottom = 4.dp))
-        FONTES.forEach { (texto, url) -> Ligacao(texto, url, aoAbrir) }
+        fontes(carrisAoVivo).forEach { (texto, url) -> Ligacao(texto, url, aoAbrir) }
 
         Text(stringResource(R.string.sobre_contacto), style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.padding(top = 20.dp, bottom = 4.dp))

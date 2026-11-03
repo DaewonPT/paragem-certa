@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.emptyFlow
 import org.maplibre.android.geometry.LatLng
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.core.atraso.aindaPorChegar
@@ -60,12 +61,14 @@ import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.Gravidade
 import pt.pixellusitano.paragemcerta.core.modelo.Linha
 import pt.pixellusitano.paragemcerta.core.modelo.Paragem
+import pt.pixellusitano.paragemcerta.core.modelo.Veiculo
 import pt.pixellusitano.paragemcerta.dados.Comunidade
 import pt.pixellusitano.paragemcerta.dados.Configuracoes
 import pt.pixellusitano.paragemcerta.dados.DetalheDasLinhas
 import pt.pixellusitano.paragemcerta.dados.DetalheLinha
 import pt.pixellusitano.paragemcerta.dados.EstadoChegadas
 import pt.pixellusitano.paragemcerta.dados.LinhaFavorita
+import pt.pixellusitano.paragemcerta.dados.Preferencias
 import pt.pixellusitano.paragemcerta.dados.Repositorio
 import pt.pixellusitano.paragemcerta.dados.SentidoLinha
 import pt.pixellusitano.paragemcerta.ui.comum.FaixaEstado
@@ -74,10 +77,13 @@ import pt.pixellusitano.paragemcerta.ui.comum.SeloLinha
 import pt.pixellusitano.paragemcerta.ui.comum.corDaLinha
 import pt.pixellusitano.paragemcerta.ui.comunidade.haQuanto
 import pt.pixellusitano.paragemcerta.ui.comunidade.nomeDoTipo
+import pt.pixellusitano.paragemcerta.ui.inicio.rememberVeiculosDoMapa
 import pt.pixellusitano.paragemcerta.ui.inicio.ultimaPosicao
 import pt.pixellusitano.paragemcerta.ui.mapa.Marca
 import pt.pixellusitano.paragemcerta.ui.mapa.Mapa
 import pt.pixellusitano.paragemcerta.ui.mapa.Percurso
+import pt.pixellusitano.paragemcerta.ui.mapa.daCarris
+import pt.pixellusitano.paragemcerta.ui.mapa.veiculosDaLinha
 import pt.pixellusitano.paragemcerta.ui.paragem.estiloDaGravidade
 import pt.pixellusitano.paragemcerta.ui.rotas.hex
 import pt.pixellusitano.paragemcerta.ui.tema.FrisoAzulejo
@@ -124,6 +130,7 @@ fun LinhaEcra(
     repositorio: Repositorio,
     comunidade: Comunidade,
     configuracoes: Configuracoes,
+    preferencias: Preferencias,
     aoAbrirParagem: (Paragem) -> Unit,
     aoAbrirUrl: (String) -> Unit,
     aoVoltar: () -> Unit,
@@ -132,6 +139,10 @@ fun LinhaEcra(
     val vm = viewModel(key = ref.chave) { LinhaViewModel(ref, detalhes, repositorio, comunidade::daLinha, sentido, paragem, ultimaPosicao(contexto)) }
     val estado by vm.estado.collectAsStateWithLifecycle()
     val config by configuracoes.atual.collectAsStateWithLifecycle()
+    // Os veículos ao vivo da linha, com a regra da camada do mapa: só a fonte desta linha (a CM ou a Carris) e só com o ecrã à vista.
+    val cm = remember(ref) { if (ref.fonte == Fonte.CM) repositorio.veiculos() else emptyFlow<List<Veiculo>>() }
+    val carris = remember(ref) { if (ref.daCarris) repositorio.veiculosCarris() else emptyFlow<List<Veiculo>>() }
+    val aoVivo = rememberVeiculosDoMapa(cm, carris, preferencias)
     val agora by produceState(Instant.now()) {
         while (true) {
             delay(15_000)
@@ -149,7 +160,7 @@ fun LinhaEcra(
         aoUsarComoHabitual = vm::usarComoHabitual,
         aoVerHorario = vm::verHorario,
         aoAbrirMapaOficial = mapaOficial?.let { url -> { aoAbrirUrl(url) } },
-        mapa = { s -> estado.detalhe?.let { MapaDaLinha(it, s, estado.escolhida, detalhes, escuro, vm::escolherParagem) } },
+        mapa = { s -> estado.detalhe?.let { MapaDaLinha(it, s, estado.escolhida, detalhes, escuro, vm::escolherParagem, veiculosDaLinha(aoVivo, it)) } },
         agora = agora,
         aoVoltar = aoVoltar,
     )
@@ -157,10 +168,13 @@ fun LinhaEcra(
 
 /**
  * O percurso e as paragens do sentido. O percurso carrega à parte das paragens: se falhar (ou demorar) as paragens já estão desenhadas;
- * tocar numa escolhe-a; a escolhida leva o nome. (Os veículos ao vivo entram aqui na tarefa 12.)
+ * tocar numa escolhe-a; a escolhida leva o nome; os [veiculos] ao vivo da linha (CM e Carris) desenham-se por cima.
  */
 @Composable
-private fun MapaDaLinha(d: DetalheLinha, s: SentidoLinha, escolhida: Paragem?, detalhes: DetalheDasLinhas, escuro: Boolean, aoTocarParagem: (Paragem) -> Unit) {
+private fun MapaDaLinha(
+    d: DetalheLinha, s: SentidoLinha, escolhida: Paragem?, detalhes: DetalheDasLinhas, escuro: Boolean, aoTocarParagem: (Paragem) -> Unit,
+    veiculos: List<Veiculo>,
+) {
     val forma by produceState(emptyList<Pair<Double, Double>>(), d.ref, s.sentido) {
         value = emptyList()
         value = detalhes.forma(d, s.sentido)
@@ -169,8 +183,9 @@ private fun MapaDaLinha(d: DetalheLinha, s: SentidoLinha, escolhida: Paragem?, d
     Mapa(
         paragens = s.paragens,
         enquadrar = s.paragens,
-        veiculos = emptyList(),
-        coresLinhas = emptyMap(),
+        veiculos = veiculos,
+        // Os da CM levam a cor da linha; os da Carris, a sua (ver coresDoVeiculo).
+        coresLinhas = mapOf(d.ref.id to cor),
         escuro = escuro,
         centroInicial = s.paragens.first().let { LatLng(it.lat, it.lon) },
         camaraInicial = null,

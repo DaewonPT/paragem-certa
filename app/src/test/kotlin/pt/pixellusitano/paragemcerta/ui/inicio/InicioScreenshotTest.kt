@@ -23,6 +23,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import pt.pixellusitano.paragemcerta.R
+import pt.pixellusitano.paragemcerta.core.fontes.emel.EstacaoGira
 import pt.pixellusitano.paragemcerta.ui.tema.ModoTema
 import pt.pixellusitano.paragemcerta.ui.tema.TemaParagemCerta
 
@@ -40,6 +41,15 @@ class InicioScreenshotTest {
 
     @Test fun inicio_interrompida() = captureRoboImage("src/test/screenshots/inicio_interrompida.png") {
         TemaParagemCerta(ModoTema.CLARO) { Banner() }
+    }
+
+    // O cartão da estação GIRA por cima do mapa (que o Robolectric não desenha); a de referência grava-se no CI.
+    @Test fun cartao_gira_claro() = captureRoboImage("src/test/screenshots/cartao_gira_claro.png") {
+        TemaParagemCerta(ModoTema.CLARO) {
+            Box(Modifier.width(360.dp).background(Color(0xFFDDE5F0)).padding(12.dp)) {
+                CartaoGira(EstacaoGira("105", "CC Vasco da Gama", 38.768548, -9.096222), aoAbrirApp = {}, aoFechar = {})
+            }
+        }
     }
 
     @Test fun tocarRetomaEDescartarDescarta() {

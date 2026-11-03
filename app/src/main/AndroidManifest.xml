@@ -16,6 +16,8 @@
         <package android:name="com.ubercab" />
         <package android:name="ee.mtakso.client" />
         <package android:name="taxi.android.client" />
+        <!-- A app GIRA da EMEL: o cartão da estação abre-a (ou a loja, se não estiver instalada). -->
+        <package android:name="com.vaimoo.emelsharing" />
     </queries>
 
     <application

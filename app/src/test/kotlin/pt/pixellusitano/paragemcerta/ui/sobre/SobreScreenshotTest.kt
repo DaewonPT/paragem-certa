@@ -39,10 +39,30 @@ class SobreScreenshotTest {
         assertEquals("https://transitous.org/sources", aberto)
     }
 
+    @Test fun sobreTemOMetroSempre() {
+        val abertos = mutableListOf<String>()
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { SobreEcra(versao = "0.1.0", aoAbrir = { abertos += it }) } }
+        // Com o interruptor da Carris desligado (o de omissão): o Metro, a EMEL e os outros operadores já lá estão; a Carris não.
+        regra.onNodeWithText("Metropolitano de Lisboa (CC BY 4.0)").performScrollTo().assertHasClickAction().performClick()
+        regra.onNodeWithText("Estações GIRA: EMEL (dados.emel.pt), CC BY-SA 4.0").performScrollTo().assertHasClickAction().performClick()
+        regra.onNodeWithText("Linhas dos outros operadores: GTFS processados pelo Transitous").performScrollTo().assertHasClickAction().performClick()
+        assertEquals(listOf("https://www.metrolisboa.pt/dados-abertos/", "https://dados.emel.pt", "https://transitous.org/sources/"), abertos)
+        regra.onNodeWithText("Carris (posições ao vivo)").assertDoesNotExist()
+    }
+
+    @Test fun sobreSoTemACarrisComAoVivo() {
+        var aberto: String? = null
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { SobreEcra(versao = "0.1.0", aoAbrir = { aberto = it }, carrisAoVivo = true) } }
+        regra.onNodeWithText("Carris (posições ao vivo)").performScrollTo().assertHasClickAction().performClick()
+        assertEquals("https://www.carris.pt", aberto)
+        regra.onNodeWithText("Metropolitano de Lisboa (CC BY 4.0)").assertExists()
+    }
+
     @Test fun fonteGeoApi_temLigacao() {
         var aberto: String? = null
         regra.setContent { TemaParagemCerta(ModoTema.CLARO) { SobreEcra(versao = "0.1.0", aoAbrir = { aberto = it }) } }
-        regra.onNodeWithText("Código postal via GEO API PT (geoapi.pt) · dados CTT/INE").assertHasClickAction().performClick()
+        // A lista de fontes cresceu (Metro, EMEL, operadores): esta já fica abaixo do ecrã do teste.
+        regra.onNodeWithText("Código postal via GEO API PT (geoapi.pt) · dados CTT/INE").performScrollTo().assertHasClickAction().performClick()
         assertEquals("https://geoapi.pt", aberto)
     }
 }

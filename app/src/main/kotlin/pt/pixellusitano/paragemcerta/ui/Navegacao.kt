@@ -200,6 +200,7 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
                     InicioEcra(
                         repositorio = repositorio,
                         comunidade = ligacoes.comunidade, configuracoes = ligacoes.configuracoes, preferencias = ligacoes.preferencias,
+                        estacoesGira = ligacoes.estacoesGira,
                         aoAbrirParagem = { nav.navigate(Paragem(it.ref.chave)) },
                         aoPesquisar = { nav.navigate(Pesquisa) },
                         aoIrPara = { nav.navigate(it) },
@@ -262,6 +263,7 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
                 val ref = RefLinha.daChave(r.chave)
                 if (ref == null) nav.popBackStack() else LinhaEcra(
                     ref, r.sentido, r.paragem, ligacoes.detalheDasLinhas, repositorio, ligacoes.comunidade, ligacoes.configuracoes,
+                    ligacoes.preferencias,
                     aoAbrirParagem = { nav.navigate(Paragem(it.ref.chave)) },
                     aoAbrirUrl = ::abrirUrl,
                     aoVoltar = { nav.popBackStack() },
@@ -314,7 +316,7 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
                 BussolaEcra(b.nome, b.lat, b.lon, aoVoltar = { nav.popBackStack() })
             }
             composable<Sobre> {
-                SobreEcra(versao = BuildConfig.VERSION_NAME, aoAbrir = ::abrirUrl)
+                SobreEcra(versao = BuildConfig.VERSION_NAME, aoAbrir = ::abrirUrl, carrisAoVivo = config.interruptores.carrisAoVivo)
             }
         }
     }

@@ -1,6 +1,9 @@
 package pt.pixellusitano.paragemcerta.ui.inicio
 
 import android.Manifest
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -72,15 +75,22 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.res.stringResource
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import pt.pixellusitano.paragemcerta.core.fontes.emel.EstacaoGira
 import pt.pixellusitano.paragemcerta.core.fontes.servidor.DadosComunidade
 import pt.pixellusitano.paragemcerta.dados.Comunidade
 import pt.pixellusitano.paragemcerta.dados.Configuracoes
+import pt.pixellusitano.paragemcerta.dados.EstacoesGira
 import pt.pixellusitano.paragemcerta.dados.Preferencias
+import pt.pixellusitano.paragemcerta.ui.mapa.daCarris
 import pt.pixellusitano.paragemcerta.ui.mapa.paragensDoMapa
+import pt.pixellusitano.paragemcerta.ui.mapa.veiculosDoMapa
 import pt.pixellusitano.paragemcerta.ui.viagem.rememberRetomarViagem
 import pt.pixellusitano.paragemcerta.ui.viagem.viagemEmCurso
 import pt.pixellusitano.paragemcerta.ui.viagem.viagemInterrompida
@@ -122,6 +132,58 @@ internal fun rememberRelatosDoMapa(
     return relatos
 }
 
+private val SEM_VEICULOS = emptyFlow<List<Veiculo>>()
+
+/**
+ * Os veículos ao vivo do mapa: [cm] e [carris] só se recolhem com a camada "Autocarros ao vivo" ligada (desligada, nenhum dos dois
+ * pede nada) e com o ecrã à vista (STARTED): com a app em segundo plano não há pedidos. Até as Preferências responderem a camada conta
+ * como desligada, para quem a desligou não ter um pedido a cada abertura.
+ */
+@Composable
+internal fun rememberVeiculosDoMapa(cm: Flow<List<Veiculo>>, carris: Flow<List<Veiculo>>, preferencias: Preferencias): List<Veiculo> {
+    val aoVivo by preferencias.camadaAoVivo.collectAsStateWithLifecycle(initialValue = false)
+    val daCm by (if (aoVivo) cm else SEM_VEICULOS).collectAsStateWithLifecycle(initialValue = emptyList())
+    val daCarris by (if (aoVivo) carris else SEM_VEICULOS).collectAsStateWithLifecycle(initialValue = emptyList())
+    return veiculosDoMapa(daCm, daCarris, aoVivo)
+}
+
+/**
+ * As estações GIRA do mapa. Com a camada "Estações GIRA" ligada lê as guardadas e, se têm mais de 24 h, pede à EMEL quando o mapa
+ * abre (e a cada regresso à app, que gasta um pedido só se passou o dia); desligada, não pede e não desenha nada. Falhar deixa as
+ * antigas (o mapa sem pinos é pior que o mapa com os de há dias).
+ */
+@Composable
+internal fun rememberGiraDoMapa(estacoes: EstacoesGira, preferencias: Preferencias): List<EstacaoGira> {
+    val camada by preferencias.camadaGira.collectAsStateWithLifecycle(initialValue = false)
+    val lidas by estacoes.atual.collectAsStateWithLifecycle()
+    val ciclo = LocalLifecycleOwner.current.lifecycle
+    LaunchedEffect(camada) {
+        if (!camada) return@LaunchedEffect
+        ciclo.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            try {
+                estacoes.seVelhas()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // sem rede, disco cheio: ficam as antigas e a abertura seguinte tenta outra vez
+            }
+        }
+    }
+    return if (camada) lidas else emptyList()
+}
+
+internal const val PACOTE_GIRA = "com.vaimoo.emelsharing"
+
+/** Por ordem: a app GIRA (se estiver instalada), a loja e a página da app na loja, no navegador. */
+private fun intencoesGira(pm: PackageManager): List<Intent> = listOfNotNull(
+    pm.getLaunchIntentForPackage(PACOTE_GIRA),
+    Intent(Intent.ACTION_VIEW, Uri.parse("market://details?id=$PACOTE_GIRA")),
+    Intent(Intent.ACTION_VIEW, Uri.parse("https://play.google.com/store/apps/details?id=$PACOTE_GIRA")),
+)
+
+/** Abre a primeira que abrir (sem a app da loja, nos telemóveis sem Google, o market:// não abre nada); false se nenhuma abrir. */
+internal fun abrirGira(pm: PackageManager, iniciar: (Intent) -> Unit): Boolean = intencoesGira(pm).any { runCatching { iniciar(it) }.isSuccess }
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InicioEcra(
@@ -129,6 +191,7 @@ fun InicioEcra(
     comunidade: Comunidade,
     configuracoes: Configuracoes,
     preferencias: Preferencias,
+    estacoesGira: EstacoesGira,
     aoAbrirParagem: (Paragem) -> Unit,
     aoPesquisar: () -> Unit = {},
     painel: @Composable (posicao: Pair<Double, Double>?) -> Unit = {},
@@ -137,12 +200,14 @@ fun InicioEcra(
     abrirFavoritos: Boolean = false,
 ) {
     val contexto = LocalContext.current
-    val vm = viewModel { InicioViewModel(repositorio::paragensNaZona, repositorio::veiculos, repositorio::lugarEm) }
+    val vm = viewModel { InicioViewModel(repositorio::paragensNaZona, repositorio::veiculos, repositorio::lugarEm, repositorio::veiculosCarris) }
     val menu by vm.menu.collectAsStateWithLifecycle()
     var guardar by remember { mutableStateOf<Lugar?>(null) }
     val escopo = rememberCoroutineScope()
     val paragens by vm.paragens.collectAsStateWithLifecycle()
-    val veiculos by vm.veiculos.collectAsStateWithLifecycle()
+    val veiculos = rememberVeiculosDoMapa(vm.veiculos, vm.veiculosCarris, preferencias)
+    val gira = rememberGiraDoMapa(estacoesGira, preferencias)
+    var giraEscolhida by remember { mutableStateOf<EstacaoGira?>(null) }
     val escolhido by vm.veiculoEscolhido.collectAsStateWithLifecycle()
     val cores by produceState(emptyMap<String, String>()) { value = repositorio.coresDasLinhasCm() }
 
@@ -224,12 +289,21 @@ fun InicioEcra(
             centrarEm = posicao?.let { LatLng(it.first, it.second) },
             aoMoverCamara = vm::aoMoverCamara,
             aoTocarParagem = aoAbrirParagem,
-            aoTocarVeiculo = vm::escolherVeiculo,
+            // Um cartão de cada vez: tocar num veículo fecha o da estação e vice-versa.
+            aoTocarVeiculo = {
+                giraEscolhida = null
+                vm.escolherVeiculo(it)
+            },
             modifier = Modifier.fillMaxSize(),
             aoToqueLongo = vm::toqueLongo,
             mostrarPosicao = comLocalizacao,
             centrarAgora = centrarAgora,
             horaCentrarEm = horaPosicao,
+            gira = gira,
+            aoTocarGira = {
+                vm.escolherVeiculo(null)
+                giraEscolhida = it
+            },
         )
         Column(Modifier.statusBarsPadding().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             BarraPesquisa(aoPesquisar)
@@ -245,6 +319,13 @@ fun InicioEcra(
             }
             if (emCurso) AvisoViagem(R.string.viagem_em_curso, aoAbrir = aoAbrirViagem)
             escolhido?.let { CartaoVeiculo(it, aoFechar = { vm.escolherVeiculo(null) }) }
+            giraEscolhida?.let { e ->
+                CartaoGira(
+                    e,
+                    aoAbrirApp = { abrirGira(contexto.packageManager) { contexto.startActivity(it) } },
+                    aoFechar = { giraEscolhida = null },
+                )
+            }
             BotaoCentrar(Modifier.align(Alignment.End)) {
                 if (comLocalizacao) {
                     centrarAgora++
@@ -375,9 +456,31 @@ private fun CartaoVeiculo(v: Veiculo, aoFechar: () -> Unit) {
     ) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text(stringResource(R.string.veiculo_linha, v.linhaId), style = MaterialTheme.typography.titleMedium)
+                // Uma rota que o catálogo não conhece dá um autocarro da Carris sem nome de linha: fica só "Carris · ao vivo".
+                if (v.linhaId.isNotEmpty()) Text(stringResource(R.string.veiculo_linha, v.linhaId), style = MaterialTheme.typography.titleMedium)
+                if (v.daCarris) {
+                    Text(stringResource(R.string.veiculo_carris), style = if (v.linhaId.isEmpty()) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium)
+                }
                 v.destino?.let { Text(stringResource(R.string.veiculo_destino, it)) }
                 Text(stringResource(R.string.veiculo_sinal, segundos), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+            TextButton(onClick = aoFechar) { Text(stringResource(R.string.fechar)) }
+        }
+    }
+}
+
+/** A estação GIRA tocada no mapa: o nome, o atalho para a app GIRA (onde se vê a disponibilidade) e o crédito da EMEL. */
+@Composable
+fun CartaoGira(e: EstacaoGira, aoAbrirApp: () -> Unit, aoFechar: () -> Unit) {
+    Surface(
+        Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(14.dp), tonalElevation = 3.dp, shadowElevation = 6.dp,
+    ) {
+        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text(e.nome, style = MaterialTheme.typography.titleMedium)
+                TextButton(onClick = aoAbrirApp) { Text(stringResource(R.string.gira_ver_disponibilidade)) }
+                Text(stringResource(R.string.gira_credito), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
             TextButton(onClick = aoFechar) { Text(stringResource(R.string.fechar)) }
         }

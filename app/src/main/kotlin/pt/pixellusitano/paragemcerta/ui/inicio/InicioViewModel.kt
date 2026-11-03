@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.debounce
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.filter
 import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.launchIn
@@ -33,6 +34,7 @@ class InicioViewModel(
     private val buscarParagens: suspend (minLat: Double, minLon: Double, maxLat: Double, maxLon: Double) -> List<Paragem>,
     veiculosAoVivo: () -> Flow<List<Veiculo>>,
     private val nomearLugar: suspend (lat: Double, lon: Double) -> Lugar? = { _, _ -> null },
+    carrisAoVivo: () -> Flow<List<Veiculo>> = { emptyFlow() },
 ) : ViewModel() {
     private val zona = MutableStateFlow<Zona?>(null)
     private val _paragens = MutableStateFlow<List<Paragem>>(emptyList())
@@ -41,6 +43,10 @@ class InicioViewModel(
     /** Só corre enquanto o mapa está visível (alguém a recolher), e pára 5 s depois de deixar de estar. */
     val veiculos: StateFlow<List<Veiculo>> =
         veiculosAoVivo().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
+
+    /** Os da Carris (de 30 em 30 s): a mesma regra, só correm com o mapa à vista. */
+    val veiculosCarris: StateFlow<List<Veiculo>> =
+        carrisAoVivo().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
     private val _veiculoEscolhido = MutableStateFlow<Veiculo?>(null)
     val veiculoEscolhido: StateFlow<Veiculo?> = _veiculoEscolhido.asStateFlow()

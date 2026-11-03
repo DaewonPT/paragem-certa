@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- O pino das estações GIRA, para o mapa: uma bicicleta num pino verde (as letras do OpenFreeMap não têm símbolos, por isso é um desenho).
+     As cores são fixas: o mesmo desenho lê-se no mapa claro e no escuro. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="28dp" android:height="28dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path
+        android:fillColor="#00796B"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.2"
+        android:strokeLineJoin="round"
+        android:pathData="M12,1.5C7.6,1.5 4.5,4.8 4.5,9c0,5.6 7.5,13.5 7.5,13.5s7.5,-7.9 7.5,-13.5C19.5,4.8 16.4,1.5 12,1.5z" />
+    <path
+        android:fillColor="#00000000"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="1.2"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:pathData="M6.5,11a2,2 0 1,0 4,0a2,2 0 1,0 -4,0M13.5,11a2,2 0 1,0 4,0a2,2 0 1,0 -4,0M8.5,11L11,7L14.5,7M11,7L12.8,11L15.5,11M14.5,7L15.5,11" />
+</vector>

@@ -79,7 +79,7 @@ private class ServidorDoMapa : Http {
 }
 
 /** Um dono do ciclo de vida que o teste põe em segundo plano (CREATED) e à vista (STARTED). */
-private class Dono : LifecycleOwner {
+internal class Dono : LifecycleOwner {
     val registo = LifecycleRegistry.createUnsafe(this)
     override val lifecycle: Lifecycle get() = registo
 }
@@ -294,16 +294,25 @@ class CamadaRelatosTest {
         assertTrue(http.pedidos.isEmpty())
     }
 
-    // ---- as Definições: a subsecção "Camadas do mapa" só com a comunidade ligada ----
+    // ---- as Definições: "Camadas do mapa" está sempre lá; os relatos só com a comunidade ligada ----
 
     private fun definicoes(comunidadeLigada: Boolean) = regra.setContent {
         TemaParagemCerta(ModoTema.CLARO) { DefinicoesEcra(preferencias, conta, aoVoltar = {}, comunidadeLigada = comunidadeLigada) }
     }
 
-    @Test fun definicoesSemComunidadeNaoTemACamada() {
+    @Test fun camadasSemComunidadeMostramAoVivoEGira() {
         definicoes(comunidadeLigada = false)
-        regra.onNodeWithText(contexto.getString(R.string.eu_camadas_mapa)).assertDoesNotExist()
+        regra.onNodeWithText(contexto.getString(R.string.eu_camadas_mapa)).performScrollTo().assertExists()
         regra.onNodeWithText(contexto.getString(R.string.eu_camada_relatos)).assertDoesNotExist()
+        // Ligadas por omissão; cada interruptor muda só a sua camada.
+        assertTrue(runBlocking { preferencias.camadaAoVivo.first() && preferencias.camadaGira.first() })
+        regra.onNodeWithText(contexto.getString(R.string.eu_camada_ao_vivo)).performScrollTo().performClick()
+        regra.waitForIdle()
+        assertFalse(runBlocking { preferencias.camadaAoVivo.first() })
+        assertTrue(runBlocking { preferencias.camadaGira.first() })
+        regra.onNodeWithText(contexto.getString(R.string.eu_camada_gira)).performScrollTo().performClick()
+        regra.waitForIdle()
+        assertFalse(runBlocking { preferencias.camadaGira.first() })
     }
 
     @Test fun definicoesComComunidadeMostramEDesligamACamada() {

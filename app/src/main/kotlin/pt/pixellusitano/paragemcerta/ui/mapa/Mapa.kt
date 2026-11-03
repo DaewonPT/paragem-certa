@@ -48,9 +48,13 @@ import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.LineString
 import org.maplibre.geojson.Point
 import pt.pixellusitano.paragemcerta.R
+import pt.pixellusitano.paragemcerta.core.fontes.emel.EstacaoGira
 import pt.pixellusitano.paragemcerta.core.fontes.servidor.DadosComunidade
+import pt.pixellusitano.paragemcerta.core.linhas.RefLinha
+import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.Paragem
 import pt.pixellusitano.paragemcerta.core.modelo.Veiculo
+import pt.pixellusitano.paragemcerta.dados.DetalheLinha
 import pt.pixellusitano.paragemcerta.ui.comunidade.aplicarCorrecoes
 import java.time.Duration
 import java.time.Instant
@@ -75,8 +79,21 @@ private const val CAMADA_A_PE = "camada-a-pe"
 private const val FONTE_MARCAS = "fonte-marcas"
 private const val CAMADA_MARCAS = "camada-marcas"
 private const val CAMADA_MARCAS_TEXTO = "camada-marcas-texto"
+private const val FONTE_GIRA = "fonte-gira"
+private const val CAMADA_GIRA = "camada-gira"
+private const val IMAGEM_GIRA = "gira"
 private val SINAL_ANTIGO: Duration = Duration.ofMinutes(2)
 private const val ZOOM_A_SEGUIR = 16.5
+
+// As estações GIRA de uma rua ficam a poucas dezenas de metros: só se desenham a partir do zoom 13, e com o nome a partir do 15.
+private const val ZOOM_GIRA = 13.0
+private const val ZOOM_NOME_GIRA = 15.0
+
+// Os autocarros da Carris levam sempre estas cores (a Carris não tem cor por linha no mapa); a CM leva a da linha.
+private const val COR_CARRIS = "#F2B705"
+private const val COR_TEXTO_CARRIS = "#1A1A1A"
+private const val PREFIXO_VEICULO_CARRIS = "carris:"
+private const val OPERADOR_CARRIS = "pt-Carris"
 
 /**
  * Um troço de uma rota no mapa: pontos (lat, lon), cor "#RRGGBB" e se é a pé (desenhado a tracejado).
@@ -96,6 +113,34 @@ fun paragensDoMapa(paragens: List<Paragem>, dados: DadosComunidade): List<Pair<P
         val (vista, jaNaoExiste) = aplicarCorrecoes(p, dados.correcoes)
         if (jaNaoExiste) null else vista to dados.relatos.any { it.confirmado && it.paragem == p.ref.chave }
     }
+
+fun giraVisivel(zoom: Double) = zoom >= ZOOM_GIRA
+
+fun nomeGiraVisivel(zoom: Double) = zoom >= ZOOM_NOME_GIRA
+
+/** Os veículos da Carris levam o prefixo "carris:" no id (os números repetem-se entre operadores). */
+internal val Veiculo.daCarris get() = id.startsWith(PREFIXO_VEICULO_CARRIS)
+
+/** Uma linha da Carris (as dos outros operadores do Transitous ainda não têm veículos ao vivo). */
+internal val RefLinha.daCarris get() = fonte == Fonte.TRANSITOUS && id.substringBefore(':') == OPERADOR_CARRIS
+
+/** Os veículos a desenhar no mapa: os da CM e os da Carris juntos, ou nenhum com a camada "Autocarros ao vivo" desligada. */
+fun veiculosDoMapa(cm: List<Veiculo>, carris: List<Veiculo>, aoVivo: Boolean): List<Veiculo> = if (aoVivo) cm + carris else emptyList()
+
+/**
+ * Os veículos de [todos] que são da linha do ecrã dela: na CM pelo id da linha; na Carris pelo nome dela no catálogo, que é o
+ * [Veiculo.linhaId] (o `veiculoDaCarris` já traduziu a rota do veículo para ele; uma rota que o catálogo não conhece fica sem nome e
+ * não é de linha nenhuma). A mesma "1009" na CM e noutro operador não se confunde: os da Carris distinguem-se pelo prefixo do id.
+ */
+fun veiculosDaLinha(todos: List<Veiculo>, d: DetalheLinha): List<Veiculo> = when {
+    d.ref.fonte == Fonte.CM -> todos.filter { !it.daCarris && it.linhaId == d.ref.id }
+    d.ref.daCarris -> todos.filter { it.daCarris && it.linhaId == d.nome }
+    else -> emptyList()
+}
+
+/** A cor do círculo e a do texto de um veículo: a Carris tem as suas; a CM, a da linha (ou o azul da app) com texto branco. */
+internal fun coresDoVeiculo(v: Veiculo, coresLinhas: Map<String, String>): Pair<String, String> =
+    if (v.daCarris) COR_CARRIS to COR_TEXTO_CARRIS else (coresLinhas[v.linhaId] ?: "#132A4F") to "#FFFFFF"
 
 @SuppressLint("MissingPermission")
 @Composable
@@ -130,12 +175,17 @@ fun Mapa(
     aoDeixarDeSeguir: () -> Unit = {},
     /** As chaves das [paragens] com um relato confirmado da comunidade: levam o triângulo de aviso. */
     comRelato: Set<String> = emptySet(),
+    /** As estações GIRA a desenhar (pino a partir do zoom 13, com o nome a partir do 15); vazio com a camada desligada. */
+    gira: List<EstacaoGira> = emptyList(),
+    aoTocarGira: (EstacaoGira) -> Unit = {},
 ) {
     val contexto = LocalContext.current
     val ciclo = LocalLifecycleOwner.current.lifecycle
     val mover by rememberUpdatedState(aoMoverCamara)
     val tocarParagem by rememberUpdatedState(aoTocarParagem)
     val tocarVeiculo by rememberUpdatedState(aoTocarVeiculo)
+    val tocarGira by rememberUpdatedState(aoTocarGira)
+    val giraAtual by rememberUpdatedState(gira)
     val toqueLongo by rememberUpdatedState(aoToqueLongo)
     val paragensAtuais by rememberUpdatedState(paragens)
     val veiculosAtuais by rememberUpdatedState(veiculos)
@@ -185,12 +235,14 @@ fun Mapa(
                 }
                 mapa.addOnMapClickListener { ponto ->
                     val ecra = mapa.projection.toScreenLocation(ponto)
-                    val tocado = mapa.queryRenderedFeatures(ecra, CAMADA_VEICULOS, CAMADA_RELATOS, CAMADA_PARAGENS).firstOrNull()
+                    val tocado = mapa.queryRenderedFeatures(ecra, CAMADA_VEICULOS, CAMADA_RELATOS, CAMADA_PARAGENS, CAMADA_GIRA).firstOrNull()
                     val id = tocado?.getStringProperty("id")
                     when {
                         id == null -> false
                         tocado.hasProperty("linha") -> veiculosAtuais.firstOrNull { it.id == id }?.let { tocarVeiculo(it); true } ?: false
-                        else -> paragensAtuais.firstOrNull { it.ref.chave == id }?.let { tocarParagem(it); true } ?: false
+                        // As estações GIRA também não têm "linha": distinguem-se das paragens pelo id (o das paragens é "CM:…" ou "TRANSITOUS:…").
+                        else -> giraAtual.firstOrNull { it.id == id }?.let { tocarGira(it); true }
+                            ?: paragensAtuais.firstOrNull { it.ref.chave == id }?.let { tocarParagem(it); true } ?: false
                     }
                 }
             }
@@ -285,8 +337,21 @@ fun Mapa(
                 Feature.fromGeometry(Point.fromLngLat(v.lon, v.lat)).apply {
                     addStringProperty("id", v.id)
                     addStringProperty("linha", v.linhaId)
-                    addStringProperty("cor", coresLinhas[v.linhaId] ?: "#132A4F")
+                    val (cor, corTexto) = coresDoVeiculo(v, coresLinhas)
+                    addStringProperty("cor", cor)
+                    addStringProperty("corTexto", corTexto)
                     addBooleanProperty("antigo", Duration.between(v.ultimoSinal, agora) > SINAL_ANTIGO)
+                }
+            }),
+        )
+    }
+
+    LaunchedEffect(gira, estado.estilo) {
+        estado.estilo?.getSourceAs<GeoJsonSource>(FONTE_GIRA)?.setGeoJson(
+            FeatureCollection.fromFeatures(gira.map { e ->
+                Feature.fromGeometry(Point.fromLngLat(e.lon, e.lat)).apply {
+                    addStringProperty("id", e.id)
+                    addStringProperty("nome", e.nome)
                 }
             }),
         )
@@ -374,6 +439,8 @@ private fun seguirPosicao(componente: LocationComponent, seguir: Boolean) {
 private fun prepararCamadas(contexto: Context, estilo: Style, escuro: Boolean) {
     // O triângulo é um desenho (vetor) e não um "⚠" em texto: as letras do OpenFreeMap não o têm.
     ContextCompat.getDrawable(contexto, R.drawable.relato_mapa)?.let { estilo.addImage(IMAGEM_RELATO, it) }
+    ContextCompat.getDrawable(contexto, R.drawable.gira_mapa)?.let { estilo.addImage(IMAGEM_GIRA, it) }
+    estilo.addSource(GeoJsonSource(FONTE_GIRA))
     estilo.addSource(GeoJsonSource(FONTE_PARAGENS))
     estilo.addSource(GeoJsonSource(FONTE_VEICULOS))
     estilo.addSource(GeoJsonSource(FONTE_PERCURSOS))
@@ -396,6 +463,23 @@ private fun prepararCamadas(contexto: Context, estilo: Style, escuro: Boolean) {
             PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
             PropertyFactory.lineDasharray(arrayOf(1f, 2f)),
         ).withFilter(Expression.eq(Expression.get("aPe"), Expression.literal(true))),
+    )
+    // As estações GIRA ficam por baixo das paragens e dos veículos: pino (de zoom 13) com o nome por baixo (de zoom 15).
+    estilo.addLayer(
+        SymbolLayer(CAMADA_GIRA, FONTE_GIRA).withProperties(
+            PropertyFactory.iconImage(IMAGEM_GIRA),
+            PropertyFactory.iconAnchor(Property.ICON_ANCHOR_BOTTOM),
+            PropertyFactory.textField(Expression.step(Expression.zoom(), Expression.literal(""), Expression.stop(ZOOM_NOME_GIRA, Expression.get("nome")))),
+            PropertyFactory.textFont(arrayOf("Noto Sans Bold")),
+            PropertyFactory.textSize(11f),
+            PropertyFactory.textAnchor(Property.TEXT_ANCHOR_TOP),
+            PropertyFactory.textOffset(arrayOf(0f, 0.2f)),
+            // Com o zoom afastado as que se tapam saem sozinhas; um nome que não cabe sai sem tirar o pino.
+            PropertyFactory.textOptional(true),
+            PropertyFactory.textColor(if (escuro) "#FFFFFF" else "#0B1222"),
+            PropertyFactory.textHaloColor(if (escuro) "#0B1222" else "#FFFFFF"),
+            PropertyFactory.textHaloWidth(1.5f),
+        ).apply { minZoom = ZOOM_GIRA.toFloat() },
     )
     estilo.addLayer(
         CircleLayer(CAMADA_PARAGENS, FONTE_PARAGENS).withProperties(
@@ -458,7 +542,7 @@ private fun prepararCamadas(contexto: Context, estilo: Style, escuro: Boolean) {
             // Letras que o servidor do OpenFreeMap tem (as do MapLibre por omissão não existem lá).
             PropertyFactory.textFont(arrayOf("Noto Sans Bold")),
             PropertyFactory.textSize(9f),
-            PropertyFactory.textColor(CorAndroid.WHITE),
+            PropertyFactory.textColor(Expression.get("corTexto")),
             PropertyFactory.textAllowOverlap(true),
             PropertyFactory.textIgnorePlacement(true),
             PropertyFactory.textOpacity(opacidade),

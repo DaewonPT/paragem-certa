@@ -3,7 +3,11 @@ package pt.pixellusitano.paragemcerta.ui.inicio
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.StandardTestDispatcher
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
@@ -12,6 +16,8 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
@@ -86,6 +92,24 @@ class InicioViewModelTest {
         vm.toqueLongo(38.7, -9.14)
         advanceUntilIdle()
         assertEquals("Ponto no mapa", vm.menu.value?.nome)
+    }
+
+    @Test fun veiculosDaCarrisParamCincoSegundosDepoisDeDeixarDeSerVistos() = runTest(despachante) {
+        var aPedir = false
+        val vm = InicioViewModel(
+            buscarParagens = { _, _, _, _ -> emptyList() },
+            veiculosAoVivo = { emptyFlow() },
+            carrisAoVivo = { flow { aPedir = true; try { awaitCancellation() } finally { aPedir = false } } },
+        )
+        assertFalse(aPedir) // sem ninguém a ver o mapa não corre
+        val vista = launch { vm.veiculosCarris.collect {} }
+        runCurrent()
+        assertTrue(aPedir)
+        vista.cancel()
+        advanceTimeBy(4_999)
+        assertTrue(aPedir) // como os da CM: aguenta 5 s (rodar o ecrã não recomeça os pedidos)
+        advanceTimeBy(2)
+        assertFalse(aPedir)
     }
 
     @Test fun lembraACamaraAoVoltarAoMapa() = runTest(despachante) {

@@ -73,10 +73,13 @@ class MenuScreenshotTest {
         modifier: Modifier = Modifier, filtros: Filtros = Filtros(), ecraInicial: EcraInicial = EcraInicial.MAPA,
         aoMudarEcraInicial: (EcraInicial) -> Unit = {},
         aoMudarCamadaRelatos: ((Boolean) -> Unit)? = null,
+        camadaAoVivo: Boolean = true, aoMudarCamadaAoVivo: (Boolean) -> Unit = {},
+        camadaGira: Boolean = true, aoMudarCamadaGira: (Boolean) -> Unit = {},
     ) =DefinicoesConteudo(
         modo = ModoTema.ESCURO, limites = Limites(3, 8), somAviso = true, vibracaoAviso = false, filtros = filtros, ecraInicial = ecraInicial,
         aoMudarModo = {}, aoMudarLimites = {}, aoMudarSom = {}, aoMudarVibracao = {}, aoMudarFiltros = {},
         aoMudarEcraInicial = aoMudarEcraInicial, aoVoltar = {}, modifier = modifier, aoMudarCamadaRelatos = aoMudarCamadaRelatos,
+        camadaAoVivo = camadaAoVivo, aoMudarCamadaAoVivo = aoMudarCamadaAoVivo, camadaGira = camadaGira, aoMudarCamadaGira = aoMudarCamadaGira,
     )
 
     @Test fun menu_claro() = captureRoboImage("src/test/screenshots/menu_claro.png") {
@@ -107,10 +110,29 @@ class MenuScreenshotTest {
         }
     }
 
-    // Com a comunidade ligada as Definições ganham as "Camadas do mapa"; a captura de referência grava-se no CI.
+    // As "Camadas do mapa" estão sempre nas Definições (autocarros ao vivo e GIRA); com a comunidade ligada ganham a dos relatos.
+    // A captura de referência grava-se no CI.
     @Test @Config(qualifiers = "w360dp-h2200dp")
     fun definicoes_camadas_claro() = captureRoboImage("src/test/screenshots/definicoes_camadas_claro.png") {
         TemaParagemCerta(ModoTema.CLARO) { EcraDefinicoes(Modifier.width(360.dp), aoMudarCamadaRelatos = {}) }
+    }
+
+    @Test @Config(qualifiers = "w360dp-h2200dp")
+    fun camadasDoMapaAoVivoEGiraEstaoSempreNasDefinicoes() {
+        val mudancas = mutableListOf<String>()
+        regra.setContent {
+            TemaParagemCerta(ModoTema.CLARO) {
+                EcraDefinicoes(
+                    camadaAoVivo = true, aoMudarCamadaAoVivo = { mudancas += "aoVivo=$it" },
+                    camadaGira = false, aoMudarCamadaGira = { mudancas += "gira=$it" },
+                )
+            }
+        }
+        regra.onNodeWithText("Camadas do mapa").assertExists()
+        regra.onNodeWithText("Autocarros ao vivo").assertIsOn().performClick()
+        regra.onNodeWithText("Estações GIRA").assertIsOff().performClick()
+        regra.onNodeWithText("Relatos da comunidade").assertDoesNotExist() // sem a comunidade ligada
+        assertEquals(listOf("aoVivo=false", "gira=true"), mudancas)
     }
 
     @Test fun ajuda_claro() = captureRoboImage("src/test/screenshots/ajuda_claro.png") {
