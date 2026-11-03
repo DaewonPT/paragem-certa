@@ -1,8 +1,10 @@
 import { confirmarCodigo, limparExpirados, pedirCodigo } from "./codigos";
+import { lerAvisos, lerComunidade } from "./comunidade";
 import { aceitarTermos, apagarConta } from "./conta";
 import { sincronizar } from "./favoritos";
 import { entrarComGoogle, novoNonce } from "./google";
 import { paginaPrivacidade } from "./privacidade";
+import { criarRelato, votar } from "./relatos";
 import { erro, json } from "./respostas";
 import { sair } from "./sessoes";
 
@@ -21,6 +23,13 @@ export default {
         if (pathname === "/api/auth/google") return await entrarComGoogle(pedido, env);
         if (pathname === "/api/sincronizar") return await sincronizar(pedido, env);
         if (pathname === "/api/termos") return await aceitarTermos(pedido, env);
+        if (pathname === "/api/relatos") return await criarRelato(pedido, env);
+        if (pathname === "/api/votos") return await votar(pedido, env);
+      }
+
+      if (pedido.method === "GET") {
+        if (pathname === "/api/comunidade") return await lerComunidade(pedido, env);
+        if (pathname === "/api/avisos") return await lerAvisos(pedido, env);
       }
 
       if (pathname === "/api/conta" && pedido.method === "DELETE") return await apagarConta(pedido, env);
