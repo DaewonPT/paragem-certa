@@ -81,9 +81,16 @@ export async function pedirCodigo(pedido: Request, env: Env): Promise<Response> 
   return semConteudo();
 }
 
-/** A conta do email, criada na primeira entrada. Se houver mais do que uma (Google e código), a mais antiga. */
+/**
+ * A conta do email, criada na primeira entrada. Se houver mais do que uma, a mais antiga. Uma conta criada pelo Google só
+ * serve se for do Gmail: noutros domínios o endereço pode ter mudado de dono (o espelho da regra em google.ts).
+ */
 async function contaDoEmail(env: Env, email: string): Promise<string> {
-  const existente = await env.DB.prepare("SELECT id FROM contas WHERE email = ? ORDER BY criada_em, id LIMIT 1").bind(email).first<{ id: string }>();
+  const existente = await env.DB.prepare(
+    `SELECT id FROM contas WHERE email = ?1
+       AND (google_sub IS NULL OR ?1 LIKE '%@gmail.com' OR ?1 LIKE '%@googlemail.com')
+     ORDER BY criada_em, id LIMIT 1`,
+  ).bind(email).first<{ id: string }>();
   if (existente) return existente.id;
   const id = crypto.randomUUID();
   await env.DB.prepare("INSERT INTO contas (id, email, criada_em) VALUES (?, ?, ?)").bind(id, email, Date.now()).run();

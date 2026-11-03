@@ -72,6 +72,8 @@ private class ServidorDeTeste : Http {
                 if (recusarSessao) return Resposta(401, """{"erro":"sem_sessao"}""")
                 val desde = pedido!!["desde"]!!.jsonPrimitive.long
                 val alteracoes = json.decodeFromJsonElement<List<FavoritoRemoto>>(pedido["alteracoes"]!!)
+                // Como worker/src/favoritos.ts: um nome comprido recusa o pedido inteiro.
+                if (alteracoes.any { it.nome.length > 120 }) return Resposta(400, """{"erro":"pedido_invalido"}""")
                 sincronizacoes += token!! to alteracoes
                 desdes += desde
                 duranteASincronizacao()
@@ -206,6 +208,29 @@ class ContaTest {
         // Sem sessão apaga-se como antes: nada fica guardado para enviar a uma conta.
         repo.removerFavorita(cais.ref)
         assertTrue(bd.apagados().todos().isEmpty())
+    }
+
+    @Test fun nomeCompridoNaoBloqueiaASincronizacao() = runTest {
+        repo.guardarLocal("x".repeat(121), lugar("Rua A"), "OUTRO")
+        val c = conta()
+        entrar(c)
+        repo.alternarFavorita(cais)
+        assertEquals(Resultado.Ok(Unit), c.sincronizar())
+        assertEquals(setOf("CM:060419"), servidor.contas["ana@exemplo.pt"]!!.values.filter { it.tipo == "PARAGEM" }.map { it.chave }.toSet())
+        assertEquals(listOf(120), bd.locais().lista().map { it.nome.length })
+        assertTrue(repo.porSincronizar().isEmpty())
+    }
+
+    @Test fun apagarDadosDoTelemovelSaiDaConta() = runTest {
+        val c = conta()
+        entrar(c)
+        repo.alternarFavorita(cais)
+        c.apagarDadosDoTelemovel()
+        assertEquals(EstadoConta.SemConta, c.estado.value)
+        assertFalse(ficheiro.exists())
+        assertEquals(listOf("ana@exemplo.pt"), servidor.sessoesTerminadas)
+        assertEquals(setOf("CM:060419"), servidor.contas["ana@exemplo.pt"]!!.keys) // o que faltava foi antes de sair
+        assertTrue(chavesFavoritas().isEmpty())
     }
 
     @Test fun sairEnviaPrimeiroOQueFaltava() = runTest {

@@ -6,6 +6,10 @@ Precisas de: a conta da Cloudflare (com a zona `pixellusitano.com`), uma conta n
 
 **Regra de ouro:** nenhuma chave, token, nome ou id do cliente da Google vai para o repositório nem para uma conversa. Colas tu cada valor, no sítio indicado.
 
+**Quando:** só com a 0.4.0, no fim da etapa 5. A política de privacidade já descreve a comunidade, as fotos e os dados ao vivo da Carris e do Metro, que só existem nessa altura. Antes de publicar, relê-a contra o que a app faz mesmo.
+
+`AMBIENTE` e `TESTE_GOOGLE_JWKS` são só para os testes: nunca os ponhas como variáveis nem segredos do Worker publicado.
+
 A ordem conta: o `wrangler.jsonc` exige os três segredos (`secrets.required`), por isso o `wrangler deploy` falha enquanto algum faltar. Os passos 3 e 4 têm de vir antes do 5.
 
 ## 1. Entrar na Cloudflare
@@ -95,9 +99,9 @@ Confirma, quando o certificado estiver pronto (pode demorar uns minutos):
 Na Cloudflare, na zona `pixellusitano.com`: Security → WAF → Rate limiting rules → Create rule. O plano grátis só deixa uma regra, por IP, com janelas de 10 s.
 
 - Nome: `auth`.
-- Quando: **Hostname** igual a `paragemcerta.pixellusitano.com` **e** **URI Path** começa por `/api/auth/` (em texto: `(http.host eq "paragemcerta.pixellusitano.com" and starts_with(http.request.uri.path, "/api/auth/"))`).
-- Contar por **IP**: 20 pedidos em 10 segundos. Ação **Block**, durante 10 segundos.
-- O valor é folgado de propósito: nas redes móveis muita gente partilha o mesmo IP. Se vires abusos, baixa-o.
+- Quando: **URI Path** começa por `/api/auth/` (em texto: `starts_with(http.request.uri.path, "/api/auth/")`). O plano grátis só aceita o caminho (sem o Hostname); o site principal não tem este caminho, por isso a regra só apanha o servidor.
+- Contar por **IP**: 5 pedidos em 10 segundos. Ação **Block**, durante 10 segundos.
+- Uma entrada normal faz 2 ou 3 pedidos. Com mais, um só IP podia gastar sozinho as 100 000 escritas por dia da base grátis (cada pedido de `/api/auth/google/nonce` escreve uma linha) e parar as entradas e a sincronização de toda a gente até à meia-noite UTC. Quem partilhar o IP e for bloqueado espera 10 segundos.
 
 Os limites de email por endereço (3 por hora) e por dia (70) são contados no servidor e não dependem desta regra.
 

@@ -238,7 +238,7 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
             composable<Favoritos> {
                 FavoritosEcra(repositorio, aoAbrirFavorita = { nav.navigate(Paragem(it.ref.chave)) }, aoVoltar = { nav.popBackStack() })
             }
-            composable<Definicoes> { DefinicoesEcra(repositorio, ligacoes.preferencias, ligacoes.conta, aoVoltar = { nav.popBackStack() }) }
+            composable<Definicoes> { DefinicoesEcra(ligacoes.preferencias, ligacoes.conta, aoVoltar = { nav.popBackStack() }) }
             composable<Ajuda> { AjudaEcra(aoVoltar = { nav.popBackStack() }, modifier = Modifier.fillMaxSize()) }
             composable<Reclamar> {
                 ReclamarEcra(aoAbrir = ::abrirUrl, aoVoltar = { nav.popBackStack() }, modifier = Modifier.fillMaxSize(), canais = config.canaisReclamacao)

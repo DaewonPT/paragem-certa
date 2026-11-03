@@ -119,6 +119,12 @@ class Conta(
         }
     }
 
+    /** Definições → Apagar dados do telemóvel: a sessão também é um dado do telemóvel, por isso sai primeiro (e envia o que faltava). */
+    suspend fun apagarDadosDoTelemovel() {
+        sair()
+        repositorio.apagarDadosDoTelemovel()
+    }
+
     /** Apaga a conta e os favoritos guardados nela; no telemóvel ficam. */
     suspend fun apagarConta(): Resultado<Unit> = vez.withLock {
         val s = sessao ?: return@withLock Resultado.Ok(Unit)

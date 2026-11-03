@@ -359,6 +359,8 @@ class Repositorio(
             bd.favoritas().pendentes().map { FavoritoRemoto(it.chave, TIPO_PARAGEM, it.nome, it.lat, it.lon, it.ordem, apagado = false) } +
             bd.locais().pendentes().map { FavoritoRemoto(it.uuid, it.tipo, it.nome, it.lat, it.lon, it.ordem, apagado = false) })
             .filter { it.chave !in soNoTelemovel }
+            // O servidor recusa o pedido inteiro com um nome maior; a resposta traz o nome cortado e fica assim cá também.
+            .map { it.copy(nome = it.nome.take(120)) }
 
     /**
      * Aplica o que veio da conta (sem o marcar como por enviar) e tira as marcas do que foi [enviadas]. O que mudou no telemóvel

@@ -46,12 +46,11 @@ import pt.pixellusitano.paragemcerta.dados.Conta
 import pt.pixellusitano.paragemcerta.dados.EcraInicial
 import pt.pixellusitano.paragemcerta.dados.EstadoConta
 import pt.pixellusitano.paragemcerta.dados.Preferencias
-import pt.pixellusitano.paragemcerta.dados.Repositorio
 import pt.pixellusitano.paragemcerta.ui.tema.FrisoAzulejo
 import pt.pixellusitano.paragemcerta.ui.tema.ModoTema
 
 @Composable
-fun DefinicoesEcra(repositorio: Repositorio, preferencias: Preferencias, conta: Conta, aoVoltar: () -> Unit) {
+fun DefinicoesEcra(preferencias: Preferencias, conta: Conta, aoVoltar: () -> Unit) {
     val contexto = LocalContext.current
     val escopo = rememberCoroutineScope()
     val estadoConta by conta.estado.collectAsStateWithLifecycle()
@@ -78,7 +77,7 @@ fun DefinicoesEcra(repositorio: Repositorio, preferencias: Preferencias, conta: 
         aoVoltar = aoVoltar,
         modifier = Modifier.fillMaxSize(),
         aoApagarDados = {
-            escopo.launch { repositorio.apagarDadosDoTelemovel() }
+            escopo.launch { conta.apagarDadosDoTelemovel() }
             Toast.makeText(contexto, apagados, Toast.LENGTH_SHORT).show()
         },
         aoApagarConta = if (estadoConta is EstadoConta.Com) ({ escopo.launch { conta.apagarEAvisar(contexto) } }) else null,
