@@ -22,4 +22,5 @@ class Ligacoes(contexto: Context) {
     val servidor = ServidorParagemCerta(http)
     val conta = Conta(contexto, servidor, repositorio)
     val configuracoes = Configuracoes(contexto, servidor)
+    val comunidade by lazy { Comunidade(servidor, conta, configuracoes, preferencias) }
 }

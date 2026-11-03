@@ -26,7 +26,7 @@ import pt.pixellusitano.paragemcerta.ui.tema.ModoTema
 
 /** DataStore em memória: o teste é sobre as regras das preferências, não sobre o ficheiro
  * (o DataStore de ficheiros não consegue substituir o ficheiro no Windows; no Android funciona). */
-private class LojaEmMemoria(inicial: Preferences = emptyPreferences()) : DataStore<Preferences> {
+internal class LojaEmMemoria(inicial: Preferences = emptyPreferences()) : DataStore<Preferences> {
     private val estado = MutableStateFlow(inicial)
     override val data = estado
     override suspend fun updateData(transform: suspend (t: Preferences) -> Preferences): Preferences =
@@ -129,6 +129,53 @@ class PreferenciasTest {
         assertTrue(p.primeiraViagemFeita.first())
         p.definirSomAviso(true)
         assertTrue(p.somAviso.first())
+    }
+
+    @Test fun avisosECamadaDaComunidadeLigadosPorOmissao() = runTest {
+        val p = prefs()
+        assertTrue(p.avisosComunidade.first())
+        assertTrue(p.camadaRelatos.first())
+        p.definirAvisosComunidade(false)
+        assertFalse(p.avisosComunidade.first())
+        assertTrue(p.camadaRelatos.first()) // cada interruptor é independente
+        p.definirCamadaRelatos(false)
+        assertFalse(p.camadaRelatos.first())
+        p.definirAvisosComunidade(true)
+        assertTrue(p.avisosComunidade.first())
+    }
+
+    @Test fun ocultosGuardamNoMaximo500() = runTest {
+        val p = prefs()
+        assertTrue(p.ocultos.first().isEmpty())
+        (0..500).forEach { p.ocultar("relato:$it") }
+        val guardados = p.ocultos.first()
+        assertEquals(500, guardados.size)
+        assertFalse("relato:0" in guardados) // sai o primeiro, o mais antigo
+        assertTrue("relato:1" in guardados)
+        assertTrue("relato:500" in guardados)
+    }
+
+    @Test fun ocultarOMesmoIdDuasVezesNaoDuplica() = runTest {
+        val p = prefs()
+        p.ocultar("relato:r1")
+        p.ocultar("foto:f1")
+        p.ocultar("relato:r1")
+        assertEquals(listOf("foto:f1", "relato:r1"), p.ocultos.first().toList()) // o repetido passa para o fim
+    }
+
+    @Test fun ocultosEstragadosViramVazio() = runTest {
+        val p = prefs(preferencesOf(stringPreferencesKey("ocultos") to "isto não é uma lista"))
+        assertTrue(p.ocultos.first().isEmpty())
+        p.ocultar("relato:r1") // e a seguinte escrita recomeça limpa
+        assertEquals(setOf("relato:r1"), p.ocultos.first())
+    }
+
+    @Test fun esquecerOcultosApagaTudo() = runTest {
+        val p = prefs()
+        p.ocultar("relato:r1")
+        p.ocultar("foto:f1")
+        p.esquecerOcultos()
+        assertTrue(p.ocultos.first().isEmpty())
     }
 
     @Test fun recusaLimitesImpossiveis() {

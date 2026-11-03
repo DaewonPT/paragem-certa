@@ -103,6 +103,19 @@ class Conta(
         }
     }
 
+    /**
+     * Corre [pedido] com o token da sessão; sem sessão devolve `Falha(401, false, "sem_sessao")` sem pedir nada. Um 401 do
+     * servidor = sessão recusada → sai da conta, como na sincronização. O token lê-se sob a vez, mas o pedido corre fora dela:
+     * uma foto a subir devagar não pode prender a sincronização nem a saída.
+     */
+    suspend fun <T> comSessao(pedido: suspend (token: String) -> Resultado<T>): Resultado<T> {
+        val token = vez.withLock { sessao?.token } ?: return Resultado.Falha(401, limite = false, erro = "sem_sessao")
+        val r = pedido(token)
+        // Só esquece se a sessão ainda for a deste pedido: a pessoa pode ter saído e entrado noutra conta entretanto.
+        if (r is Resultado.Falha && r.codigo == 401) vez.withLock { if (sessao?.token == token) esquecer() }
+        return r
+    }
+
     /** Com a app aberta: sincroniza já e depois 2 s a seguir a cada alteração. Quem chama cancela ao sair da app. */
     @OptIn(FlowPreview::class)
     suspend fun aoAbrir() {

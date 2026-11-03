@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.core.stringSetPreferencesKey
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.serialization.json.Json
 import pt.pixellusitano.paragemcerta.core.atraso.Limites
 import pt.pixellusitano.paragemcerta.core.modelo.Filtros
 import pt.pixellusitano.paragemcerta.core.modelo.Modo
@@ -54,6 +55,36 @@ class Preferencias(private val loja: DataStore<Preferences>) {
 
     /** Depois da primeira viagem já não se explica a poupança de bateria. */
     val primeiraViagemFeita: Flow<Boolean> = loja.data.map { it[PRIMEIRA_VIAGEM_FEITA] ?: false }
+
+    /** Se a viagem e o "Avisa-me" avisam dos relatos confirmados da comunidade. */
+    val avisosComunidade: Flow<Boolean> = loja.data.map { it[AVISOS_COMUNIDADE] ?: true }
+
+    /** Se o mapa marca as paragens com relatos confirmados. */
+    val camadaRelatos: Flow<Boolean> = loja.data.map { it[CAMADA_RELATOS] ?: true }
+
+    /** Os relatos e fotos que a pessoa escondeu ("relato:<id>", "foto:<id>"), do mais antigo para o mais novo. Ficam só no telemóvel. */
+    val ocultos: Flow<Set<String>> = loja.data.map { lerOcultos(it) }
+
+    suspend fun definirAvisosComunidade(ligado: Boolean) {
+        loja.edit { it[AVISOS_COMUNIDADE] = ligado }
+    }
+
+    suspend fun definirCamadaRelatos(ligada: Boolean) {
+        loja.edit { it[CAMADA_RELATOS] = ligada }
+    }
+
+    /** Junta no fim (um id repetido passa para o fim) e, passando de [MAX_OCULTOS], tira os mais antigos. */
+    suspend fun ocultar(id: String) {
+        loja.edit { it[OCULTOS] = Json.encodeToString((lerOcultos(it) - id + id).toList().takeLast(MAX_OCULTOS)) }
+    }
+
+    suspend fun esquecerOcultos() {
+        loja.edit { it.remove(OCULTOS) }
+    }
+
+    // Uma lista como texto numa só chave (um stringSet não guarda a ordem); um valor estragado é o mesmo que não ter nenhum.
+    private fun lerOcultos(p: Preferences): Set<String> =
+        p[OCULTOS]?.let { runCatching { Json.decodeFromString<List<String>>(it) }.getOrNull() }.orEmpty().toSet()
 
     suspend fun definirSomAviso(ligado: Boolean) {
         loja.edit { it[SOM_AVISO] = ligado }
@@ -112,5 +143,9 @@ class Preferencias(private val loja: DataStore<Preferences>) {
         val SOM_AVISO = booleanPreferencesKey("som_aviso")
         val VIBRACAO_AVISO = booleanPreferencesKey("vibracao_aviso")
         val PRIMEIRA_VIAGEM_FEITA = booleanPreferencesKey("primeira_viagem_feita")
+        val AVISOS_COMUNIDADE = booleanPreferencesKey("avisos_comunidade")
+        val CAMADA_RELATOS = booleanPreferencesKey("camada_relatos")
+        val OCULTOS = stringPreferencesKey("ocultos")
+        const val MAX_OCULTOS = 500
     }
 }

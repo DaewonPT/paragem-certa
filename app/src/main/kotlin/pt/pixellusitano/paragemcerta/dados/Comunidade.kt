@@ -1,0 +1,128 @@
+package pt.pixellusitano.paragemcerta.dados
+
+import kotlinx.coroutines.flow.first
+import pt.pixellusitano.paragemcerta.core.comunidade.Correcao
+import pt.pixellusitano.paragemcerta.core.comunidade.MotivoDenuncia
+import pt.pixellusitano.paragemcerta.core.comunidade.TipoRelato
+import pt.pixellusitano.paragemcerta.core.comunidade.chaveLinha
+import pt.pixellusitano.paragemcerta.core.fontes.servidor.DadosComunidade
+import pt.pixellusitano.paragemcerta.core.fontes.servidor.RelatoCriado
+import pt.pixellusitano.paragemcerta.core.fontes.servidor.RelatoRemoto
+import pt.pixellusitano.paragemcerta.core.fontes.servidor.ServidorParagemCerta
+import pt.pixellusitano.paragemcerta.core.fontes.servidor.Voto
+import pt.pixellusitano.paragemcerta.core.rede.Resultado
+import java.time.Duration
+import java.time.Instant
+import java.util.concurrent.ConcurrentHashMap
+
+/**
+ * Os relatos, fotos e correções da comunidade e as ações da pessoa (relatar, votar, fotografar, corrigir, denunciar).
+ * Só lê com o interruptor `comunidade` ligado na config; `fotos` e `correcoes` desligados limpam essas partes.
+ * Os ocultos ("relato:<id>", "foto:<id>") só tiram coisas das listas, aqui: nunca vão para o servidor.
+ */
+class Comunidade(
+    private val servidor: ServidorParagemCerta,
+    private val conta: Conta,
+    private val configuracoes: Configuracoes,
+    private val preferencias: Preferencias,
+    private val relogio: () -> Instant = Instant::now,
+) {
+    private class Guardado<T>(val em: Instant, val dados: T)
+
+    // shortcut: nunca se limpam (ocupam pouco e a app vive pouco); limpar se a camada passar a cobrir o país inteiro.
+    // Uma leitura que falha deixa a entrada como estava: é o que se mostra até haver rede.
+    private val paragens = ConcurrentHashMap<String, Guardado<DadosComunidade>>()
+    private val linhas = ConcurrentHashMap<String, Guardado<List<RelatoRemoto>>>()
+
+    private val comunidadeLigada get() = configuracoes.atual.value.interruptores.comunidade
+
+    /** O ecrã da paragem: sempre do servidor, sem cache. */
+    suspend fun daParagem(chave: String): Resultado<DadosComunidade> {
+        if (!comunidadeLigada) return Resultado.Ok(DadosComunidade())
+        return when (val r = servidor.comunidade(listOf(chave))) {
+            is Resultado.Ok -> Resultado.Ok(r.valor.visivel())
+            is Resultado.Falha -> r
+        }
+    }
+
+    /** O mapa: cada paragem guarda-se 2 min e pedem-se só as que faltam, 100 de cada vez; se falhar, fica o que estava guardado. */
+    suspend fun dasParagens(chaves: List<String>): DadosComunidade {
+        if (!comunidadeLigada) return DadosComunidade()
+        val agora = relogio()
+        val unicas = chaves.distinct()
+        for (grupo in unicas.filter { !recente(paragens[it], agora) }.chunked(MAX_PARAGENS)) {
+            val dados = (servidor.comunidade(grupo) as? Resultado.Ok)?.valor ?: break
+            grupo.forEach { paragens[it] = Guardado(agora, dados.so(it)) }
+        }
+        val todos = unicas.mapNotNull { paragens[it]?.dados }
+        return DadosComunidade(
+            relatos = todos.flatMap { it.relatos },
+            fotos = todos.flatMap { it.fotos },
+            emRevisao = todos.flatMap { it.emRevisao },
+            correcoes = todos.flatMap { it.correcoes },
+        ).visivel()
+    }
+
+    /** As rotas: os relatos confirmados das linhas (pelo nome visível), cada linha guardada 2 min, 20 de cada vez (o máximo do servidor). */
+    suspend fun confirmadosNasLinhas(nomes: Collection<String>): List<RelatoRemoto> {
+        if (!comunidadeLigada) return emptyList()
+        val agora = relogio()
+        val chaves = nomes.map(::chaveLinha).filter { it.isNotEmpty() }.distinct()
+        for (grupo in chaves.filter { !recente(linhas[it], agora) }.chunked(MAX_LINHAS)) {
+            val relatos = (servidor.avisos(grupo) as? Resultado.Ok)?.valor ?: break
+            // Uma linha sem relatos também fica guardada (vazia): não se pergunta outra vez nos 2 min seguintes.
+            grupo.forEach { linha -> linhas[linha] = Guardado(agora, relatos.filter { it.linha == linha }) }
+        }
+        val ocultos = preferencias.ocultos.first()
+        return chaves.flatMap { linhas[it]?.dados.orEmpty() }.filter { it.confirmado && "relato:${it.id}" !in ocultos }
+    }
+
+    suspend fun relatar(tipo: TipoRelato, paragem: String, linha: String?): Resultado<RelatoCriado> =
+        conta.comSessao { servidor.relatar(it, tipo, paragem, linha) }
+
+    suspend fun votar(relato: String, aindaEsta: Boolean): Resultado<Voto> =
+        conta.comSessao { servidor.votar(it, relato, aindaEsta) }
+
+    suspend fun enviarFoto(paragem: String, jpeg: ByteArray): Resultado<String> =
+        conta.comSessao { servidor.enviarFoto(it, paragem, jpeg) }
+
+    suspend fun corrigir(paragem: String, correcao: Correcao): Resultado<Unit> =
+        conta.comSessao { servidor.corrigir(it, paragem, correcao) }
+
+    suspend fun denunciar(conteudo: String, motivo: MotivoDenuncia, nome: String, explicacao: String): Resultado<Unit> =
+        conta.comSessao { servidor.denunciar(it, conteudo, motivo, nome, explicacao) }
+
+    /** Aceita os termos em vigor (os da config), que o servidor pede antes de relatar, votar ou enviar fotos. */
+    suspend fun aceitarTermos(): Resultado<Unit> {
+        val versao = configuracoes.atual.value.versaoTermos
+        return conta.comSessao { servidor.aceitarTermos(it, versao) }
+    }
+
+    private fun recente(g: Guardado<*>?, agora: Instant) = g != null && agora < g.em + GUARDAR
+
+    // O que o servidor devolveu, só da paragem [chave].
+    private fun DadosComunidade.so(chave: String) = DadosComunidade(
+        relatos = relatos.filter { it.paragem == chave },
+        fotos = fotos.filter { it.paragem == chave },
+        emRevisao = emRevisao.filter { it == chave },
+        correcoes = correcoes.filter { it.paragem == chave },
+    )
+
+    // Guarda-se o que o servidor disse e filtra-se ao ler: esconder um relato ou ligar um interruptor vale logo, sem esperar pela cache.
+    private suspend fun DadosComunidade.visivel(): DadosComunidade {
+        val interruptores = configuracoes.atual.value.interruptores
+        val ocultos = preferencias.ocultos.first()
+        return DadosComunidade(
+            relatos = relatos.filter { "relato:${it.id}" !in ocultos },
+            fotos = if (interruptores.fotos) fotos.filter { "foto:${it.id}" !in ocultos } else emptyList(),
+            emRevisao = if (interruptores.fotos) emRevisao else emptyList(),
+            correcoes = if (interruptores.correcoes) correcoes else emptyList(),
+        )
+    }
+
+    private companion object {
+        val GUARDAR: Duration = Duration.ofMinutes(2)
+        const val MAX_PARAGENS = 100
+        const val MAX_LINHAS = 20
+    }
+}

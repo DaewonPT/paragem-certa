@@ -1,11 +1,14 @@
 package pt.pixellusitano.paragemcerta.dados
 
 import androidx.room.Room
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.decodeFromJsonElement
 import kotlinx.serialization.json.jsonObject
@@ -191,6 +194,32 @@ class ContaTest {
         assertEquals(EstadoConta.SemConta, c.estado.value)
         assertFalse(ficheiro.exists())
         assertEquals(setOf("CM:060419", "CM:070001"), chavesFavoritas().toSet())
+    }
+
+    @Test fun comSessaoNaoPrendeAVezDuranteOPedido() = runTest {
+        val c = conta()
+        entrar(c)
+        val r = c.comSessao { token ->
+            // Com a vez presa, esta sincronização esperava por este pedido e o pedido por ela. O tempo é o verdadeiro:
+            // o virtual do runTest salta à frente enquanto a rede de teste (Dispatchers.Default) ainda responde.
+            withContext(Dispatchers.Default) { withTimeout(5_000) { c.sincronizar() } }
+            Resultado.Ok(token)
+        }
+        assertEquals(Resultado.Ok("ana@exemplo.pt"), r) // o token do ServidorDeTeste é o email
+    }
+
+    @Test fun sessaoRecusadaTardeNaoSaiDaContaNova() = runTest {
+        val c = conta()
+        entrar(c)
+        val recusada = Resultado.Falha(401, limite = false, erro = "sem_sessao")
+        // A pessoa saiu e entrou noutra conta enquanto o pedido da primeira ainda andava: o 401 é do token antigo.
+        val r = c.comSessao {
+            c.sair()
+            entrar(c, "rui@exemplo.pt", juntar = false)
+            recusada
+        }
+        assertEquals(recusada, r)
+        assertEquals(EstadoConta.Com("rui@exemplo.pt", agora), c.estado.value)
     }
 
     @Test fun sairNaoApagaFavoritos() = runTest {
