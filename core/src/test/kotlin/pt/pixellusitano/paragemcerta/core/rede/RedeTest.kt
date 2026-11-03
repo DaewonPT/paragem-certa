@@ -131,6 +131,12 @@ class RedeTest {
         assertNull(runBlocking { http.obterBytes("http://127.0.0.1:$porta/x") })
     }
 
+    @Test fun obterBytesDeUmEnderecoMalFormadoDaNulo() {
+        val http = OkHttpHttp(userAgent("0.4.0"))
+        // O endereço da foto vem do servidor: um texto que não é um URL não pode rebentar a app.
+        listOf("", "isto não é um endereço", "ftp://127.0.0.1/foto.jpg", "http://").forEach { assertNull(it, runBlocking { http.obterBytes(it) }) }
+    }
+
     @Test fun httpSemBytesSoFazGet() {
         val soGet = object : Http {
             override suspend fun get(url: String) = Resposta(200, "")

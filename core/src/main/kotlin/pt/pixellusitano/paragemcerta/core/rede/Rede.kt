@@ -72,6 +72,8 @@ class OkHttpHttp(
         executar(Request.Builder().url(url).header("User-Agent", agente)) { if (it.isSuccessful) it.body.bytes() else null }
     } catch (e: IOException) {
         null
+    } catch (e: IllegalArgumentException) {
+        null // o endereço vem do servidor: um que o OkHttp não aceita é como não haver foto
     }
 
     private suspend fun executar(pedido: Request.Builder): Resposta = executar(pedido) { Resposta(it.code, it.body.string()) }

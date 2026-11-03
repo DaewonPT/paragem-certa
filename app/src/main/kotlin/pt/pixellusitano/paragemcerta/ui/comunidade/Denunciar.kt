@@ -53,16 +53,21 @@ private fun nomeDoMotivo(m: MotivoDenuncia) = when (m) {
 }
 
 /**
- * Denunciar um relato. Não pede nenhum endereço: o recibo e a decisão vão para o email da conta, que é o [email] que se mostra,
- * e o pedido nem o leva (o servidor usa o da sessão). Só se envia com um nome e a declaração de boa-fé marcada.
+ * Denunciar um relato (ou, com outro [titulo], uma foto). Não pede nenhum endereço: o recibo e a decisão vão para o email da conta,
+ * que é o [email] que se mostra, e o pedido nem o leva (o servidor usa o da sessão). Só se envia com um nome e a declaração de boa-fé marcada.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DialogoDenunciar(email: String, aoEnviar: (MotivoDenuncia, nome: String, explicacao: String) -> Unit, aoFechar: () -> Unit) {
+fun DialogoDenunciar(
+    email: String,
+    aoEnviar: (MotivoDenuncia, nome: String, explicacao: String) -> Unit,
+    aoFechar: () -> Unit,
+    @StringRes titulo: Int = R.string.denunciar_titulo,
+) {
     // Largura própria em vez da do sistema: com campos de texto, a janela com a largura do sistema nunca fica quieta nos testes do
     // Robolectric. A margem do ecrã põe-se aqui; o cartão tem no máximo 560 dp, como o AlertDialog.
     BasicAlertDialog(onDismissRequest = aoFechar, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        DenunciarConteudo(email, aoEnviar, aoFechar, Modifier.padding(horizontal = 24.dp))
+        DenunciarConteudo(email, aoEnviar, aoFechar, Modifier.padding(horizontal = 24.dp), titulo)
     }
 }
 
@@ -74,6 +79,7 @@ internal fun DenunciarConteudo(
     aoEnviar: (MotivoDenuncia, nome: String, explicacao: String) -> Unit,
     aoFechar: () -> Unit,
     modifier: Modifier = Modifier,
+    @StringRes titulo: Int = R.string.denunciar_titulo,
 ) {
     var motivo by rememberSaveable { mutableStateOf(MotivoDenuncia.FALSO) }
     var nome by rememberSaveable { mutableStateOf("") }
@@ -81,7 +87,7 @@ internal fun DenunciarConteudo(
     var boaFe by rememberSaveable { mutableStateOf(false) }
     Surface(modifier, shape = AlertDialogDefaults.shape, color = AlertDialogDefaults.containerColor, tonalElevation = AlertDialogDefaults.TonalElevation) {
         Column(Modifier.sizeIn(minWidth = 280.dp, maxWidth = 560.dp).padding(24.dp)) {
-            Text(stringResource(R.string.denunciar_titulo), style = MaterialTheme.typography.headlineSmall)
+            Text(stringResource(titulo), style = MaterialTheme.typography.headlineSmall)
             // Com letra grande o formulário rola e os botões ficam sempre à vista.
             Column(Modifier.weight(1f, fill = false).padding(top = 16.dp).verticalScroll(rememberScrollState())) {
                 Text(stringResource(R.string.denunciar_porque), style = MaterialTheme.typography.labelLarge)

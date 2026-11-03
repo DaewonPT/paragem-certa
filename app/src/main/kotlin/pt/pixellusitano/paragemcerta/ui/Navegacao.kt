@@ -207,6 +207,7 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
                 val ref = RefParagem.daChave(entrada.toRoute<Paragem>().chave)
                 if (ref == null) nav.popBackStack() else ParagemEcra(
                     ref, repositorio, ligacoes.comunidade, ligacoes.configuracoes, ligacoes.preferencias,
+                    carregarFoto = { ligacoes.http.obterBytes(it) },
                     aoEncontrar = { nav.navigate(Bussola(it.nome, it.lat, it.lon)) },
                     aoAbrirConta = { nav.navigate(ContaRota) },
                     aoVoltar = { nav.popBackStack() },

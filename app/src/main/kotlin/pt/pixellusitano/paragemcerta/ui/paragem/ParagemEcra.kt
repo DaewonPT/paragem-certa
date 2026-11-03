@@ -60,6 +60,7 @@ import pt.pixellusitano.paragemcerta.dados.Repositorio
 import pt.pixellusitano.paragemcerta.ui.comum.FaixaEstado
 import pt.pixellusitano.paragemcerta.ui.comum.LinhaChegada
 import pt.pixellusitano.paragemcerta.ui.comunidade.CartaoRelato
+import pt.pixellusitano.paragemcerta.ui.comunidade.FotosDaParagem
 import pt.pixellusitano.paragemcerta.ui.comunidade.RelatarNaParagem
 import pt.pixellusitano.paragemcerta.ui.comunidade.rememberRelatosDaParagem
 import pt.pixellusitano.paragemcerta.ui.tema.FrisoAzulejo
@@ -74,6 +75,7 @@ fun ParagemEcra(
     comunidade: Comunidade,
     configuracoes: Configuracoes,
     preferencias: Preferencias,
+    carregarFoto: suspend (String) -> ByteArray?,
     aoEncontrar: (Paragem) -> Unit,
     aoAbrirConta: () -> Unit,
     aoVoltar: () -> Unit,
@@ -138,6 +140,7 @@ fun ParagemEcra(
         aoVotar = relatos.aoVotar,
         aoDenunciar = relatos.aoDenunciar,
         aoOcultar = relatos.aoOcultar,
+        fotos = { FotosDaParagem(ref.chave, relatos, comunidade, configuracoes, carregarFoto, aoAbrirConta) },
     )
     // O serviço vigia as linhas pelo nome que a pessoa vê (o do Transitous não é o id).
     if (avisaMe) AvisaMe(ref, nome, presentes.map { it.second }.distinct(), aoFechar = { avisaMe = false })
@@ -169,6 +172,7 @@ fun ParagemConteudo(
     aoVotar: (RelatoRemoto, aindaEsta: Boolean) -> Unit = { _, _ -> },
     aoDenunciar: (RelatoRemoto) -> Unit = {},
     aoOcultar: (RelatoRemoto) -> Unit = {},
+    fotos: @Composable () -> Unit = {},
 ) {
     Column(modifier.background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState())) {
         Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.primary).statusBarsPadding().padding(start = 4.dp, end = 4.dp, bottom = 12.dp)) {
@@ -228,6 +232,7 @@ fun ParagemConteudo(
                 Text(stringResource(if (vigiada) R.string.avisame_vigiar_parar else R.string.avisame))
             }
             relatar()
+            fotos()
             // Precisa das coordenadas da paragem: enquanto ela não carrega, não há bússola.
             aoEncontrar?.let {
                 OutlinedButton(onClick = it, modifier = Modifier.padding(top = 16.dp).fillMaxWidth()) {

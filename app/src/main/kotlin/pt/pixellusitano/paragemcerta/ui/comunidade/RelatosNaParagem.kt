@@ -1,5 +1,6 @@
 package pt.pixellusitano.paragemcerta.ui.comunidade
 
+import androidx.annotation.StringRes
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -12,6 +13,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import pt.pixellusitano.paragemcerta.R
+import pt.pixellusitano.paragemcerta.core.fontes.servidor.FotoRemota
 import pt.pixellusitano.paragemcerta.core.fontes.servidor.RelatoRemoto
 import pt.pixellusitano.paragemcerta.core.modelo.Paragem
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
@@ -19,13 +21,26 @@ import pt.pixellusitano.paragemcerta.dados.Comunidade
 import pt.pixellusitano.paragemcerta.dados.Configuracoes
 import pt.pixellusitano.paragemcerta.dados.Preferencias
 
-/** Os relatos de uma paragem (sem os que a pessoa ocultou) e o que ela pode fazer com cada um; ver [rememberRelatosDaParagem]. */
+/**
+ * Os relatos de uma paragem (sem os que a pessoa ocultou) e o que ela pode fazer com cada um; ver [rememberRelatosDaParagem].
+ * A foto vem na mesma leitura (um só pedido por ecrã): [fotos] são as aprovadas, sem as ocultadas; [fotoEmRevisao] diz que há
+ * uma à espera do autor; [carregado] que a leitura já chegou (sem ela não se sabe se já há foto); [recarregar] volta a ler.
+ */
 class RelatosDaParagem internal constructor(
     val lista: List<RelatoRemoto>,
     val aoVotar: (RelatoRemoto, aindaEsta: Boolean) -> Unit,
     val aoDenunciar: (RelatoRemoto) -> Unit,
     val aoOcultar: (RelatoRemoto) -> Unit,
+    val fotos: List<FotoRemota>,
+    val fotoEmRevisao: Boolean,
+    val carregado: Boolean,
+    val aoDenunciarFoto: (FotoRemota) -> Unit,
+    val aoOcultarFoto: (FotoRemota) -> Unit,
+    val recarregar: () -> Unit,
 )
+
+/** O que se está a denunciar: o id do servidor ("relato:<id>" ou "foto:<id>"), o título do diálogo e a frase para quando já não existe. */
+private class Denuncia(val conteudo: String, @StringRes val titulo: Int, @StringRes val jaNaoExiste: Int, val email: String)
 
 /**
  * Carrega os relatos da paragem [chave] ao abrir e depois de cada voto. Votar pede o mesmo que relatar (a menos de 300 m ou a
@@ -50,49 +65,70 @@ fun rememberRelatosDaParagem(
     val publicarDenuncia = rememberPublicar(comunidade, aoAbrirConta, R.string.denunciar_entrar_texto)
     val verificarPerto = rememberVerificarPerto(paragem)
     var relatos by remember(chave) { mutableStateOf(emptyList<RelatoRemoto>()) }
+    var fotos by remember(chave) { mutableStateOf(emptyList<FotoRemota>()) }
+    var fotoEmRevisao by remember(chave) { mutableStateOf(false) }
+    var carregado by remember(chave) { mutableStateOf(false) }
     var recarregar by remember { mutableIntStateOf(0) }
-    // O relato e o email da conta que se está a denunciar (lido ao abrir, para o texto não mudar a meio).
-    var denunciado by remember { mutableStateOf<Pair<RelatoRemoto, String>?>(null) }
+    // O que se está a denunciar e o email da conta (lido ao abrir, para o texto não mudar a meio).
+    var denunciado by remember { mutableStateOf<Denuncia?>(null) }
     var pedirConta by remember { mutableStateOf(false) }
+
+    fun esconderTudo() {
+        relatos = emptyList()
+        fotos = emptyList()
+        fotoEmRevisao = false
+        carregado = false
+    }
 
     // A config é uma chave: um "desligado" esconde a secção até ela mudar. Uma falha sem resposta deixa o que lá estava.
     LaunchedEffect(chave, config, recarregar) {
         when (val r = comunidade.daParagem(chave)) {
-            is Resultado.Ok -> relatos = r.valor.relatos
-            is Resultado.Falha -> if (r.erro == "desligado") relatos = emptyList()
+            is Resultado.Ok -> {
+                relatos = r.valor.relatos
+                fotos = r.valor.fotos
+                fotoEmRevisao = chave in r.valor.emRevisao
+                carregado = true
+            }
+            is Resultado.Falha -> if (r.erro == "desligado") esconderTudo()
         }
     }
 
-    // Um voto ou uma denúncia que falha: desligado esconde a secção; um relato que já acabou sai da lista; o resto só se diz.
-    fun falhou(f: Resultado.Falha) {
+    // Um voto ou uma denúncia que falha: desligado esconde a secção; um relato (ou foto) que já acabou sai da lista; o resto só se diz.
+    fun falhou(f: Resultado.Falha, @StringRes jaNaoExiste: Int = R.string.relato_ja_acabou) {
         if (f.erro == "desligado") {
-            relatos = emptyList()
+            esconderTudo()
             denunciado = null
             return
         }
-        avisar(contexto, erroDoRelato(f))
+        avisar(contexto, if (f.erro == "nao_existe") jaNaoExiste else erroDaComunidade(f))
         if (f.erro == "nao_existe") {
             denunciado = null
             recarregar++
         }
     }
 
-    denunciado?.let { (r, email) ->
+    fun denunciar(conteudo: String, @StringRes titulo: Int, @StringRes jaNaoExiste: Int) {
+        val email = comunidade.emailDaConta
+        if (email == null) pedirConta = true else denunciado = Denuncia(conteudo, titulo, jaNaoExiste, email)
+    }
+
+    denunciado?.let { d ->
         DialogoDenunciar(
-            email,
+            d.email,
             aoEnviar = { motivo, nome, explicacao ->
-                publicarDenuncia.correr({ comunidade.denunciar("relato:${r.id}", motivo, nome, explicacao) }) { res ->
+                publicarDenuncia.correr({ comunidade.denunciar(d.conteudo, motivo, nome, explicacao) }) { res ->
                     // Se falhar o diálogo fica, com o que a pessoa escreveu, para tentar outra vez.
                     when (res) {
                         is Resultado.Ok -> {
                             denunciado = null
                             avisar(contexto, R.string.denunciar_enviada)
                         }
-                        is Resultado.Falha -> falhou(res)
+                        is Resultado.Falha -> falhou(res, d.jaNaoExiste)
                     }
                 }
             },
             aoFechar = { denunciado = null },
+            titulo = d.titulo,
         )
     }
     if (pedirConta) {
@@ -121,10 +157,13 @@ fun rememberRelatosDaParagem(
                 }
             }
         },
-        aoDenunciar = { r ->
-            val email = comunidade.emailDaConta
-            if (email == null) pedirConta = true else denunciado = r to email
-        },
+        aoDenunciar = { r -> denunciar("relato:${r.id}", R.string.denunciar_titulo, R.string.relato_ja_acabou) },
         aoOcultar = { r -> escopo.launch { preferencias.ocultar("relato:${r.id}") } },
+        fotos = fotos.filter { "foto:${it.id}" !in ocultos },
+        fotoEmRevisao = fotoEmRevisao,
+        carregado = carregado,
+        aoDenunciarFoto = { f -> denunciar("foto:${f.id}", R.string.denunciar_foto_titulo, R.string.denunciar_foto_ja_nao_existe) },
+        aoOcultarFoto = { f -> escopo.launch { preferencias.ocultar("foto:${f.id}") } },
+        recarregar = { recarregar++ },
     )
 }

@@ -125,8 +125,4 @@ fun erroDaComunidade(f: Resultado.Falha): Int = when {
     else -> R.string.comunidade_erro
 }
 
-/** Como [erroDaComunidade], mas um relato que já acabou (ou foi apagado) tem a sua frase. */
-@StringRes
-internal fun erroDoRelato(f: Resultado.Falha): Int = if (f.erro == "nao_existe") R.string.relato_ja_acabou else erroDaComunidade(f)
-
 internal fun avisar(c: Context, @StringRes texto: Int) = Toast.makeText(c, texto, Toast.LENGTH_LONG).show()

@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- O FileProvider das fotos serve só cacheDir/fotos/: é lá que a app da câmara escreve a captura. -->
+<paths>
+    <cache-path name="fotos" path="fotos/" />
+</paths>
