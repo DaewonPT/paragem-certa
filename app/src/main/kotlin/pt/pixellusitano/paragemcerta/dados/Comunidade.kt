@@ -1,10 +1,18 @@
 package pt.pixellusitano.paragemcerta.dados
 
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import pt.pixellusitano.paragemcerta.core.comunidade.Correcao
 import pt.pixellusitano.paragemcerta.core.comunidade.MotivoDenuncia
 import pt.pixellusitano.paragemcerta.core.comunidade.TipoRelato
 import pt.pixellusitano.paragemcerta.core.comunidade.chaveLinha
+import pt.pixellusitano.paragemcerta.core.comunidade.chaveLinhaValida
+import pt.pixellusitano.paragemcerta.core.comunidade.chaveParagemValida
 import pt.pixellusitano.paragemcerta.core.fontes.servidor.DadosComunidade
 import pt.pixellusitano.paragemcerta.core.fontes.servidor.RelatoCriado
 import pt.pixellusitano.paragemcerta.core.fontes.servidor.RelatoRemoto
@@ -34,6 +42,9 @@ class Comunidade(
     private val paragens = ConcurrentHashMap<String, Guardado<DadosComunidade>>()
     private val linhas = ConcurrentHashMap<String, Guardado<List<RelatoRemoto>>>()
 
+    // O mapa lê-se de uma vez: a cache só se escreve depois da resposta, e sem isto duas voltas ao mapa a meio pediam o mesmo duas vezes.
+    private val vezDoMapa = Mutex()
+
     private val comunidadeLigada get() = configuracoes.atual.value.interruptores.comunidade
 
     /** O email da conta com sessão, ou null sem conta: é para lá que o servidor manda o recibo e a decisão de uma denúncia, e nunca para outro. */
@@ -48,14 +59,23 @@ class Comunidade(
         }
     }
 
-    /** O mapa: cada paragem guarda-se 2 min e pedem-se só as que faltam, 100 de cada vez; se falhar, fica o que estava guardado. */
+    /**
+     * O mapa: cada paragem guarda-se 2 min e pedem-se só as que faltam, 100 de cada vez; se falhar, fica o que estava guardado.
+     * Só vão chaves que o servidor aceita (uma má dava 400 ao pedido inteiro) e só há um pedido do mapa de cada vez: uma volta
+     * ao mapa a meio de outra espera por ela e, com a resposta já guardada, não pede o mesmo outra vez.
+     */
     suspend fun dasParagens(chaves: List<String>): DadosComunidade {
         if (!comunidadeLigada) return DadosComunidade()
-        val agora = relogio()
-        val unicas = chaves.distinct()
-        for (grupo in unicas.filter { !recente(paragens[it], agora) }.chunked(MAX_PARAGENS)) {
-            val dados = (servidor.comunidade(grupo) as? Resultado.Ok)?.valor ?: break
-            grupo.forEach { paragens[it] = Guardado(agora, dados.so(it)) }
+        val unicas = chaves.distinct().filter(::chaveParagemValida)
+        vezDoMapa.withLock {
+            val agora = relogio()
+            for (grupo in unicas.filter { !recente(paragens[it], agora) }.chunked(MAX_PARAGENS)) {
+                currentCoroutineContext().ensureActive() // cancelado: o grupo em voo acaba, os seguintes já ninguém os quer
+                // O OkHttp não pára um pedido a meio: se quem pediu for cancelado, a resposta que chega fica guardada na mesma.
+                withContext(NonCancellable) {
+                    (servidor.comunidade(grupo) as? Resultado.Ok)?.valor?.also { d -> grupo.forEach { paragens[it] = Guardado(agora, d.so(it)) } }
+                } ?: break
+            }
         }
         val todos = unicas.mapNotNull { paragens[it]?.dados }
         return DadosComunidade(
@@ -70,7 +90,8 @@ class Comunidade(
     suspend fun confirmadosNasLinhas(nomes: Collection<String>): List<RelatoRemoto> {
         if (!comunidadeLigada) return emptyList()
         val agora = relogio()
-        val chaves = nomes.map(::chaveLinha).filter { it.isNotEmpty() }.distinct()
+        // Só chaves que o servidor aceita: uma má (um nome com "/" ou com mais de 16 letras) dava 400 ao grupo inteiro e aos seguintes.
+        val chaves = nomes.map(::chaveLinha).filter(::chaveLinhaValida).distinct()
         for (grupo in chaves.filter { !recente(linhas[it], agora) }.chunked(MAX_LINHAS)) {
             val relatos = (servidor.avisos(grupo) as? Resultado.Ok)?.valor ?: break
             // Uma linha sem relatos também fica guardada (vazia): não se pergunta outra vez nos 2 min seguintes.

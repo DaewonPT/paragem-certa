@@ -13,6 +13,7 @@ import pt.pixellusitano.paragemcerta.core.modelo.ParagemEtapa
 import pt.pixellusitano.paragemcerta.core.modelo.TipoLugar
 import pt.pixellusitano.paragemcerta.core.viagem.Percurso
 import pt.pixellusitano.paragemcerta.core.viagem.Viagem
+import java.io.File
 import java.time.Instant
 
 class ComunidadeTest {
@@ -30,6 +31,34 @@ class ComunidadeTest {
     @Test fun chaveDaLinhaEmMaiusculas() {
         assertEquals("15E", chaveLinha(" 15e "))
         assertEquals("736", chaveLinha("736"))
+    }
+
+    // O servidor responde 400 ao pedido inteiro se uma só chave falhar: estes testes fixam o que passa (worker/src/relatos.ts).
+    @Test fun chaveDaParagemComoOServidorAceita() {
+        listOf(
+            "CM:060419", "TRANSITOUS:pt-Carris-Metropolitana_320047", "TRANSITOUS:x_(1)-2", "CM:a:b", "CM:ç", "CM:" + "a".repeat(120),
+            "CM:" + "😀".repeat(60), // 120 unidades UTF-16: o servidor (JavaScript) conta assim
+        ).forEach { assertTrue(it, chaveParagemValida(it)) }
+        listOf(
+            "", "CM:", "CM", "060419", "cm:060419", "XX:1", " CM:1", "CM:1 ", "CM:a b", "CM:a\tb", "CM:a\nb", "CM:a b", "CM:a　b", "CM:a b", "CM:﻿a",
+            "CM:a,b", "CM:a<b", "CM:a>b", "CM:a\"b", "CM:a'b", "CM:a&b", "CM:" + "a".repeat(121),
+            "CM:" + "😀".repeat(61), // 122 unidades
+        ).forEach { assertFalse(it, chaveParagemValida(it)) }
+    }
+
+    @Test fun chaveDaLinhaComoOServidorAceita() {
+        listOf("736", "15E", "A", "É1", "LINHA DE CASCAIS", "L1.2", "AZUL-1", "١٢", "1" + "A".repeat(15)).forEach { assertTrue(it, chaveLinhaValida(it)) }
+        listOf(
+            "", " ", " 15E", "-1", ".1", "1" + "A".repeat(16), "LINHA MUITO COMPRIDA", "1/2", "A(B)", "L+", "A,B", "A_B", "A\tB", "A\nB", "A B", "😀",
+        ).forEach { assertFalse(it, chaveLinhaValida(it)) }
+        assertTrue(chaveLinhaValida(chaveLinha(" 15e "))) // o que a app manda é a chave em maiúsculas
+    }
+
+    // Se o servidor mudar os formatos, esta cópia tem de mudar com eles (senão a app volta a deitar fora, ou a mandar de mais, sem ninguém dar por isso).
+    @Test fun formatosIguaisAosDoServidor() {
+        val servidor = File("../worker/src/relatos.ts").readText()
+        assertTrue(servidor.contains("""export const FORMATO_PARAGEM = /^(CM|TRANSITOUS):[^\s,<>"'&]{1,120}$/;"""))
+        assertTrue(servidor.contains("""export const FORMATO_LINHA = /^[\p{L}\p{N}][\p{L}\p{N} .\-]{0,15}$/u;"""))
     }
 
     @Test fun osTiposDeRelatoUsamAsChavesDoServidor() {

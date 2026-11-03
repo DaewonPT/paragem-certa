@@ -51,10 +51,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import pt.pixellusitano.paragemcerta.R
+import pt.pixellusitano.paragemcerta.core.fontes.servidor.RelatoRemoto
 import pt.pixellusitano.paragemcerta.core.modelo.Filtros
 import pt.pixellusitano.paragemcerta.core.modelo.Itinerario
 import pt.pixellusitano.paragemcerta.core.modelo.Lugar
 import pt.pixellusitano.paragemcerta.core.modelo.Modo
+import pt.pixellusitano.paragemcerta.dados.Comunidade
 import pt.pixellusitano.paragemcerta.dados.Preferencias
 import pt.pixellusitano.paragemcerta.dados.Repositorio
 import pt.pixellusitano.paragemcerta.ui.comum.LISBOA_FUSO
@@ -72,10 +74,15 @@ internal val MODOS_FILTRO = listOf(
     Modo.ELETRICO to R.string.modo_eletrico, Modo.BARCO to R.string.modo_barco,
 )
 
+/** Os nomes das linhas em veículo das rotas, sem repetir: o que se pergunta à comunidade para os cartões. */
+internal fun linhasDasRotas(itinerarios: List<Itinerario>): List<String> =
+    itinerarios.flatMap { it.etapas }.filter { !it.aPe }.mapNotNull { it.linhaNome }.distinct()
+
 @Composable
 fun RotasEcra(
     repositorio: Repositorio,
     preferencias: Preferencias,
+    comunidade: Comunidade,
     origem: Lugar?,
     destino: Lugar?,
     aoAbrirViagem: () -> Unit,
@@ -92,6 +99,12 @@ fun RotasEcra(
     val filtros by vm.filtros.collectAsStateWithLifecycle()
     val alertas by vm.alertas.collectAsStateWithLifecycle()
     val aberto by vm.aberto.collectAsStateWithLifecycle()
+    // Os relatos confirmados das linhas das rotas que estão no ecrã: um pedido por lista de rotas (a cache de 2 min evita repetir),
+    // só quando a pessoa pede as rotas; com a comunidade desligada a Comunidade não pede nada e a lista fica vazia.
+    val linhas = remember(estado) { linhasDasRotas((estado as? EstadoRotas.Prontas)?.itinerarios.orEmpty()) }
+    val relatos by produceState(emptyList<RelatoRemoto>(), linhas) {
+        value = if (linhas.isEmpty()) emptyList() else comunidade.confirmadosNasLinhas(linhas)
+    }
     val locais by remember { repositorio.locais() }.collectAsStateWithLifecycle(emptyList())
     val recentes by remember { repositorio.recentes() }.collectAsStateWithLifecycle(emptyList())
     var escolher by rememberSaveable { mutableStateOf<Campo?>(null) }
@@ -130,6 +143,7 @@ fun RotasEcra(
             aoMudarHora = vm::definirHora, aoMudarFiltros = vm::mudarFiltros,
             aoAbrirRota = vm::abrir, aoTentarOutraVez = vm::tentarOutraVez,
             aoMaisCedo = vm::maisCedo, aoMaisTarde = vm::maisTarde,
+            relatos = relatos,
             modifier = Modifier.statusBarsPadding(),
         )
         else -> EscolherLugarEcra(
@@ -172,6 +186,8 @@ fun RotasConteudo(
     aoMaisCedo: () -> Unit,
     aoMaisTarde: () -> Unit,
     modifier: Modifier = Modifier,
+    /** Os relatos confirmados das linhas das rotas (já sem os ocultos): cada cartão mostra o seu (ver [relatoDoCartao]). */
+    relatos: List<RelatoRemoto> = emptyList(),
 ) {
     var escolherHora by remember { mutableStateOf<TipoHora?>(null) }
     val cores = MaterialTheme.colorScheme
@@ -237,6 +253,7 @@ fun RotasConteudo(
                         comAlerta = it.etapas.any { e -> !e.aPe && e.linhaNome in alertas },
                         aoAbrir = { aoAbrirRota(it) },
                         partidas = estado.partidas[i], agora = agora,
+                        relato = relatoDoCartao(it, relatos),
                     )
                 }
                 if (estado.anterior != null || estado.seguinte != null || estado.aCarregarPagina || estado.erroPagina) item {

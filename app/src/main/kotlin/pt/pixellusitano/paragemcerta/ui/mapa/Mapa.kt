@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import org.maplibre.android.MapLibre
@@ -46,8 +47,11 @@ import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.LineString
 import org.maplibre.geojson.Point
+import pt.pixellusitano.paragemcerta.R
+import pt.pixellusitano.paragemcerta.core.fontes.servidor.DadosComunidade
 import pt.pixellusitano.paragemcerta.core.modelo.Paragem
 import pt.pixellusitano.paragemcerta.core.modelo.Veiculo
+import pt.pixellusitano.paragemcerta.ui.comunidade.aplicarCorrecoes
 import java.time.Duration
 import java.time.Instant
 
@@ -61,6 +65,8 @@ val LISBOA = LatLng(38.7223, -9.1393)
 private const val FONTE_PARAGENS = "fonte-paragens"
 private const val FONTE_VEICULOS = "fonte-veiculos"
 private const val CAMADA_PARAGENS = "camada-paragens"
+private const val CAMADA_RELATOS = "camada-relatos"
+private const val IMAGEM_RELATO = "relato"
 private const val CAMADA_VEICULOS = "camada-veiculos"
 private const val CAMADA_VEICULOS_TEXTO = "camada-veiculos-texto"
 private const val FONTE_PERCURSOS = "fonte-percursos"
@@ -80,6 +86,16 @@ data class Percurso(val pontos: List<Pair<Double, Double>>, val cor: String, val
 
 /** Uma paragem da etapa atual da viagem; sai: onde a pessoa sai (maior, com o nome). */
 data class Marca(val lat: Double, val lon: Double, val nome: String, val sai: Boolean = false)
+
+/**
+ * As paragens a desenhar: como a comunidade as corrigiu (a posição e o nome) e sem as que dizem que já não existem.
+ * O booleano diz se a paragem tem um relato confirmado (um por confirmar não se marca no mapa).
+ */
+fun paragensDoMapa(paragens: List<Paragem>, dados: DadosComunidade): List<Pair<Paragem, Boolean>> =
+    paragens.mapNotNull { p ->
+        val (vista, jaNaoExiste) = aplicarCorrecoes(p, dados.correcoes)
+        if (jaNaoExiste) null else vista to dados.relatos.any { it.confirmado && it.paragem == p.ref.chave }
+    }
 
 @SuppressLint("MissingPermission")
 @Composable
@@ -112,6 +128,8 @@ fun Mapa(
      */
     seguir: Boolean = false,
     aoDeixarDeSeguir: () -> Unit = {},
+    /** As chaves das [paragens] com um relato confirmado da comunidade: levam o triângulo de aviso. */
+    comRelato: Set<String> = emptySet(),
 ) {
     val contexto = LocalContext.current
     val ciclo = LocalLifecycleOwner.current.lifecycle
@@ -167,7 +185,7 @@ fun Mapa(
                 }
                 mapa.addOnMapClickListener { ponto ->
                     val ecra = mapa.projection.toScreenLocation(ponto)
-                    val tocado = mapa.queryRenderedFeatures(ecra, CAMADA_VEICULOS, CAMADA_PARAGENS).firstOrNull()
+                    val tocado = mapa.queryRenderedFeatures(ecra, CAMADA_VEICULOS, CAMADA_RELATOS, CAMADA_PARAGENS).firstOrNull()
                     val id = tocado?.getStringProperty("id")
                     when {
                         id == null -> false
@@ -199,7 +217,7 @@ fun Mapa(
     LaunchedEffect(escuro, estado.mapa) {
         val mapa = estado.mapa ?: return@LaunchedEffect
         mapa.setStyle(Style.Builder().fromUri(if (escuro) ESTILO_ESCURO else ESTILO_CLARO)) { estilo ->
-            prepararCamadas(estilo, escuro)
+            prepararCamadas(contexto, estilo, escuro)
             estado.estilo = estilo
             // Mudar de estilo (claro/escuro) deita fora o ponto da posição: volta a ativá-lo.
             if (posicaoVisivel) ativarPosicao(contexto, mapa, estilo, aSeguir, ouvinteSeguir)
@@ -249,10 +267,13 @@ fun Mapa(
         mapa.easeCamera(CameraUpdateFactory.newLatLngBounds(limites, 120))
     }
 
-    LaunchedEffect(paragens, estado.estilo) {
+    LaunchedEffect(paragens, comRelato, estado.estilo) {
         estado.estilo?.getSourceAs<GeoJsonSource>(FONTE_PARAGENS)?.setGeoJson(
             FeatureCollection.fromFeatures(paragens.map { p ->
-                Feature.fromGeometry(Point.fromLngLat(p.lon, p.lat)).apply { addStringProperty("id", p.ref.chave) }
+                Feature.fromGeometry(Point.fromLngLat(p.lon, p.lat)).apply {
+                    addStringProperty("id", p.ref.chave)
+                    addBooleanProperty("relato", p.ref.chave in comRelato)
+                }
             }),
         )
     }
@@ -350,7 +371,9 @@ private fun seguirPosicao(componente: LocationComponent, seguir: Boolean) {
     else componente.cameraMode = CameraMode.NONE
 }
 
-private fun prepararCamadas(estilo: Style, escuro: Boolean) {
+private fun prepararCamadas(contexto: Context, estilo: Style, escuro: Boolean) {
+    // O triângulo é um desenho (vetor) e não um "⚠" em texto: as letras do OpenFreeMap não o têm.
+    ContextCompat.getDrawable(contexto, R.drawable.relato_mapa)?.let { estilo.addImage(IMAGEM_RELATO, it) }
     estilo.addSource(GeoJsonSource(FONTE_PARAGENS))
     estilo.addSource(GeoJsonSource(FONTE_VEICULOS))
     estilo.addSource(GeoJsonSource(FONTE_PERCURSOS))
@@ -381,6 +404,15 @@ private fun prepararCamadas(estilo: Style, escuro: Boolean) {
             PropertyFactory.circleStrokeWidth(2f),
             PropertyFactory.circleStrokeColor(if (escuro) "#0B1222" else "#FFFFFF"),
         ),
+    )
+    // Por cima das paragens com um relato confirmado: o triângulo assenta em cima do ponto, sem o tapar.
+    estilo.addLayer(
+        SymbolLayer(CAMADA_RELATOS, FONTE_PARAGENS).withProperties(
+            PropertyFactory.iconImage(IMAGEM_RELATO),
+            PropertyFactory.iconAllowOverlap(true),
+            PropertyFactory.iconAnchor(Property.ICON_ANCHOR_BOTTOM),
+            PropertyFactory.iconOffset(arrayOf(0f, -8f)),
+        ).withFilter(Expression.eq(Expression.get("relato"), Expression.literal(true))),
     )
     // As paragens da viagem: pequenas, e a de saída maior, de outra cor e com o nome.
     estilo.addLayer(

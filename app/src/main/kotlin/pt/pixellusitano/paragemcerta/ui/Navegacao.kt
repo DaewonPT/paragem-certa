@@ -173,6 +173,7 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
                 Box(Modifier.padding(bottom = margens.calculateBottomPadding())) {
                     InicioEcra(
                         repositorio = repositorio,
+                        comunidade = ligacoes.comunidade, configuracoes = ligacoes.configuracoes, preferencias = ligacoes.preferencias,
                         aoAbrirParagem = { nav.navigate(Paragem(it.ref.chave)) },
                         aoPesquisar = { nav.navigate(Pesquisa) },
                         linhaId = linha,
@@ -219,6 +220,7 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
                     RotasEcra(
                         repositorio = repositorio,
                         preferencias = ligacoes.preferencias,
+                        comunidade = ligacoes.comunidade,
                         origem = r.origem?.let(::lugarDaRota),
                         destino = r.destino?.let(::lugarDaRota),
                         aoAbrirViagem = { nav.navigate(Viagem) },
@@ -242,7 +244,9 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
             composable<Favoritos> {
                 FavoritosEcra(repositorio, aoAbrirFavorita = { nav.navigate(Paragem(it.ref.chave)) }, aoVoltar = { nav.popBackStack() })
             }
-            composable<Definicoes> { DefinicoesEcra(ligacoes.preferencias, ligacoes.conta, aoVoltar = { nav.popBackStack() }) }
+            composable<Definicoes> {
+                DefinicoesEcra(ligacoes.preferencias, ligacoes.conta, aoVoltar = { nav.popBackStack() }, comunidadeLigada = config.interruptores.comunidade)
+            }
             composable<Ajuda> { AjudaEcra(aoVoltar = { nav.popBackStack() }, modifier = Modifier.fillMaxSize()) }
             composable<Reclamar> {
                 ReclamarEcra(aoAbrir = ::abrirUrl, aoVoltar = { nav.popBackStack() }, modifier = Modifier.fillMaxSize(), canais = config.canaisReclamacao)

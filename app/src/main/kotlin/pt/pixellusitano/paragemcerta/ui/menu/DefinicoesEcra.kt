@@ -49,11 +49,13 @@ import pt.pixellusitano.paragemcerta.dados.Preferencias
 import pt.pixellusitano.paragemcerta.ui.tema.FrisoAzulejo
 import pt.pixellusitano.paragemcerta.ui.tema.ModoTema
 
+/** [comunidadeLigada]: o interruptor `comunidade` da config; sem ele não há "Camadas do mapa" (só há uma, a dos relatos). */
 @Composable
-fun DefinicoesEcra(preferencias: Preferencias, conta: Conta, aoVoltar: () -> Unit) {
+fun DefinicoesEcra(preferencias: Preferencias, conta: Conta, aoVoltar: () -> Unit, comunidadeLigada: Boolean = false) {
     val contexto = LocalContext.current
     val escopo = rememberCoroutineScope()
     val estadoConta by conta.estado.collectAsStateWithLifecycle()
+    val camadaRelatos by preferencias.camadaRelatos.collectAsStateWithLifecycle(initialValue = true)
     val modo by preferencias.modo.collectAsStateWithLifecycle(initialValue = ModoTema.SISTEMA)
     val limites by preferencias.limites.collectAsStateWithLifecycle(initialValue = Limites())
     val somAviso by preferencias.somAviso.collectAsStateWithLifecycle(initialValue = true)
@@ -85,6 +87,8 @@ fun DefinicoesEcra(preferencias: Preferencias, conta: Conta, aoVoltar: () -> Uni
             Toast.makeText(contexto, apagados, Toast.LENGTH_SHORT).show()
         },
         aoApagarConta = if (estadoConta is EstadoConta.Com) ({ escopo.launch { conta.apagarEAvisar(contexto) } }) else null,
+        camadaRelatos = camadaRelatos,
+        aoMudarCamadaRelatos = if (comunidadeLigada) ({ escopo.launch { preferencias.definirCamadaRelatos(it) } }) else null,
         secaoAtualizacoes = { modificador ->
             if (Atualizacoes.disponivel) {
                 var sozinha by remember { mutableStateOf(Atualizacoes.atualizarSozinha(contexto)) }
@@ -126,16 +130,29 @@ fun DefinicoesConteudo(
     aoApagarDados: () -> Unit = {},
     /** Só vem quando há conta: a Privacidade mostra "Apagar conta". */
     aoApagarConta: (() -> Unit)? = null,
+    /** Se o mapa marca as paragens com relatos confirmados; [aoMudarCamadaRelatos] só vem com a comunidade ligada (sem ele não há "Camadas do mapa"). */
+    camadaRelatos: Boolean = true,
+    aoMudarCamadaRelatos: ((Boolean) -> Unit)? = null,
     /** Só a variante pessoal tem esta secção (as atualizações da Play Store vêm pela loja). */
     secaoAtualizacoes: @Composable (Modifier) -> Unit = {},
 ) {
     Column(modifier.background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState()).statusBarsPadding().padding(16.dp)) {
         CabecalhoEcra(stringResource(R.string.eu_definicoes), aoVoltar)
         Definicoes(modo, limites, somAviso, vibracaoAviso, aoMudarModo, aoMudarLimites, aoMudarSom, aoMudarVibracao)
+        if (aoMudarCamadaRelatos != null) CamadasDoMapa(camadaRelatos, aoMudarCamadaRelatos, Modifier.padding(top = 16.dp))
         PreferenciasRotas(filtros, aoMudarFiltros, Modifier.padding(top = 24.dp))
         EcraInicialOpcoes(ecraInicial, aoMudarEcraInicial, Modifier.padding(top = 24.dp))
         secaoAtualizacoes(Modifier.padding(top = 24.dp))
         Privacidade(aoApagarDados, Modifier.padding(top = 24.dp), aoApagarConta)
+    }
+}
+
+/** O que o mapa desenha por cima das paragens: por agora só os relatos da comunidade (a etapa 4 junta as outras camadas). */
+@Composable
+private fun CamadasDoMapa(relatos: Boolean, aoMudarRelatos: (Boolean) -> Unit, modifier: Modifier = Modifier) {
+    Column(modifier.background(MaterialTheme.colorScheme.background)) {
+        Subtitulo(stringResource(R.string.eu_camadas_mapa))
+        Interruptor(stringResource(R.string.eu_camada_relatos), relatos, aoMudarRelatos)
     }
 }
 

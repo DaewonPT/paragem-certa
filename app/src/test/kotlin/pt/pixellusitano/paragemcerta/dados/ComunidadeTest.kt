@@ -1,7 +1,13 @@
 package pt.pixellusitano.paragemcerta.dados
 
 import androidx.room.Room
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.async
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -26,6 +32,7 @@ import pt.pixellusitano.paragemcerta.core.rede.Resposta
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import java.io.File
 import java.io.IOException
+import java.net.URLDecoder
 import java.time.Duration
 import java.time.Instant
 
@@ -35,6 +42,9 @@ private class ServidorDeComunidade : Http {
 
     var config = fixture("servidor-config.json")
     var semRede = false
+
+    /** Enquanto não for completada, a API não responde: o pedido está "em voo" (a rota só corre depois). */
+    var porta: CompletableDeferred<Unit>? = null
     val pedidos = mutableListOf<Pedido>()
     val rotas = mutableMapOf<String, () -> Resposta>(
         "/api/auth/email/confirmar" to { Resposta(200, """{"token":"tok-ana","email":"ana@exemplo.pt"}""") },
@@ -63,8 +73,10 @@ private class ServidorDeComunidade : Http {
     override suspend fun enviarBytes(metodo: String, url: String, corpo: ByteArray, tipo: String, cabecalhos: Map<String, String>): Resposta =
         responder(metodo, url, "${corpo.size} bytes de $tipo", cabecalhos)
 
-    private fun responder(metodo: String, url: String, corpo: String?, cabecalhos: Map<String, String>): Resposta {
+    private suspend fun responder(metodo: String, url: String, corpo: String?, cabecalhos: Map<String, String>): Resposta {
         pedidos += Pedido(metodo, url, corpo, cabecalhos["Authorization"])
+        // Como o OkHttp, que não pára a meio: quem espera aqui não é cancelado pelo pedido de quem chamou.
+        porta?.let { withContext(NonCancellable) { it.await() } }
         if (semRede) throw IOException("sem rede")
         return rotas.entries.first { it.key in url }.value()
     }
@@ -75,6 +87,7 @@ private const val RELATO_DESVIO = "6f1c2a9e-3b7d-4c58-9a10-5d2e8b7f4a11"
 private const val RELATO_ELEVADOR = "0a4d9b3c-8e21-47f6-b5c9-1e7a6d3f2b90"
 private const val FOTO = "c7e5a1b2-4d96-4f03-8a2b-9c0d1e2f3a45"
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 class ComunidadeTest {
     private val contexto = RuntimeEnvironment.getApplication()
@@ -273,6 +286,113 @@ class ComunidadeTest {
         http.rotas["/api/comunidade"] = { Resposta(500, "") }
         comunidade.dasParagens((0 until 150).map { "CM:%06d".format(it) })
         assertEquals(1, http.pedidosA("/api/comunidade").size)
+    }
+
+    // ---- chaves que o servidor aceita: uma só fora do formato dava 400 ao pedido inteiro, em cada chamada ----
+
+    // As chaves de um pedido, já sem o URL-encoding e sem a vírgula que as separa.
+    private fun chavesPedidas(rota: String, parametro: String) =
+        http.pedidosA(rota).map { p -> URLDecoder.decode(p.url.substringAfter("$parametro="), "UTF-8").split(",") }
+
+    @Test fun mapaSoMandaChavesQueOServidorAceita() = runTest {
+        ligar("comunidade")
+        comunidade.dasParagens(listOf("CM:060419", "TRANSITOUS:com espaco", "lixo", "", "CM:", "TRANSITOUS:pt-Carris_(1)", "CM:a,b", "CM:060419"))
+        // As chaves sem sentido ficam de fora; a vírgula de "CM:a,b" não pode partir a chave em duas "boas".
+        assertEquals(listOf(listOf("CM:060419", "TRANSITOUS:pt-Carris_(1)")), chavesPedidas("/api/comunidade", "paragens"))
+    }
+
+    @Test fun mapaSemChavesValidasNaoPede() = runTest {
+        ligar("comunidade")
+        assertEquals(DadosComunidade(), comunidade.dasParagens(listOf("lixo", "", "TRANSITOUS:com espaco", "CM:" + "x".repeat(121))))
+        assertEquals(DadosComunidade(), comunidade.dasParagens(emptyList()))
+        assertTrue(http.pedidos.isEmpty())
+    }
+
+    @Test fun chaveInvalidaNaoEsvaziaOsGruposDoMapa() = runTest {
+        ligar("comunidade")
+        http.rotas["/api/comunidade"] = { Resposta(200, "{}") }
+        val invalidas = listOf("lixo", "TRANSITOUS:com espaco", "CM:")
+        comunidade.dasParagens(invalidas + (0 until 150).map { "CM:%06d".format(it) })
+        // Antes, as 3 más iam no 1.º grupo: o servidor dava 400, o pedido falhava e os grupos seguintes nem se tentavam.
+        assertEquals(listOf(100, 50), http.tamanhos("/api/comunidade", "paragens"))
+        assertTrue(chavesPedidas("/api/comunidade", "paragens").flatten().none { it in invalidas })
+    }
+
+    @Test fun rotasSoMandamLinhasQueOServidorAceita() = runTest {
+        ligar("comunidade")
+        comunidade.confirmadosNasLinhas(listOf("736", " 15e ", "LINHA MUITO COMPRIDA 1", "1/2", "A(B)", "L+", "", "  ", "A,B"))
+        assertEquals(listOf(listOf("736", "15E")), chavesPedidas("/api/avisos", "linhas"))
+    }
+
+    @Test fun rotasSemLinhasValidasNaoPedem() = runTest {
+        ligar("comunidade")
+        assertEquals(emptyList<RelatoRemoto>(), comunidade.confirmadosNasLinhas(listOf("1/2", "A(B)", "L+", "", "LINHA MUITO COMPRIDA 1")))
+        assertEquals(emptyList<RelatoRemoto>(), comunidade.confirmadosNasLinhas(emptyList()))
+        assertTrue(http.pedidos.isEmpty())
+    }
+
+    @Test fun linhaInvalidaNaoEsvaziaOsGruposDasRotas() = runTest {
+        ligar("comunidade")
+        val invalidas = listOf("1/2", "L+", "LINHA MUITO COMPRIDA 1")
+        comunidade.confirmadosNasLinhas(invalidas + (1..25).map { "L$it" })
+        assertEquals(listOf(20, 5), http.tamanhos("/api/avisos", "linhas"))
+        assertTrue(chavesPedidas("/api/avisos", "linhas").flatten().none { it in invalidas })
+    }
+
+    // ---- um só pedido do mapa de cada vez ----
+
+    // Com a API "em voo" (sem responder até [corpo] a soltar); solta-a no fim, passe o que passar: um teste que falha não deixa pedidos presos.
+    private suspend fun comApiEmVoo(corpo: suspend (soltar: () -> Unit) -> Unit) {
+        val porta = CompletableDeferred<Unit>().also { http.porta = it }
+        try {
+            corpo { porta.complete(Unit) }
+        } finally {
+            porta.complete(Unit)
+        }
+    }
+
+    @Test fun mapaNaoRepeteUmPedidoEmVoo() = runTest {
+        ligar("comunidade")
+        comApiEmVoo { soltar ->
+            val chaves = listOf("CM:060419")
+            val a = async { comunidade.dasParagens(chaves) }
+            runCurrent()
+            val b = async { comunidade.dasParagens(chaves) } // outra volta ao mapa, com o 1.º pedido ainda à espera da resposta
+            runCurrent()
+            assertEquals(1, http.pedidosA("/api/comunidade").size)
+            soltar()
+            assertEquals(2, a.await().relatos.size)
+            assertEquals(a.await(), b.await())
+            assertEquals(1, http.pedidosA("/api/comunidade").size) // a resposta do 1.º ficou guardada e o 2.º usou-a
+        }
+    }
+
+    @Test fun quemFoiCanceladoNaoDeitaForaAResposta() = runTest {
+        ligar("comunidade")
+        comApiEmVoo { soltar ->
+            val chaves = listOf("CM:060419")
+            val a = async { comunidade.dasParagens(chaves) }
+            runCurrent()
+            // A pessoa mexe no mapa: o ecrã cancela a leitura a meio e pede a seguinte. O pedido já foi, e a resposta não se perde.
+            a.cancel()
+            val b = async { comunidade.dasParagens(chaves) }
+            runCurrent()
+            soltar()
+            assertEquals(2, b.await().relatos.size)
+            assertEquals(1, http.pedidosA("/api/comunidade").size)
+        }
+    }
+
+    @Test fun mapaNaoComecaGruposDepoisDeCancelado() = runTest {
+        ligar("comunidade")
+        comApiEmVoo { soltar ->
+            val a = async { comunidade.dasParagens((0 until 150).map { "CM:%06d".format(it) }) }
+            runCurrent()
+            a.cancel()
+            soltar()
+            runCurrent()
+            assertEquals(1, http.pedidosA("/api/comunidade").size) // o grupo em voo acaba; o 2.º grupo já ninguém o quer
+        }
     }
 
     @Test fun rotasGuardam2MinutosPorLinha() = runTest {

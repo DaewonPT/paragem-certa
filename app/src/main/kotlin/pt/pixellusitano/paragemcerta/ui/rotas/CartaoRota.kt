@@ -29,10 +29,14 @@ import pt.pixellusitano.paragemcerta.core.atraso.Limites
 import pt.pixellusitano.paragemcerta.core.atraso.aindaPorChegar
 import pt.pixellusitano.paragemcerta.core.atraso.estado
 import pt.pixellusitano.paragemcerta.core.atraso.rotuloAtraso
+import pt.pixellusitano.paragemcerta.core.comunidade.TipoRelato
+import pt.pixellusitano.paragemcerta.core.comunidade.chaveLinha
+import pt.pixellusitano.paragemcerta.core.fontes.servidor.RelatoRemoto
 import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.modelo.Etiqueta
 import pt.pixellusitano.paragemcerta.core.modelo.Itinerario
 import pt.pixellusitano.paragemcerta.core.modelo.Modo
+import pt.pixellusitano.paragemcerta.ui.comunidade.nomeDoTipo
 import pt.pixellusitano.paragemcerta.ui.comum.LISBOA_FUSO
 import pt.pixellusitano.paragemcerta.ui.comum.LocalLimites
 import pt.pixellusitano.paragemcerta.ui.comum.SeloLinha
@@ -102,10 +106,20 @@ private fun frasePartidas(partidas: List<Chegada>, agora: Instant): String {
     }
 }
 
+/**
+ * O relato que o cartão da rota mostra: o primeiro confirmado numa linha em veículo do itinerário, pela ordem acidente, desvio,
+ * evento, não passou, vai cheio (os relatos de paragem não são avisos de linha). [relatos] já vêm sem os que a pessoa ocultou.
+ */
+fun relatoDoCartao(it: Itinerario, relatos: List<RelatoRemoto>): RelatoRemoto? {
+    val linhas = it.etapas.filter { e -> !e.aPe }.mapNotNull { e -> e.linhaNome?.let(::chaveLinha) }.toSet()
+    val daRota = relatos.filter { r -> r.confirmado && r.linha in linhas }
+    return TipoRelato.entries.filter { t -> t.deLinha }.firstNotNullOfOrNull { t -> daRota.firstOrNull { r -> r.tipo == t.chave } }
+}
+
 /** O cartão inteiro numa frase para o leitor de ecrã, sem os símbolos ("›", 🚶) que ele leria à letra. */
 internal fun descricaoRota(
     it: Itinerario, etiquetas: List<String>, comAlerta: Boolean, limites: Limites,
-    partidas: List<Chegada>? = null, agora: Instant = Instant.now(),
+    partidas: List<Chegada>? = null, agora: Instant = Instant.now(), relatoTexto: String? = null,
 ): String {
     val etapas = it.etapas.joinToString(", ") { e ->
         if (e.aPe) "a pé ${minutosDe(Duration.between(e.partida, e.chegada))} min"
@@ -126,13 +140,15 @@ internal fun descricaoRota(
         },
         partidas?.takeIf { p -> p.isNotEmpty() }?.let { p -> "Próximas partidas: ${frasePartidas(p, agora)}" },
         etiquetas.takeIf { e -> e.isNotEmpty() }?.let { e -> "Etiquetas: ${e.joinToString(", ")}" },
-        "Aviso numa linha".takeIf { comAlerta },
+        // O relato confirmado fica no lugar do aviso numa linha, com o mesmo texto do cartão.
+        relatoTexto ?: "Aviso numa linha".takeIf { comAlerta },
     ).joinToString(". ", postfix = ".")
 }
 
 /**
  * Um itinerário na lista: duração, horas, etapas, a pé e transbordos, a 1.ª partida com cor de atraso (ou, havendo [partidas],
  * as próximas partidas dessa linha) e as etiquetas. A lista pode ficar aberta enquanto o relógio anda: as que já passaram não contam.
+ * Com um [relato] confirmado (ver [relatoDoCartao]) o cartão diz "⚠ Desvio confirmado na 736" no lugar do "aviso numa linha".
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -144,12 +160,17 @@ fun CartaoRota(
     limites: Limites = LocalLimites.current,
     partidas: List<Chegada>? = null,
     agora: Instant = Instant.now(),
+    relato: RelatoRemoto? = null,
 ) {
     val cores = MaterialTheme.colorScheme
     val primeira = it.etapas.firstOrNull { e -> !e.aPe }
     val proximas = partidas.orEmpty().filter { p -> aindaPorChegar(p, agora) }
     val nomes = etiquetas.sortedBy { e -> e.ordinal }.map { e -> textoEtiqueta(e) }
-    val descricao = descricaoRota(it, nomes, comAlerta, limites, proximas, agora)
+    val tipoRelato = relato?.let { r -> TipoRelato.entries.firstOrNull { t -> t.chave == r.tipo } }
+    val textoRelato = if (relato != null && tipoRelato != null) {
+        stringResource(R.string.rotas_relato_confirmado, stringResource(nomeDoTipo(tipoRelato)), relato.linha)
+    } else null
+    val descricao = descricaoRota(it, nomes, comAlerta, limites, proximas, agora, textoRelato)
     OutlinedCard(onClick = aoAbrir, modifier = Modifier.fillMaxWidth()) {
         Column(
             Modifier.padding(16.dp).clearAndSetSemantics { contentDescription = descricao },
@@ -205,7 +226,7 @@ fun CartaoRota(
                     }
                 }
             }
-            if (etiquetas.isNotEmpty() || comAlerta) {
+            if (etiquetas.isNotEmpty() || comAlerta || textoRelato != null) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     etiquetas.sortedBy { e -> e.ordinal }.forEach { e ->
                         Text(
@@ -214,7 +235,8 @@ fun CartaoRota(
                             style = MaterialTheme.typography.labelLarge,
                         )
                     }
-                    if (comAlerta) Text("⚠ " + stringResource(R.string.rotas_aviso_linha), color = cores.error, style = MaterialTheme.typography.labelLarge)
+                    if (textoRelato != null) Text(textoRelato, color = cores.error, style = MaterialTheme.typography.labelLarge)
+                    else if (comAlerta) Text("⚠ " + stringResource(R.string.rotas_aviso_linha), color = cores.error, style = MaterialTheme.typography.labelLarge)
                 }
             }
         }

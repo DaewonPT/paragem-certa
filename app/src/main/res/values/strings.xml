@@ -187,6 +187,8 @@
     <string name="rotas_mais_tarde">Mais tarde</string>
     <string name="rotas_erro_pagina">Não foi possível carregar mais rotas</string>
     <string name="rotas_aviso_linha">aviso numa linha</string>
+    <!-- %1$s = o tipo do relato ("Desvio"), %2$s = a linha ("736") -->
+    <string name="rotas_relato_confirmado">⚠ %1$s confirmado na %2$s</string>
     <string name="escolher_procura">Sítio, rua, código postal ou paragem</string>
     <string name="escolher_recentes">Recentes</string>
     <string name="escolher_sem_resultados">Sem resultados. Experimenta escrever a rua ou o nome do sítio.</string>
@@ -325,6 +327,8 @@
     <string name="eu_avisos">Avisos da viagem</string>
     <string name="eu_som_aviso">Som do aviso</string>
     <string name="eu_vibracao_aviso">Vibração do aviso</string>
+    <string name="eu_camadas_mapa">Camadas do mapa</string>
+    <string name="eu_camada_relatos">Relatos da comunidade</string>
 
     <!-- Bússola: Encontrar a paragem -->
     <string name="bussola_encontrar">Encontrar a paragem</string>

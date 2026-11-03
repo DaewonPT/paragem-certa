@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- O triângulo de aviso das paragens com um relato confirmado, para o mapa (um "⚠" em texto não sai: as letras do OpenFreeMap não o têm).
+     As cores são fixas: o mesmo desenho lê-se no mapa claro e no escuro. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="28dp" android:height="28dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path
+        android:fillColor="#FFB300"
+        android:strokeColor="#0B1222"
+        android:strokeWidth="1.5"
+        android:strokeLineJoin="round"
+        android:pathData="M12,2.5L22.5,21H1.5Z" />
+    <path
+        android:fillColor="#0B1222"
+        android:pathData="M11,9h2v6h-2zM11,16.5h2v2h-2z" />
+</vector>

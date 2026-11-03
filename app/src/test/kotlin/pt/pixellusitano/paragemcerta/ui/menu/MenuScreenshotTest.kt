@@ -71,10 +71,11 @@ class MenuScreenshotTest {
     private fun EcraDefinicoes(
         modifier: Modifier = Modifier, filtros: Filtros = Filtros(), ecraInicial: EcraInicial = EcraInicial.MAPA,
         aoMudarEcraInicial: (EcraInicial) -> Unit = {},
+        aoMudarCamadaRelatos: ((Boolean) -> Unit)? = null,
     ) =DefinicoesConteudo(
         modo = ModoTema.ESCURO, limites = Limites(3, 8), somAviso = true, vibracaoAviso = false, filtros = filtros, ecraInicial = ecraInicial,
         aoMudarModo = {}, aoMudarLimites = {}, aoMudarSom = {}, aoMudarVibracao = {}, aoMudarFiltros = {},
-        aoMudarEcraInicial = aoMudarEcraInicial, aoVoltar = {}, modifier = modifier,
+        aoMudarEcraInicial = aoMudarEcraInicial, aoVoltar = {}, modifier = modifier, aoMudarCamadaRelatos = aoMudarCamadaRelatos,
     )
 
     @Test fun menu_claro() = captureRoboImage("src/test/screenshots/menu_claro.png") {
@@ -103,6 +104,12 @@ class MenuScreenshotTest {
                 EcraInicial.FAVORITOS,
             )
         }
+    }
+
+    // Com a comunidade ligada as Definições ganham as "Camadas do mapa"; a captura de referência grava-se no CI.
+    @Test @Config(qualifiers = "w360dp-h2200dp")
+    fun definicoes_camadas_claro() = captureRoboImage("src/test/screenshots/definicoes_camadas_claro.png") {
+        TemaParagemCerta(ModoTema.CLARO) { EcraDefinicoes(Modifier.width(360.dp), aoMudarCamadaRelatos = {}) }
     }
 
     @Test fun ajuda_claro() = captureRoboImage("src/test/screenshots/ajuda_claro.png") {

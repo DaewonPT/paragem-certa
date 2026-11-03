@@ -46,7 +46,10 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleResumeEffect
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.repeatOnLifecycle
 import pt.pixellusitano.paragemcerta.core.atraso.aindaPorChegar
 import pt.pixellusitano.paragemcerta.ui.comum.FaixaEstado
 import pt.pixellusitano.paragemcerta.core.regras.maisProximas
@@ -74,8 +77,14 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.res.stringResource
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import pt.pixellusitano.paragemcerta.core.fontes.servidor.DadosComunidade
+import pt.pixellusitano.paragemcerta.dados.Comunidade
+import pt.pixellusitano.paragemcerta.dados.Configuracoes
+import pt.pixellusitano.paragemcerta.dados.Preferencias
+import pt.pixellusitano.paragemcerta.ui.mapa.paragensDoMapa
 import pt.pixellusitano.paragemcerta.ui.viagem.rememberRetomarViagem
 import pt.pixellusitano.paragemcerta.ui.viagem.viagemEmCurso
 import pt.pixellusitano.paragemcerta.ui.viagem.viagemInterrompida
@@ -83,10 +92,47 @@ import pt.pixellusitano.paragemcerta.viagem.FicheirosViagem
 import java.time.Duration
 import java.time.Instant
 
+/** Os relatos pedem-se 1 s depois de a câmara parar; o Início só entrega a lista de paragens 0,5 s depois (ver [InicioViewModel]). */
+internal const val ESPERA_RELATOS_MS = 1_000L - InicioViewModel.ESPERA_CAMARA_MS
+
+/**
+ * Os relatos da comunidade das [paragens] à vista, para marcar no mapa os confirmados (ver [paragensDoMapa]). Só se pedem com a
+ * `comunidade` ligada na config e a camada "Relatos da comunidade" ligada nas Definições, depois da espera por a câmara parar
+ * (cada lista nova recomeça-a) e nunca com a app em segundo plano: ao ir para lá a espera e o pedido por fazer cancelam-se, e ao
+ * voltar recomeça-se (a cache de 2 min evita pedir o que já veio). Falhando o pedido, fica o que estava guardado.
+ */
+@Composable
+internal fun rememberRelatosDoMapa(
+    paragens: List<Paragem>,
+    comunidade: Comunidade,
+    configuracoes: Configuracoes,
+    preferencias: Preferencias,
+): DadosComunidade {
+    val config by configuracoes.atual.collectAsStateWithLifecycle()
+    val camada by preferencias.camadaRelatos.collectAsStateWithLifecycle(initialValue = true)
+    val ciclo = LocalLifecycleOwner.current.lifecycle
+    var relatos by remember { mutableStateOf(DadosComunidade()) }
+    val ligada = config.interruptores.comunidade && camada
+    LaunchedEffect(ligada, paragens) {
+        if (!ligada || paragens.isEmpty()) {
+            relatos = DadosComunidade()
+            return@LaunchedEffect
+        }
+        ciclo.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            delay(ESPERA_RELATOS_MS)
+            relatos = comunidade.dasParagens(paragens.map { it.ref.chave })
+        }
+    }
+    return relatos
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun InicioEcra(
     repositorio: Repositorio,
+    comunidade: Comunidade,
+    configuracoes: Configuracoes,
+    preferencias: Preferencias,
     aoAbrirParagem: (Paragem) -> Unit,
     aoPesquisar: () -> Unit = {},
     linhaId: String? = null,
@@ -153,6 +199,14 @@ fun InicioEcra(
         if (repositorio.redeEmFalta()) repositorio.atualizarRede()
     }
 
+    // As paragens que o mapa mostra (as da linha escolhida ou as da zona), como a comunidade as corrigiu e com o triângulo nas de relato confirmado.
+    val mostradas = paragensDaLinha ?: paragens
+    val relatos = rememberRelatosDoMapa(mostradas, comunidade, configuracoes, preferencias)
+    val desenhadas = remember(mostradas, relatos) {
+        val pontos = paragensDoMapa(mostradas, relatos)
+        pontos.map { it.first } to pontos.filter { it.second }.map { it.first.ref.chave }.toSet()
+    }
+
     val folha = rememberBottomSheetScaffoldState()
     // "Favoritos" como ecrã inicial: o painel abre uma só vez (rememberSaveable: voltar de outro ecrã não o reabre por cima do que a pessoa fez).
     var favoritosAbertos by rememberSaveable { mutableStateOf(false) }
@@ -171,7 +225,8 @@ fun InicioEcra(
     ) { _ ->
     Box(Modifier.fillMaxSize()) {
         Mapa(
-            paragens = paragensDaLinha ?: paragens,
+            paragens = desenhadas.first,
+            comRelato = desenhadas.second,
             enquadrar = paragensDaLinha.orEmpty(),
             veiculos = veiculos,
             coresLinhas = cores,

@@ -34,6 +34,18 @@ fun pertoParaRelatar(distanciaM: Double, precisaoM: Float?): Boolean =
 /** A chave da linha nos relatos: o nome visível ("736", "15E") em maiúsculas, como o servidor a guarda. */
 fun chaveLinha(nome: String): String = nome.trim().uppercase()
 
+// O servidor responde 400 ao pedido inteiro se uma só chave de `paragens=` ou `linhas=` falhar o formato (worker/src/relatos.ts):
+// por isso só se mandam chaves que passam. Os espaços são os do `\s` do JavaScript; o `{1,120}` do servidor conta unidades UTF-16.
+private val FORMATO_PARAGEM = Regex("""(CM|TRANSITOUS):[^\s   -     　﻿,<>"'&]+""")
+private val FORMATO_LINHA = Regex("""[\p{L}\p{N}][\p{L}\p{N} .\-]{0,15}""")
+private const val MAX_ID_PARAGEM = 120
+
+/** "CM:060419" ou "TRANSITOUS:<id>", com o id de 1 a 120 unidades sem espaços, vírgulas nem `< > " ' &`: o que o servidor aceita. */
+fun chaveParagemValida(chave: String): Boolean = FORMATO_PARAGEM.matches(chave) && chave.length - chave.indexOf(':') - 1 <= MAX_ID_PARAGEM
+
+/** A chave de uma linha ([chaveLinha]) como o servidor a aceita: uma letra ou algarismo e até 15 letras, algarismos, espaços, "." ou "-". */
+fun chaveLinhaValida(chave: String): Boolean = FORMATO_LINHA.matches(chave)
+
 /** A chave de uma paragem de uma viagem: as da Carris Metropolitana do Transitous passam a "CM:…", as outras a "TRANSITOUS:…". */
 fun chaveDaParagemEtapa(id: String?): String? {
     if (id == null) return null
