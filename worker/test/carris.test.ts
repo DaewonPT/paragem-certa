@@ -176,6 +176,66 @@ describe("Carris ao vivo", () => {
     expect(fetchFalso).toHaveBeenCalledTimes(2);
   });
 
+  it("posicaoSemCoordenadasSai", () => {
+    // Um VehiclePosition com o bloco position mas sem latitude ou sem longitude seria um autocarro em 0,0.
+    const comPosicao = (id: string, posicao: number[]) =>
+      bloco(2, [...texto(1, `e${id}`), ...bloco(4, [...bloco(2, posicao), ...numero(3, 19), ...numero(5, AGORA_S), ...texto(7, "12105"), ...bloco(8, texto(1, id))])]);
+    const bytes = feed(AGORA_S, [comPosicao("1", fixo(1, 5, 38.7)), comPosicao("2", fixo(2, 5, -9.1)), comPosicao("3", []), entidade(CONHECIDO)]);
+    expect(lerPosicoes(bytes).veiculos.map((v) => v.id)).toEqual(["5247"]);
+  });
+
+  it("respostaGrandeDemaisDa502", async () => {
+    const LIMITE = 2 * 1024 * 1024;
+    const fetchFalso = vi.spyOn(globalThis, "fetch");
+    // Diz logo no Content-Length que passa dos 2 MB.
+    fetchFalso.mockResolvedValueOnce(new Response(feed(AGORA_S, [entidade(CONHECIDO)]), { headers: { "content-length": String(LIMITE + 1) } }));
+    let resposta = await carris();
+    expect(resposta.status).toBe(502);
+    expect(await resposta.json()).toEqual({ erro: "fonte_falhou" });
+
+    // Não diz o tamanho e manda mais do que 2 MB (zeros, que o leitor aceitaria).
+    const aos64KB = (total: number) => {
+      let enviados = 0;
+      return new ReadableStream<Uint8Array>({
+        pull(controlo) {
+          if (enviados >= total) return controlo.close();
+          controlo.enqueue(new Uint8Array(Math.min(64 * 1024, total - enviados)));
+          enviados += 64 * 1024;
+        },
+      });
+    };
+    fetchFalso.mockResolvedValueOnce(new Response(aos64KB(LIMITE + 1)));
+    resposta = await carris();
+    expect(resposta.status).toBe(502);
+    expect(await resposta.json()).toEqual({ erro: "fonte_falhou" });
+
+    // Exatamente 2 MB ainda passa.
+    fetchFalso.mockResolvedValueOnce(new Response(aos64KB(LIMITE)));
+    expect((await carris()).status).toBe(200);
+    expect(fetchFalso).toHaveBeenCalledTimes(3);
+  });
+
+  it("cacheQueFalhaPedeAFonte", async () => {
+    const fetchFalso = vi.spyOn(globalThis, "fetch").mockImplementation(async () => new Response(feed(AGORA_S, [entidade(CONHECIDO)])));
+    const match = vi.fn((_chave: RequestInfo | URL) => Promise.reject(new Error("a cache não lê")));
+    const put = vi.fn((_chave: RequestInfo | URL, _resposta: Response) => Promise.reject(new Error("a cache não guarda")));
+    // Primeiro o caches.open falha; depois abre uma cache que não lê nem guarda.
+    vi.spyOn(caches, "open")
+      .mockRejectedValueOnce(new Error("sem cache"))
+      .mockResolvedValue({ match, put } as unknown as Cache);
+    for (let i = 0; i < 3; i++) {
+      const resposta = await carris();
+      expect(resposta.status).toBe(200);
+      const corpo = (await resposta.json()) as { veiculos: VeiculoCarris[] };
+      esperarVeiculo(corpo.veiculos[0], CONHECIDO);
+    }
+    expect(fetchFalso).toHaveBeenCalledTimes(3);
+    expect(put).toHaveBeenCalledTimes(2);
+    // A chave fica no endereço do próprio Worker (nunca é servida).
+    expect(String(match.mock.calls[0][0])).toBe("https://paragemcerta.pixellusitano.com/__fontes/carris-posicoes");
+    expect(String(put.mock.calls[0][0])).toBe("https://paragemcerta.pixellusitano.com/__fontes/carris-posicoes");
+  });
+
   it("carrisDesligadoDa403", async () => {
     const fetchFalso = vi.spyOn(globalThis, "fetch");
     for (const segredos of [{}, { AMBIENTE: "teste", TESTE_INTERRUPTORES: JSON.stringify({ comunidade: true }) }] as Partial<Env>[]) {

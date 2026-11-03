@@ -14,8 +14,10 @@ permissions:
   contents: read
   actions: read
 
+# O mesmo grupo do job "publicar" do servidor.yml: este workflow e uma publicação nunca correm ao mesmo tempo, e
+# nenhum cancela o outro a meio.
 concurrency:
-  group: dados
+  group: publicar-servidor
   cancel-in-progress: false
 
 jobs:
@@ -27,16 +29,25 @@ jobs:
     env:
       WRANGLER_SEND_METRICS: 'false'
     steps:
-      # O commit da última corrida à mão do "Servidor" no main que acabou bem, ou seja, a que publicou.
+      # O commit da última corrida à mão do "Servidor" no main, e só se ela acabou bem (a que publicou). Se a última
+      # falhou, foi cancelada ou ainda corre, pára: um "publicar" que falhou a meio nunca é desfeito por este deploy de
+      # um commit antigo. Como os dois partilham o grupo de concorrência, nada publica entre este passo e o deploy.
       - name: Find the last published commit
         id: publicado
+        shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          sha=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow servidor.yml --branch main --event workflow_dispatch \
-            --status success --limit 1 --json headSha --jq '.[0].headSha // empty')
+          ultima=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow servidor.yml --branch main --event workflow_dispatch \
+            --limit 1 --json headSha,conclusion)
+          sha=$(jq -r '.[0].headSha // empty' <<< "$ultima")
+          conclusao=$(jq -r '.[0].conclusion // empty' <<< "$ultima")
           if [ -z "$sha" ]; then
             echo "::error::O servidor ainda não foi publicado pelo workflow Servidor; não há nada para atualizar."
+            exit 1
+          fi
+          if [ "$conclusao" != "success" ]; then
+            echo "::error::A última corrida à mão do Servidor no main não acabou bem (${conclusao:-ainda a correr}); corre-a outra vez antes de atualizar o catálogo."
             exit 1
           fi
           echo "sha=$sha" >> "$GITHUB_OUTPUT"

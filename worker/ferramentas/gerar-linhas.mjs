@@ -124,6 +124,35 @@ function sentidosPelaUltimaParagem(viagens) {
   return grupos;
 }
 
+/**
+ * Na CP só são linhas as "Linha …"; as outras são categorias de serviço (U, R, IR…). Cada rota de uma categoria com
+ * todas as paragens numa só dessas linhas junta-se a ela (os U de Cais do Sodré a São Pedro do Estoril vão para a Linha
+ * de Cascais); as outras saem. Tira as categorias de `porLinha` e devolve, por linha, as viagens que se lhe juntam.
+ */
+function juntarCategoriasDaCp(porLinha) {
+  const eLinha = (nome) => nome.startsWith("Linha ");
+  const paragensDe = [...porLinha].filter(([nome]) => eLinha(nome)).map(([nome, vs]) => [nome, new Set(vs.flatMap((v) => v.paragens))]);
+  const juntas = new Map();
+  for (const [nome, vs] of [...porLinha]) {
+    if (eLinha(nome)) continue;
+    porLinha.delete(nome);
+    const porRota = new Map();
+    for (const v of vs) {
+      if (!porRota.has(v.rota)) porRota.set(v.rota, []);
+      porRota.get(v.rota).push(v);
+    }
+    for (const daRota of porRota.values()) {
+      const usadas = new Set(daRota.flatMap((v) => v.paragens));
+      const onde = paragensDe.filter(([, daLinha]) => [...usadas].every((id) => daLinha.has(id)));
+      if (onde.length !== 1) continue;
+      const [linha] = onde[0];
+      if (!juntas.has(linha)) juntas.set(linha, []);
+      juntas.get(linha).push(...daRota);
+    }
+  }
+  return juntas;
+}
+
 /** Douglas–Peucker com a tolerância em metros (projeção plana à volta do primeiro ponto; chega para uma linha urbana). */
 export function simplificar(pontos, tolerancia) {
   if (pontos.length < 3) return pontos;
@@ -226,10 +255,12 @@ async function lerFeed(pasta, feed, dia, todasAsParagens) {
     if (!porLinha.has(nome)) porLinha.set(nome, []);
     porLinha.get(nome).push(v);
   }
+  const juntas = feed === CP ? juntarCategoriasDaCp(porLinha) : new Map();
 
   const linhas = [];
   const formas = new Map();
   for (const [nome, vs] of porLinha) {
+    const extras = juntas.get(nome) ?? [];
     const contaRotas = contar(vs.map((v) => v.rota));
     const principal = rotas.get(maisFrequente(contaRotas));
     const grupos = vs.every((v) => v.sentido !== "")
@@ -250,6 +281,13 @@ async function lerFeed(pasta, feed, dia, todasAsParagens) {
           formaId,
         };
       });
+    // As viagens juntadas só acrescentam destinos, no sentido cujo padrão percorrem pela mesma ordem (o padrão, a
+    // forma e o destino continuam os da própria linha).
+    for (const v of extras) {
+      const notas = sentidos.map((s) => concordancia(v.paragens, s.paragens));
+      const i = notas.indexOf(Math.max(...notas));
+      if (notas[i] > 0 && !sentidos[i].destinos.includes(v.destino)) sentidos[i].destinos = [...sentidos[i].destinos, v.destino].sort(comparar);
+    }
     linhas.push({
       operador: `pt-${feed}`,
       nome,
@@ -257,7 +295,7 @@ async function lerFeed(pasta, feed, dia, todasAsParagens) {
       modo: modoDe(principal.route_type ?? "", nome, feed),
       cor: cor(principal.route_color),
       corTexto: cor(principal.route_text_color),
-      rotas: [...contaRotas.keys()].sort(comparar).map((id) => prefixo + id),
+      rotas: [...new Set([...vs, ...extras].map((v) => v.rota))].sort(comparar).map((id) => prefixo + id),
       sentidos,
     });
   }

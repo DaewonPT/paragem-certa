@@ -53,10 +53,11 @@ const texto = (valor: Valor): string => (valor instanceof Uint8Array ? TEXTO.dec
 const numero = (valor: Valor): number => (typeof valor === "number" ? valor : 0);
 const mensagem = (valor: Valor): Uint8Array => (valor instanceof Uint8Array ? valor : new Uint8Array());
 
-/** Um `VehiclePosition`; sem posição não serve para o mapa (seria um autocarro no meio do mar, em 0,0). */
+/** Um `VehiclePosition`; sem latitude e longitude não serve para o mapa (seria um autocarro no meio do mar, em 0,0). */
 function lerVeiculo(bytes: Uint8Array, idDaEntidade: string): VeiculoCarris | null {
   const v: VeiculoCarris = { id: idDaEntidade, rota: "", viagem: "", sentido: 0, lat: 0, lon: 0, seq: 0, paragem: null, ts: 0 };
-  let temPosicao = false;
+  let temLat = false;
+  let temLon = false;
   for (const [campo, valor] of campos(bytes)) {
     if (campo === 1) {
       for (const [c, x] of campos(mensagem(valor))) {
@@ -66,10 +67,14 @@ function lerVeiculo(bytes: Uint8Array, idDaEntidade: string): VeiculoCarris | nu
       }
     } else if (campo === 2) {
       for (const [c, x] of campos(mensagem(valor))) {
-        if (c === 1) v.lat = numero(x);
-        else if (c === 2) v.lon = numero(x);
+        if (c === 1) {
+          v.lat = numero(x);
+          temLat = true;
+        } else if (c === 2) {
+          v.lon = numero(x);
+          temLon = true;
+        }
       }
-      temPosicao = true;
     } else if (campo === 3) v.seq = numero(valor);
     else if (campo === 5) v.ts = numero(valor);
     else if (campo === 7) v.paragem = texto(valor) || null;
@@ -77,7 +82,7 @@ function lerVeiculo(bytes: Uint8Array, idDaEntidade: string): VeiculoCarris | nu
       for (const [c, x] of campos(mensagem(valor))) if (c === 1 && texto(x)) v.id = texto(x);
     }
   }
-  return temPosicao ? v : null;
+  return temLat && temLon ? v : null;
 }
 
 /**

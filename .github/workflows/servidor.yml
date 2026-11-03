@@ -17,13 +17,13 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
-
+# A concorrência é por job: um push novo cancela os testes antigos, mas nunca um "publicar" a meio.
 jobs:
   testes:
     name: Tests and types
+    concurrency:
+      group: ${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: true
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     defaults:
@@ -60,6 +60,11 @@ jobs:
     if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
     # Os testes e os tipos têm de passar antes de qualquer coisa sair daqui.
     needs: testes
+    # O mesmo grupo do dados.yml: uma publicação espera pela atualização semanal do catálogo (e vice-versa), sem
+    # cancelar nenhuma a meio.
+    concurrency:
+      group: publicar-servidor
+      cancel-in-progress: false
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     env:

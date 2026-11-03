@@ -3,3 +3,11 @@ route_id,service_id,trip_headsign,trip_short_name,trip_id
 25-94_31039-94_61101,S,Sintra,18003,c2
 25-94_61101-94_31039,S,Lisboa Rossio,18002,c3
 21-94_30007-94_80004,S,Porto Campanha,520,c4
+26-94_69005-94_69211,S,Cascais,19001,k1
+26-94_69005-94_69211,S,Cascais,19003,k2
+26-94_69211-94_69005,S,Cais do Sodré,19002,k3
+27-94_69005-94_69179,S,São Pedro do Estoril,19101,u1
+27-94_69005-94_69179,S,São Pedro do Estoril,19103,u2
+27-94_69005-94_69179,S,São Pedro do Estoril,19105,u3
+27-94_69179-94_69005,S,Oeiras,19102,u4
+28-94_31112-94_69112,S,Oeiras,19201,r1

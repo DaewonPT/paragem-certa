@@ -4,3 +4,7 @@ Queluz-Belas,94_31112,38.755300,-9.255200,Europe/Lisbon
 Sintra,94_61101,38.799290,-9.385740,Europe/Lisbon
 Lisboa Santa Apolonia,94_30007,38.713770,-9.122450,Europe/Lisbon
 Porto Campanha,94_80004,41.148720,-8.585410,Europe/Lisbon
+Cais do Sodré,94_69005,38.705600,-9.145800,Europe/Lisbon
+Oeiras,94_69112,38.687600,-9.314900,Europe/Lisbon
+São Pedro do Estoril,94_69179,38.696600,-9.372000,Europe/Lisbon
+Cascais,94_69211,38.700800,-9.418300,Europe/Lisbon

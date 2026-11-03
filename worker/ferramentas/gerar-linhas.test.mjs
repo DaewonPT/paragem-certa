@@ -146,6 +146,32 @@ test("cpSoAsDaAreaMetropolitana", () => {
   assert.equal(catalogo.paragens["pt-Comboios-de-Portugal(CP)_94_80004"], undefined);
 });
 
+test("cpCategoriasJuntamNaLinha", () => {
+  const cp = "pt-Comboios-de-Portugal(CP)";
+  // Da CP só ficam as linhas "Linha …"; as categorias (U, R, IC…) não são linhas.
+  assert.deepEqual(catalogo.linhas.filter((l) => l.operador === cp).map((l) => l.nome), ["Linha de Cascais", "Linha de Sintra"]);
+  const cascais = linha(cp, "Linha de Cascais");
+  // Os U (Cais do Sodré – São Pedro do Estoril) só param na Linha de Cascais: juntam-se a ela.
+  assert.deepEqual(cascais.rotas, [
+    `${cp}_26-94_69005-94_69211`,
+    `${cp}_26-94_69211-94_69005`,
+    `${cp}_27-94_69005-94_69179`,
+    `${cp}_27-94_69179-94_69005`,
+  ]);
+  // Os destinos dos U entram no sentido que percorrem pela mesma ordem; as paragens e o destino continuam os da linha,
+  // mesmo com mais viagens U do que da própria linha.
+  assert.deepEqual(cascais.sentidos.map((s) => [s.sentido, s.destino, s.destinos, s.paragens]), [
+    [0, "Cascais", ["Cascais", "São Pedro do Estoril"], [`${cp}_94_69005`, `${cp}_94_69112`, `${cp}_94_69179`, `${cp}_94_69211`]],
+    [1, "Cais do Sodré", ["Cais do Sodré", "Oeiras"], [`${cp}_94_69211`, `${cp}_94_69179`, `${cp}_94_69112`, `${cp}_94_69005`]],
+  ]);
+  assert.equal(cascais.nomeLongo, "");
+  assert.equal(cascais.cor, "#0099FF");
+  // O R de Queluz-Belas a Oeiras toca em duas linhas: sai.
+  const todasAsRotas = catalogo.linhas.flatMap((l) => l.rotas);
+  assert.equal(todasAsRotas.includes(`${cp}_28-94_31112-94_69112`), false);
+  assert.deepEqual(linha(cp, "Linha de Sintra").rotas, [`${cp}_25-94_31039-94_61101`, `${cp}_25-94_61101-94_31039`]);
+});
+
 test("feedCaducadoFicaDeFora", async () => {
   assert.equal(catalogo.operadores.find((o) => o.id === "pt-Metro-Transportes-do-Sul"), undefined);
   assert.equal(catalogo.linhas.some((l) => l.operador === "pt-Metro-Transportes-do-Sul"), false);
