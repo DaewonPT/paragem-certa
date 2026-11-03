@@ -51,6 +51,9 @@ jobs:
       - name: Types
         run: npm run tipos
 
+      - name: Lines catalogue generator (Node, small hand-written GTFS)
+        run: npm run ferramentas
+
   publicar:
     name: Publish to Cloudflare
     # Só à mão (Actions → Servidor → Run workflow) e só a partir do main. Os passos do autor estão em docs/servidor.md.
@@ -75,6 +78,33 @@ jobs:
       - name: Install dependencies (exact versions from package-lock.json)
         working-directory: worker
         run: npm ci
+
+      # O linhas.json nunca vai para o repositório: gera-se aqui, dos GTFS processados pelo Transitous (os mesmos passos
+      # do dados.yml), antes de mexer em alguma coisa na Cloudflare. Se o Transitous falhar, fica a cópia que está no ar.
+      - name: Generate the lines catalogue from Transitous
+        id: linhas
+        continue-on-error: true
+        shell: bash
+        working-directory: worker
+        env:
+          UA: 'ParagemCerta/0.4.0 (contact@pixellusitano.com; https://pixellusitano.com)'
+        run: |
+          gtfs="$RUNNER_TEMP/gtfs"
+          mkdir -p "$gtfs"
+          jq -r '.[] | [.feed, .url] | @tsv' ferramentas/feeds-linhas.json | while IFS=$'\t' read -r feed url; do
+            curl -fsSL --retry 2 -A "$UA" -o "$RUNNER_TEMP/feed.zip" "$url"
+            unzip -q -o "$RUNNER_TEMP/feed.zip" -d "$gtfs/$feed"
+          done
+          node ferramentas/gerar-linhas.mjs "$gtfs" public/dados/linhas.json
+
+      # Sem nenhuma das duas (a primeira publicação com o Transitous em baixo), pára aqui.
+      - name: Keep the live lines catalogue (Transitous failed)
+        if: steps.linhas.outcome == 'failure'
+        shell: bash
+        working-directory: worker
+        run: |
+          curl -fsSL --retry 2 -o public/dados/linhas.json https://paragemcerta.pixellusitano.com/dados/linhas.json
+          jq -e '.versao == 1 and (.linhas | length) > 0' public/dados/linhas.json > /dev/null
 
       # As migrações vão primeiro: só acrescentam tabelas, por isso o código antigo continua a funcionar até ao deploy.
       - name: Apply D1 migrations (remote, EU)

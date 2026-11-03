@@ -1,0 +1,3 @@
+monday,tuesday,wednesday,thursday,friday,saturday,sunday,start_date,end_date,service_id
+1,1,1,1,1,1,1,20260606,20261231,Inverno
+1,1,1,1,1,1,1,20260606,20260630,Verao

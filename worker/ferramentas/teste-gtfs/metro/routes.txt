@@ -1,0 +1,3 @@
+route_long_name,route_short_name,agency_id,route_type,route_id,route_color
+Amarela,Am,ML,1,B,FFCC00
+Verde,Vd,ML,1,C,00CC99

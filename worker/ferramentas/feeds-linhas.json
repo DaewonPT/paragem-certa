@@ -1,0 +1,10 @@
+[
+  { "feed": "Carris", "nome": "Carris", "url": "https://api.transitous.org/source-data/processed/pt_Carris.gtfs.zip" },
+  { "feed": "Metro-Lisboa", "nome": "Metro de Lisboa", "url": "https://api.transitous.org/source-data/processed/pt_Metro-Lisboa.gtfs.zip" },
+  { "feed": "Comboios-de-Portugal(CP)", "nome": "CP", "url": "https://api.transitous.org/source-data/processed/pt_Comboios-de-Portugal%28CP%29.gtfs.zip" },
+  { "feed": "Fergatus", "nome": "Fertagus", "url": "https://api.transitous.org/source-data/processed/pt_Fergatus.gtfs.zip" },
+  { "feed": "Transtejo-Soflusa", "nome": "Transtejo", "url": "https://api.transitous.org/source-data/processed/pt_Transtejo-Soflusa.gtfs.zip" },
+  { "feed": "Cascais-Próxima", "nome": "MobiCascais", "url": "https://api.transitous.org/source-data/processed/pt_Cascais-Pr%C3%B3xima.gtfs.zip" },
+  { "feed": "Barreiro", "nome": "TCB Barreiro", "url": "https://api.transitous.org/source-data/processed/pt_Barreiro.gtfs.zip" },
+  { "feed": "Metro-Transportes-do-Sul", "nome": "MTS", "url": "https://api.transitous.org/source-data/processed/pt_Metro-Transportes-do-Sul.gtfs.zip" }
+]

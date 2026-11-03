@@ -1,0 +1,5 @@
+stop_name,parent_station,stop_code,stop_id,stop_lat,stop_lon,location_type
+Cascais Terminal,,20127,20127,38.7005,-9.4180,
+"Estoril, Escola",,20128,20128,38.7060,-9.3970,
+Parede Terminal,,20129,20129,38.6890,-9.3540,
+Alcabideche,,20131,20131,38.7340,-9.4090,

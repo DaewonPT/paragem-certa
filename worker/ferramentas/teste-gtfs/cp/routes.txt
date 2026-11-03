@@ -1,0 +1,4 @@
+route_long_name,route_short_name,agency_id,route_type,route_id,route_color,route_text_color
+,Linha de Sintra,1094_CP,109,25-94_31039-94_61101,008000,FFFFFF
+,Linha de Sintra,1094_CP,109,25-94_61101-94_31039,008000,FFFFFF
+,IC,1094_CP,2,21-94_30007-94_80004,,

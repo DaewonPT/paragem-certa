@@ -1,0 +1,4 @@
+route_long_name,route_short_name,agency_id,route_type,route_id
+Restelo - Portela,728,1,3,204_0
+"Estação Sta. Apolónia - Portela, Av. Descobrimentos",728,1,3,204_1
+Martim Moniz - Campo Ourique (Prazeres),28E,1,3,75_0

@@ -1,0 +1,13 @@
+route_id,service_id,direction_id,shape_id,trip_id
+204_0,Inverno,0,728_ida,t1
+204_0,Inverno,0,728_ida,t2
+204_0,Inverno,0,728_ida,t3
+204_0,Inverno,0,728_longa,t4
+204_1,Inverno,1,,t5
+204_1,Inverno,1,,t6
+204_0,Verao,0,,t7
+204_0,Verao,0,,t8
+204_0,Verao,0,,t9
+204_0,Verao,0,,t10
+75_0,Inverno,0,,e1
+75_0,Inverno,1,,e2

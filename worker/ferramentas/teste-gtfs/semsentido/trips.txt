@@ -1,0 +1,8 @@
+route_id,service_id,trip_headsign,shape_id,trip_id
+M01_A,A,Parede,,s1
+M01_A,A,Parede,,s2
+M01_A,A,Parede,,s3
+M01_A,A,Cascais,,s4
+M01_A,A,Cascais,,s5
+M01_A,A,Estoril,,s6
+M99,A,Alcabideche,,s7

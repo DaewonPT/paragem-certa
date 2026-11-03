@@ -25,6 +25,7 @@ export default defineConfig(async () => {
         },
       }),
     ],
-    test: { setupFiles: ["./test/apply-migrations.ts"] },
+    // Só os testes do Worker: os de ferramentas/ são do Node (`npm run ferramentas`) e não correm no workerd.
+    test: { include: ["test/**/*.test.ts"], setupFiles: ["./test/apply-migrations.ts"] },
   };
 });

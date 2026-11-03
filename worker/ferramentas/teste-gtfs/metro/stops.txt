@@ -1,0 +1,10 @@
+stop_name,parent_station,zone_id,stop_id,stop_lat,stop_lon,location_type
+Campo Grande,,L,CG,38.75988,-9.157941,1
+Campo Grande,CG,L,CG1,38.75988,-9.157941,
+Campo Grande,CG,L,CG2,38.75988,-9.157941,
+Campo Grande,CG,L,CG3,38.75988,-9.157941,
+Campo Grande,CG,L,CG4,38.75988,-9.157941,
+Rato,,L,RA1,38.72,-9.1541,
+Odivelas,,L,OD1,38.7932,-9.1730,
+Cais do Sodré,,L,CS1,38.7059,-9.1445,
+Telheiras,,L,TE1,38.7604,-9.1663,

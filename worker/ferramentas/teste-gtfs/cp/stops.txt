@@ -1,0 +1,6 @@
+stop_name,stop_id,stop_lat,stop_lon,stop_timezone
+Lisboa Rossio,94_31039,38.714366,-9.141411,Europe/Lisbon
+Queluz-Belas,94_31112,38.755300,-9.255200,Europe/Lisbon
+Sintra,94_61101,38.799290,-9.385740,Europe/Lisbon
+Lisboa Santa Apolonia,94_30007,38.713770,-9.122450,Europe/Lisbon
+Porto Campanha,94_80004,41.148720,-8.585410,Europe/Lisbon

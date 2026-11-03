@@ -1,0 +1,112 @@
+# .github/workflows/dados.yml
+# Atualiza o catálogo das linhas (/dados/linhas.json) à segunda-feira de manhã. Só corre depois de o autor pôr a
+# variável do repositório SERVIDOR_PUBLICADO = sim, só no main, só com o último commit que o "Servidor" já publicou
+# (nunca código que o autor ainda não publicou) e só quando o catálogo mudou. Ver docs/servidor.md.
+name: Dados
+
+on:
+  schedule:
+    - cron: '17 4 * * 1'
+  workflow_dispatch:
+
+# Least privilege: ler o código e as corridas do workflow Servidor.
+permissions:
+  contents: read
+  actions: read
+
+concurrency:
+  group: dados
+  cancel-in-progress: false
+
+jobs:
+  linhas:
+    name: Weekly lines catalogue
+    if: github.ref == 'refs/heads/main' && vars.SERVIDOR_PUBLICADO == 'sim'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    env:
+      WRANGLER_SEND_METRICS: 'false'
+    steps:
+      # O commit da última corrida à mão do "Servidor" no main que acabou bem, ou seja, a que publicou.
+      - name: Find the last published commit
+        id: publicado
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          sha=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow servidor.yml --branch main --event workflow_dispatch \
+            --status success --limit 1 --json headSha --jq '.[0].headSha // empty')
+          if [ -z "$sha" ]; then
+            echo "::error::O servidor ainda não foi publicado pelo workflow Servidor; não há nada para atualizar."
+            exit 1
+          fi
+          echo "sha=$sha" >> "$GITHUB_OUTPUT"
+
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ steps.publicado.outputs.sha }}
+          persist-credentials: false
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: worker/package-lock.json
+
+      - name: Install dependencies (exact versions from package-lock.json)
+        working-directory: worker
+        run: npm ci
+
+      # Os mesmos passos do "Servidor"; aqui uma falha pára tudo e o catálogo que está no ar fica.
+      - name: Generate the lines catalogue from Transitous
+        shell: bash
+        working-directory: worker
+        env:
+          UA: 'ParagemCerta/0.4.0 (contact@pixellusitano.com; https://pixellusitano.com)'
+        run: |
+          gtfs="$RUNNER_TEMP/gtfs"
+          mkdir -p "$gtfs"
+          jq -r '.[] | [.feed, .url] | @tsv' ferramentas/feeds-linhas.json | while IFS=$'\t' read -r feed url; do
+            curl -fsSL --retry 2 -A "$UA" -o "$RUNNER_TEMP/feed.zip" "$url"
+            unzip -q -o "$RUNNER_TEMP/feed.zip" -d "$gtfs/$feed"
+          done
+          node ferramentas/gerar-linhas.mjs "$gtfs" public/dados/linhas.json
+
+      # Sem o geradoEm e com as chaves por ordem; um ficheiro em falta ou estragado no ar conta como mudança.
+      - name: Compare with the live catalogue
+        id: compara
+        shell: bash
+        working-directory: worker
+        run: |
+          jq -S 'del(.geradoEm)' public/dados/linhas.json > "$RUNNER_TEMP/novo.json"
+          curl -fsSL --retry 2 -o "$RUNNER_TEMP/no-ar.json" https://paragemcerta.pixellusitano.com/dados/linhas.json || echo '{}' > "$RUNNER_TEMP/no-ar.json"
+          jq -S 'del(.geradoEm)' "$RUNNER_TEMP/no-ar.json" > "$RUNNER_TEMP/antigo.json" || echo '{}' > "$RUNNER_TEMP/antigo.json"
+          if cmp -s "$RUNNER_TEMP/novo.json" "$RUNNER_TEMP/antigo.json"; then
+            echo "mudou=nao" >> "$GITHUB_OUTPUT"
+            echo "O catálogo não mudou; nada a publicar."
+          else
+            echo "mudou=sim" >> "$GITHUB_OUTPUT"
+          fi
+
+      # O mesmo deploy (e os mesmos segredos) do "Servidor"; sem migrações, porque este commit já foi publicado.
+      - name: Deploy the Worker with the new catalogue
+        if: steps.compara.outputs.mudou == 'sim'
+        uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: worker
+          command: deploy
+          secrets: |
+            RESEND_API_KEY
+            RESPONSAVEL
+            GOOGLE_WEB_CLIENT_ID
+            CF_PURGE_TOKEN
+            CF_ZONA
+            EMAIL_AUTOR
+        env:
+          RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
+          RESPONSAVEL: ${{ secrets.RESPONSAVEL }}
+          GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID }}
+          CF_PURGE_TOKEN: ${{ secrets.CF_PURGE_TOKEN }}
+          CF_ZONA: ${{ secrets.CF_ZONA }}
+          EMAIL_AUTOR: ${{ secrets.EMAIL_AUTOR }}

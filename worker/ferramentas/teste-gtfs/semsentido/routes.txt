@@ -1,0 +1,3 @@
+route_long_name,route_short_name,agency_id,route_type,route_id,route_color,route_text_color
+Cascais Terminal - Parede,1,21,3,M01_A,AD0101,FFFFFF
+Circular de Alcabideche,,21,3,M99,,
