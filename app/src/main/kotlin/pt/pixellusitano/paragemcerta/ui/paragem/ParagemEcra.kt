@@ -50,17 +50,30 @@ import pt.pixellusitano.paragemcerta.core.modelo.Gravidade
 import pt.pixellusitano.paragemcerta.core.modelo.Linha
 import pt.pixellusitano.paragemcerta.core.modelo.Paragem
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
+import pt.pixellusitano.paragemcerta.dados.Comunidade
+import pt.pixellusitano.paragemcerta.dados.Configuracoes
 import pt.pixellusitano.paragemcerta.dados.EstadoChegadas
+import pt.pixellusitano.paragemcerta.dados.Preferencias
 import pt.pixellusitano.paragemcerta.dados.Repositorio
 import pt.pixellusitano.paragemcerta.ui.comum.FaixaEstado
 import pt.pixellusitano.paragemcerta.ui.comum.LinhaChegada
+import pt.pixellusitano.paragemcerta.ui.comunidade.RelatarNaParagem
 import pt.pixellusitano.paragemcerta.ui.tema.FrisoAzulejo
 import pt.pixellusitano.paragemcerta.ui.tema.LocalEscuro
 import java.time.Instant
 
 /** Ecrã da paragem ligado aos dados. */
 @Composable
-fun ParagemEcra(ref: RefParagem, repositorio: Repositorio, aoEncontrar: (Paragem) -> Unit, aoVoltar: () -> Unit) {
+fun ParagemEcra(
+    ref: RefParagem,
+    repositorio: Repositorio,
+    comunidade: Comunidade,
+    configuracoes: Configuracoes,
+    @Suppress("UNUSED_PARAMETER") preferencias: Preferencias, // os relatos ocultados (etapa 3, a seguir)
+    aoEncontrar: (Paragem) -> Unit,
+    aoAbrirConta: () -> Unit,
+    aoVoltar: () -> Unit,
+) {
     val contexto = LocalContext.current
     val vm = viewModel(key = ref.chave) { ParagemViewModel(repositorio.chegadas(ref)) }
     val estado by vm.estado.collectAsStateWithLifecycle()
@@ -115,6 +128,7 @@ fun ParagemEcra(ref: RefParagem, repositorio: Repositorio, aoEncontrar: (Paragem
         aoVoltar = aoVoltar,
         modifier = Modifier.fillMaxSize(),
         aoEncontrar = paragem?.let { p -> { aoEncontrar(p) } },
+        relatar = { RelatarNaParagem(paragem, presentes.map { it.second }.distinct(), comunidade, configuracoes, aoAbrirConta) },
     )
     // O serviço vigia as linhas pelo nome que a pessoa vê (o do Transitous não é o id).
     if (avisaMe) AvisaMe(ref, nome, presentes.map { it.second }.distinct(), aoFechar = { avisaMe = false })
@@ -141,6 +155,7 @@ fun ParagemConteudo(
     aoVoltar: () -> Unit,
     modifier: Modifier = Modifier,
     aoEncontrar: (() -> Unit)? = null,
+    relatar: @Composable () -> Unit = {},
 ) {
     Column(modifier.background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState())) {
         Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.primary).statusBarsPadding().padding(start = 4.dp, end = 4.dp, bottom = 12.dp)) {
@@ -193,6 +208,7 @@ fun ParagemConteudo(
             Button(onClick = aoAvisaMe, enabled = vigiada || linhasPresentes.isNotEmpty(), modifier = Modifier.padding(top = 16.dp).fillMaxWidth()) {
                 Text(stringResource(if (vigiada) R.string.avisame_vigiar_parar else R.string.avisame))
             }
+            relatar()
             // Precisa das coordenadas da paragem: enquanto ela não carrega, não há bússola.
             aoEncontrar?.let {
                 OutlinedButton(onClick = it, modifier = Modifier.padding(top = 16.dp).fillMaxWidth()) {

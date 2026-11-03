@@ -306,4 +306,14 @@ class ContaScreenshotTest {
         regra.onNodeWithText("Enviar código").performClick()
         esperarPor("Sem ligação")
     }
+
+    @Test @Config(qualifiers = "w360dp-h780dp")
+    fun servidorEmPausaDizAteQuando() {
+        servidor.pedirCodigo = Resposta(503, """{"erro":"em_pausa"}""") // o D1 passou o limite grátis do dia
+        abrirEcra()
+        regra.onNodeWithText("Entrar com email").performClick()
+        regra.onNodeWithText("Email").performTextInput("ana@exemplo.pt")
+        regra.onNodeWithText("Enviar código").performClick()
+        esperarPor("Algumas funções estão em pausa até à meia-noite")
+    }
 }

@@ -66,9 +66,11 @@ import pt.pixellusitano.paragemcerta.core.regras.distanciaMetros
 import pt.pixellusitano.paragemcerta.core.viagem.EstadoViagem
 import pt.pixellusitano.paragemcerta.core.viagem.Fase
 import pt.pixellusitano.paragemcerta.core.viagem.paragensDe
+import pt.pixellusitano.paragemcerta.dados.Comunidade
 import pt.pixellusitano.paragemcerta.ui.comum.LISBOA_FUSO
 import pt.pixellusitano.paragemcerta.ui.comum.SeloLinha
 import pt.pixellusitano.paragemcerta.ui.comum.corDaLinha
+import pt.pixellusitano.paragemcerta.ui.comunidade.RelatarNaViagem
 import pt.pixellusitano.paragemcerta.ui.inicio.temLocalizacao
 import pt.pixellusitano.paragemcerta.ui.mapa.Mapa
 import pt.pixellusitano.paragemcerta.ui.mapa.Marca
@@ -88,12 +90,16 @@ import java.time.Duration
 /**
  * O ecrã da viagem ligado aos ficheiros do serviço. Sem viagem (parou, ou o ficheiro era velho), sai.
  * [mapa] só serve aos testes (o MapLibre não corre no Robolectric): sem ele, o mapa a sério.
+ * Com [comunidadeLigada] (o interruptor `comunidade` da config), "Relatar" nas etapas em veículo.
  */
 @Composable
 fun ViagemEcra(
     aoVoltar: () -> Unit,
     aoEncontrar: (Lugar) -> Unit = {},
     mapa: (@Composable (seguir: Boolean, aoDeixarDeSeguir: () -> Unit) -> Unit)? = null,
+    comunidade: Comunidade? = null,
+    comunidadeLigada: Boolean = false,
+    aoAbrirConta: () -> Unit = {},
 ) {
     val contexto = LocalContext.current
     val vm = viewModel {
@@ -115,22 +121,29 @@ fun ViagemEcra(
         onStopOrDispose { contexto.unregisterReceiver(receptor) }
     }
 
+    var relatar by rememberSaveable { mutableStateOf(false) }
     when (val v = vista) {
-        is VistaViagem.Ativa -> ViagemConteudo(
-            v.ecra,
-            aoSilenciar = { pedirAoServico(contexto, Notificacoes.ACAO_SILENCIAR) },
-            aoJaSai = { pedirAoServico(contexto, Notificacoes.ACAO_JA_SAI) },
-            aoParar = { pedirAoServico(contexto, Notificacoes.ACAO_PARAR) },
-            aoPartilhar = {
-                val texto = textoPartilha(v.ecra.itinerario.copy(chegada = v.ecra.chegada), v.ecra.de, v.ecra.para, LISBOA_FUSO)
-                val envio = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, texto)
-                contexto.startActivity(Intent.createChooser(envio, null))
-            },
-            aoVoltar = aoVoltar,
-            aoEncontrar = aoEncontrar,
-            comLocalizacao = comLocalizacao,
-            mapa = mapa ?: { seguir, aoDeixarDeSeguir -> MapaDaViagem(v.ecra, seguir, aoDeixarDeSeguir, comLocalizacao) },
-        )
+        is VistaViagem.Ativa -> {
+            // A pé não há linha: o "Relatar" é só nas etapas em veículo.
+            val linha = v.ecra.itinerario.etapas[v.ecra.atual].linhaNome?.takeIf { comunidadeLigada }
+            if (comunidade != null && linha != null) RelatarNaViagem(comunidade, linha, relatar, aoAbrirConta, aoFechar = { relatar = false })
+            ViagemConteudo(
+                v.ecra,
+                aoSilenciar = { pedirAoServico(contexto, Notificacoes.ACAO_SILENCIAR) },
+                aoJaSai = { pedirAoServico(contexto, Notificacoes.ACAO_JA_SAI) },
+                aoParar = { pedirAoServico(contexto, Notificacoes.ACAO_PARAR) },
+                aoPartilhar = {
+                    val texto = textoPartilha(v.ecra.itinerario.copy(chegada = v.ecra.chegada), v.ecra.de, v.ecra.para, LISBOA_FUSO)
+                    val envio = Intent(Intent.ACTION_SEND).setType("text/plain").putExtra(Intent.EXTRA_TEXT, texto)
+                    contexto.startActivity(Intent.createChooser(envio, null))
+                },
+                aoVoltar = aoVoltar,
+                aoEncontrar = aoEncontrar,
+                comLocalizacao = comLocalizacao,
+                mapa = mapa ?: { seguir, aoDeixarDeSeguir -> MapaDaViagem(v.ecra, seguir, aoDeixarDeSeguir, comLocalizacao) },
+                aoRelatar = if (comunidade != null && linha != null) ({ relatar = true }) else null,
+            )
+        }
         else -> {
             Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
             if (v == VistaViagem.SemViagem) LaunchedEffect(Unit) { aoVoltar() }
@@ -195,6 +208,7 @@ fun ViagemConteudo(
     aoEncontrar: (Lugar) -> Unit = {},
     comLocalizacao: Boolean = false,
     mapa: @Composable (seguir: Boolean, aoDeixarDeSeguir: () -> Unit) -> Unit = { _, _ -> },
+    aoRelatar: (() -> Unit)? = null,
 ) {
     val cores = MaterialTheme.colorScheme
     val estado = ecra.estado
@@ -252,7 +266,7 @@ fun ViagemConteudo(
             }
         }
         // Fora do painel, para os botões estarem à vista com ele recolhido.
-        Botoes(estado, aoSilenciar, aoJaSai, aoParar)
+        Botoes(estado, aoSilenciar, aoJaSai, aoParar, aoRelatar)
     }
 }
 
@@ -378,10 +392,10 @@ private fun Rodape(ecra: EcraViagem, aoPartilhar: () -> Unit) {
     }
 }
 
-/** Silenciar, Já saí e Parar, numa barra fixa por baixo do painel: à vista com ele recolhido. */
+/** Silenciar, Já saí, Parar e (com a comunidade, numa etapa em veículo) Relatar, numa barra fixa por baixo do painel: à vista com ele recolhido. */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun Botoes(estado: EstadoViagem, aoSilenciar: () -> Unit, aoJaSai: () -> Unit, aoParar: () -> Unit) {
+private fun Botoes(estado: EstadoViagem, aoSilenciar: () -> Unit, aoJaSai: () -> Unit, aoParar: () -> Unit, aoRelatar: (() -> Unit)?) {
     Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)) {
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         // Em linhas que quebram: com letra a 200 % os três botões não cabem lado a lado.
@@ -395,6 +409,7 @@ private fun Botoes(estado: EstadoViagem, aoSilenciar: () -> Unit, aoJaSai: () ->
                 }
                 // Só se sai de um veículo: a pé não há de que sair e à espera "Já saí" saltava o autocarro que ainda vais apanhar.
                 OutlinedButton(onClick = aoJaSai, enabled = estado.fase == Fase.A_BORDO) { Text(stringResource(R.string.viagem_ja_sai)) }
+                aoRelatar?.let { OutlinedButton(onClick = it) { Text(stringResource(R.string.relatar)) } }
             }
             OutlinedButton(onClick = aoParar) { Text(stringResource(if (estado.terminada) R.string.viagem_concluir else R.string.viagem_parar)) }
         }

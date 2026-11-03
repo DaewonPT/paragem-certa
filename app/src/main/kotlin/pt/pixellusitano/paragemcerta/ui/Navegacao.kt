@@ -206,7 +206,10 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
             composable<Paragem> { entrada ->
                 val ref = RefParagem.daChave(entrada.toRoute<Paragem>().chave)
                 if (ref == null) nav.popBackStack() else ParagemEcra(
-                    ref, repositorio, aoEncontrar = { nav.navigate(Bussola(it.nome, it.lat, it.lon)) }, aoVoltar = { nav.popBackStack() },
+                    ref, repositorio, ligacoes.comunidade, ligacoes.configuracoes, ligacoes.preferencias,
+                    aoEncontrar = { nav.navigate(Bussola(it.nome, it.lat, it.lon)) },
+                    aoAbrirConta = { nav.navigate(ContaRota) },
+                    aoVoltar = { nav.popBackStack() },
                 )
             }
             composable<Rotas> { entrada ->
@@ -250,7 +253,11 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
                 )
             }
             composable<Viagem> {
-                ViagemEcra(aoVoltar = { nav.popBackStack() }, aoEncontrar = { nav.navigate(Bussola(it.nome, it.lat, it.lon)) })
+                ViagemEcra(
+                    aoVoltar = { nav.popBackStack() }, aoEncontrar = { nav.navigate(Bussola(it.nome, it.lat, it.lon)) },
+                    comunidade = ligacoes.comunidade, comunidadeLigada = config.interruptores.comunidade,
+                    aoAbrirConta = { nav.navigate(ContaRota) },
+                )
             }
             composable<Bussola> { entrada ->
                 val b = entrada.toRoute<Bussola>()

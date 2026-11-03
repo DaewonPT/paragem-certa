@@ -385,4 +385,35 @@
     <string name="conta_sessao_terminou">A sessão terminou. Entra outra vez.</string>
     <string name="ligacao_termos">Termos</string>
     <string name="ligacao_privacidade">Política de privacidade</string>
+
+    <!-- Comunidade: relatar, entrar, termos e falhas -->
+    <string name="relatar">Relatar</string>
+    <string name="relatar_que_linha">Em que linha?</string>
+    <string name="relato_acidente">Acidente</string>
+    <string name="relato_desvio">Desvio</string>
+    <string name="relato_evento">Evento</string>
+    <string name="relato_nao_passou">Não passou / adiantado</string>
+    <string name="relato_vai_cheio">Vai cheio / não parou</string>
+    <string name="relato_elevador">Elevador ou escada avariados</string>
+    <string name="relato_problema_paragem">Problema na paragem</string>
+    <string name="relatar_enviado">Relato enviado</string>
+    <string name="relatar_longe">Tens de estar a menos de 300 m da paragem para relatar.</string>
+    <string name="relatar_imprecisa">Liga a localização precisa para relatar.</string>
+    <string name="relatar_sem_posicao">Não foi possível saber onde estás. Tenta outra vez.</string>
+    <string name="relatar_localizacao_texto">Para relatar, a Paragem Certa vê se estás a menos de 300 m da paragem. A tua posição não sai do telemóvel.</string>
+    <string name="relatar_sem_localizacao">Sem a localização só podes relatar a bordo, durante uma viagem.</string>
+    <string name="relatar_sem_paragem">Não dá para saber em que paragem vais. Relata no ecrã da paragem.</string>
+    <string name="comunidade_entrar_texto">Entra com Google ou email para relatar</string>
+    <string name="comunidade_entrar">Entrar</string>
+    <string name="comunidade_agora_nao">Agora não</string>
+    <string name="termos_titulo">Termos e regras da comunidade</string>
+    <string name="termos_texto">Antes de publicares pela primeira vez, lê e aceita os termos e as regras da comunidade.</string>
+    <string name="termos_ler">Ler os termos e as regras</string>
+    <string name="termos_aceito">Aceito</string>
+    <string name="comunidade_sem_ligacao">Sem ligação. Não foi enviado.</string>
+    <string name="comunidade_muitos_pedidos">Chegaste ao limite de hoje.</string>
+    <string name="comunidade_devagar">Estás a enviar depressa demais. Espera um minuto.</string>
+    <string name="comunidade_conta_bloqueada">A tua conta está bloqueada e não pode publicar.</string>
+    <string name="comunidade_erro">Não foi enviado. Tenta outra vez.</string>
+    <string name="servidor_em_pausa">Algumas funções estão em pausa até à meia-noite</string>
 </resources>

@@ -39,6 +39,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
+import pt.pixellusitano.paragemcerta.core.rede.emPausa
 import pt.pixellusitano.paragemcerta.dados.Conta
 import pt.pixellusitano.paragemcerta.dados.EstadoConta
 import pt.pixellusitano.paragemcerta.dados.Repositorio
@@ -290,8 +291,9 @@ private tailrec fun Context.atividade(): Activity? = when (this) {
     else -> null
 }
 
+// Em todas: em_pausa = o servidor passou a quota grátis do dia (spec 5.4), seja qual for o código.
 // 400 = email que o servidor não aceita, 429 = mais de 3 códigos por hora, o resto (502 da Resend…) = não saiu.
-@StringRes private fun erroDoPedido(f: Resultado.Falha) = when (f.codigo) {
+@StringRes private fun erroDoPedido(f: Resultado.Falha) = if (f.emPausa) R.string.servidor_em_pausa else when (f.codigo) {
     null -> R.string.conta_erro_sem_ligacao
     400 -> R.string.conta_erro_email
     429 -> R.string.conta_erro_muitos
@@ -299,20 +301,20 @@ private tailrec fun Context.atividade(): Activity? = when (this) {
 }
 
 // 401 = código errado, 410 = expirado ou já gasto as 5 tentativas.
-@StringRes private fun erroDoCodigo(f: Resultado.Falha) = when (f.codigo) {
+@StringRes private fun erroDoCodigo(f: Resultado.Falha) = if (f.emPausa) R.string.servidor_em_pausa else when (f.codigo) {
     null -> R.string.conta_erro_sem_ligacao
     401 -> R.string.conta_erro_codigo
     410 -> R.string.conta_erro_expirou
     else -> R.string.conta_erro_generico
 }
 
-@StringRes private fun erroDoGoogle(f: Resultado.Falha) = when (f.codigo) {
+@StringRes private fun erroDoGoogle(f: Resultado.Falha) = if (f.emPausa) R.string.servidor_em_pausa else when (f.codigo) {
     null -> R.string.conta_erro_sem_ligacao
     401 -> R.string.conta_erro_google
     else -> R.string.conta_erro_generico
 }
 
-@StringRes private fun erroDeSincronizar(f: Resultado.Falha) = when (f.codigo) {
+@StringRes private fun erroDeSincronizar(f: Resultado.Falha) = if (f.emPausa) R.string.servidor_em_pausa else when (f.codigo) {
     null -> R.string.conta_erro_sem_ligacao
     401 -> R.string.conta_sessao_terminou
     else -> R.string.conta_erro_sincronizar
