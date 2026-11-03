@@ -60,8 +60,10 @@ import pt.pixellusitano.paragemcerta.dados.Repositorio
 import pt.pixellusitano.paragemcerta.ui.comum.FaixaEstado
 import pt.pixellusitano.paragemcerta.ui.comum.LinhaChegada
 import pt.pixellusitano.paragemcerta.ui.comunidade.CartaoRelato
+import pt.pixellusitano.paragemcerta.ui.comunidade.CorrigirNaParagem
 import pt.pixellusitano.paragemcerta.ui.comunidade.FotosDaParagem
 import pt.pixellusitano.paragemcerta.ui.comunidade.RelatarNaParagem
+import pt.pixellusitano.paragemcerta.ui.comunidade.aplicarCorrecoes
 import pt.pixellusitano.paragemcerta.ui.comunidade.rememberRelatosDaParagem
 import pt.pixellusitano.paragemcerta.ui.tema.FrisoAzulejo
 import pt.pixellusitano.paragemcerta.ui.tema.LocalEscuro
@@ -99,11 +101,14 @@ fun ParagemEcra(
             value = Instant.now()
         }
     }
-    val nome = paragem?.nome ?: ref.id
     val vigiadas by ServicoAvisoChegada.paragensVigiadas.collectAsStateWithLifecycle()
     val vigiada = ref.chave in vigiadas
     var avisaMe by rememberSaveable { mutableStateOf(false) }
     val relatos = rememberRelatosDaParagem(ref.chave, paragem, comunidade, configuracoes, preferencias, aoAbrirConta)
+    // A paragem como os passageiros a corrigiram (as correções aprovadas): é a que se mostra e a que "Encontrar a paragem" procura.
+    val corrigida = paragem?.let { aplicarCorrecoes(it, relatos.correcoes) }
+    val vista = corrigida?.first
+    val nome = vista?.nome ?: ref.id
     ParagemConteudo(
         nome = nome,
         codigo = ref.id.substringAfterLast('_'),
@@ -134,13 +139,15 @@ fun ParagemEcra(
         aoReportar = { runCatching { contexto.startActivity(intentReportarErro(BuildConfig.VERSION_NAME, ref.chave, nome)) } },
         aoVoltar = aoVoltar,
         modifier = Modifier.fillMaxSize(),
-        aoEncontrar = paragem?.let { p -> { aoEncontrar(p) } },
+        aoEncontrar = vista?.let { p -> { aoEncontrar(p) } },
         relatar = { RelatarNaParagem(paragem, presentes.map { it.second }.distinct(), comunidade, configuracoes, aoAbrirConta) },
         relatos = relatos.lista,
         aoVotar = relatos.aoVotar,
         aoDenunciar = relatos.aoDenunciar,
         aoOcultar = relatos.aoOcultar,
         fotos = { FotosDaParagem(ref.chave, relatos, comunidade, configuracoes, carregarFoto, aoAbrirConta) },
+        jaNaoExiste = corrigida?.second == true,
+        corrigir = { CorrigirNaParagem(vista, comunidade, configuracoes, aoAbrirConta) },
     )
     // O serviço vigia as linhas pelo nome que a pessoa vê (o do Transitous não é o id).
     if (avisaMe) AvisaMe(ref, nome, presentes.map { it.second }.distinct(), aoFechar = { avisaMe = false })
@@ -173,6 +180,8 @@ fun ParagemConteudo(
     aoDenunciar: (RelatoRemoto) -> Unit = {},
     aoOcultar: (RelatoRemoto) -> Unit = {},
     fotos: @Composable () -> Unit = {},
+    jaNaoExiste: Boolean = false,
+    corrigir: @Composable () -> Unit = {},
 ) {
     Column(modifier.background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState())) {
         Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.primary).statusBarsPadding().padding(start = 4.dp, end = 4.dp, bottom = 12.dp)) {
@@ -201,6 +210,7 @@ fun ParagemConteudo(
         }
         FrisoAzulejo(Modifier.fillMaxWidth())
         Column(Modifier.padding(16.dp)) {
+            if (jaNaoExiste) AvisoJaNaoExiste()
             estado?.let { FaixaEstado(it, agora, Modifier.padding(bottom = 8.dp)) }
             if (linhasPresentes.size > 1) {
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -239,11 +249,22 @@ fun ParagemConteudo(
                     Text(stringResource(R.string.bussola_encontrar))
                 }
             }
+            corrigir()
             OutlinedButton(onClick = aoReportar, modifier = Modifier.padding(top = 16.dp).fillMaxWidth()) {
                 Text(stringResource(R.string.paragem_reportar))
             }
         }
     }
+}
+
+/** O que dizem os passageiros, depois de o autor aprovar a correção: a paragem continua à vista, mas com este aviso (o estilo dos alertas de aviso). */
+@Composable
+private fun AvisoJaNaoExiste() {
+    val estilo = estiloDaGravidade(Gravidade.AVISO, LocalEscuro.current)
+    Text(
+        stringResource(R.string.paragem_ja_nao_existe), color = estilo.texto, style = MaterialTheme.typography.labelLarge,
+        modifier = Modifier.padding(bottom = 8.dp).fillMaxWidth().background(estilo.fundo, RoundedCornerShape(10.dp)).padding(10.dp),
+    )
 }
 
 @Composable

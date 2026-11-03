@@ -13,6 +13,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import pt.pixellusitano.paragemcerta.R
+import pt.pixellusitano.paragemcerta.core.fontes.servidor.CorrecaoRemota
 import pt.pixellusitano.paragemcerta.core.fontes.servidor.FotoRemota
 import pt.pixellusitano.paragemcerta.core.fontes.servidor.RelatoRemoto
 import pt.pixellusitano.paragemcerta.core.modelo.Paragem
@@ -24,7 +25,8 @@ import pt.pixellusitano.paragemcerta.dados.Preferencias
 /**
  * Os relatos de uma paragem (sem os que a pessoa ocultou) e o que ela pode fazer com cada um; ver [rememberRelatosDaParagem].
  * A foto vem na mesma leitura (um só pedido por ecrã): [fotos] são as aprovadas, sem as ocultadas; [fotoEmRevisao] diz que há
- * uma à espera do autor; [carregado] que a leitura já chegou (sem ela não se sabe se já há foto); [recarregar] volta a ler.
+ * uma à espera do autor; [correcoes] são as aprovadas (ver [aplicarCorrecoes]); [carregado] que a leitura já chegou (sem ela não
+ * se sabe se já há foto); [recarregar] volta a ler.
  */
 class RelatosDaParagem internal constructor(
     val lista: List<RelatoRemoto>,
@@ -33,6 +35,7 @@ class RelatosDaParagem internal constructor(
     val aoOcultar: (RelatoRemoto) -> Unit,
     val fotos: List<FotoRemota>,
     val fotoEmRevisao: Boolean,
+    val correcoes: List<CorrecaoRemota>,
     val carregado: Boolean,
     val aoDenunciarFoto: (FotoRemota) -> Unit,
     val aoOcultarFoto: (FotoRemota) -> Unit,
@@ -67,6 +70,7 @@ fun rememberRelatosDaParagem(
     var relatos by remember(chave) { mutableStateOf(emptyList<RelatoRemoto>()) }
     var fotos by remember(chave) { mutableStateOf(emptyList<FotoRemota>()) }
     var fotoEmRevisao by remember(chave) { mutableStateOf(false) }
+    var correcoes by remember(chave) { mutableStateOf(emptyList<CorrecaoRemota>()) }
     var carregado by remember(chave) { mutableStateOf(false) }
     var recarregar by remember { mutableIntStateOf(0) }
     // O que se está a denunciar e o email da conta (lido ao abrir, para o texto não mudar a meio).
@@ -77,6 +81,7 @@ fun rememberRelatosDaParagem(
         relatos = emptyList()
         fotos = emptyList()
         fotoEmRevisao = false
+        correcoes = emptyList()
         carregado = false
     }
 
@@ -87,6 +92,7 @@ fun rememberRelatosDaParagem(
                 relatos = r.valor.relatos
                 fotos = r.valor.fotos
                 fotoEmRevisao = chave in r.valor.emRevisao
+                correcoes = r.valor.correcoes
                 carregado = true
             }
             is Resultado.Falha -> if (r.erro == "desligado") esconderTudo()
@@ -161,6 +167,7 @@ fun rememberRelatosDaParagem(
         aoOcultar = { r -> escopo.launch { preferencias.ocultar("relato:${r.id}") } },
         fotos = fotos.filter { "foto:${it.id}" !in ocultos },
         fotoEmRevisao = fotoEmRevisao,
+        correcoes = correcoes,
         carregado = carregado,
         aoDenunciarFoto = { f -> denunciar("foto:${f.id}", R.string.denunciar_foto_titulo, R.string.denunciar_foto_ja_nao_existe) },
         aoOcultarFoto = { f -> escopo.launch { preferencias.ocultar("foto:${f.id}") } },

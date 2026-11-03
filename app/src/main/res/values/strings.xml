@@ -491,4 +491,20 @@
     <string name="foto_nao_carregou">Não foi possível carregar a foto.</string>
     <string name="foto_mais_opcoes">Mais opções da foto</string>
     <string name="foto_ocultar">Ocultar esta foto</string>
+    <!-- Comunidade: corrigir os dados de uma paragem -->
+    <string name="corrigir_dados">Corrigir dados</string>
+    <string name="corrigir_titulo">O que está errado?</string>
+    <string name="corrigir_posicao">A paragem está no sítio errado</string>
+    <string name="corrigir_nome">O nome está errado</string>
+    <string name="corrigir_ja_nao_existe">A paragem já não existe</string>
+    <string name="corrigir_mapa_texto">Arrasta o mapa até o ponto ficar na paragem.</string>
+    <string name="corrigir_ponto">Ponto fixo ao centro do mapa: o sítio da paragem</string>
+    <string name="corrigir_nome_campo">Nome certo</string>
+    <string name="corrigir_ja_nao_existe_texto" tools:ignore="Typos">Vais dizer que esta paragem já não existe. Só aparece a toda a gente depois de o autor aprovar.</string>
+    <string name="corrigir_enviar">Enviar</string>
+    <string name="corrigir_enviada" tools:ignore="Typos">Obrigado. A correção fica em revisão até o autor a aprovar.</string>
+    <string name="corrigir_limite">Chegaste ao limite de correções de hoje.</string>
+    <string name="corrigir_desligada">As correções estão desligadas por agora.</string>
+    <string name="corrigir_entrar_texto">Entra com Google ou email para corrigir dados</string>
+    <string name="paragem_ja_nao_existe">Segundo os passageiros, esta paragem já não existe.</string>
 </resources>
