@@ -19,6 +19,7 @@ import org.robolectric.android.controller.ServiceController
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowPowerManager
 import pt.pixellusitano.paragemcerta.MainActivity
+import pt.pixellusitano.paragemcerta.core.fontes.servidor.RelatoRemoto
 import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.Modo
@@ -46,6 +47,15 @@ class ServicoAvisoChegadaTest {
     private val alarmes = mutableListOf<Pair<Boolean, Boolean>>()
     private val servicos = mutableListOf<ServiceController<ServicoAvisoChegada>>()
 
+    // Os avisos da comunidade do teste: desligados por omissão, para os outros testes não pedirem nada.
+    private var comunidade = false
+    private var ocultos = emptySet<String>()
+    private var respostaAvisos: Resultado<List<RelatoRemoto>> = Resultado.Ok(emptyList())
+    private val pedidosAvisos = mutableListOf<List<String>>()
+
+    private fun relato(id: String, tipo: String = "desvio", linha: String = "736", confirmado: Boolean = true) =
+        RelatoRemoto(id, tipo, SODRE.chave, linha, 0, 0, 2, confirmado)
+
     /** Acaba os serviços do teste: o estado partilhado (as paragens vigiadas) é do processo, não do serviço. */
     @After fun acabar() = servicos.forEach { it.destroy() }
 
@@ -68,6 +78,9 @@ class ServicoAvisoChegadaTest {
             it.get().consultar = { ref, _ -> consultas += ref; respostas[ref] ?: Resultado.Ok(emptyList()) }
             it.get().definicoes = { definicoes }
             it.get().alarme = { som, vibrar -> alarmes += som to vibrar }
+            it.get().avisosLigados = { comunidade }
+            it.get().ocultos = { ocultos }
+            it.get().avisos = { linhas -> pedidosAvisos += linhas; respostaAvisos }
             servicos += it
         }
 
@@ -256,6 +269,66 @@ class ServicoAvisoChegadaTest {
         assertEquals(1, consultas.size)
         passarOTempo(1)
         assertEquals(2, consultas.size)
+    }
+
+    private fun relatosPostados() = avisosPostados().filter { it!!.startsWith("⚠") }
+
+    @Test fun avisaMeNotificaRelatoConfirmado() {
+        comunidade = true
+        ocultos = setOf("relato:r3")
+        respostaAvisos = Resultado.Ok(listOf(relato("r1"), relato("r2", confirmado = false), relato("r3", tipo = "acidente")))
+        comecar(vigiar(SODRE, "Cais do Sodré", "736"))
+        // No "Avisa-me" nunca diz "à frente": não há viagem a dizer onde vais.
+        assertEquals(listOf("⚠ Desvio confirmado na 736"), relatosPostados())
+        assertTrue(alarmes.isEmpty())
+        passarOTempo(5 * 60) // a mesma resposta 5 min depois não avisa outra vez
+        assertEquals(2, pedidosAvisos.size)
+        assertEquals(1, relatosPostados().size)
+    }
+
+    @Test fun avisaMePedeTodasAsLinhasNumSoPedido() {
+        comunidade = true
+        val s = comecar(vigiar(SODRE, "Cais do Sodré", "736"))
+        pedir(s, vigiar(ALGES, "Algés", "15e"))
+        pedidosAvisos.clear()
+        passarOTempo(5 * 60)
+        assertEquals(listOf(listOf("736", "15E")), pedidosAvisos)
+        // Com 25 linhas vão as primeiras 20, o máximo do /api/avisos; um nome que o servidor recusa ("A/B") não vai.
+        val muitas = listOf("A/B") + (1..25).map { "L$it" }
+        pedir(s, vigiar(METRO, "Alameda", *muitas.toTypedArray()))
+        pedidosAvisos.clear()
+        passarOTempo(5 * 60)
+        assertEquals(listOf(listOf("736", "15E") + (1..18).map { "L$it" }), pedidosAvisos)
+    }
+
+    @Test fun avisaMeAcabadoNaoPedeMais() {
+        comunidade = true
+        val s = comecar(vigiar(SODRE, "Cais do Sodré", "736"))
+        passarOTempo(91 * 60)
+        assertTrue(parou(s))
+        val feitos = pedidosAvisos.size
+        passarOTempo(10 * 60)
+        assertEquals(feitos, pedidosAvisos.size)
+    }
+
+    @Test fun comunidadeDesligadaNaoPedeAvisos() {
+        respostaAvisos = Resultado.Ok(listOf(relato("r1")))
+        comecar(vigiar(SODRE, "Cais do Sodré", "736"))
+        passarOTempo(10 * 60)
+        assertTrue(pedidosAvisos.isEmpty())
+        assertTrue(relatosPostados().isEmpty())
+    }
+
+    @Test fun avisaMeEmPausaOuDesligadoParaDePedir() {
+        comunidade = true
+        for (falha in listOf(Resultado.Falha(503, true, "em_pausa"), Resultado.Falha(403, false, "desligado"))) {
+            respostaAvisos = falha
+            pedidosAvisos.clear()
+            val s = comecar(vigiar(SODRE, "Cais do Sodré", "736"))
+            passarOTempo(10 * 60)
+            assertEquals(falha.toString(), 1, pedidosAvisos.size)
+            pedir(s, Intent(c, ServicoAvisoChegada::class.java).setAction(Notificacoes.ACAO_PARAR_VIGIA))
+        }
     }
 
     @Test fun pedidosSemNadaAVigiarSoPedemPararOServico() {

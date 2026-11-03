@@ -104,12 +104,16 @@ fun lerPreparacao(c: Context) = Preparacao(
  * Grava o plano e o primeiro estado e pede ao serviço (processo :trip) que comece. O estado vai já daqui: o ecrã da viagem
  * abre logo a seguir e, sem ele, achava que não há viagem e saía antes de o serviço escrever o dele. Falso se o Android
  * recusou o serviço, a rota não serve (Viagem e Percurso recusam-na com um require) ou não houve onde gravar; então não fica
- * nada, para não aparecer "Viagem interrompida" de uma viagem que nunca começou.
+ * nada, para não aparecer "Viagem interrompida" de uma viagem que nunca começou. Os avisos da comunidade e os ocultos
+ * vão no plano já lidos por quem chama: o serviço não lê as definições.
  */
-fun comecarViagem(c: Context, itinerario: Itinerario, som: Boolean, vibrar: Boolean): Boolean {
+fun comecarViagem(
+    c: Context, itinerario: Itinerario, som: Boolean, vibrar: Boolean,
+    avisosComunidade: Boolean = false, ocultos: Set<String> = emptySet(),
+): Boolean {
     try {
         FicheirosViagem.apagar(c)
-        FicheirosViagem.gravarPlano(c, PlanoViagem(itinerario, som, vibrar))
+        FicheirosViagem.gravarPlano(c, PlanoViagem(itinerario, som, vibrar, avisosComunidade, ocultos))
         FicheirosViagem.gravarEstado(c, Viagem(itinerario).inicio(Instant.now()))
         if (arrancarServico(c, ServicoViagem.ACAO_COMECAR)) return true
     } catch (_: IOException) {
@@ -157,22 +161,30 @@ fun viagemInterrompida(c: Context): Boolean = FicheirosViagem.porAcabar(c) && !F
 /** Há uma viagem por acabar e o serviço está a correr: o Início mostra o caminho de volta ao ecrã dela. */
 fun viagemEmCurso(c: Context): Boolean = FicheirosViagem.porAcabar(c) && FicheirosViagem.emCurso(c)
 
-private class Avisos(val primeiraViagem: Boolean, val som: Boolean, val vibrar: Boolean)
+private class Avisos(
+    val primeiraViagem: Boolean, val som: Boolean, val vibrar: Boolean, val avisosComunidade: Boolean, val ocultos: Set<String>,
+)
 
 /**
  * "Começar viagem": percorre os passos de proximoPasso, um aviso de cada vez, e no fim arranca a viagem (aoComecou).
  * Tocar fora de um aviso, ou "voltar", desiste (aoCancelar). Recusar uma permissão não impede de começar: sem a
  * localização precisa a viagem corre pelo horário, sem notificações os avisos só tocam e vibram. A exceção é o Android 14+
  * sem nenhuma localização: o serviço não arranca (ver servicoPodeArrancar) e a viagem não começa.
+ * [comunidadeLigada]: o interruptor `comunidade` da config; sem ele a viagem não pede os avisos da comunidade.
  */
 @SuppressLint("InlinedApi") // o passo das notificações só chega a quem tem o Android 13 ou mais (ver lerPreparacao)
 @Composable
-fun PreparacaoViagem(itinerario: Itinerario, preferencias: Preferencias, aoComecou: () -> Unit, aoCancelar: () -> Unit) {
+fun PreparacaoViagem(
+    itinerario: Itinerario, preferencias: Preferencias, aoComecou: () -> Unit, aoCancelar: () -> Unit, comunidadeLigada: Boolean = false,
+) {
     val contexto = LocalContext.current
     val escopo = rememberCoroutineScope()
     // As definições lêem-se uma vez, antes do primeiro passo (null = a ler): o valor por omissão faria aparecer passos a mais.
     val avisos by produceState<Avisos?>(null) {
-        value = Avisos(!preferencias.primeiraViagemFeita.first(), preferencias.somAviso.first(), preferencias.vibracaoAviso.first())
+        value = Avisos(
+            !preferencias.primeiraViagemFeita.first(), preferencias.somAviso.first(), preferencias.vibracaoAviso.first(),
+            comunidadeLigada && preferencias.avisosComunidade.first(), preferencias.ocultos.first(),
+        )
     }
     var feitos by remember { mutableStateOf(emptySet<Passo>()) }
     var semNotificacoes by remember { mutableStateOf(false) }
@@ -186,7 +198,7 @@ fun PreparacaoViagem(itinerario: Itinerario, preferencias: Preferencias, aoComec
 
     LaunchedEffect(passo) {
         when (passo) {
-            null -> if (withContext(Dispatchers.IO) { comecarViagem(contexto, itinerario, a.som, a.vibrar) }) {
+            null -> if (withContext(Dispatchers.IO) { comecarViagem(contexto, itinerario, a.som, a.vibrar, a.avisosComunidade, a.ocultos) }) {
                 preferencias.marcarPrimeiraViagemFeita()
                 aoComecou()
             } else {

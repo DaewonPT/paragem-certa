@@ -24,6 +24,7 @@ import org.robolectric.android.controller.ServiceController
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowPowerManager
 import pt.pixellusitano.paragemcerta.core.fontes.cm.CarrisMetropolitana
+import pt.pixellusitano.paragemcerta.core.fontes.servidor.ServidorParagemCerta
 import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.modelo.Etapa
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
@@ -89,6 +90,13 @@ private val CASA_AO_TRABALHO = itinerario(
 // Só o 736: o serviço começa logo à espera dele.
 private val SO_O_736 = itinerario(autocarro("736", T0.plusSeconds(600)))
 
+// O 736 com paragens do Transitous que não são da Carris Metropolitana (TRANSITOUS:p0 a p5): os relatos têm onde cair e a CM fica de fora.
+private val DO_TRANSITOUS = itinerario(autocarro("736", T0.plusSeconds(600)).let { e -> e.copy(paragens = e.paragens.mapIndexed { i, p -> p.copy(id = "p$i") }) })
+
+/** Um relato como o /api/avisos o devolve. */
+private fun relato(id: String, paragem: String, tipo: String = "desvio", linha: String = "736", confirmado: Boolean = true) =
+    """{"id":"$id","tipo":"$tipo","paragem":"$paragem","linha":"$linha","criadoEm":0,"expiraEm":0,"confirmacoes":2,"confirmado":$confirmado}"""
+
 @RunWith(RobolectricTestRunner::class)
 @Config(sdk = [36])
 class ServicoViagemTest {
@@ -101,13 +109,35 @@ class ServicoViagemTest {
 
     private fun plano(i: Itinerario, som: Boolean = true, vibrar: Boolean = false) = PlanoViagem(i, som, vibrar)
 
+    private fun comAvisos(i: Itinerario, ocultos: Set<String> = emptySet()) = PlanoViagem(i, som = true, vibrar = false, avisosComunidade = true, ocultos = ocultos)
+
+    // O servidor da Paragem Certa do teste: guarda os endereços pedidos e responde sempre [respostaAvisos].
+    private val pedidosAvisos = CopyOnWriteArrayList<String>()
+    @Volatile private var respostaAvisos = Resposta(200, """{"relatos":[]}""")
+
+    private fun responder(vararg relatos: String) {
+        respostaAvisos = Resposta(200, """{"relatos":[${relatos.joinToString(",")}]}""")
+    }
+
+    private fun servidorPc() = ServidorParagemCerta(object : Http {
+        override suspend fun get(url: String): Resposta = error("só pela API")
+        override suspend fun enviar(metodo: String, url: String, corpo: String?, cabecalhos: Map<String, String>): Resposta {
+            pedidosAvisos += url
+            return respostaAvisos
+        }
+    }, "https://pc.teste", relogio = { agora })
+
     /** O serviço do Robolectric, com o relógio e o alarme do teste; o Android entrega-lhe a ação como no telemóvel. */
     private fun servico(acao: String, cm: CarrisMetropolitana? = null): ServiceController<ServicoViagem> =
         Robolectric.buildService(ServicoViagem::class.java, Intent(c, ServicoViagem::class.java).setAction(acao)).also {
             it.get().agora = { agora }
             it.get().alarme = { ev, som, vibrar -> alarmes += Triple(ev, som, vibrar) }
             it.get().cm = cm
+            it.get().servidor = servidorPc()
         }
+
+    /** Os avisos da comunidade postados (os que começam por "⚠"), sem ordem. */
+    private fun relatosPostados() = shadowOf(gestor).allNotifications.mapNotNull(::titulo).filter { it.startsWith("⚠") }.toSet()
 
     private fun comecar(i: Itinerario, p: PlanoViagem = plano(i), cm: CarrisMetropolitana? = null) =
         servico(ServicoViagem.ACAO_COMECAR, cm).also {
@@ -626,6 +656,93 @@ class ServicoViagemTest {
         assertTrue("${estado.progresso}", estado.progresso >= a[1] + 31 && estado.progresso < a[3])
         // E é o T2 que o mapa mostra, não o T1 (38.724).
         assertEquals(38.709 to -9.14, estado.veiculoLat to estado.veiculoLon)
+    }
+
+    @Test fun relatoConfirmadoNaLinhaNotifica() {
+        // À espera do 736 em p0: p3 está à frente; p0, a paragem onde se espera, não.
+        responder(relato("r1", "TRANSITOUS:p3"), relato("r2", "TRANSITOUS:p0", tipo = "acidente"))
+        comecar(DO_TRANSITOUS, comAvisos(DO_TRANSITOUS))
+        esperarAte { relatosPostados().size == 2 }
+        assertEquals(setOf("⚠ Desvio confirmado na 736, à frente da tua paragem", "⚠ Acidente confirmado na 736"), relatosPostados())
+        assertEquals(listOf("https://pc.teste/api/avisos?linhas=736"), pedidosAvisos)
+        val n = shadowOf(gestor).allNotifications.first { titulo(it)!!.startsWith("⚠") }
+        assertEquals(Notificacoes.CANAL_AVISOS, n.channelId)
+        assertTrue(alarmes.isEmpty()) // sem alarme: é uma notificação, não um "Sai agora"
+    }
+
+    @Test fun relatoParaTrasNaoDizAFrente() {
+        // A bordo, já depois de p3: o relato em p2 ficou para trás.
+        val a = Percurso(emptyList(), DO_TRANSITOUS.etapas[0].paragens).noPercurso
+        FicheirosViagem.gravarPlano(c, comAvisos(DO_TRANSITOUS))
+        FicheirosViagem.gravarEstado(
+            c, Viagem(DO_TRANSITOUS).inicio(T0).copy(fase = Fase.A_BORDO, progresso = a[3] + 100, avisados = setOf(Evento.PREPARA_TE), atualizado = T0),
+        )
+        responder(relato("r1", "TRANSITOUS:p2"))
+        servico(ServicoViagem.ACAO_RETOMAR).create().startCommand(0, 1)
+        esperarAte { relatosPostados().isNotEmpty() }
+        assertEquals(setOf("⚠ Desvio confirmado na 736"), relatosPostados())
+    }
+
+    @Test fun pedeDe5Em5Minutos() {
+        comecar(DO_TRANSITOUS, comAvisos(DO_TRANSITOUS))
+        assertEquals(1, pedidosAvisos.size)
+        repeat(59) { passarOTempo(5) }
+        assertEquals(1, pedidosAvisos.size)
+        passarOTempo(5) // 5 min
+        assertEquals(2, pedidosAvisos.size)
+        repeat(60) { passarOTempo(5) } // 10 min
+        assertEquals(List(3) { "https://pc.teste/api/avisos?linhas=736" }, pedidosAvisos)
+    }
+
+    @Test fun mesmoRelatoSoNotificaUmaVez() {
+        responder(relato("r1", "TRANSITOUS:p3"))
+        comecar(DO_TRANSITOUS, comAvisos(DO_TRANSITOUS))
+        esperarAte { relatosPostados().isNotEmpty() }
+        repeat(120) { passarOTempo(5) }
+        assertEquals(3, pedidosAvisos.size)
+        assertEquals(1, shadowOf(gestor).allNotifications.count { titulo(it)!!.startsWith("⚠") })
+        // Fica no trip-state: retomar a viagem não volta a avisar.
+        assertEquals(setOf("r1"), FicheirosViagem.lerEstado(c, agora)!!.relatosAvisados)
+    }
+
+    @Test fun ocultadoNaoNotifica() {
+        responder(relato("r1", "TRANSITOUS:p3"), relato("r2", "TRANSITOUS:p4", tipo = "evento"), relato("r3", "TRANSITOUS:p4", confirmado = false))
+        comecar(DO_TRANSITOUS, comAvisos(DO_TRANSITOUS, ocultos = setOf("relato:r1")))
+        esperarAte { relatosPostados().isNotEmpty() }
+        assertEquals(setOf("⚠ Evento confirmado na 736, à frente da tua paragem"), relatosPostados())
+    }
+
+    @Test fun semInterruptorNaoPede() {
+        responder(relato("r1", "TRANSITOUS:p3"))
+        val s = comecar(DO_TRANSITOUS, plano(DO_TRANSITOUS))
+        repeat(120) { passarOTempo(5) }
+        assertTrue(pedidosAvisos.isEmpty())
+        // Uma linha cujo nome o servidor recusa (com "/") não vai; sem nenhuma que sirva, não se pede nada.
+        pedir(s, Notificacoes.ACAO_PARAR)
+        val estranha = itinerario(DO_TRANSITOUS.etapas[0].copy(linhaNome = "A/B"))
+        comecar(estranha, comAvisos(estranha))
+        repeat(120) { passarOTempo(5) }
+        assertTrue(pedidosAvisos.isEmpty())
+    }
+
+    @Test fun emPausaOuDesligadaParaDePedir() {
+        for (resposta in listOf(Resposta(503, """{"erro":"em_pausa"}"""), Resposta(403, """{"erro":"desligado"}"""))) {
+            pedidosAvisos.clear()
+            respostaAvisos = resposta
+            val s = comecar(DO_TRANSITOUS, comAvisos(DO_TRANSITOUS))
+            repeat(240) { passarOTempo(5) } // 20 min
+            assertEquals(resposta.corpo, 1, pedidosAvisos.size)
+            pedir(s, Notificacoes.ACAO_PARAR)
+            agora = T0
+        }
+    }
+
+    @Test fun acabouAViagemParaDePedir() {
+        val s = comecar(DO_TRANSITOUS, comAvisos(DO_TRANSITOUS))
+        assertEquals(1, pedidosAvisos.size)
+        pedir(s, Notificacoes.ACAO_PARAR)
+        repeat(120) { passarOTempo(5) }
+        assertEquals(1, pedidosAvisos.size)
     }
 
     /** As respostas da CM voltam por outra thread: espera até 2 s que a condição se cumpra. */

@@ -86,6 +86,8 @@ fun RotasEcra(
     origem: Lugar?,
     destino: Lugar?,
     aoAbrirViagem: () -> Unit,
+    /** O interruptor `comunidade` da config: vai até ao começar da viagem (os avisos da comunidade). */
+    comunidadeLigada: Boolean = false,
 ) {
     val contexto = LocalContext.current
     val vm = viewModel {
@@ -136,6 +138,7 @@ fun RotasEcra(
             preferencias = preferencias,
             aoComecou = aoAbrirViagem,
             aoVoltar = { vm.abrir(null) },
+            comunidadeLigada = comunidadeLigada,
         )
         null -> RotasConteudo(
             pedido = pedido, estado = estado, filtros = filtros, alertas = alertas, agora = agora,

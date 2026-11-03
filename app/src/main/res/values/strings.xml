@@ -327,6 +327,7 @@
     <string name="eu_avisos">Avisos da viagem</string>
     <string name="eu_som_aviso">Som do aviso</string>
     <string name="eu_vibracao_aviso">Vibração do aviso</string>
+    <string name="eu_avisos_comunidade">Avisos da comunidade durante a viagem</string>
     <string name="eu_camadas_mapa">Camadas do mapa</string>
     <string name="eu_camada_relatos">Relatos da comunidade</string>
 
@@ -423,6 +424,8 @@
 
     <!-- Comunidade: os relatos no ecrã da paragem, os votos e as denúncias -->
     <string name="relato_na_linha">%1$s na %2$s</string>
+    <!-- Os avisos da comunidade na viagem: "⚠ Desvio confirmado na 736, à frente da tua paragem" -->
+    <string name="relato_a_frente">%1$s, à frente da tua paragem</string>
     <plurals name="relato_por_confirmar">
         <item quantity="one">Relatado por %1$d passageiro · por confirmar · %2$s</item>
         <item quantity="other">Relatado por %1$d passageiros · por confirmar · %2$s</item>

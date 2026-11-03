@@ -82,8 +82,12 @@ fun Itinerario.comNomes(de: String, para: String): Itinerario = copy(
     },
 )
 
+/** [comunidadeLigada]: o interruptor `comunidade` da config, para a viagem saber se pode pedir os avisos da comunidade. */
 @Composable
-fun DetalheRotaEcra(it: Itinerario, de: String, para: String, preferencias: Preferencias, aoComecou: () -> Unit, aoVoltar: () -> Unit) {
+fun DetalheRotaEcra(
+    it: Itinerario, de: String, para: String, preferencias: Preferencias, aoComecou: () -> Unit, aoVoltar: () -> Unit,
+    comunidadeLigada: Boolean = false,
+) {
     val contexto = LocalContext.current
     val escuro = LocalEscuro.current
     var preparar by rememberSaveable { mutableStateOf(false) }
@@ -123,6 +127,7 @@ fun DetalheRotaEcra(it: Itinerario, de: String, para: String, preferencias: Pref
                 aoComecou()
             },
             aoCancelar = { preparar = false },
+            comunidadeLigada = comunidadeLigada,
         )
     }
 }

@@ -49,13 +49,14 @@ import pt.pixellusitano.paragemcerta.dados.Preferencias
 import pt.pixellusitano.paragemcerta.ui.tema.FrisoAzulejo
 import pt.pixellusitano.paragemcerta.ui.tema.ModoTema
 
-/** [comunidadeLigada]: o interruptor `comunidade` da config; sem ele não há "Camadas do mapa" (só há uma, a dos relatos). */
+/** [comunidadeLigada]: o interruptor `comunidade` da config; sem ele não há "Camadas do mapa" (só há uma, a dos relatos) nem os avisos da comunidade. */
 @Composable
 fun DefinicoesEcra(preferencias: Preferencias, conta: Conta, aoVoltar: () -> Unit, comunidadeLigada: Boolean = false) {
     val contexto = LocalContext.current
     val escopo = rememberCoroutineScope()
     val estadoConta by conta.estado.collectAsStateWithLifecycle()
     val camadaRelatos by preferencias.camadaRelatos.collectAsStateWithLifecycle(initialValue = true)
+    val avisosComunidade by preferencias.avisosComunidade.collectAsStateWithLifecycle(initialValue = true)
     val modo by preferencias.modo.collectAsStateWithLifecycle(initialValue = ModoTema.SISTEMA)
     val limites by preferencias.limites.collectAsStateWithLifecycle(initialValue = Limites())
     val somAviso by preferencias.somAviso.collectAsStateWithLifecycle(initialValue = true)
@@ -89,6 +90,8 @@ fun DefinicoesEcra(preferencias: Preferencias, conta: Conta, aoVoltar: () -> Uni
         aoApagarConta = if (estadoConta is EstadoConta.Com) ({ escopo.launch { conta.apagarEAvisar(contexto) } }) else null,
         camadaRelatos = camadaRelatos,
         aoMudarCamadaRelatos = if (comunidadeLigada) ({ escopo.launch { preferencias.definirCamadaRelatos(it) } }) else null,
+        avisosComunidade = avisosComunidade,
+        aoMudarAvisosComunidade = if (comunidadeLigada) ({ escopo.launch { preferencias.definirAvisosComunidade(it) } }) else null,
         secaoAtualizacoes = { modificador ->
             if (Atualizacoes.disponivel) {
                 var sozinha by remember { mutableStateOf(Atualizacoes.atualizarSozinha(contexto)) }
@@ -135,10 +138,16 @@ fun DefinicoesConteudo(
     aoMudarCamadaRelatos: ((Boolean) -> Unit)? = null,
     /** Só a variante pessoal tem esta secção (as atualizações da Play Store vêm pela loja). */
     secaoAtualizacoes: @Composable (Modifier) -> Unit = {},
+    /** Os avisos da comunidade na viagem; como a camada, [aoMudarAvisosComunidade] só vem com a comunidade ligada. */
+    avisosComunidade: Boolean = true,
+    aoMudarAvisosComunidade: ((Boolean) -> Unit)? = null,
 ) {
     Column(modifier.background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState()).statusBarsPadding().padding(16.dp)) {
         CabecalhoEcra(stringResource(R.string.eu_definicoes), aoVoltar)
-        Definicoes(modo, limites, somAviso, vibracaoAviso, aoMudarModo, aoMudarLimites, aoMudarSom, aoMudarVibracao)
+        Definicoes(
+            modo, limites, somAviso, vibracaoAviso, aoMudarModo, aoMudarLimites, aoMudarSom, aoMudarVibracao,
+            avisosComunidade = avisosComunidade, aoMudarAvisosComunidade = aoMudarAvisosComunidade,
+        )
         if (aoMudarCamadaRelatos != null) CamadasDoMapa(camadaRelatos, aoMudarCamadaRelatos, Modifier.padding(top = 16.dp))
         PreferenciasRotas(filtros, aoMudarFiltros, Modifier.padding(top = 24.dp))
         EcraInicialOpcoes(ecraInicial, aoMudarEcraInicial, Modifier.padding(top = 24.dp))
@@ -245,6 +254,9 @@ fun Definicoes(
     aoMudarSom: (Boolean) -> Unit,
     aoMudarVibracao: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
+    /** "Avisos da comunidade durante a viagem" (e no "Avisa-me"); [aoMudarAvisosComunidade] só vem com a comunidade ligada. */
+    avisosComunidade: Boolean = true,
+    aoMudarAvisosComunidade: ((Boolean) -> Unit)? = null,
 ) {
     Column(modifier.background(MaterialTheme.colorScheme.background)) {
         Subtitulo(stringResource(R.string.eu_modo))
@@ -270,6 +282,7 @@ fun Definicoes(
         Subtitulo(stringResource(R.string.eu_avisos), Modifier.padding(top = 16.dp))
         Interruptor(stringResource(R.string.eu_som_aviso), somAviso, aoMudarSom)
         Interruptor(stringResource(R.string.eu_vibracao_aviso), vibracaoAviso, aoMudarVibracao)
+        if (aoMudarAvisosComunidade != null) Interruptor(stringResource(R.string.eu_avisos_comunidade), avisosComunidade, aoMudarAvisosComunidade)
     }
 }
 

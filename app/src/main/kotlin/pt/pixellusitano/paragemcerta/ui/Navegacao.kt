@@ -224,6 +224,7 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
                         origem = r.origem?.let(::lugarDaRota),
                         destino = r.destino?.let(::lugarDaRota),
                         aoAbrirViagem = { nav.navigate(Viagem) },
+                        comunidadeLigada = config.interruptores.comunidade,
                     )
                 }
             }

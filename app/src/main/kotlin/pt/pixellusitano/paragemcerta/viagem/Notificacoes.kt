@@ -10,6 +10,8 @@ import android.provider.Settings
 import androidx.core.app.NotificationCompat
 import pt.pixellusitano.paragemcerta.MainActivity
 import pt.pixellusitano.paragemcerta.R
+import pt.pixellusitano.paragemcerta.core.comunidade.TipoRelato
+import pt.pixellusitano.paragemcerta.core.fontes.servidor.RelatoRemoto
 import pt.pixellusitano.paragemcerta.core.modelo.Etapa
 import pt.pixellusitano.paragemcerta.core.viagem.AvisoChegada
 import pt.pixellusitano.paragemcerta.core.viagem.EstadoViagem
@@ -19,6 +21,7 @@ import pt.pixellusitano.paragemcerta.core.viagem.Origem
 import pt.pixellusitano.paragemcerta.core.viagem.PlanoViagem
 import pt.pixellusitano.paragemcerta.core.viagem.Viagem
 import pt.pixellusitano.paragemcerta.ui.comum.LISBOA_FUSO
+import pt.pixellusitano.paragemcerta.ui.comunidade.nomeDoTipo
 import pt.pixellusitano.paragemcerta.ui.rotas.nomeDaLinha
 import pt.pixellusitano.paragemcerta.ui.rotas.textoDistancia
 import java.time.Duration
@@ -41,6 +44,9 @@ object Notificacoes {
 
     /** Os avisos de chegada ficam todos (um id por aviso, a contar daqui), para um não apagar o outro. */
     const val ID_CHEGADA = 100
+
+    /** Os avisos da comunidade também ficam todos, um id por relato, a contar daqui. */
+    const val ID_RELATO = 200
 
     // As ações dos botões; quem as atende é o ServicoViagem (processo :trip), que fica no mesmo pacote.
     const val ACAO_SILENCIAR = "pt.pixellusitano.paragemcerta.viagem.SILENCIAR"
@@ -135,6 +141,30 @@ object Notificacoes {
         val texto = if (a.minutos < 1) c.getString(R.string.aviso_chegada_agora, nomeDaLinha(a.modo, a.linhaNome), paragem)
         else c.getString(R.string.aviso_chegada, nomeDaLinha(a.modo, a.linhaNome), a.minutos, paragem)
         return if (a.peloHorario) c.getString(R.string.aviso_chegada_horario, texto) else texto
+    }
+
+    /**
+     * Um relato confirmado da comunidade (n a contar de 0), no canal dos avisos e sem alarme: quem o vê decide. Tocar nele
+     * abre o ecrã da viagem ([viagem]) ou só a app (no "Avisa-me").
+     */
+    fun relatoComunidade(c: Context, n: Int, texto: String, viagem: Boolean) {
+        c.getSystemService(NotificationManager::class.java).notify(
+            ID_RELATO + n,
+            NotificationCompat.Builder(c, CANAL_AVISOS)
+                .setSmallIcon(R.drawable.ic_notificacao)
+                .setContentTitle(texto)
+                .setContentIntent(abrirApp(c, viagem))
+                .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+                .setAutoCancel(true)
+                .build(),
+        )
+    }
+
+    /** "⚠ Desvio confirmado na 736", com ", à frente da tua paragem" se [aFrente]; null para um tipo que esta versão não conhece. */
+    internal fun textoRelato(c: Context, r: RelatoRemoto, aFrente: Boolean): String? {
+        val tipo = TipoRelato.entries.firstOrNull { it.chave == r.tipo } ?: return null
+        val texto = c.getString(R.string.rotas_relato_confirmado, c.getString(nomeDoTipo(tipo)), r.linha)
+        return if (aFrente) c.getString(R.string.relato_a_frente, texto) else texto
     }
 
     /** "Liga a localização": toca-se nela para abrir as definições. O serviço cancela-a quando o GPS volta e quando a viagem acaba. */

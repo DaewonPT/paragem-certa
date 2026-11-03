@@ -26,14 +26,20 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import pt.pixellusitano.paragemcerta.BuildConfig
+import pt.pixellusitano.paragemcerta.core.comunidade.chaveLinha
+import pt.pixellusitano.paragemcerta.core.comunidade.chaveLinhaValida
+import pt.pixellusitano.paragemcerta.core.comunidade.paragemAFrente
 import pt.pixellusitano.paragemcerta.core.fontes.cm.CarrisMetropolitana
 import pt.pixellusitano.paragemcerta.core.fontes.cm.cmParagemDeTransitous
+import pt.pixellusitano.paragemcerta.core.fontes.servidor.RelatoRemoto
+import pt.pixellusitano.paragemcerta.core.fontes.servidor.ServidorParagemCerta
 import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.modelo.Etapa
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.Veiculo
 import pt.pixellusitano.paragemcerta.core.rede.OkHttpHttp
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
+import pt.pixellusitano.paragemcerta.core.rede.emPausa
 import pt.pixellusitano.paragemcerta.core.rede.userAgent
 import pt.pixellusitano.paragemcerta.core.regras.distanciaMetros
 import pt.pixellusitano.paragemcerta.core.regras.pausaDepoisDeFalha
@@ -66,18 +72,23 @@ private val CM_PERDIDO = Duration.ofMinutes(2)
 private val VEICULOS_INTERVALO = Duration.ofSeconds(15)
 private const val VEICULO_IDADE_S = 60L
 private const val VEICULO_PERTO_M = 150.0
+// Os relatos confirmados nas linhas da viagem: um pedido a cada 5 min, até 20 linhas (o máximo do /api/avisos).
+private const val AVISOS_MS = 300_000L
+private const val MAX_LINHAS_AVISOS = 20
 
 /**
  * A viagem a correr, no processo :trip (ver o manifesto): alimenta o motor (core/viagem) com as posições do GPS e o
  * relógio, escreve o trip-state.json, atualiza a notificação fixa e toca os avisos. Não usa a base de dados, as
- * definições nem o WorkManager: só o trip-plan.json que a app escreveu, a Carris Metropolitana e o GPS. Tudo corre na
- * thread principal (posições, relógio e respostas), por isso o estado não precisa de trincos.
+ * definições nem o WorkManager: só o trip-plan.json que a app escreveu, a Carris Metropolitana, o servidor da Paragem
+ * Certa (os avisos da comunidade) e o GPS. Tudo corre na thread principal (posições, relógio e respostas), por isso o
+ * estado não precisa de trincos.
  */
 class ServicoViagem : Service() {
-    /** O relógio, o alarme e a Carris Metropolitana, trocáveis nos testes. */
+    /** O relógio, o alarme, a Carris Metropolitana e o servidor da Paragem Certa, trocáveis nos testes. */
     internal var agora: () -> Instant = Instant::now
     internal var alarme: (Evento, Boolean, Boolean) -> Unit = { evento, som, vibrar -> Alarme.tocar(this, evento, som, vibrar) }
     internal var cm: CarrisMetropolitana? = null
+    internal var servidor: ServidorParagemCerta? = null
 
     private class Corrida(val plano: PlanoViagem, val viagem: Viagem, var estado: EstadoViagem)
 
@@ -172,6 +183,7 @@ class ServicoViagem : Service() {
             launch { relogio() }
             launch { chegadasCm() }
             launch { veiculosCm() }
+            launch { avisosComunidade() }
         }
     }
 
@@ -261,6 +273,46 @@ class ServicoViagem : Service() {
             }
             delay(RELOGIO_MS)
         }
+    }
+
+    private fun servidorPc() = servidor ?: ServidorParagemCerta(OkHttpHttp(userAgent(BuildConfig.VERSION_NAME))).also { servidor = it }
+
+    /**
+     * Com os avisos da comunidade ligados no plano: os relatos confirmados nas linhas em veículo da viagem, um pedido logo e
+     * depois a cada 5 min. A quota em pausa ou a comunidade desligada no servidor param os pedidos até ao fim da viagem;
+     * outra falha espera os 5 min.
+     */
+    private suspend fun avisosComunidade() {
+        val plano = corrida?.plano?.takeIf { it.avisosComunidade } ?: return
+        // Só chaves que o servidor aceita: uma má dava 400 ao pedido inteiro.
+        val linhas = plano.itinerario.etapas.filter { !it.aPe }.mapNotNull { it.linhaNome?.let(::chaveLinha) }
+            .filter(::chaveLinhaValida).distinct().take(MAX_LINHAS_AVISOS)
+        if (linhas.isEmpty()) return
+        var proxima = Instant.MIN
+        while (corrida?.estado?.terminada == false) {
+            if (agora() >= proxima) {
+                proxima = agora().plusMillis(AVISOS_MS)
+                when (val r = servidorPc().avisos(linhas)) {
+                    is Resultado.Ok -> avisarRelatos(r.valor)
+                    is Resultado.Falha -> if (r.emPausa || r.erro == "desligado") return
+                }
+            }
+            delay(RELOGIO_MS)
+        }
+    }
+
+    /** Uma notificação por relato confirmado novo (nem ocultado, nem já avisado); os avisados ficam no trip-state. */
+    private fun avisarRelatos(relatos: List<RelatoRemoto>) {
+        val c = corrida ?: return
+        val novos = relatos.filter { it.confirmado && "relato:${it.id}" !in c.plano.ocultos && it.id !in c.estado.relatosAvisados }
+        if (novos.isEmpty()) return
+        // O id de cada notificação conta os já avisados: uma viagem retomada não tapa as de antes.
+        novos.forEachIndexed { i, r ->
+            Notificacoes.textoRelato(this, r, c.viagem.paragemAFrente(c.estado, r.paragem))
+                ?.let { Notificacoes.relatoComunidade(this, c.estado.relatosAvisados.size + i, it, viagem = true) }
+        }
+        c.estado = c.estado.copy(relatosAvisados = c.estado.relatosAvisados + novos.map { it.id })
+        publicar()
     }
 
     /** Um passo do motor e tudo o que dele sai: avisos, estado, notificação e, se acabou, o fim. */

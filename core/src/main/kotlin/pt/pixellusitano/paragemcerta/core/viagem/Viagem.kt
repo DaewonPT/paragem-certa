@@ -86,6 +86,7 @@ enum class Evento { PREPARA_TE, SAI_AGORA, ETAPA_SEGUINTE, CHEGOU }
  * origem: VEICULO quando, sem GPS há 60 s, as leituras do veículo continuam a chegar.
  * veiculoLat, veiculoLon: onde o veículo da etapa estava na última leitura aceite (o mapa desenha-o); null sem leitura
  * há 60 s e ao mudar de etapa.
+ * relatosAvisados: os ids dos relatos da comunidade de que a viagem já avisou (o motor não lhes toca).
  */
 @Serializable
 data class EstadoViagem(
@@ -94,11 +95,19 @@ data class EstadoViagem(
     val altaPrecisao: Boolean, val silenciado: Boolean, val terminada: Boolean, val atualizado: Instant,
     val avancou: Boolean = false, val ultimoVeiculo: Instant? = null,
     val veiculoLat: Double? = null, val veiculoLon: Double? = null,
+    val relatosAvisados: Set<String> = emptySet(),
 )
 
-/** O trip-plan.json: a rota escolhida e as definições do aviso (o processo :trip não lê as definições da app). */
+/**
+ * O trip-plan.json: a rota escolhida e as definições do aviso (o processo :trip não lê as definições da app).
+ * avisosComunidade: avisar dos relatos confirmados nas linhas da viagem; ocultos: os relatos que a pessoa escondeu ("relato:<id>").
+ * Os dois têm omissão: o plano de uma viagem da 0.3.x lê-se sem eles.
+ */
 @Serializable
-data class PlanoViagem(val itinerario: Itinerario, val som: Boolean, val vibrar: Boolean)
+data class PlanoViagem(
+    val itinerario: Itinerario, val som: Boolean, val vibrar: Boolean,
+    val avisosComunidade: Boolean = false, val ocultos: Set<String> = emptySet(),
+)
 
 /**
  * O motor da viagem: recebe posições e o relógio, devolve o estado novo e os avisos a dar. Puro, sem Android.
