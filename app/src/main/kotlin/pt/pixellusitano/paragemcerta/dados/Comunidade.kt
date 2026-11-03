@@ -36,6 +36,9 @@ class Comunidade(
 
     private val comunidadeLigada get() = configuracoes.atual.value.interruptores.comunidade
 
+    /** O email da conta com sessão, ou null sem conta: é para lá que o servidor manda o recibo e a decisão de uma denúncia, e nunca para outro. */
+    val emailDaConta: String? get() = (conta.estado.value as? EstadoConta.Com)?.email
+
     /** O ecrã da paragem: sempre do servidor, sem cache. */
     suspend fun daParagem(chave: String): Resultado<DadosComunidade> {
         if (!comunidadeLigada) return Resultado.Ok(DadosComunidade())

@@ -44,6 +44,7 @@ import pt.pixellusitano.paragemcerta.dados.BaseDados
 import pt.pixellusitano.paragemcerta.dados.Comunidade
 import pt.pixellusitano.paragemcerta.dados.Configuracoes
 import pt.pixellusitano.paragemcerta.dados.Conta
+import pt.pixellusitano.paragemcerta.dados.EstadoConta
 import pt.pixellusitano.paragemcerta.dados.LojaEmMemoria
 import pt.pixellusitano.paragemcerta.dados.Preferencias
 import pt.pixellusitano.paragemcerta.dados.Repositorio
@@ -267,6 +268,21 @@ class RelatarTest {
         assertTrue(http.pedidos.isEmpty())
     }
 
+    @Test fun sessaoRecusadaPedeEntrar() {
+        ligar()
+        entrar()
+        aDistancia(10.0)
+        // O token já não vale: a Conta sai sozinha e um 401 é o mesmo que não ter sessão, com ou sem "erro" no corpo.
+        http.rotas["/api/relatos"] = { Resposta(401, "") }
+        abrirParagem()
+        relatarDesvio()
+        esperarPor("Entra com Google ou email para relatar")
+        assertEquals(EstadoConta.SemConta, conta.estado.value)
+        regra.onNodeWithText("Entrar").performClick()
+        assertEquals(1, abriuConta)
+        assertEquals(1, http.a("/api/relatos").size)
+    }
+
     @Test fun termosPorAceitarMostraOsTermosEDepoisEnvia() {
         ligar()
         entrar()
@@ -339,6 +355,21 @@ class RelatarTest {
         abrirParagem()
         relatarDesvio()
         assertEquals("Algumas funções estão em pausa até à meia-noite", toast())
+    }
+
+    @Test fun pedidoEmPausaNaoDizSemLigacao() {
+        ligar()
+        entrar()
+        aDistancia(10.0)
+        http.rotas["/api/relatos"] = { Resposta(503, """{"erro":"em_pausa"}""") }
+        abrirParagem()
+        relatarDesvio()
+        assertEquals("Algumas funções estão em pausa até à meia-noite", toast())
+        // Durante a pausa o pedido nem sai: a falha é Falha(null, true, "em_pausa"), que sem código parece falta de rede mas não é.
+        ShadowToast.reset()
+        relatarDesvio()
+        assertEquals("Algumas funções estão em pausa até à meia-noite", toast())
+        assertEquals(1, http.a("/api/relatos").size)
     }
 
     // ---- a bordo, no ecrã da viagem ----

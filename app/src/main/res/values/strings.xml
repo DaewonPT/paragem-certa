@@ -416,4 +416,48 @@
     <string name="comunidade_conta_bloqueada">A tua conta está bloqueada e não pode publicar.</string>
     <string name="comunidade_erro">Não foi enviado. Tenta outra vez.</string>
     <string name="servidor_em_pausa">Algumas funções estão em pausa até à meia-noite</string>
+
+    <!-- Comunidade: os relatos no ecrã da paragem, os votos e as denúncias -->
+    <string name="relato_na_linha">%1$s na %2$s</string>
+    <plurals name="relato_por_confirmar">
+        <item quantity="one">Relatado por %1$d passageiro · por confirmar · %2$s</item>
+        <item quantity="other">Relatado por %1$d passageiros · por confirmar · %2$s</item>
+    </plurals>
+    <plurals name="relato_confirmado">
+        <item quantity="one">Confirmado por %1$d passageiro · %2$s</item>
+        <item quantity="other">Confirmado por %1$d passageiros · %2$s</item>
+    </plurals>
+    <string name="relato_agora">agora mesmo</string>
+    <string name="relato_ha_min">há %1$d min</string>
+    <string name="relato_ha_horas">há %1$d h</string>
+    <plurals name="relato_ha_dias">
+        <item quantity="one">há %1$d dia</item>
+        <item quantity="other">há %1$d dias</item>
+    </plurals>
+    <string name="relato_ainda_esta">Ainda está</string>
+    <string name="relato_ja_nao_esta">Já não está</string>
+    <string name="relato_denunciar">Denunciar</string>
+    <string name="relato_ocultar">Ocultar este relato</string>
+    <!-- Os mesmos botões, com o relato a que se referem, para o leitor de ecrã os distinguir quando há vários -->
+    <string name="relato_ainda_esta_de">Ainda está: %1$s</string>
+    <string name="relato_ja_nao_esta_de">Já não está: %1$s</string>
+    <string name="relato_denunciar_de">Denunciar: %1$s</string>
+    <string name="relato_mais_opcoes">Mais opções: %1$s</string>
+    <string name="relato_voto_enviado">Voto registado.</string>
+    <string name="relato_ja_acabou">Este relato já acabou.</string>
+    <string name="relato_votar_entrar_texto">Entra com Google ou email para votar</string>
+    <string name="denunciar_entrar_texto">Entra com Google ou email para denunciar</string>
+    <string name="denunciar_titulo">Denunciar este relato</string>
+    <string name="denunciar_porque">Porquê?</string>
+    <string name="denunciar_falso">É falso</string>
+    <string name="denunciar_ofensivo">É ofensivo ou ilegal</string>
+    <string name="denunciar_dados_pessoais">Mostra pessoas ou matrículas</string>
+    <string name="denunciar_perigo">Põe alguém em perigo</string>
+    <string name="denunciar_outro">Outro motivo</string>
+    <string name="denunciar_nome">O teu nome</string>
+    <string name="denunciar_explicacao">Explica, se quiseres (opcional)</string>
+    <string name="denunciar_boa_fe">Declaro que faço esta denúncia de boa-fé e que o que digo é verdade.</string>
+    <string name="denunciar_recibo">Enviamos o recibo e a decisão para %1$s.</string>
+    <string name="denunciar_enviar">Enviar denúncia</string>
+    <string name="denunciar_enviada">Denúncia enviada.</string>
 </resources>

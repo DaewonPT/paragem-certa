@@ -1,10 +1,6 @@
 package pt.pixellusitano.paragemcerta.ui.comunidade
 
-import android.Manifest
 import android.content.Context
-import android.widget.Toast
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -16,7 +12,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -29,7 +24,6 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -51,7 +45,7 @@ import pt.pixellusitano.paragemcerta.dados.Comunidade
 import pt.pixellusitano.paragemcerta.dados.Configuracoes
 
 @StringRes
-private fun nomeDoTipo(t: TipoRelato) = when (t) {
+internal fun nomeDoTipo(t: TipoRelato) = when (t) {
     TipoRelato.ACIDENTE -> R.string.relato_acidente
     TipoRelato.DESVIO -> R.string.relato_desvio
     TipoRelato.EVENTO -> R.string.relato_evento
@@ -60,8 +54,6 @@ private fun nomeDoTipo(t: TipoRelato) = when (t) {
     TipoRelato.ELEVADOR -> R.string.relato_elevador
     TipoRelato.PROBLEMA_PARAGEM -> R.string.relato_problema_paragem
 }
-
-private fun avisar(c: Context, @StringRes texto: Int) = Toast.makeText(c, texto, Toast.LENGTH_LONG).show()
 
 private fun avisarRelato(c: Context, r: Resultado<*>) = avisar(c, if (r is Resultado.Falha) erroDaComunidade(r) else R.string.relatar_enviado)
 
@@ -136,40 +128,12 @@ fun RelatarNaParagem(paragem: Paragem?, linhas: List<String>, comunidade: Comuni
     val config by configuracoes.atual.collectAsStateWithLifecycle()
     if (!config.interruptores.comunidade) return
     val contexto = LocalContext.current
-    val escopo = rememberCoroutineScope()
     val publicar = rememberPublicar(comunidade, aoAbrirConta)
+    val verificarPerto = rememberVerificarPerto(paragem)
     var folha by rememberSaveable { mutableStateOf(false) }
-    // A escolha à espera da permissão da localização.
-    var porPermitir by remember { mutableStateOf<Pair<TipoRelato, String?>?>(null) }
-    var explicar by remember { mutableStateOf(false) }
 
     fun enviar(p: Paragem, tipo: TipoRelato, linha: String?) =
         publicar.correr({ comunidade.relatar(tipo, p.ref.chave, linha?.let(::chaveLinha)) }) { avisarRelato(contexto, it) }
-
-    fun verificar(tipo: TipoRelato, linha: String?) {
-        val p = paragem ?: return
-        escopo.launch {
-            if (linha != null && withContext(Dispatchers.IO) { aBordoDaLinha(contexto, linha) }) return@launch enviar(p, tipo, linha)
-            when (proximidade(contexto, p)) {
-                Proximidade.PERTO -> enviar(p, tipo, linha)
-                Proximidade.LONGE -> avisar(contexto, R.string.relatar_longe)
-                Proximidade.IMPRECISA -> avisar(contexto, R.string.relatar_imprecisa)
-                Proximidade.SEM_POSICAO -> avisar(contexto, R.string.relatar_sem_posicao)
-                Proximidade.SEM_PERMISSAO -> {
-                    porPermitir = tipo to linha
-                    explicar = true
-                }
-            }
-        }
-    }
-
-    val pedir = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { r ->
-        val escolha = porPermitir
-        porPermitir = null
-        if (escolha != null) {
-            if (r.values.any { it }) verificar(escolha.first, escolha.second) else avisar(contexto, R.string.relatar_sem_localizacao)
-        }
-    }
 
     // Precisa das coordenadas da paragem: enquanto ela não carrega, não se relata.
     OutlinedButton(onClick = { folha = true }, enabled = paragem != null, modifier = Modifier.padding(top = 16.dp).fillMaxWidth()) {
@@ -178,29 +142,8 @@ fun RelatarNaParagem(paragem: Paragem?, linhas: List<String>, comunidade: Comuni
     if (folha) {
         FolhaRelatar(linhas, null, aoEscolher = { t, l ->
             folha = false
-            verificar(t, l)
+            paragem?.let { p -> verificarPerto(l) { enviar(p, t, l) } }
         }, aoFechar = { folha = false })
-    }
-    if (explicar) {
-        AlertDialog(
-            onDismissRequest = {
-                explicar = false
-                porPermitir = null
-            },
-            text = { Text(stringResource(R.string.relatar_localizacao_texto)) },
-            confirmButton = {
-                TextButton(onClick = {
-                    explicar = false
-                    pedir.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
-                }) { Text(stringResource(R.string.loc_aceitar)) }
-            },
-            dismissButton = {
-                TextButton(onClick = {
-                    explicar = false
-                    porPermitir = null
-                }) { Text(stringResource(R.string.comunidade_agora_nao)) }
-            },
-        )
     }
 }
 

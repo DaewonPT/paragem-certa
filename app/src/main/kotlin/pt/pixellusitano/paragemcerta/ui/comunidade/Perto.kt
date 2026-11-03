@@ -4,9 +4,26 @@ import android.Manifest
 import android.content.Context
 import android.content.pm.PackageManager
 import android.location.Location
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
 import androidx.core.content.ContextCompat
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
+import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.core.comunidade.DISTANCIA_RELATAR_M
 import pt.pixellusitano.paragemcerta.core.comunidade.chaveDaParagemEtapa
 import pt.pixellusitano.paragemcerta.core.comunidade.chaveLinha
@@ -46,6 +63,67 @@ suspend fun proximidade(c: Context, paragem: Paragem): Proximidade {
         precisao != null && precisao > DISTANCIA_RELATAR_M -> Proximidade.IMPRECISA
         else -> Proximidade.LONGE
     }
+}
+
+/**
+ * Antes de publicar na [paragem] (relatar, ou votar num relato): a bordo da linha ou a menos de 300 m, medido aqui. Devolve a função
+ * que verifica (a linha é null nos relatos da paragem) e só chama `aoPerto` se a pessoa puder; senão avisa porquê. Sem a permissão da
+ * localização explica e pede-a (como o resto da app), e verifica outra vez. [paragem] pode ser null enquanto carrega: sem ela não se publica.
+ */
+@Composable
+fun rememberVerificarPerto(paragem: Paragem?): (linha: String?, aoPerto: () -> Unit) -> Unit {
+    val contexto = LocalContext.current
+    val escopo = rememberCoroutineScope()
+    // O que está à espera da permissão da localização.
+    var porPermitir by remember { mutableStateOf<Pair<String?, () -> Unit>?>(null) }
+    var explicar by remember { mutableStateOf(false) }
+
+    fun verificar(linha: String?, aoPerto: () -> Unit) {
+        val p = paragem ?: return
+        escopo.launch {
+            if (linha != null && withContext(Dispatchers.IO) { aBordoDaLinha(contexto, linha) }) return@launch aoPerto()
+            when (proximidade(contexto, p)) {
+                Proximidade.PERTO -> aoPerto()
+                Proximidade.LONGE -> avisar(contexto, R.string.relatar_longe)
+                Proximidade.IMPRECISA -> avisar(contexto, R.string.relatar_imprecisa)
+                Proximidade.SEM_POSICAO -> avisar(contexto, R.string.relatar_sem_posicao)
+                Proximidade.SEM_PERMISSAO -> {
+                    porPermitir = linha to aoPerto
+                    explicar = true
+                }
+            }
+        }
+    }
+
+    val pedir = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { r ->
+        val escolha = porPermitir
+        porPermitir = null
+        if (escolha != null) {
+            if (r.values.any { it }) verificar(escolha.first, escolha.second) else avisar(contexto, R.string.relatar_sem_localizacao)
+        }
+    }
+    if (explicar) {
+        AlertDialog(
+            onDismissRequest = {
+                explicar = false
+                porPermitir = null
+            },
+            text = { Text(stringResource(R.string.relatar_localizacao_texto)) },
+            confirmButton = {
+                TextButton(onClick = {
+                    explicar = false
+                    pedir.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                }) { Text(stringResource(R.string.loc_aceitar)) }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    explicar = false
+                    porPermitir = null
+                }) { Text(stringResource(R.string.comunidade_agora_nao)) }
+            },
+        )
+    }
+    return { linha, aoPerto -> verificar(linha, aoPerto) }
 }
 
 /** Há uma viagem a correr e a etapa atual é em veículo na linha [linhaNome]: a bordo não é preciso estar perto da paragem. */

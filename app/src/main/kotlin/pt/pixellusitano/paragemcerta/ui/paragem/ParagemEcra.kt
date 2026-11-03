@@ -45,6 +45,8 @@ import pt.pixellusitano.paragemcerta.BuildConfig
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.aviso.ServicoAvisoChegada
 import pt.pixellusitano.paragemcerta.core.atraso.aindaPorChegar
+import pt.pixellusitano.paragemcerta.core.comunidade.chaveLinha
+import pt.pixellusitano.paragemcerta.core.fontes.servidor.RelatoRemoto
 import pt.pixellusitano.paragemcerta.core.modelo.Alerta
 import pt.pixellusitano.paragemcerta.core.modelo.Gravidade
 import pt.pixellusitano.paragemcerta.core.modelo.Linha
@@ -57,7 +59,9 @@ import pt.pixellusitano.paragemcerta.dados.Preferencias
 import pt.pixellusitano.paragemcerta.dados.Repositorio
 import pt.pixellusitano.paragemcerta.ui.comum.FaixaEstado
 import pt.pixellusitano.paragemcerta.ui.comum.LinhaChegada
+import pt.pixellusitano.paragemcerta.ui.comunidade.CartaoRelato
 import pt.pixellusitano.paragemcerta.ui.comunidade.RelatarNaParagem
+import pt.pixellusitano.paragemcerta.ui.comunidade.rememberRelatosDaParagem
 import pt.pixellusitano.paragemcerta.ui.tema.FrisoAzulejo
 import pt.pixellusitano.paragemcerta.ui.tema.LocalEscuro
 import java.time.Instant
@@ -69,7 +73,7 @@ fun ParagemEcra(
     repositorio: Repositorio,
     comunidade: Comunidade,
     configuracoes: Configuracoes,
-    @Suppress("UNUSED_PARAMETER") preferencias: Preferencias, // os relatos ocultados (etapa 3, a seguir)
+    preferencias: Preferencias,
     aoEncontrar: (Paragem) -> Unit,
     aoAbrirConta: () -> Unit,
     aoVoltar: () -> Unit,
@@ -97,6 +101,7 @@ fun ParagemEcra(
     val vigiadas by ServicoAvisoChegada.paragensVigiadas.collectAsStateWithLifecycle()
     val vigiada = ref.chave in vigiadas
     var avisaMe by rememberSaveable { mutableStateOf(false) }
+    val relatos = rememberRelatosDaParagem(ref.chave, paragem, comunidade, configuracoes, preferencias, aoAbrirConta)
     ParagemConteudo(
         nome = nome,
         codigo = ref.id.substringAfterLast('_'),
@@ -129,6 +134,10 @@ fun ParagemEcra(
         modifier = Modifier.fillMaxSize(),
         aoEncontrar = paragem?.let { p -> { aoEncontrar(p) } },
         relatar = { RelatarNaParagem(paragem, presentes.map { it.second }.distinct(), comunidade, configuracoes, aoAbrirConta) },
+        relatos = relatos.lista,
+        aoVotar = relatos.aoVotar,
+        aoDenunciar = relatos.aoDenunciar,
+        aoOcultar = relatos.aoOcultar,
     )
     // O serviço vigia as linhas pelo nome que a pessoa vê (o do Transitous não é o id).
     if (avisaMe) AvisaMe(ref, nome, presentes.map { it.second }.distinct(), aoFechar = { avisaMe = false })
@@ -156,6 +165,10 @@ fun ParagemConteudo(
     modifier: Modifier = Modifier,
     aoEncontrar: (() -> Unit)? = null,
     relatar: @Composable () -> Unit = {},
+    relatos: List<RelatoRemoto> = emptyList(),
+    aoVotar: (RelatoRemoto, aindaEsta: Boolean) -> Unit = { _, _ -> },
+    aoDenunciar: (RelatoRemoto) -> Unit = {},
+    aoOcultar: (RelatoRemoto) -> Unit = {},
 ) {
     Column(modifier.background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState())) {
         Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.primary).statusBarsPadding().padding(start = 4.dp, end = 4.dp, bottom = 12.dp)) {
@@ -194,6 +207,12 @@ fun ParagemConteudo(
                 }
             }
             alertas.forEach { CartaoAlerta(it) }
+            // Com o relógio do ecrã: um relato que acabou desde a última leitura sai já, sem esperar por outro pedido.
+            relatos.filter { it.expiraEm > agora.toEpochMilli() }.forEach { r ->
+                // O relato guarda a linha em maiúsculas; mostra-se o nome que a pessoa vê na paragem.
+                val nomeLinha = linhasPresentes.firstOrNull { chaveLinha(it.second) == r.linha }?.second ?: r.linha.ifEmpty { null }
+                CartaoRelato(r, nomeLinha, agora, aoVotar = { aoVotar(r, it) }, aoDenunciar = { aoDenunciar(r) }, aoOcultar = { aoOcultar(r) })
+            }
             // Filtra outra vez com o relógio do ecrã: sem rede, a próxima resposta pode demorar minutos.
             val visiveis = estado?.chegadas?.filter { aindaPorChegar(it, agora) }
             when {
@@ -225,12 +244,7 @@ fun ParagemConteudo(
 @Composable
 private fun CartaoAlerta(a: Alerta) {
     var aberto by rememberSaveable(a.id) { mutableStateOf(false) }
-    val escuro = LocalEscuro.current
-    val (fundo, texto, rotulo, icone) = when (a.gravidade) {
-        Gravidade.GRAVE -> Quatro(if (escuro) Color(0xFF3A1414) else Color(0xFFFDECEC), if (escuro) Color(0xFFF87171) else Color(0xFF9B1C1C), R.string.gravidade_grave, "⛔")
-        Gravidade.AVISO -> Quatro(if (escuro) Color(0xFF3A2E0B) else Color(0xFFFFF4CF), if (escuro) Color(0xFFFBBF24) else Color(0xFF7A5A00), R.string.gravidade_aviso, "⚠")
-        Gravidade.INFO -> Quatro(if (escuro) Color(0xFF14233F) else Color(0xFFE8EFFB), if (escuro) Color(0xFF7FB0FF) else Color(0xFF1F4FA3), R.string.gravidade_info, "ⓘ")
-    }
+    val (fundo, texto, rotulo, icone) = estiloDaGravidade(a.gravidade, LocalEscuro.current)
     Column(
         Modifier.padding(vertical = 6.dp).fillMaxWidth().background(fundo, RoundedCornerShape(10.dp))
             .clickable(role = Role.Button) { aberto = !aberto }.padding(10.dp),
@@ -241,4 +255,11 @@ private fun CartaoAlerta(a: Alerta) {
     }
 }
 
-private data class Quatro(val fundo: Color, val texto: Color, val rotulo: Int, val icone: String)
+/** As cores e o ícone de cada gravidade; os cartões dos relatos usam os mesmos (por confirmar = INFO, confirmado = AVISO). */
+internal fun estiloDaGravidade(g: Gravidade, escuro: Boolean) = when (g) {
+    Gravidade.GRAVE -> EstiloAlerta(if (escuro) Color(0xFF3A1414) else Color(0xFFFDECEC), if (escuro) Color(0xFFF87171) else Color(0xFF9B1C1C), R.string.gravidade_grave, "⛔")
+    Gravidade.AVISO -> EstiloAlerta(if (escuro) Color(0xFF3A2E0B) else Color(0xFFFFF4CF), if (escuro) Color(0xFFFBBF24) else Color(0xFF7A5A00), R.string.gravidade_aviso, "⚠")
+    Gravidade.INFO -> EstiloAlerta(if (escuro) Color(0xFF14233F) else Color(0xFFE8EFFB), if (escuro) Color(0xFF7FB0FF) else Color(0xFF1F4FA3), R.string.gravidade_info, "ⓘ")
+}
+
+internal data class EstiloAlerta(val fundo: Color, val texto: Color, val rotulo: Int, val icone: String)

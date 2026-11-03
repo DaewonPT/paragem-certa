@@ -1,7 +1,9 @@
 package pt.pixellusitano.paragemcerta.ui.comunidade
 
+import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
@@ -45,10 +47,11 @@ class Publicar internal constructor(private val escopo: CoroutineScope, private 
     }
 
     private fun <T> tratar(r: Resultado<T>, acao: suspend () -> Resultado<T>, aoAcabar: (Resultado<T>) -> Unit, termosPorAceitar: Boolean) {
-        val erro = (r as? Resultado.Falha)?.erro
+        val falha = r as? Resultado.Falha
         when {
-            erro == "sem_sessao" -> dialogo = Dialogo.Entrar
-            erro == "termos_por_aceitar" && termosPorAceitar -> dialogo = Dialogo.Termos {
+            // Um 401 do servidor é uma sessão que a Conta acabou de largar (ver Conta.comSessao): para a pessoa é o mesmo que não ter entrado.
+            falha?.erro == "sem_sessao" || falha?.codigo == 401 -> dialogo = Dialogo.Entrar
+            falha?.erro == "termos_por_aceitar" && termosPorAceitar -> dialogo = Dialogo.Termos {
                 escopo.launch {
                     // Depois de aceitar, a ação repete-se uma vez; se o servidor ainda pedir os termos, é uma falha como as outras.
                     when (val aceite = comunidade.aceitarTermos()) {
@@ -62,14 +65,18 @@ class Publicar internal constructor(private val escopo: CoroutineScope, private 
     }
 }
 
-/** O [Publicar] deste ecrã, com os seus diálogos; [aoEntrar] abre Menu → Conta. */
+/** O [Publicar] deste ecrã, com os seus diálogos; [aoEntrar] abre Menu → Conta e [textoEntrar] diz para que é preciso entrar. */
 @Composable
-fun rememberPublicar(comunidade: Comunidade, aoEntrar: () -> Unit): Publicar {
+fun rememberPublicar(
+    comunidade: Comunidade,
+    aoEntrar: () -> Unit,
+    @StringRes textoEntrar: Int = R.string.comunidade_entrar_texto,
+): Publicar {
     val escopo = rememberCoroutineScope()
     val publicar = remember(comunidade) { Publicar(escopo, comunidade) }
     val fechar = { publicar.dialogo = null }
     when (val d = publicar.dialogo) {
-        Publicar.Dialogo.Entrar -> DialogoEntrar(aoEntrar = { fechar(); aoEntrar() }, aoFechar = fechar)
+        Publicar.Dialogo.Entrar -> DialogoEntrar(aoEntrar = { fechar(); aoEntrar() }, aoFechar = fechar, texto = textoEntrar)
         is Publicar.Dialogo.Termos -> DialogoTermos(aoAceitar = { fechar(); d.aoAceitar() }, aoFechar = fechar)
         null -> {}
     }
@@ -77,10 +84,10 @@ fun rememberPublicar(comunidade: Comunidade, aoEntrar: () -> Unit): Publicar {
 }
 
 @Composable
-fun DialogoEntrar(aoEntrar: () -> Unit, aoFechar: () -> Unit) {
+fun DialogoEntrar(aoEntrar: () -> Unit, aoFechar: () -> Unit, @StringRes texto: Int = R.string.comunidade_entrar_texto) {
     AlertDialog(
         onDismissRequest = aoFechar,
-        text = { Text(stringResource(R.string.comunidade_entrar_texto)) },
+        text = { Text(stringResource(texto)) },
         confirmButton = { TextButton(onClick = aoEntrar) { Text(stringResource(R.string.comunidade_entrar)) } },
         dismissButton = { TextButton(onClick = aoFechar) { Text(stringResource(R.string.cancelar)) } },
     )
@@ -117,3 +124,9 @@ fun erroDaComunidade(f: Resultado.Falha): Int = when {
     f.erro == "conta_bloqueada" -> R.string.comunidade_conta_bloqueada
     else -> R.string.comunidade_erro
 }
+
+/** Como [erroDaComunidade], mas um relato que já acabou (ou foi apagado) tem a sua frase. */
+@StringRes
+internal fun erroDoRelato(f: Resultado.Falha): Int = if (f.erro == "nao_existe") R.string.relato_ja_acabou else erroDaComunidade(f)
+
+internal fun avisar(c: Context, @StringRes texto: Int) = Toast.makeText(c, texto, Toast.LENGTH_LONG).show()
