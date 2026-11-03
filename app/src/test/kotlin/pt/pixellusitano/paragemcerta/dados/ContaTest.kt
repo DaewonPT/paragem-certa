@@ -187,7 +187,7 @@ class ContaTest {
         entrar(c)
         servidor.recusarSessao = true
         repo.alternarFavorita(oriente)
-        assertEquals(Resultado.Falha(401, limite = false), c.sincronizar())
+        assertEquals(Resultado.Falha(401, limite = false, erro = "sem_sessao"), c.sincronizar())
         assertEquals(EstadoConta.SemConta, c.estado.value)
         assertFalse(ficheiro.exists())
         assertEquals(setOf("CM:060419", "CM:070001"), chavesFavoritas().toSet())

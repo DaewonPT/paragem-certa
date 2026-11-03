@@ -1,0 +1,35 @@
+{
+  "relatos": [
+    {
+      "id": "6f1c2a9e-3b7d-4c58-9a10-5d2e8b7f4a11",
+      "tipo": "desvio",
+      "paragem": "CM:060419",
+      "linha": "736",
+      "criadoEm": 1793700000000,
+      "expiraEm": 1793710800000,
+      "confirmacoes": 2,
+      "confirmado": true
+    },
+    {
+      "id": "0a4d9b3c-8e21-47f6-b5c9-1e7a6d3f2b90",
+      "tipo": "elevador",
+      "paragem": "CM:060419",
+      "linha": "",
+      "criadoEm": 1793701000000,
+      "expiraEm": 1793787400000,
+      "confirmacoes": 1,
+      "confirmado": false
+    }
+  ],
+  "fotos": [
+    {
+      "paragem": "CM:060419",
+      "id": "c7e5a1b2-4d96-4f03-8a2b-9c0d1e2f3a45",
+      "url": "https://fotos.pixellusitano.com/3a7bd3e2360a3d29eea436fcfb7e44c735d117c42d1c1835420b6b9942dd4f1b.jpg"
+    }
+  ],
+  "emRevisao": ["CM:070001"],
+  "correcoes": [
+    { "paragem": "CM:060419", "tipo": "posicao", "lat": 38.6975, "lon": -9.2062 }
+  ]
+}
