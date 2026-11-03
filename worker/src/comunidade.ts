@@ -1,3 +1,4 @@
+import { fotosDaComunidade } from "./fotos";
 import { interruptores } from "./portao";
 import { FORMATO_LINHA, FORMATO_PARAGEM, relatosPublicos } from "./relatos";
 import { erro, json } from "./respostas";
@@ -23,7 +24,8 @@ export async function lerComunidade(pedido: Request, env: Env): Promise<Response
   if (!paragens) return erro("pedido_invalido", 400);
 
   const relatos = ligado.comunidade ? await relatosPublicos(env, "paragem", paragens, false) : [];
-  return json({ relatos, fotos: [], emRevisao: [], correcoes: [] });
+  const { fotos, emRevisao } = ligado.fotos ? await fotosDaComunidade(env, paragens) : { fotos: [], emRevisao: [] };
+  return json({ relatos, fotos, emRevisao, correcoes: [] });
 }
 
 /** GET /api/avisos?linhas=L1,L2 (1–20): só os relatos confirmados e ativos dessas linhas (cartões das rotas, viagem, "Avisa-me"). */
