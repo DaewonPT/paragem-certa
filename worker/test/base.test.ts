@@ -2,6 +2,8 @@ import { createExecutionContext, waitOnExecutionContext } from "cloudflare:test"
 import { env } from "cloudflare:workers";
 import { describe, expect, it, vi } from "vitest";
 import config from "../public/dados/config.json";
+import termosHtml from "../public/termos.html";
+import { REGRAS } from "../src/explicacoes";
 import worker from "../src/index";
 import { contaDaSessao } from "../src/sessoes";
 import { criarConta, LIGADO, limitador, pedidoComToken, pedir as chamar } from "./ajudas";
@@ -14,6 +16,18 @@ async function pedir(caminho: string, segredos: Partial<Env> = {}): Promise<Resp
   const resposta = await servidor.fetch(new Request(`https://exemplo.test${caminho}`), { ...env, ...segredos }, ctx);
   await waitOnExecutionContext(ctx);
   return resposta;
+}
+
+/** O texto de uma página sem as etiquetas e com os espaços juntos, dividido na parte em português e na parte em inglês. */
+function emDuasLinguas(html: string): { pt: string; en: string } {
+  const [pt, en] = html.split('<section id="english"');
+  const texto = (parte: string) => parte.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ");
+  return { pt: texto(pt), en: texto(en) };
+}
+
+/** O wrangler*.jsonc só com comentários em linhas inteiras, que é como estão escritos. */
+function lerJsonc(texto: string): Record<string, any> {
+  return JSON.parse(texto.replace(/^\s*\/\/.*$/gm, ""));
 }
 
 describe("base do servidor", () => {
@@ -221,5 +235,101 @@ describe("base do servidor", () => {
       fotosPorDia: 100,
     });
     expect(config.emails).toEqual({ codigosPorDia: 70, outrosPorDia: 30 });
+  });
+});
+
+describe("política de privacidade, termos e guia do autor", () => {
+  async function politica(): Promise<{ pt: string; en: string }> {
+    return emDuasLinguas(await (await pedir("/privacidade", { RESPONSAVEL: "Nome de Teste" })).text());
+  }
+
+  it("privacidadeDizQueORelatoRegistaAConta", async () => {
+    // Guarda de regressão da secção 18 da spec: o que diz aqui tem de continuar a ser verdade.
+    const { pt, en } = await politica();
+    expect(pt).toContain("um relato regista que a tua conta estava junto dessa paragem a essa hora");
+    expect(pt).toContain("30 dias");
+    expect(en).toContain("a report records that your account was near that stop at that time");
+    expect(en).toContain("30 days");
+  });
+
+  it("privacidadeDizQuandoSaemONomeEOEmailDaDenuncia", async () => {
+    const { pt, en } = await politica();
+    expect(pt).toContain("O nome e o email de quem denuncia");
+    expect(pt).toContain("Até a decisão lhe ser enviada; depois só fica a marca (hash) do email");
+    expect(en).toContain("The name and email of whoever files a report");
+    expect(en).toContain("Until the decision is sent to them; after that only a hash of the email remains");
+  });
+
+  it("privacidadeDizOQueFicaDepoisDeApagarAConta", async () => {
+    const { pt, en } = await politica();
+    expect(pt).toContain("Se apagares a conta com uma denúncia tua ainda por decidir, o nome e o email dessa denúncia ficam até ela ser decidida");
+    expect(pt).toContain("Os emails por enviar para o teu endereço ficam até saírem, no máximo 30 dias, mesmo depois de apagares a conta");
+    expect(en).toContain("If you delete the account while a report you filed is still undecided, the name and email on that report stay until it is decided");
+    expect(en).toContain("Queued emails to your address stay until they are sent, 30 days at most, even after you delete the account");
+  });
+
+  it("privacidadeDizDasFotosRejeitadasDoOcultarEDoDominioDasFotos", async () => {
+    const { pt, en } = await politica();
+    expect(pt).toContain("De uma foto rejeitada fica só, durante 1 dia, a marca de que a tua conta enviou uma foto");
+    expect(pt).toContain('O que ocultas com "Ocultar este relato" e "Ocultar esta foto" fica só no teu telemóvel');
+    expect(pt).toContain("As fotos aprovadas servem-se por fotos.pixellusitano.com, através da cache da Cloudflare");
+    expect(pt).toContain("a cópia pode continuar visível até 24 horas");
+    expect(en).toContain("Of a rejected photo only a record that your account sent one stays, for 1 day");
+    expect(en).toContain("What you hide with \"Hide this report\" and \"Hide this photo\" stays only on your phone");
+    expect(en).toContain("Approved photos are served from fotos.pixellusitano.com, through the Cloudflare cache");
+    expect(en).toContain("the copy can stay visible for up to 24 hours");
+  });
+
+  it("termosTemAIdadeEOsMecanismos", () => {
+    // Guarda de regressão: o que a spec (4.7) manda explicar nos termos.
+    const { pt, en } = emDuasLinguas(termosHtml);
+    for (const frase of ["13 anos", "Confirmado", "Já não está", "expira"]) expect(pt, frase).toContain(frase);
+    for (const frase of ["at least 13", "Confirmed", "No longer there", "expires"]) expect(en, frase).toContain(frase);
+  });
+
+  it("termosTemTodasAsRegrasDasDecisoes", () => {
+    // Estes textos vão tal e qual nos emails das decisões (explicacoes.ts): têm de ser os dos termos, palavra por palavra.
+    const { pt, en } = emDuasLinguas(termosHtml);
+    expect(Object.keys(REGRAS)).toHaveLength(6);
+    for (const [chave, regra] of Object.entries(REGRAS)) expect(pt, chave).toContain(regra);
+    expect(pt).toContain("Não publiques nada que a lei proíba.");
+    expect(pt).toContain("24 horas");
+    // Em inglês não há o texto dos emails (só em português), mas as seis regras têm de estar lá, traduzidas.
+    for (const frase of [
+      "Report only what you saw",
+      "Do not report false things",
+      "Photos show only the stop",
+      "you accept the CC BY-SA 4.0 licence",
+      "Corrections describe only what exists on site.",
+      "Do not publish anything that the law prohibits.",
+      "24 hours",
+    ]) {
+      expect(en, frase).toContain(frase);
+    }
+  });
+
+  it("termosDizOQueFazUmBloqueioOsVotosEAsDenuncias", () => {
+    const { pt, en } = emDuasLinguas(termosHtml);
+    expect(pt).toContain("Uma conta bloqueada não relata, não confirma, não envia fotos nem correções durante 12 meses");
+    expect(pt).toContain('O "Ainda está" de quem relatou não renova o tempo');
+    expect(pt).toContain("Os votos de uma conta só contam depois de ela ter 24 horas");
+    expect(pt).toContain("no máximo 5 denúncias por dia");
+    expect(en).toContain("A blocked account cannot report, confirm, send photos or send corrections for 12 months");
+    expect(en).toContain('"Still there" from the person who reported does not renew the time');
+    expect(en).toContain("An account's votes only count once it is 24 hours old");
+    expect(en).toContain("at most 5 reports of abuse per day");
+  });
+
+  it("guiaNomeiaOsSegredosDosDoisWorkers", () => {
+    const guia = env.TEST_GUIA;
+    // Os passos da etapa 3 vêm a seguir à secção 9; os segredos do pc-admin só se põem lá.
+    const inicioDaEtapa3 = guia.indexOf("\n## 10. ");
+    expect(inicioDaEtapa3, "o guia tem de ter a secção 10").toBeGreaterThan(0);
+    const etapa3 = guia.slice(inicioDaEtapa3);
+    for (const nome of lerJsonc(env.TEST_CONFIG).secrets.required) expect(guia, `paragem-certa: ${nome}`).toContain(nome);
+    for (const nome of lerJsonc(env.TEST_ADMIN_CONFIG).secrets.required) expect(etapa3, `pc-admin: ${nome}`).toContain(nome);
+    expect(etapa3).toContain("secret put");
+    expect(etapa3).toContain("-c wrangler.admin.jsonc");
+    expect(guia).not.toContain("ficam para o guia da etapa 3");
   });
 });

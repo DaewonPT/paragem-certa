@@ -43,11 +43,16 @@
     <tr><td>Relatos e confirmações: tipo, paragem, linha, hora e a tua conta. Nunca a posição GPS</td><td>Mostrar problemas aos outros passageiros e evitar abusos</td><td>O relato deixa de se ver quando expira e é apagado 30 dias depois, com as confirmações</td></tr>
     <tr><td>Fotos e correções aos dados</td><td>Mostrar a foto ou a correção depois de aprovada pelo autor</td><td>Fotos rejeitadas: apagadas na decisão. Não revistas: apagadas aos 30 dias. Aprovadas e correções: até apagares a conta</td></tr>
     <tr><td>Denúncias, decisões e bloqueios, só com a marca (hash) do email</td><td>Cumprir a lei e impedir que alguém bloqueado volte só por apagar a conta</td><td>12 meses, mesmo depois de a conta ser apagada</td></tr>
+    <tr><td>O nome e o email de quem denuncia</td><td>Enviar a quem denuncia o recibo e a decisão</td><td>Até a decisão lhe ser enviada; depois só fica a marca (hash) do email</td></tr>
+    <tr><td>Emails por enviar (recibos e decisões que não saíram porque o limite diário de emails estava cheio ou o envio falhou)</td><td>Não perder um recibo nem uma decisão</td><td>Até saírem, no máximo 30 dias</td></tr>
     <tr><td>Registos de envio de email</td><td>Saber se o email chegou</td><td>30 dias</td></tr>
     <tr><td>Cópias de segurança da base de dados</td><td>Recuperar de uma avaria</td><td>7 dias</td></tr>
   </tbody>
 </table>
 <p>Apagar a conta apaga os relatos, as confirmações, as fotos (incluindo as aprovadas), as correções, os favoritos guardados no servidor e a ligação das sessões. Os favoritos que estão no teu telemóvel ficam no telemóvel.</p>
+<p>Se apagares a conta com uma denúncia tua ainda por decidir, o nome e o email dessa denúncia ficam até ela ser decidida (no máximo 12 meses, o prazo das denúncias). Os emails por enviar para o teu endereço ficam até saírem, no máximo 30 dias, mesmo depois de apagares a conta.</p>
+<p>De uma foto rejeitada fica só, durante 1 dia, a marca de que a tua conta enviou uma foto (para o limite de 1 por dia); a foto em si é apagada na decisão.</p>
+<p>O que ocultas com "Ocultar este relato" e "Ocultar esta foto" fica só no teu telemóvel: o servidor não o sabe.</p>
 
 <h2>Porque podemos tratar estes dados</h2>
 <ul>
@@ -57,6 +62,7 @@
 
 <h2>Onde ficam os dados</h2>
 <p>A base de dados e as fotos ficam guardadas na União Europeia. Os pedidos à API são tratados no ponto da Cloudflare mais próximo de ti, normalmente na União Europeia, mas isso não é garantido.</p>
+<p>As fotos aprovadas servem-se por fotos.pixellusitano.com, através da cache da Cloudflare. Quando apagamos uma foto, pedimos a limpeza da cache; se essa limpeza falhar, a cópia pode continuar visível até 24 horas.</p>
 
 <h2>Quem mais recebe dados</h2>
 <p>O servidor corre na <strong>Cloudflare</strong> (alojamento, base de dados e fotos). Os dados ao vivo da Carris e do Metro passam pelo servidor da Paragem Certa. Além disso:</p>
@@ -109,11 +115,16 @@
     <tr><td>Reports and confirmations: type, stop, line, time and your account. Never the GPS position</td><td>Show problems to other passengers and prevent abuse</td><td>A report stops showing when it expires and is deleted 30 days later, with its confirmations</td></tr>
     <tr><td>Photos and data corrections</td><td>Show the photo or correction once the author approves it</td><td>Rejected photos: deleted at the decision. Not reviewed: deleted after 30 days. Approved photos and corrections: until you delete the account</td></tr>
     <tr><td>Reports of abuse, decisions and blocks, with only a hash of the email</td><td>Comply with the law and stop someone who was blocked from returning just by deleting the account</td><td>12 months, even after the account is deleted</td></tr>
+    <tr><td>The name and email of whoever files a report of abuse</td><td>Send them the receipt and the decision</td><td>Until the decision is sent to them; after that only a hash of the email remains</td></tr>
+    <tr><td>Queued emails (receipts and decisions that did not go out because the daily email limit was full or sending failed)</td><td>Not lose a receipt or a decision</td><td>Until they are sent, 30 days at most</td></tr>
     <tr><td>Email delivery logs</td><td>Know whether the email arrived</td><td>30 days</td></tr>
     <tr><td>Database backups</td><td>Recover from a failure</td><td>7 days</td></tr>
   </tbody>
 </table>
 <p>Deleting the account deletes the reports, confirmations, photos (including approved ones), corrections, the favourites stored on the server and the sessions. The favourites on your phone stay on your phone.</p>
+<p>If you delete the account while a report you filed is still undecided, the name and email on that report stay until it is decided (12 months at most, the time limit for reports). Queued emails to your address stay until they are sent, 30 days at most, even after you delete the account.</p>
+<p>Of a rejected photo only a record that your account sent one stays, for 1 day (for the limit of 1 per day); the photo itself is deleted at the decision.</p>
+<p>What you hide with "Hide this report" and "Hide this photo" stays only on your phone: the server does not know it.</p>
 
 <h2>Why we may process this data</h2>
 <ul>
@@ -123,6 +134,7 @@
 
 <h2>Where the data is kept</h2>
 <p>The database and the photos are stored in the European Union. API requests are handled at the Cloudflare location closest to you, normally in the European Union, but that is not guaranteed.</p>
+<p>Approved photos are served from fotos.pixellusitano.com, through the Cloudflare cache. When we delete a photo we ask for the cache to be cleared; if that fails, the copy can stay visible for up to 24 hours.</p>
 
 <h2>Who else receives data</h2>
 <p>The server runs on <strong>Cloudflare</strong> (hosting, database and photos). Live Carris and Metro data goes through the Paragem Certa server. In addition:</p>

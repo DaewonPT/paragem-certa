@@ -7,6 +7,7 @@ export default defineConfig(async () => {
   const migracoes = await readD1Migrations(path.join(import.meta.dirname, "migrations"));
   // O workerd dos testes não lê ficheiros: as configurações e o index.ts do Worker público vão como texto, para o
   // admin.test.ts confirmar que o pc-admin não tem pré-visualizações e que o Worker público não o importa.
+  // O guia do autor também, para o base.test.ts confirmar que nomeia os segredos que as configurações exigem.
   const texto = (ficheiro: string) => readFile(path.join(import.meta.dirname, ficheiro), "utf8");
   return {
     plugins: [
@@ -19,6 +20,7 @@ export default defineConfig(async () => {
             TEST_CONFIG: await texto("wrangler.jsonc"),
             TEST_ADMIN_CONFIG: await texto("wrangler.admin.jsonc"),
             TEST_INDEX_SRC: await texto("src/index.ts"),
+            TEST_GUIA: await texto("../docs/servidor.md"),
           },
         },
       }),

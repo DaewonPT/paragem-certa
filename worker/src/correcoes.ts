@@ -62,7 +62,6 @@ export async function criarCorrecao(pedido: Request, env: Env): Promise<Response
 /**
  * As correções aprovadas das `paragens`: a mais recente de cada tipo por paragem (a decisão mais tardia; no mesmo
  * instante, a de id maior). Nada da conta sai.
- * shortcut: lê todas as aprovadas dessas paragens, também as já substituídas; só o autor as junta, por isso são poucas; apagar as substituídas se crescerem.
  */
 export async function correcoesDaComunidade(env: Env, paragens: string[]): Promise<CorrecaoPublica[]> {
   const { results } = await env.DB.prepare(
