@@ -20,9 +20,18 @@
       "migrations_dir": "migrations"
     }
   ],
+  // As fotos da comunidade, na UE: o pendente é privado (só o Worker e o pc-admin o leem); o outro serve as aprovadas
+  // em fotos.pixellusitano.com. Os buckets são criados pelo autor com `wrangler r2 bucket create … --jurisdiction eu`.
+  "r2_buckets": [
+    { "binding": "FOTOS_PENDENTES", "bucket_name": "pc-fotos-pendentes", "jurisdiction": "eu" },
+    { "binding": "FOTOS", "bucket_name": "pc-fotos", "jurisdiction": "eu" }
+  ],
+  // No máximo 10 escritas da comunidade por minuto e por conta (a chave é o id da conta).
+  "ratelimits": [{ "name": "LIMITADOR", "namespace_id": "1001", "simple": { "limit": 10, "period": 60 } }],
   // Corre na Cloudflare, não no telemóvel: apaga o que passou os prazos.
   "triggers": { "crons": ["0 3 * * *"] },
   // Definidos pelo autor com `wrangler secret put`; nunca ficam no repositório.
   // GOOGLE_WEB_CLIENT_ID é o id do cliente Web da consola da Google (o `aud` dos tokens).
-  "secrets": { "required": ["RESEND_API_KEY", "RESPONSAVEL", "GOOGLE_WEB_CLIENT_ID"] }
+  // CF_PURGE_TOKEN e CF_ZONA limpam a cache das fotos apagadas; EMAIL_AUTOR recebe os avisos de denúncias de perigo.
+  "secrets": { "required": ["RESEND_API_KEY", "RESPONSAVEL", "GOOGLE_WEB_CLIENT_ID", "CF_PURGE_TOKEN", "CF_ZONA", "EMAIL_AUTOR"] }
 }

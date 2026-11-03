@@ -1,13 +1,30 @@
 {
   "versao": 1,
+  "versaoTermos": "1",
   "interruptores": {
     "conta": false,
     "comunidade": false,
     "fotos": false,
     "correcoes": false
   },
+  "comunidade": {
+    "confirmadoCom": 2,
+    "desapareceCom": 2,
+    "duracaoMinutos": {
+      "vai_cheio": 30,
+      "nao_passou": 45,
+      "acidente": 120,
+      "desvio": 180,
+      "evento": 240,
+      "elevador": 1440,
+      "problema_paragem": 10080
+    },
+    "porContaPorDia": { "relatos": 20, "fotos": 1, "correcoes": 10 },
+    "fotosPorDia": 100
+  },
   "emails": {
-    "codigosPorDia": 70
+    "codigosPorDia": 70,
+    "outrosPorDia": 30
   },
   "canaisReclamacao": [
     { "nome": "Livro de Reclamações Eletrónico", "url": "https://www.livroreclamacoes.pt/Pedido/Reclamacao" },
