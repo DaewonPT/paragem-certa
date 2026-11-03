@@ -6,7 +6,7 @@ Precisas de: a conta da Cloudflare (com a zona `pixellusitano.com`), uma conta n
 
 **Regra de ouro:** nenhuma chave, token, nome ou id do cliente da Google vai para o repositório nem para uma conversa. Colas tu cada valor, no sítio indicado.
 
-**Quando:** só com a 0.4.0, no fim da etapa 5. A política de privacidade já descreve a comunidade, as fotos e os dados ao vivo da Carris e do Metro, que só existem nessa altura. Antes de publicar, relê-a contra o que a app faz mesmo.
+**Quando:** só com a 0.4.0, no fim da etapa 5. A política de privacidade já descreve a comunidade, as fotos e os dados ao vivo da Carris, que só existem nessa altura. Antes de publicar, relê-a contra o que a app faz mesmo.
 
 `AMBIENTE` e `TESTE_GOOGLE_JWKS` são só para os testes: nunca os ponhas como variáveis nem segredos do Worker publicado.
 
@@ -226,6 +226,38 @@ Nunca apagues pelo `wrangler d1 execute … DELETE`: deixava as fotos aprovadas 
 ## 18. Se alguém gastar a quota de propósito
 
 As leituras da comunidade não têm limite por IP (nas redes móveis muita gente partilha o mesmo IP), por isso alguém pode gastar de propósito os 100 000 pedidos por dia e parar tudo no servidor até à meia-noite UTC. Se vires muitos pedidos de um só IP nas estatísticas do Worker, na zona `pixellusitano.com`: Security → WAF → Custom rules → cria uma regra que bloqueia esse IP e tira-a no dia seguinte (nas redes móveis o IP é partilhado por muita gente, por isso um bloqueio comprido apanha inocentes). Os nomes dos menus mudam de vez em quando; segue o que a Cloudflare mostrar.
+
+## 19. Carris ao vivo
+
+O `/api/rt/carris` lê o feed oficial das posições da Carris (GTFS-RT), tira as posições com mais de 5 minutos, as do futuro e as que não dizem a que paragem vão, e guarda o resultado 30 segundos na cache da Cloudflare. A Carris recebe no máximo um pedido por 30 segundos, por muita gente que tenha a app aberta; ninguém lhe pede nada diretamente do telemóvel. A app mostra os autocarros no mapa e no ecrã de uma linha, e "ao vivo, a N paragens" nas chegadas. Não leva nenhum segredo: não há nada para pôr na Cloudflare nem no GitHub.
+
+O interruptor `carrisAoVivo` fica `false` até a Carris responder **por escrito** ao email do rascunho `rascunhos/email-carris.md` (fora do repositório; envias tu, do teu email). Com ele desligado, o `/api/rt/carris` dá 403 `desligado` e a app não mostra nem pede nada disto. Se a Carris pedir um crédito, junta-o ao ecrã Sobre antes de ligar.
+
+Com o OK da Carris (e a 0.4.0 já publicada):
+
+1. Em `worker/public/dados/config.json`, em `interruptores`, muda `"carrisAoVivo"` para `true`, faz commit no `main` e corre o **Servidor → Run workflow** (passo 7).
+2. Confirma: `https://paragemcerta.pixellusitano.com/dados/config.json` mostra `true` e `curl https://paragemcerta.pixellusitano.com/api/rt/carris` devolve `{"atualizado":…,"veiculos":[…]}` com autocarros.
+3. No dia de publicar a app, liga o mesmo em `app/src/main/assets/config.json`. Primeiro o servidor e só depois a app (como no passo 16).
+4. Para desligar, `false` nos mesmos sítios e outra publicação; a app deixa de mostrar os autocarros na abertura seguinte, com rede.
+
+**O Metro de Lisboa fica fora da 0.4.** O servidor da API do Metro, na porta 8243, só manda o certificado do site e não o intermédio, e a Cloudflare recusa essas ligações (erro 526, testado a 03/11/2026). Por isso não há chave nem segredo do Metro para pôr, e o interruptor `metro` fica `false`. Quando o Metro mandar a cadeia completa (o rascunho `rascunhos/email-metro.md` pede-o), os tempos de espera e o estado das linhas entram numa versão seguinte. As linhas e o horário do Metro continuam a vir do catálogo e do Transitous.
+
+## 20. Linhas dos outros operadores
+
+O catálogo das linhas de Carris, Metro, CP, Fertagus, Transtejo, MobiCascais e TCB Barreiro é o ficheiro `/dados/linhas.json`, gerado pelo GitHub Actions a partir dos GTFS que o Transitous já processou. Nunca está no repositório (`.gitignore`). As linhas da Carris Metropolitana não vêm daqui: a app lê-as à API da própria Carris Metropolitana. Sem catálogo no ar, a app mostra só as da Carris Metropolitana e continua a funcionar.
+
+Quem o gera:
+
+- **O trabalho `publicar`** (passo 7) gera-o antes do deploy. Se o Transitous falhar, fica a cópia que já está no ar; só pára se não houver nenhuma (a primeira publicação com o Transitous em baixo: corre outra vez mais tarde).
+- **O workflow `Dados`** (`dados.yml`) corre à segunda-feira às 04:17 UTC. Faz o checkout só do **último commit que o Servidor publicou** (o da última corrida à mão que acabou bem), gera o catálogo, compara-o com o que está no ar (sem o campo `geradoEm`) e **só faz o deploy se o catálogo mudou**. Assim nunca publica código que ainda não publicaste. Se a última corrida do Servidor falhou ou ainda está a correr, pára com um erro: corre o Servidor outra vez e depois este.
+
+Depois da 0.4.0:
+
+1. No GitHub, no repositório: Settings → Secrets and variables → Actions → separador **Variables** → New repository variable, nome `SERVIDOR_PUBLICADO`, valor `sim`. É uma variável, não um segredo. Sem ela o `Dados` não faz nada (por isso antes da 0.4.0 não corre nada).
+2. A primeira publicação à mão do passo 6 não leva o `linhas.json` (não está no repositório). Se a fizeste, corre logo a seguir o **Servidor → Run workflow** (passo 7), que o gera e o põe no ar.
+3. Para atualizar já, sem esperar pela segunda-feira: **Actions → Dados → Run workflow**, no `main`.
+
+**Os 60 dias:** num repositório público, o GitHub desliga sozinho os workflows agendados ao fim de 60 dias sem atividade (commits, por exemplo). Quando isso acontece, o catálogo fica velho, mas a app continua a funcionar com ele. Para voltar a ligar: **Actions → Dados** e carrega em **Enable workflow** no aviso que lá aparece.
 
 ## Custos e limites
 

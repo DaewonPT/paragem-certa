@@ -65,11 +65,11 @@
 <p>As fotos aprovadas servem-se por fotos.pixellusitano.com, através da cache da Cloudflare. Quando apagamos uma foto, pedimos a limpeza da cache; se essa limpeza falhar, a cópia pode continuar visível até 24 horas.</p>
 
 <h2>Quem mais recebe dados</h2>
-<p>O servidor corre na <strong>Cloudflare</strong> (alojamento, base de dados e fotos). Os dados ao vivo da Carris e do Metro passam pelo servidor da Paragem Certa. Além disso:</p>
+<p>O servidor corre na <strong>Cloudflare</strong> (alojamento, base de dados e fotos). As posições ao vivo dos autocarros da Carris passam pelo servidor da Paragem Certa: ele lê-as à Carris e dá-as à app, e não guarda nada de quem as pede. A Carris só recebe pedidos do servidor, sem nada sobre ti. Além disso:</p>
 <ul>
   <li><strong>Google</strong>, quando entras com o Google: trata o início de sessão. A Paragem Certa recebe o teu email verificado e um identificador.</li>
   <li><strong>Resend</strong>: envia os emails de entrada, os recibos e as decisões, por isso recebe o teu email. Usamos a região de envio da União Europeia (Irlanda).</li>
-  <li><strong>GitHub</strong>: aloja o código e corre os trabalhos de dados.</li>
+  <li><strong>GitHub</strong>: aloja o código e corre os trabalhos de dados. Para o catálogo das linhas, o GitHub Actions lê os ficheiros GTFS (horários e linhas) que o Transitous publica; nada disto leva dados teus.</li>
 </ul>
 <p>Estes serviços recebem pedidos diretamente do teu telemóvel, sem passar pelo servidor da Paragem Certa:</p>
 <ul>
@@ -77,7 +77,7 @@
   <li><strong>Carris Metropolitana</strong>: as paragens, as linhas e as chegadas ao vivo que abres.</li>
   <li><strong>GitHub</strong>, só na app instalada a partir do GitHub: o pedido que verifica se há uma versão nova e a sua transferência.</li>
   <li><strong>GeoAPI.pt</strong> (França): o código postal que escreves.</li>
-  <li><strong>dados.emel.pt</strong>: o pedido das estações GIRA.</li>
+  <li><strong>EMEL</strong> (dados.emel.pt): a lista das estações GIRA, que o telemóvel lê quando abres o mapa e a lista guardada já tem mais de um dia. É a mesma para toda a gente: não leva a tua posição nem nada sobre ti.</li>
   <li><strong>Panoramax</strong>: as miniaturas de fotos de rua que vês.</li>
   <li><strong>OpenFreeMap</strong>: a zona do mapa que estás a ver.</li>
 </ul>
@@ -137,11 +137,11 @@
 <p>Approved photos are served from fotos.pixellusitano.com, through the Cloudflare cache. When we delete a photo we ask for the cache to be cleared; if that fails, the copy can stay visible for up to 24 hours.</p>
 
 <h2>Who else receives data</h2>
-<p>The server runs on <strong>Cloudflare</strong> (hosting, database and photos). Live Carris and Metro data goes through the Paragem Certa server. In addition:</p>
+<p>The server runs on <strong>Cloudflare</strong> (hosting, database and photos). The live positions of Carris buses go through the Paragem Certa server: it reads them from Carris and hands them to the app, and it stores nothing about who asks for them. Carris only receives requests from the server, with nothing about you. In addition:</p>
 <ul>
   <li><strong>Google</strong>, when you sign in with Google: handles the sign-in. Paragem Certa receives your verified email and an identifier.</li>
   <li><strong>Resend</strong>: sends the sign-in emails, receipts and decisions, so it receives your email. We use the European Union sending region (Ireland).</li>
-  <li><strong>GitHub</strong>: hosts the code and runs the data jobs.</li>
+  <li><strong>GitHub</strong>: hosts the code and runs the data jobs. For the lines catalogue, GitHub Actions reads the GTFS files (timetables and lines) that Transitous publishes; none of this carries data about you.</li>
 </ul>
 <p>These services receive requests directly from your phone, not through the Paragem Certa server:</p>
 <ul>
@@ -149,7 +149,7 @@
   <li><strong>Carris Metropolitana</strong>: the stops, lines and live arrivals you open.</li>
   <li><strong>GitHub</strong>, only in the app installed from GitHub: the check for a new version and its download.</li>
   <li><strong>GeoAPI.pt</strong> (France): the postcode you type.</li>
-  <li><strong>dados.emel.pt</strong>: the request for GIRA stations.</li>
+  <li><strong>EMEL</strong> (dados.emel.pt): the list of GIRA stations, which your phone reads when you open the map and the saved list is more than a day old. It is the same for everyone: it carries neither your position nor anything about you.</li>
   <li><strong>Panoramax</strong>: the street photo thumbnails you view.</li>
   <li><strong>OpenFreeMap</strong>: the map area you are viewing.</li>
 </ul>

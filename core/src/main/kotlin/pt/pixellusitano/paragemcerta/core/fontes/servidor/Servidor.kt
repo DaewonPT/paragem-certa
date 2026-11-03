@@ -187,7 +187,7 @@ class ServidorParagemCerta(
     suspend fun carrisAoVivo(): Resultado<AoVivoCarris> =
         enviar("GET", "/api/rt/carris", null) { JSON.decodeFromString<AoVivoCarris>(it) }
 
-    // shortcut: sem `metroTempos` (/api/metro/tempos) até à Task 2 (a porta 8243 do Metro ainda não foi testada); chega com ela.
+    // shortcut: sem `metroTempos` (/api/metro/tempos), o Metro está fora da 0.4 (a porta 8243 dá 526); volta quando o Metro mandar a cadeia completa.
 
     suspend fun relatar(token: String, tipo: TipoRelato, paragem: String, linha: String?): Resultado<RelatoCriado> =
         enviar("POST", "/api/relatos", buildJsonObject {

@@ -54,7 +54,7 @@ export async function lerAvisos(pedido: Request, env: Env): Promise<Response> {
   const linhas = lista(new URL(pedido.url).searchParams.get("linhas")?.toUpperCase() ?? null, MAX_LINHAS, FORMATO_LINHA);
   if (!linhas) return erro("pedido_invalido", 400);
   const relatos = interruptores(env).comunidade ? await relatosPublicos(env, "linha", linhas, true) : [];
-  // shortcut: sem perturbações do Metro até à Task 2 (o `estadoDasLinhas` do metro.ts, só com `metro` ligado e uma chave AZ/AM/VD/VM em `linhas`).
+  // shortcut: sem perturbações do Metro, o Metro está fora da 0.4 (a porta 8243 dá 526); voltam quando o Metro mandar a cadeia completa.
   const perturbacoes: PerturbacaoPublica[] = [];
   return json({ relatos, perturbacoes });
 }

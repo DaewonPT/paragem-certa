@@ -305,6 +305,25 @@ describe("política de privacidade, termos e guia do autor", () => {
     expect(en).toContain("the copy can stay visible for up to 24 hours");
   });
 
+  it("politicaFalaDaCarrisEDaEmel", async () => {
+    // O Metro está fora da 0.4 (a porta 8243 dá 526): a página não pode dizer que os seus dados passam pelo servidor.
+    const { pt, en } = await politica();
+    expect(pt).toContain("As posições ao vivo dos autocarros da Carris passam pelo servidor da Paragem Certa");
+    expect(pt).toContain("não guarda nada de quem as pede");
+    expect(pt).toContain("A Carris só recebe pedidos do servidor, sem nada sobre ti");
+    expect(pt).toContain("o GitHub Actions lê os ficheiros GTFS (horários e linhas) que o Transitous publica");
+    expect(pt).toContain("EMEL (dados.emel.pt): a lista das estações GIRA, que o telemóvel lê quando abres o mapa");
+    expect(pt).toContain("não leva a tua posição nem nada sobre ti");
+    expect(pt).not.toMatch(/\bMetro\b/);
+    expect(en).toContain("The live positions of Carris buses go through the Paragem Certa server");
+    expect(en).toContain("it stores nothing about who asks for them");
+    expect(en).toContain("Carris only receives requests from the server, with nothing about you");
+    expect(en).toContain("GitHub Actions reads the GTFS files (timetables and lines) that Transitous publishes");
+    expect(en).toContain("EMEL (dados.emel.pt): the list of GIRA stations, which your phone reads when you open the map");
+    expect(en).toContain("it carries neither your position nor anything about you");
+    expect(en).not.toMatch(/\bMetro\b/);
+  });
+
   it("termosTemAIdadeEOsMecanismos", () => {
     // Guarda de regressão: o que a spec (4.7) manda explicar nos termos.
     const { pt, en } = emDuasLinguas(termosHtml);
