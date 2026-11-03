@@ -1,0 +1,28 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  // A página de revisão do autor: um Worker à parte, só no workers.dev e com o Cloudflare Access à frente do Worker
+  // inteiro (a política só deixa o email do autor). O Worker volta a validar o cabeçalho Cf-Access-Jwt-Assertion.
+  "name": "pc-admin",
+  "main": "src/admin/index.ts",
+  "compatibility_date": "2026-10-01",
+  "workers_dev": true,
+  // Sem endereços de pré-visualização: cada um seria outra porta que o Access teria de cobrir.
+  "preview_urls": false,
+  // O mesmo D1 do Worker público; sem migrations_dir: só a wrangler.jsonc migra.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "paragem-certa",
+      // texto de exemplo; o id verdadeiro é o mesmo da wrangler.jsonc
+      "database_id": "ID-DA-BASE-DE-DADOS-CRIADA-PELO-AUTOR"
+    }
+  ],
+  "r2_buckets": [
+    { "binding": "FOTOS_PENDENTES", "bucket_name": "pc-fotos-pendentes", "jurisdiction": "eu" },
+    { "binding": "FOTOS", "bucket_name": "pc-fotos", "jurisdiction": "eu" }
+  ],
+  // Definidos pelo autor com `wrangler secret put -c wrangler.admin.jsonc`; nunca ficam no repositório.
+  // ACCESS_EQUIPA é o endereço da equipa do Zero Trust (https://<equipa>.cloudflareaccess.com) e ACCESS_AUD a etiqueta
+  // de audiência da aplicação do Access. Sem eles, ou sem EMAIL_AUTOR, a página não mostra nada a ninguém.
+  "secrets": { "required": ["RESEND_API_KEY", "ACCESS_EQUIPA", "ACCESS_AUD", "EMAIL_AUTOR", "CF_PURGE_TOKEN", "CF_ZONA"] }
+}

@@ -3,5 +3,9 @@ declare namespace Cloudflare {
   interface Env {
     /** Só nos testes: as migrações lidas por vitest.config.ts. */
     TEST_MIGRATIONS: import("cloudflare:test").D1Migration[];
+    /** Só nos testes: o texto do wrangler.jsonc, do wrangler.admin.jsonc e do src/index.ts, lidos por vitest.config.ts. */
+    TEST_CONFIG: string;
+    TEST_ADMIN_CONFIG: string;
+    TEST_INDEX_SRC: string;
   }
 }

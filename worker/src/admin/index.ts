@@ -1,0 +1,51 @@
+import { verificarAcesso } from "./acesso";
+import { paginaDeRevisao } from "./paginas";
+
+// Em todas as respostas, a 403 incluída: nada de scripts, nada de molduras noutros sítios, nada guardado em cache.
+const CABECALHOS = {
+  "content-security-policy": "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'",
+  "x-content-type-options": "nosniff",
+  "cache-control": "no-store",
+};
+const TEXTO = "text/plain; charset=utf-8";
+
+function resposta(corpo: BodyInit | null, estado: number, tipo: string): Response {
+  return new Response(corpo, { status: estado, headers: { ...CABECALHOS, "content-type": tipo } });
+}
+
+/** GET /foto/<id>: a foto por rever (ou a aprovada) para o autor ver; a rejeitada já não tem ficheiro. */
+async function foto(env: Env, id: string): Promise<Response> {
+  const linha = await env.DB.prepare("SELECT chave, estado FROM fotos WHERE id = ? AND chave IS NOT NULL LIMIT 1")
+    .bind(id)
+    .first<{ chave: string; estado: string }>();
+  const objeto = linha && (await (linha.estado === "aprovada" ? env.FOTOS : env.FOTOS_PENDENTES).get(linha.chave));
+  return objeto ? resposta(objeto.body, 200, "image/jpeg") : resposta("Não existe", 404, TEXTO);
+}
+
+async function responder(pedido: Request, env: Env): Promise<Response> {
+  // Antes de tudo: sem o token do Access do autor não se vê nem se faz nada.
+  if (!(await verificarAcesso(pedido, env))) return resposta("Sem acesso", 403, TEXTO);
+  const url = new URL(pedido.url);
+  // O Access deixa passar qualquer pedido do browser do autor, também um formulário de outro sítio: as escritas só
+  // da própria página.
+  if (pedido.method !== "GET" && pedido.headers.get("origin") !== url.origin) return resposta("Sem acesso", 403, TEXTO);
+
+  if (pedido.method === "GET") {
+    if (url.pathname === "/") return resposta(await paginaDeRevisao(env), 200, "text/html; charset=utf-8");
+    const id = /^\/foto\/([^/]+)$/.exec(url.pathname)?.[1];
+    if (id) return foto(env, id);
+  }
+  return resposta("Não existe", 404, TEXTO);
+}
+
+export default {
+  async fetch(pedido, env): Promise<Response> {
+    try {
+      return await responder(pedido, env);
+    } catch (falha) {
+      // Também um erro sai com os cabeçalhos de cima.
+      console.error(falha);
+      return resposta("Erro no servidor", 500, TEXTO);
+    }
+  },
+} satisfies ExportedHandler<Env>;
