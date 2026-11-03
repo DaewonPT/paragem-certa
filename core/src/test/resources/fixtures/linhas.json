@@ -1,0 +1,43 @@
+{
+ "versao": 1,
+ "geradoEm": "2026-11-03",
+ "operadores": [
+  {"id": "pt-Carris", "nome": "Carris"},
+  {"id": "pt-Comboios-de-Portugal(CP)", "nome": "CP"},
+  {"id": "pt-Metro-Lisboa", "nome": "Metro de Lisboa"}
+ ],
+ "paragens": {
+  "pt-Carris_3803": ["Cais Sodré", 38.70625, -9.14502],
+  "pt-Carris_4215": ["Algés (Jardim)", 38.69927, -9.23146],
+  "pt-Carris_920": ["Pç.  Figueira", 38.7131, -9.1377],
+  "pt-Comboios-de-Portugal(CP)_94_69005": ["Cais do Sodre", 38.70614, -9.14537],
+  "pt-Comboios-de-Portugal(CP)_94_69179": ["Oeiras", 38.68852, -9.31905],
+  "pt-Comboios-de-Portugal(CP)_94_69260": ["Cascais", 38.70079, -9.41819],
+  "pt-Metro-Lisboa_CM": ["Colégio Militar/Luz", 38.75332, -9.18866],
+  "pt-Metro-Lisboa_MP1": ["Marquês de Pombal", 38.72488, -9.15081],
+  "pt-Metro-Lisboa_MP2": ["Marquês de Pombal", 38.72488, -9.15081],
+  "pt-Metro-Lisboa_SP": ["Santa Apolónia", 38.71378, -9.12256]
+ },
+ "linhas": [
+  {"operador": "pt-Carris", "nome": "15E", "nomeLongo": "Pç. Figueira - Algés", "modo": "ELETRICO", "cor": null, "corTexto": null,
+   "rotas": ["pt-Carris_76_0", "pt-Carris_76_1"],
+   "sentidos": [
+    {"sentido": 0, "destino": "Algés", "destinos": ["Algés"], "paragens": ["pt-Carris_920", "pt-Carris_3803", "pt-Carris_4215"], "forma": "{chkFruwv@xi@vl@rj@f{O"},
+    {"sentido": 1, "destino": "Pç. Figueira", "destinos": ["Pç. Figueira"], "paragens": ["pt-Carris_4215", "pt-Carris_3803", "pt-Carris_920"], "forma": "mmekFr_jw@sj@g{Oyi@wl@"}
+   ]},
+  {"operador": "pt-Comboios-de-Portugal(CP)", "nome": "Cais do Sodré - Cascais", "nomeLongo": "Cais do Sodré - Cascais", "modo": "COMBOIO", "cor": "#0099FF", "corTexto": "#FFFFFF",
+   "rotas": ["pt-Comboios-de-Portugal(CP)_25-94_69005-94_69179", "pt-Comboios-de-Portugal(CP)_25-94_69005-94_69260"],
+   "sentidos": [
+    {"sentido": 0, "destino": "Cais do Sodré", "destinos": ["Cais do Sodré"],
+     "paragens": ["pt-Comboios-de-Portugal(CP)_94_69260", "pt-Comboios-de-Portugal(CP)_94_69179", "pt-Comboios-de-Portugal(CP)_94_69005"], "porDestino": true, "forma": "}vekFtnnx@tkAsjRcmBo|`@"},
+    {"sentido": 1, "destino": "Cascais", "destinos": ["Cascais", "Oeiras"],
+     "paragens": ["pt-Comboios-de-Portugal(CP)_94_69005", "pt-Comboios-de-Portugal(CP)_94_69179", "pt-Comboios-de-Portugal(CP)_94_69260"], "porDestino": true, "forma": "kxfkFpeyv@bmBn|`@ukArjR"}
+   ]},
+  {"operador": "pt-Metro-Lisboa", "nome": "Az", "nomeLongo": "Azul", "modo": "METRO", "cor": "#6699CC", "corTexto": "#000000",
+   "rotas": ["pt-Metro-Lisboa_A"],
+   "sentidos": [
+    {"sentido": 0, "destino": "Santa Apolónia", "destinos": ["Santa Apolónia"], "paragens": ["pt-Metro-Lisboa_CM", "pt-Metro-Lisboa_MP1", "pt-Metro-Lisboa_SP"], "forma": "g_pkFbtaw@vpDqkFjdAqoD"},
+    {"sentido": 1, "destino": "Reboleira", "destinos": ["Reboleira"], "paragens": ["pt-Metro-Lisboa_SP", "pt-Metro-Lisboa_MP2", "pt-Metro-Lisboa_CM"], "forma": "chhkF~vtv@kdApoDwpDpkF"}
+   ]}
+ ]
+}

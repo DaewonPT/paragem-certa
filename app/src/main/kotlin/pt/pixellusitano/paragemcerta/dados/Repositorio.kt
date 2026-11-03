@@ -62,17 +62,20 @@ private class ChegadaGuardada(
     val fonte: Fonte, val linhaId: String, val linhaNome: String, val destino: String,
     val programada: Long, val prevista: Long?, val idViagem: String?, val idVeiculo: String?,
     val modo: Modo, val cor: String?, val acessivel: Boolean?,
+    // Com omissão: o que a versão anterior guardou não os tem.
+    val sentido: Int? = null, val padrao: String? = null,
 )
 
 private val JSON = Json { ignoreUnknownKeys = true }
 
 private fun Chegada.paraGuardar() = ChegadaGuardada(
     fonte, linhaId, linhaNome, destino, programada.epochSecond, prevista?.epochSecond, idViagem, idVeiculo, modo, cor, acessivel,
+    sentido, padrao,
 )
 
 private fun ChegadaGuardada.paraChegada() = Chegada(
     fonte, linhaId, linhaNome, destino, Instant.ofEpochSecond(programada), prevista?.let(Instant::ofEpochSecond),
-    idViagem, idVeiculo, modo, cor, acessivel,
+    idViagem, idVeiculo, modo, cor, acessivel, sentido, padrao,
 )
 
 private fun ParagemEntidade.paraParagem() =

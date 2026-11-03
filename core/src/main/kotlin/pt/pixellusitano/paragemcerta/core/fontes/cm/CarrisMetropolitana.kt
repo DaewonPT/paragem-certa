@@ -2,6 +2,7 @@ package pt.pixellusitano.paragemcerta.core.fontes.cm
 
 import kotlinx.serialization.json.Json
 import pt.pixellusitano.paragemcerta.core.atraso.aindaPorChegar
+import pt.pixellusitano.paragemcerta.core.fontes.transitous.enc
 import pt.pixellusitano.paragemcerta.core.modelo.Alerta
 import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
@@ -14,8 +15,28 @@ import pt.pixellusitano.paragemcerta.core.rede.Http
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import pt.pixellusitano.paragemcerta.core.rede.pedir
 import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
 
 internal val JSON = Json { ignoreUnknownKeys = true; coerceInputValues = true }
+
+/** O percurso (pattern) inteiro de uma linha: [sentido] é o direction_id; [paragens] pela ordem em que o autocarro passa. */
+data class PadraoCm(
+    val id: String, val sentido: Int, val destino: String, val paragens: List<String>, val formaId: String?, val horarios: List<HorarioCm>,
+)
+
+/**
+ * As horas de um grupo de viagens nas paragens do percurso, nos [dias] ("AAAAMMDD") em que corre. Uma hora do GTFS depois da
+ * meia-noite ("25:10:00") passa a 01:10 e a paragem fica em [depoisDaMeiaNoite], para o fim do dia de serviço não voltar ao princípio.
+ */
+data class HorarioCm(val dias: Set<String>, val porParagem: Map<String, LocalTime>, val depoisDaMeiaNoite: Set<String> = emptySet())
+
+/** "25:10:00" → 01:10 e se é depois da meia-noite. */
+private fun horaCm(texto: String): Pair<LocalTime, Boolean> {
+    val (h, m, s) = texto.split(':').map(String::toInt)
+    return LocalTime.of(h % 24, m, s) to (h >= 24)
+}
 
 object CmParser {
     /** Descarta as que já passaram (observadas ou com a hora em uso no passado) e ordena pela hora em uso. */
@@ -29,6 +50,7 @@ object CmParser {
                     programada = Instant.ofEpochSecond(it.programada), prevista = it.prevista?.let(Instant::ofEpochSecond),
                     idViagem = it.viagem, idVeiculo = it.veiculo?.let(::cmIdLimpo),
                     modo = Modo.AUTOCARRO, cor = null, acessivel = null,
+                    sentido = it.padrao?.let(::sentidoDoPadraoCm), padrao = it.padrao?.let(::cmIdLimpo),
                 )
             }
             .filter { aindaPorChegar(it, agora) }
@@ -52,6 +74,28 @@ object CmParser {
     fun padrao(json: String): List<String> =
         JSON.decodeFromString<List<CmPadraoJson>>(json).firstOrNull()?.path.orEmpty()
             .sortedBy { it.ordem }.map { cmIdLimpo(it.paragem) }
+
+    /** O percurso com as paragens, a forma e o horário de cada grupo de viagens (o `patterns/{id}` completo). */
+    fun padraoCompleto(json: String): PadraoCm {
+        val p = JSON.decodeFromString<List<CmPadraoJson>>(json).firstOrNull() ?: error("percurso em falta")
+        val id = cmIdLimpo(p.id)
+        return PadraoCm(
+            id = id,
+            sentido = p.sentido ?: sentidoDoPadraoCm(id) ?: error("percurso sem sentido"),
+            destino = p.headsign,
+            paragens = p.path.sortedBy { it.ordem }.map { cmIdLimpo(it.paragem) },
+            formaId = p.forma,
+            horarios = p.trips.map { g ->
+                // shortcut: uma paragem que o percurso repete (circulares) fica com a 1.ª hora; separar partida e chegada quando houver queixa.
+                val horas = g.schedule.asReversed().associate { cmIdLimpo(it.paragem) to horaCm(it.hora) }
+                HorarioCm(g.dias.toSet(), horas.mapValues { it.value.first }, horas.filterValues { it.second }.keys)
+            },
+        )
+    }
+
+    /** Os pontos do GeoJSON do `shapes/{id}`, que dá [lon, lat], como (lat, lon). */
+    fun forma(json: String): List<Pair<Double, Double>> =
+        JSON.decodeFromString<CmFormaJson>(json).geojson.geometry.coordinates.map { it[1] to it[0] }
 
     fun veiculos(json: String): List<Veiculo> =
         JSON.decodeFromString<List<CmVeiculoJson>>(json).mapNotNull {
@@ -103,6 +147,21 @@ class CarrisMetropolitana(private val http: Http, private val base: String = "ht
     suspend fun linhasJson(): Resultado<String> = http.pedir("${base}lines") { it }
 
     suspend fun padrao(id: String): Resultado<List<String>> = http.pedir("${base}patterns/$id", CmParser::padrao)
+
+    suspend fun padraoCompleto(id: String): Resultado<PadraoCm> = http.pedir("${base}patterns/${enc(id)}", CmParser::padraoCompleto)
+
+    /** O id da forma tem "[" e "]" do operador ("[2QDAD]3708_0_1"): vai codificado. */
+    suspend fun forma(formaId: String): Resultado<List<Pair<Double, Double>>> = http.pedir("${base}shapes/${enc(formaId)}", CmParser::forma)
+
+    /** As horas a que o percurso passa em [paragem] no [dia], pela ordem do dia de serviço: o que passa da meia-noite fica no fim. */
+    fun horarioCmDoDia(p: PadraoCm, paragem: String, dia: LocalDate): List<LocalTime> {
+        val d = dia.format(DateTimeFormatter.BASIC_ISO_DATE)
+        return p.horarios
+            .filter { d in it.dias && paragem in it.porParagem }
+            .map { (paragem in it.depoisDaMeiaNoite) to it.porParagem.getValue(paragem) }
+            .sortedWith(compareBy({ it.first }, { it.second }))
+            .map { it.second }
+    }
 
     suspend fun veiculos(): Resultado<List<Veiculo>> = http.pedir("${base}vehicles", CmParser::veiculos)
 

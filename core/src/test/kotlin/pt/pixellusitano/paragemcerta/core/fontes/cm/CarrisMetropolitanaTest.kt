@@ -15,6 +15,8 @@ import pt.pixellusitano.paragemcerta.core.rede.Resposta
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalTime
 
 class CarrisMetropolitanaTest {
     // As respostas gravadas são do dia de serviço 26/10/2026.
@@ -105,5 +107,61 @@ class CarrisMetropolitanaTest {
 
     @Test fun percursoOrdenadoPorSequencia() {
         assertEquals(listOf("020735", "020002", "060419"), CmParser.padrao(fixture("cm-pattern-3708_0_1.json")))
+    }
+
+    @Test fun chegadasCmNoTerminalSoDoSentido() {
+        // No terminal da Caparica a mesma paragem tem chegadas (…_1, que acabam aqui) e partidas (…_2): o sentido sai do pattern_id.
+        val c = CmParser.chegadas(fixture("cm-arrivals-060419.json"), manha)
+        assertEquals(listOf(0, 1, 0), c.map { it.sentido })
+        assertEquals(listOf("3708_0_1", "3708_0_2", "3708_0_1"), c.map { it.padrao })
+        assertEquals("Costa da Caparica (Terminal)", c.single { it.sentido == 1 }.destino)
+        assertEquals(2, c.count { it.sentido == 0 })
+    }
+
+    @Test fun padraoCmComHorariosDoDia() = runTest {
+        val http = HttpFalso({ Resposta(200, fixture("cm-pattern-completo.json")) })
+        val cm = CarrisMetropolitana(http)
+        val p = (cm.padraoCompleto("3708_0_1") as Resultado.Ok).valor
+        assertEquals("https://api.carrismetropolitana.pt/v2/patterns/3708_0_1", http.pedidos.single())
+        assertEquals("3708_0_1", p.id)
+        assertEquals(0, p.sentido)
+        assertEquals("Lisboa (C. Sodré)", p.destino)
+        assertEquals(listOf("020735", "020002", "060419"), p.paragens)
+        assertEquals("[2QDAD]3708_0_1", p.formaId) // o id da forma leva os "[" e "]" do operador
+        assertEquals(3, p.horarios.size)
+        // 03/11: os dois primeiros grupos (o 3.º só corre a 07/11); a viagem das 24:15 chega às 25:25, ou seja, à 01:25.
+        assertEquals(listOf(LocalTime.of(5, 25), LocalTime.of(1, 25)), cm.horarioCmDoDia(p, "060419", LocalDate.of(2026, 11, 3)))
+        assertEquals(listOf(LocalTime.of(4, 15), LocalTime.of(0, 15)), cm.horarioCmDoDia(p, "020735", LocalDate.of(2026, 11, 3)))
+        // 07/11: o 1.º e o 3.º; o 27:55 é 03:55 da manhã seguinte e fica no fim do dia de serviço, não no princípio.
+        assertEquals(listOf(LocalTime.of(5, 25), LocalTime.of(3, 55)), cm.horarioCmDoDia(p, "060419", LocalDate.of(2026, 11, 7)))
+        // Nenhum grupo corre a 05/11, e uma paragem que não é do percurso não tem horas.
+        assertTrue(cm.horarioCmDoDia(p, "060419", LocalDate.of(2026, 11, 5)).isEmpty())
+        assertTrue(cm.horarioCmDoDia(p, "999999", LocalDate.of(2026, 11, 3)).isEmpty())
+    }
+
+    @Test fun horaDepoisDasVinteQuatroPassaParaAManha() {
+        val p = CmParser.padraoCompleto(
+            """[{"id":"1_0_2","direction_id":1,"headsign":"X","path":[{"stop_id":"[A]010","stop_sequence":1}],
+              "trips":[{"valid_on":["20261103"],"schedule":[{"stop_id":"[A]010","arrival_time":"25:10:00"}]}]}]""",
+        )
+        assertEquals(1, p.sentido)
+        assertNull(p.formaId)
+        assertEquals(mapOf("010" to LocalTime.of(1, 10)), p.horarios.single().porParagem)
+        assertEquals(setOf("20261103"), p.horarios.single().dias)
+    }
+
+    @Test fun padraoCmSemDadosDaFalha() = runTest {
+        assertEquals(Resultado.Falha(404, limite = false), CarrisMetropolitana(HttpFalso({ Resposta(404, "") })).padraoCompleto("0000_0_1"))
+        assertTrue(CarrisMetropolitana(HttpFalso({ Resposta(200, "{}") })).padraoCompleto("3708_0_1") is Resultado.Falha)
+    }
+
+    @Test fun formaCmDoGeojson() = runTest {
+        val http = HttpFalso({ Resposta(200, fixture("cm-shape.json")) })
+        val forma = (CarrisMetropolitana(http).forma("[2QDAD]3708_0_1") as Resultado.Ok).valor
+        // O id tem "[" e "]": vai codificado.
+        assertEquals("https://api.carrismetropolitana.pt/v2/shapes/%5B2QDAD%5D3708_0_1", http.pedidos.single())
+        assertEquals(6, forma.size)
+        // O GeoJSON dá [lon, lat]; a app usa (lat, lon).
+        assertEquals(38.64061 to -9.230475, forma.first())
     }
 }

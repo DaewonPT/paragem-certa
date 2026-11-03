@@ -11,6 +11,7 @@ import kotlinx.serialization.Serializable
     @SerialName("observed_arrival_unix") val observada: Long? = null,
     @SerialName("trip_id") val viagem: String? = null,
     @SerialName("vehicle_id") val veiculo: String? = null,
+    @SerialName("pattern_id") val padrao: String? = null,
 )
 
 @Serializable internal class CmParagemJson(
@@ -74,4 +75,29 @@ import kotlinx.serialization.Serializable
     @SerialName("stop_sequence") val ordem: Int = 0,
 )
 
-@Serializable internal class CmPadraoJson(val path: List<CmPontoPercurso> = emptyList())
+/** Uma paragem do horário de um grupo de viagens: a hora é a do GTFS e passa das 24 h depois da meia-noite ("25:10:00"). */
+@Serializable internal class CmHoraJson(
+    @SerialName("stop_id") val paragem: String,
+    @SerialName("arrival_time") val hora: String,
+)
+
+/** Um grupo de viagens do percurso com o mesmo horário: `valid_on` são os dias ("20261103") em que corre. */
+@Serializable internal class CmGrupoJson(
+    @SerialName("valid_on") val dias: List<String> = emptyList(),
+    val schedule: List<CmHoraJson> = emptyList(),
+)
+
+@Serializable internal class CmPadraoJson(
+    val id: String = "",
+    val headsign: String = "",
+    @SerialName("direction_id") val sentido: Int? = null,
+    @SerialName("shape_id") val forma: String? = null,
+    val path: List<CmPontoPercurso> = emptyList(),
+    val trips: List<CmGrupoJson> = emptyList(),
+)
+
+@Serializable internal class CmCoordenadas(val coordinates: List<List<Double>> = emptyList())
+
+@Serializable internal class CmFormaGeoJson(val geometry: CmCoordenadas)
+
+@Serializable internal class CmFormaJson(val geojson: CmFormaGeoJson)

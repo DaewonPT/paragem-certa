@@ -1,0 +1,75 @@
+{
+ "extension": 27574,
+ "points": [
+  {
+   "shape_dist_traveled": 0,
+   "shape_pt_lat": 38.64061,
+   "shape_pt_lon": -9.230475,
+   "shape_pt_sequence": 1
+  },
+  {
+   "shape_dist_traveled": 0.0052,
+   "shape_pt_lat": 38.64059,
+   "shape_pt_lon": -9.23053,
+   "shape_pt_sequence": 2
+  },
+  {
+   "shape_dist_traveled": 0.0608,
+   "shape_pt_lat": 38.64105,
+   "shape_pt_lon": -9.23078,
+   "shape_pt_sequence": 3
+  },
+  {
+   "shape_dist_traveled": 0.0656,
+   "shape_pt_lat": 38.64109,
+   "shape_pt_lon": -9.2308,
+   "shape_pt_sequence": 4
+  },
+  {
+   "shape_dist_traveled": 0.0694,
+   "shape_pt_lat": 38.64112,
+   "shape_pt_lon": -9.23082,
+   "shape_pt_sequence": 5
+  },
+  {
+   "shape_dist_traveled": 27.5745,
+   "shape_pt_lat": 38.705654,
+   "shape_pt_lon": -9.143183,
+   "shape_pt_sequence": 1396
+  }
+ ],
+ "geojson": {
+  "type": "Feature",
+  "properties": {},
+  "geometry": {
+   "type": "LineString",
+   "coordinates": [
+    [
+     -9.230475,
+     38.64061
+    ],
+    [
+     -9.23053,
+     38.64059
+    ],
+    [
+     -9.23078,
+     38.64105
+    ],
+    [
+     -9.2308,
+     38.64109
+    ],
+    [
+     -9.23082,
+     38.64112
+    ],
+    [
+     -9.143183,
+     38.705654
+    ]
+   ]
+  }
+ },
+ "shape_id": "[2QDAD]3708_0_1"
+}

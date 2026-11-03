@@ -116,6 +116,19 @@ test("semDirectionIdSeparaPeloDestino", () => {
   assert.deepEqual(circular.sentidos.map((s) => [s.sentido, s.destino]), [[0, "Alcabideche"]]);
 });
 
+test("sentidoInventadoVemMarcadoPorDestino", () => {
+  // O Transitous manda "directionId": "0" nas viagens sem direction_id (a CP, lido a 03/11/2026): a app não pode comparar
+  // com esse número os sentidos que o gerador inventa, e vai pelo destino.
+  const marcados = (l) => l.sentidos.map((s) => s.porDestino === true);
+  assert.deepEqual(marcados(linha("pt-Cascais-Próxima", "1")), [true, true]);
+  assert.deepEqual(marcados(linha("pt-Cascais-Próxima", "Circular de Alcabideche")), [true]);
+  assert.deepEqual(marcados(linha("pt-Comboios-de-Portugal(CP)", "Linha de Sintra")), [true, true]);
+  // Com direction_id no GTFS o sentido é o verdadeiro e não leva marca.
+  for (const l of [linha("pt-Carris", "728"), linha("pt-Carris", "28E"), linha("pt-Metro-Lisboa", "Am")]) {
+    assert.ok(l.sentidos.every((s) => !("porDestino" in s)), l.nome);
+  }
+});
+
 test("eletricoPeloNomeAcabadoEmE", () => {
   assert.equal(linha("pt-Carris", "28E").modo, "ELETRICO");
   assert.equal(linha("pt-Carris", "728").modo, "AUTOCARRO");

@@ -6,13 +6,18 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import pt.pixellusitano.paragemcerta.core.HttpFalso
+import pt.pixellusitano.paragemcerta.core.comunidade.chaveLinha
 import pt.pixellusitano.paragemcerta.core.fixture
+import pt.pixellusitano.paragemcerta.core.linhas.SentidoCatalogo
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.Lugar
 import pt.pixellusitano.paragemcerta.core.modelo.Modo
 import pt.pixellusitano.paragemcerta.core.modelo.TipoLugar
 import pt.pixellusitano.paragemcerta.core.rede.Resposta
+import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalTime
 
 class TransitousTest {
     private val agora = Instant.parse("2026-10-27T01:50:00Z")
@@ -247,5 +252,182 @@ class TransitousTest {
             "https://api.transitous.org/api/v6/stoptimes?stopId=pt-Comboios-de-Portugal%28CP%29_94_69005&n=30&radius=0&exactRadius=true",
             http.pedidos.single(),
         )
+    }
+
+    // Respostas reais de 03/11/2026 (cortadas): o Metro (estação-mãe MP e o dia inteiro de CM), uma viagem da Carris e a CP.
+    private val tarde = Instant.parse("2026-11-03T18:00:00Z")
+    private val urlMetroMae = "https://api.transitous.org/api/v6/stoptimes?stopId=pt-Metro-Lisboa_MP&n=30&radius=80&mode=SUBWAY"
+    private val cp = "pt-Comboios-de-Portugal(CP)"
+
+    private fun sentido(n: Int, vararg destinos: String, porDestino: Boolean = false) =
+        SentidoCatalogo(n, destinos.first(), destinos.toSet(), emptyList(), emptyList(), porDestino)
+
+    @Test fun estacaoDeCorrespondenciaTemChegadas() = runTest {
+        val http = HttpFalso({ Resposta(200, fixture("transitous-stoptimes-metro-mae.json")) })
+        val c = (Transitous(http).chegadas("pt-Metro-Lisboa_MP", tarde) as Resultado.Ok).valor
+        // radius=0 dá 0 numa estação-mãe: pede-se o raio de 80 m, só com o Metro, e ficam as dos cais dela (MP1 a MP4).
+        assertEquals(urlMetroMae, http.pedidos.single())
+        assertEquals(8, c.size)
+        assertEquals(setOf("Santa Apolónia", "Reboleira", "Rato", "Odivelas"), c.map { it.destino }.toSet())
+        assertEquals(c.sortedBy { it.programada }, c)
+        assertTrue(c.all { it.modo == Modo.METRO })
+    }
+
+    @Test fun estacaoMaeSoFicaComOsCaisDela() {
+        val json = fixture("transitous-stoptimes-metro-mae.json")
+        assertEquals(8, TransitousParser.chegadas(json, "pt-Metro-Lisboa_MP", tarde).size)
+        // O raio de 80 m também apanha os cais de outras estações: esses não são desta.
+        assertTrue(TransitousParser.chegadas(json, "pt-Metro-Lisboa_SA", tarde).isEmpty())
+        // Fora das estações do Metro o parentId não conta: o que não é "pt-Metro-Lisboa_XX" só fica com o stopId.
+        assertTrue(TransitousParser.chegadas(json.replace("\"parentId\": \"pt-Metro-Lisboa_MP\"", "\"parentId\": \"pt-Carris_805\""), "pt-Carris_805", tarde).isEmpty())
+    }
+
+    @Test fun paragemNormalContinuaComRadius0() = runTest {
+        val http = HttpFalso({ Resposta(200, "{}") })
+        val t = Transitous(http)
+        t.chegadas("pt-Carris_805", tarde)
+        t.chegadas("pt-Metro-Lisboa_CS1", tarde) // um cais (letras e número) não é uma estação-mãe
+        t.chegadas("pt-Metro-Do-Porto_CS", tarde)
+        assertEquals(
+            listOf("pt-Carris_805", "pt-Metro-Lisboa_CS1", "pt-Metro-Do-Porto_CS").map {
+                "https://api.transitous.org/api/v6/stoptimes?stopId=$it&n=30&radius=0&exactRadius=true"
+            },
+            http.pedidos,
+        )
+    }
+
+    @Test fun nomesDoMetroDaFixtura() {
+        val c = TransitousParser.chegadas(fixture("transitous-stoptimes-metro-mae.json"), "pt-Metro-Lisboa_MP", tarde)
+        assertEquals(setOf("Az", "Am"), c.map { it.linhaNome }.toSet())
+        assertEquals(setOf("AZ", "AM"), c.map { chaveLinha(it.linhaNome) }.toSet())
+    }
+
+    @Test fun chegadasLeemODirectionId() {
+        val c = TransitousParser.chegadas(fixture("transitous-stoptimes.json"), "pt-Carris_3803", agora).single()
+        assertEquals(1, c.sentido)
+        assertNull(c.padrao)
+        // Sem directionId na resposta, a chegada fica sem sentido (a linha decide pelo destino).
+        val sem = fixture("transitous-stoptimes.json").replace(Regex("\"directionId\": \"\\d\",\\s*"), "")
+        assertNull(TransitousParser.chegadas(sem, "pt-Carris_3803", agora).single().sentido)
+    }
+
+    @Test fun idsComAcentoEParentesesVaoCodificados() = runTest {
+        val http = HttpFalso({ Resposta(200, "{}") })
+        val t = Transitous(http)
+        t.chegadas("pt-Cascais-Próxima_20127", tarde)
+        t.chegadas("pt-Comboios-de-Portugal(CP)_94_31039", tarde)
+        t.paragensDaViagem("20261103_18:05_pt-Cascais-Próxima_20127_1")
+        t.horarioDoDia("pt-Comboios-de-Portugal(CP)_94_31039", Modo.COMBOIO, emptySet(), sentido(0, "X"), LocalDate.of(2026, 11, 4))
+        val base = "https://api.transitous.org/api/v6"
+        assertEquals(
+            listOf(
+                "$base/stoptimes?stopId=pt-Cascais-Pr%C3%B3xima_20127&n=30&radius=0&exactRadius=true",
+                "$base/stoptimes?stopId=pt-Comboios-de-Portugal%28CP%29_94_31039&n=30&radius=0&exactRadius=true",
+                "$base/trip?tripId=20261103_18%3A05_pt-Cascais-Pr%C3%B3xima_20127_1",
+                "$base/stoptimes?stopId=pt-Comboios-de-Portugal%28CP%29_94_31039&time=2026-11-04T03:00:00Z&window=86400&n=1&realtimeMode=OFF" +
+                    "&radius=0&exactRadius=true&mode=HIGHSPEED_RAIL,LONG_DISTANCE,NIGHT_RAIL,REGIONAL_FAST_RAIL,REGIONAL_RAIL,SUBURBAN",
+            ),
+            http.pedidos,
+        )
+    }
+
+    @Test fun operadorDeFergatusBarreiroCascais() {
+        // O id real da Fertagus no Transitous tem a gralha "Fergatus".
+        assertEquals("Fertagus", operadorDe("pt-Fergatus_1234"))
+        assertEquals("Fertagus", operadorDe("pt-Fertagus_1234"))
+        assertEquals("TCB Barreiro", operadorDe("pt-Barreiro_55"))
+        assertEquals("MobiCascais", operadorDe("pt-Cascais-Próxima_20127"))
+    }
+
+    @Test fun chegadasDaLinhaFiltramRotaESentido() = runTest {
+        val http = HttpFalso({ Resposta(200, fixture("transitous-stoptimes-metro-mae.json")) })
+        val t = Transitous(http)
+        val az = setOf("pt-Metro-Lisboa_A")
+        val paraReboleira = (t.chegadasDaLinha("pt-Metro-Lisboa_MP", az, sentido(1, "Reboleira"), tarde) as Resultado.Ok).valor
+        // Só a Azul (a Amarela é outra rota) e só o sentido 1 (o 0 vai para Santa Apolónia).
+        assertEquals(2, paraReboleira.size)
+        assertTrue(paraReboleira.all { it.linhaNome == "Az" && it.destino == "Reboleira" && it.sentido == 1 })
+        val paraSantaApolonia = (t.chegadasDaLinha("pt-Metro-Lisboa_MP", az, sentido(0, "Santa Apolónia"), tarde) as Resultado.Ok).valor
+        assertEquals(listOf("Santa Apolónia", "Santa Apolónia"), paraSantaApolonia.map { it.destino })
+        assertTrue((t.chegadasDaLinha("pt-Metro-Lisboa_MP", setOf("pt-Metro-Lisboa_Z"), sentido(0, "Santa Apolónia"), tarde) as Resultado.Ok).valor.isEmpty())
+        // É o mesmo pedido da paragem (a estação-mãe leva o raio de 80 m).
+        assertEquals(List(3) { urlMetroMae }, http.pedidos)
+    }
+
+    @Test fun chegadasDaLinhaSemDirectionIdPeloDestino() = runTest {
+        val semSentido = fixture("transitous-stoptimes-metro-mae.json").replace(Regex("\"directionId\": \"\\d\",\\s*"), "")
+        val t = Transitous(HttpFalso({ Resposta(200, semSentido) }))
+        // O número do sentido (7) não bate com nada: só o destino pode decidir.
+        val paraORato = (t.chegadasDaLinha("pt-Metro-Lisboa_MP", setOf("pt-Metro-Lisboa_B"), sentido(7, "Rato"), tarde) as Resultado.Ok).valor
+        assertEquals(listOf("Rato", "Rato"), paraORato.map { it.destino })
+        assertTrue(paraORato.all { it.sentido == null })
+    }
+
+    @Test fun cpComDirectionIdPorOmissaoVaiPeloDestino() = runTest {
+        // Lido a 03/11/2026: a CP não tem direction_id e o Transitous manda "directionId": "0" em todas as partidas.
+        val json = fixture("transitous-stoptimes-cp.json")
+        assertEquals(6, Regex("\"directionId\": \"0\"").findAll(json).count())
+        val t = Transitous(HttpFalso({ Resposta(200, json) }))
+        val rotas = setOf("${cp}_25-94_69005-94_69179", "${cp}_25-94_69005-94_69260")
+        // Os sentidos 0 e 1 são os que o gerador inventou: aqui o 1 é o de Cascais, e tem de ficar com as 6 mesmo vindo "0".
+        val paraCascais = (t.chegadasDaLinha("${cp}_94_69005", rotas, sentido(1, "Cascais", "Oeiras", porDestino = true), Instant.parse("2026-11-03T18:00:00Z")) as Resultado.Ok).valor
+        assertEquals(6, paraCascais.size)
+        assertTrue(paraCascais.all { it.sentido == 0 })
+        val paraLisboa = (t.chegadasDaLinha("${cp}_94_69005", rotas, sentido(0, "Cais do Sodré", porDestino = true), Instant.parse("2026-11-03T18:00:00Z")) as Resultado.Ok).valor
+        assertTrue(paraLisboa.isEmpty())
+    }
+
+    @Test fun horarioDoDiaOrdenadoComPrimeiraEUltima() = runTest {
+        val http = HttpFalso({ Resposta(200, fixture("transitous-stoptimes-dia-metro.json")) })
+        val r = Transitous(http).horarioDoDia("pt-Metro-Lisboa_CM", Modo.METRO, setOf("pt-Metro-Lisboa_A"), sentido(0, "Santa Apolónia"), LocalDate.of(2026, 11, 4))
+        // O dia de serviço começa às 03:00 de Lisboa e dura 24 h; uma estação-mãe do Metro leva a regra do raio de 80 m.
+        assertEquals(
+            "https://api.transitous.org/api/v6/stoptimes?stopId=pt-Metro-Lisboa_CM&time=2026-11-04T03:00:00Z&window=86400&n=1&realtimeMode=OFF&radius=80&mode=SUBWAY",
+            http.pedidos.single(),
+        )
+        val horas = (r as Resultado.Ok).valor
+        // A meia-noite não volta ao princípio: as 00:05 e as 01:20 são do fim do dia de serviço.
+        assertEquals(listOf("06:31", "06:38", "23:56", "00:05", "01:10", "01:20"), horas.map { it.toString() })
+        assertEquals(LocalTime.of(6, 31), horas.first())
+        assertEquals(LocalTime.of(1, 20), horas.last())
+    }
+
+    @Test fun horarioDoDiaPedeOModoDaLinhaEAHoraDeLisboa() = runTest {
+        val http = HttpFalso({ Resposta(200, "{}") })
+        val t = Transitous(http)
+        // Em julho Lisboa está uma hora à frente: as 03:00 locais são as 02:00 UTC. Os elétricos da Carris vêm como BUS no GTFS.
+        t.horarioDoDia("pt-Carris_3803", Modo.ELETRICO, emptySet(), sentido(0, "X"), LocalDate.of(2026, 7, 15))
+        t.horarioDoDia("pt-Carris_3803", Modo.AUTOCARRO, emptySet(), sentido(0, "X"), LocalDate.of(2026, 7, 15))
+        t.horarioDoDia("pt-Transtejo-Soflusa_5", Modo.OUTRO, emptySet(), sentido(0, "X"), LocalDate.of(2026, 7, 15))
+        val dia = "&time=2026-07-15T02:00:00Z&window=86400&n=1&realtimeMode=OFF&radius=0&exactRadius=true"
+        assertEquals(
+            listOf(
+                "https://api.transitous.org/api/v6/stoptimes?stopId=pt-Carris_3803$dia&mode=TRAM,BUS",
+                "https://api.transitous.org/api/v6/stoptimes?stopId=pt-Carris_3803$dia&mode=BUS",
+                "https://api.transitous.org/api/v6/stoptimes?stopId=pt-Transtejo-Soflusa_5$dia",
+            ),
+            http.pedidos,
+        )
+    }
+
+    @Test fun horarioDoDiaComFalhaDaFonte() = runTest {
+        val r = Transitous(HttpFalso({ Resposta(503, "") })).horarioDoDia("pt-Carris_3803", Modo.AUTOCARRO, emptySet(), sentido(0, "X"), LocalDate.of(2026, 11, 4))
+        assertEquals(Resultado.Falha(503, limite = true), r)
+    }
+
+    @Test fun paragensDaViagemContamDoInicio() = runTest {
+        val http = HttpFalso({ Resposta(200, fixture("transitous-trip.json")) })
+        val paragens = (Transitous(http).paragensDaViagem("20261103_17:31_pt-Carris_11280_20260606_76_0_16") as Resultado.Ok).valor
+        assertEquals("https://api.transitous.org/api/v6/trip?tripId=20261103_17%3A31_pt-Carris_11280_20260606_76_0_16", http.pedidos.single())
+        // A origem, as 22 intermédias e o destino, pela ordem da viagem.
+        assertEquals(24, paragens.size)
+        assertEquals("pt-Carris_4215", paragens.first())
+        assertEquals("pt-Carris_920", paragens.last())
+        // Cais Sodré é a 20.ª paragem (a contar de 1).
+        assertEquals(20, paragens.indexOf("pt-Carris_3803") + 1)
+    }
+
+    @Test fun paragensDaViagemSemViagemDaFalha() = runTest {
+        assertEquals(Resultado.Falha(404, limite = false), Transitous(HttpFalso({ Resposta(404, "{}") })).paragensDaViagem("x"))
     }
 }

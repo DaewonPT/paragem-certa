@@ -11,6 +11,13 @@ fun cmIdLimpo(bruto: String): String = bruto.replace(PREFIXOS, "")
 /** "[LA77N]1625_0" → "1625". */
 fun cmLinhaDaRota(routeId: String): String = cmIdLimpo(routeId).substringBefore('_')
 
+/** O sentido de um percurso da CM, pelo fim do id: "3708_0_1" → 0, "3708_0_2" → 1 (o direction_id do percurso); outro formato → null. */
+fun sentidoDoPadraoCm(padrao: String): Int? = when (cmIdLimpo(padrao).substringAfterLast('_', "")) {
+    "1" -> 0
+    "2" -> 1
+    else -> null
+}
+
 /** Paragem do Transitous → id da API da Carris Metropolitana (spec 6.2): "pt-Carris-Metropolitana_320047" → "020047"; outro operador → null. */
 fun cmParagemDeTransitous(id: String): String? {
     val t = id.removePrefix(PREFIXO_CM_TRANSITOUS).takeIf { it != id && it.isNotEmpty() } ?: return null

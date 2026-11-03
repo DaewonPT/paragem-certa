@@ -1,0 +1,160 @@
+[
+ {
+  "color": "#C61D23",
+  "direction_id": 0,
+  "headsign": "Lisboa (C. Sodré)",
+  "id": "3708_0_1",
+  "line_id": "3708",
+  "long_name": "Costa da Caparica (Terminal) - Lisboa (C. Sodré)",
+  "path": [
+   {
+    "allow_drop_off": true,
+    "allow_pickup": true,
+    "distance": 0,
+    "distance_delta": 0,
+    "stop_id": "020735",
+    "stop_sequence": 1
+   },
+   {
+    "allow_drop_off": true,
+    "allow_pickup": true,
+    "distance": 0.5512,
+    "distance_delta": 0,
+    "stop_id": "020002",
+    "stop_sequence": 2
+   },
+   {
+    "allow_drop_off": true,
+    "allow_pickup": true,
+    "distance": 27.5615,
+    "distance_delta": 0,
+    "stop_id": "060419",
+    "stop_sequence": 54
+   }
+  ],
+  "route_id": "3708_0",
+  "shape_id": "[2QDAD]3708_0_1",
+  "short_name": "3708",
+  "text_color": "#FFFFFF",
+  "trips": [
+   {
+    "schedule": [
+     {
+      "arrival_time": "04:15:00",
+      "arrival_time_24h": "04:15:00",
+      "stop_id": "020735",
+      "stop_sequence": 1
+     },
+     {
+      "arrival_time": "04:16:00",
+      "arrival_time_24h": "04:16:00",
+      "stop_id": "020002",
+      "stop_sequence": 2
+     },
+     {
+      "arrival_time": "05:25:00",
+      "arrival_time_24h": "05:25:00",
+      "stop_id": "060419",
+      "stop_sequence": 54
+     }
+    ],
+    "service_ids": [
+     "[2QDAD]VER_SAB",
+     "[2QDAD]VER_DU",
+     "[2QDAD]VER_DOM"
+    ],
+    "trip_ids": [
+     "[2QDAD]3708_0_1_0400_0429_0_VER_SAB",
+     "[2QDAD]3708_0_1_0400_0429_0_VER_DU",
+     "[2QDAD]3708_0_1_0400_0429_0_VER_DOM"
+    ],
+    "valid_on": [
+     "20261103",
+     "20261104",
+     "20261107"
+    ],
+    "version_id": "b3cd44b09435e0bb58918418bb383e8625708673c0660061ff312986165a4c43"
+   },
+   {
+    "schedule": [
+     {
+      "arrival_time": "24:15:00",
+      "arrival_time_24h": "00:15:00",
+      "stop_id": "020735",
+      "stop_sequence": 1
+     },
+     {
+      "arrival_time": "24:16:00",
+      "arrival_time_24h": "00:16:00",
+      "stop_id": "020002",
+      "stop_sequence": 2
+     },
+     {
+      "arrival_time": "25:25:00",
+      "arrival_time_24h": "01:25:00",
+      "stop_id": "060419",
+      "stop_sequence": 54
+     }
+    ],
+    "service_ids": [
+     "[2QDAD]VER_SAB",
+     "[2QDAD]VER_DU",
+     "[2QDAD]VER_DOM"
+    ],
+    "trip_ids": [
+     "[2QDAD]3708_0_1_2400_2429_0_VER_SAB",
+     "[2QDAD]3708_0_1_2400_2429_0_VER_DU",
+     "[2QDAD]3708_0_1_2400_2429_0_VER_DOM"
+    ],
+    "valid_on": [
+     "20261103",
+     "20261104"
+    ],
+    "version_id": "e835400fdb750c92401c370d6eb139a83a7b9018cd86fe71bfe49698d587fe35"
+   },
+   {
+    "schedule": [
+     {
+      "arrival_time": "26:45:00",
+      "arrival_time_24h": "02:45:00",
+      "stop_id": "020735",
+      "stop_sequence": 1
+     },
+     {
+      "arrival_time": "26:46:00",
+      "arrival_time_24h": "02:46:00",
+      "stop_id": "020002",
+      "stop_sequence": 2
+     },
+     {
+      "arrival_time": "27:55:00",
+      "arrival_time_24h": "03:55:00",
+      "stop_id": "060419",
+      "stop_sequence": 54
+     }
+    ],
+    "service_ids": [
+     "[2QDAD]VER_SAB",
+     "[2QDAD]VER_DU",
+     "[2QDAD]VER_DOM"
+    ],
+    "trip_ids": [
+     "[2QDAD]3708_0_1_2630_2659_0_VER_SAB",
+     "[2QDAD]3708_0_1_2630_2659_0_VER_DU",
+     "[2QDAD]3708_0_1_2630_2659_0_VER_DOM"
+    ],
+    "valid_on": [
+     "20261107"
+    ],
+    "version_id": "e680486388bb9fafd2be9ff3e1c017e91560963709c105fffefba4ad678fca51"
+   }
+  ],
+  "tts_headsign": "Linha 37 08 com destino a Lisboa ( Cais Do Sodré )",
+  "valid_on": [
+   "20261103",
+   "20261104",
+   "20261107"
+  ],
+  "version_id": "4654eccbfb57c6e7be9211f35eac170e7e9c51c9cc063b071a8a060ab55750d3"
+ }
+]

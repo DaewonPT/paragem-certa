@@ -263,7 +263,8 @@ async function lerFeed(pasta, feed, dia, todasAsParagens) {
     const extras = juntas.get(nome) ?? [];
     const contaRotas = contar(vs.map((v) => v.rota));
     const principal = rotas.get(maisFrequente(contaRotas));
-    const grupos = vs.every((v) => v.sentido !== "")
+    const comDirectionId = vs.every((v) => v.sentido !== "");
+    const grupos = comDirectionId
       ? [...contar(vs.map((v) => Number(v.sentido))).keys()].map((s) => [s, vs.filter((v) => Number(v.sentido) === s)])
       : [...sentidosPelaUltimaParagem(vs)];
     const sentidos = grupos
@@ -279,6 +280,9 @@ async function lerFeed(pasta, feed, dia, todasAsParagens) {
           destinos: [...new Set(doSentido.map((v) => v.destino))].sort(comparar),
           paragens: padrao.split("\n"),
           formaId,
+          // Sentido inventado: o Transitous manda "directionId": "0" nas viagens sem direction_id (a CP), por isso a app não o
+          // compara com o número e vai pelo destino.
+          ...(comDirectionId ? {} : { porDestino: true }),
         };
       });
     // As viagens juntadas só acrescentam destinos, no sentido cujo padrão percorrem pela mesma ordem (o padrão, a

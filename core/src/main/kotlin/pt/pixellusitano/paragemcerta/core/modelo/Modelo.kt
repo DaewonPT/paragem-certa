@@ -24,10 +24,15 @@ data class Linha(
     val cor: String?, val corTexto: String?, val modo: Modo,
 )
 
+/**
+ * sentido: o directionId do Transitous (0 ou 1) ou, na CM, o que sai do pattern_id (sentidoDoPadraoCm); null se a fonte não o dá.
+ * padrao: o percurso da CM, sem o prefixo do operador ("3708_0_1"); null nas outras fontes.
+ */
 data class Chegada(
     val fonte: Fonte, val linhaId: String, val linhaNome: String, val destino: String,
     val programada: Instant, val prevista: Instant?, val idViagem: String?, val idVeiculo: String?,
     val modo: Modo, val cor: String?, val acessivel: Boolean?,
+    val sentido: Int? = null, val padrao: String? = null,
 )
 
 /**

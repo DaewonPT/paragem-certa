@@ -3,6 +3,8 @@ package pt.pixellusitano.paragemcerta.core.fontes.transitous
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import pt.pixellusitano.paragemcerta.core.atraso.aindaPorChegar
+import pt.pixellusitano.paragemcerta.core.linhas.SentidoCatalogo
+import pt.pixellusitano.paragemcerta.core.linhas.daLinhaNoSentido
 import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.modelo.Etapa
 import pt.pixellusitano.paragemcerta.core.modelo.Filtros
@@ -22,6 +24,9 @@ import pt.pixellusitano.paragemcerta.core.rede.pedir
 import pt.pixellusitano.paragemcerta.core.rotas.descodificarPolilinha
 import java.net.URLEncoder
 import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 
 /**
@@ -34,6 +39,7 @@ private val JSON = Json { ignoreUnknownKeys = true; coerceInputValues = true }
 
 @Serializable private class LugarJson(
     val stopId: String? = null,
+    val parentId: String? = null,
     val name: String = "",
     val lat: Double = 0.0,
     val lon: Double = 0.0,
@@ -53,6 +59,7 @@ private val JSON = Json { ignoreUnknownKeys = true; coerceInputValues = true }
     val routeShortName: String? = null,
     val displayName: String? = null,
     val routeColor: String? = null,
+    val directionId: String? = null,
     val tripId: String? = null,
     val wheelchairAccessible: String? = null,
     val cancelled: Boolean = false,
@@ -102,7 +109,10 @@ fun operadorDe(id: String): String? = when {
     id.startsWith("pt-Metro-do-Porto") || id.startsWith("pt-Metro-Porto") -> "Metro do Porto"
     id.startsWith("pt-Carris-Metropolitana") -> "Carris Metropolitana"
     id.startsWith("pt-Carris_") -> "Carris"
-    id.startsWith("pt-Fertagus") -> "Fertagus"
+    // O Transitous escreve "Fergatus" (a gralha é deles); o "Fertagus" fica para o dia em que a corrijam.
+    id.startsWith("pt-Fergatus") || id.startsWith("pt-Fertagus") -> "Fertagus"
+    id.startsWith("pt-Barreiro") -> "TCB Barreiro"
+    id.startsWith("pt-Cascais-Próxima") -> "MobiCascais"
     id.startsWith("pt-MTS") || id.startsWith("pt-Metro-Transportes-do-Sul") -> "MTS"
     id.startsWith("pt-STCP") -> "STCP"
     else -> null
@@ -157,7 +167,7 @@ fun modoDe(mode: String): Modo = when (mode) {
 )
 
 // Não usar URLEncoder.encode(String, Charset): só existe a partir do Android 13 e rebentava no Android 8-12.
-private fun enc(s: String): String = URLEncoder.encode(s, "UTF-8")
+internal fun enc(s: String): String = URLEncoder.encode(s, "UTF-8")
 
 private fun PontoRotaJson.lugar() = Lugar(name.espacosUnicos(), lat, lon, TipoLugar.LOCAL)
 
@@ -238,8 +248,16 @@ object TransitousParser {
             }
 
     fun chegadas(json: String, paragemId: String, agora: Instant): List<Chegada> =
-        JSON.decodeFromString<PartidasJson>(json).stopTimes
-            .filter { it.place.stopId == paragemId && !it.cancelled && !it.tripCancelled && !it.place.cancelled }
+        partidas(json, paragemId)
+            .filter { aindaPorChegar(it, agora) }
+            .sortedBy { it.prevista ?: it.programada }
+
+    /** Todas as partidas da paragem na resposta, também as já passadas (o horário do dia precisa do dia inteiro). */
+    internal fun partidas(json: String, paragemId: String): List<Chegada> {
+        // O pedido de uma estação-mãe do Metro traz os cais dela (parentId) e os das estações ao lado: só os dela ficam.
+        val mae = ESTACAO_METRO.matches(paragemId)
+        return JSON.decodeFromString<PartidasJson>(json).stopTimes
+            .filter { (it.place.stopId == paragemId || (mae && it.place.parentId == paragemId)) && !it.cancelled && !it.tripCancelled && !it.place.cancelled }
             .mapNotNull { p ->
                 val programada = (p.place.scheduledDeparture ?: p.place.scheduledArrival)?.let(Instant::parse) ?: return@mapNotNull null
                 Chegada(
@@ -258,10 +276,16 @@ object TransitousParser {
                         "NOT_ACCESSIBLE" -> false
                         else -> null
                     },
+                    sentido = p.directionId?.toIntOrNull(),
                 )
             }
-            .filter { aindaPorChegar(it, agora) }
-            .sortedBy { it.prevista ?: it.programada }
+    }
+
+    /** As paragens de uma viagem (o `/api/v6/trip`) pela ordem em que passa nelas: a origem, as intermédias e o destino. */
+    fun paragensDaViagem(json: String): List<String> =
+        JSON.decodeFromString<ItinerarioJson>(json).legs.firstOrNull()
+            ?.let { l -> (listOf(l.from) + l.intermediateStops + l.to).mapNotNull { it.stopId } }
+            .orEmpty()
 
     fun paragensNoMapa(json: String): List<Paragem> =
         JSON.decodeFromString<List<LugarJson>>(json).mapNotNull { l ->
@@ -301,9 +325,56 @@ object TransitousParser {
         }.paragensComAcentos()
 }
 
+// As estações do Metro de Lisboa (as de correspondência têm cais, MP1 a MP4, e a estação é a mãe): o id é "pt-Metro-Lisboa_" e duas letras.
+private val ESTACAO_METRO = Regex("^pt-Metro-Lisboa_[A-Z]{2}$")
+
+private val LISBOA = ZoneId.of("Europe/Lisbon")
+
+/**
+ * Só a própria paragem (radius=0 e exactRadius). Uma estação do Metro dá 0 assim quando é a mãe de cais (verificado a 03/11/2026 em
+ * MP): leva o raio de 80 m só com o Metro e o parser fica com as partidas dos cais dela. [modos] só filtra quando há radius=0.
+ */
+private fun zonaDaParagem(paragemId: String, modos: String? = null) =
+    if (ESTACAO_METRO.matches(paragemId)) "radius=80&mode=SUBWAY" else "radius=0&exactRadius=true" + (modos?.let { "&mode=$it" } ?: "")
+
+/** Os modos do Transitous de uma linha. Os elétricos da Carris vêm como BUS no GTFS (o 15E, verificado): TRAM sozinho não os apanha. */
+private fun modosDe(modo: Modo): String? = when (modo) {
+    Modo.ELETRICO -> "TRAM,BUS"
+    Modo.OUTRO -> null
+    else -> ORDEM_MODOS.first { it.first == modo }.second
+}
+
 class Transitous(private val http: Http, private val base: String = "https://api.transitous.org") {
+    private fun urlChegadas(paragemId: String) = "$base/api/v6/stoptimes?stopId=${enc(paragemId)}&n=30&${zonaDaParagem(paragemId)}"
+
     suspend fun chegadas(paragemId: String, agora: Instant): Resultado<List<Chegada>> =
-        http.pedir("$base/api/v6/stoptimes?stopId=${enc(paragemId)}&n=30&radius=0&exactRadius=true") { TransitousParser.chegadas(it, paragemId, agora) }
+        http.pedir(urlChegadas(paragemId)) { TransitousParser.chegadas(it, paragemId, agora) }
+
+    /**
+     * As próximas chegadas da paragem que são da linha ([rotas]) no sentido [s]; o mesmo pedido da paragem.
+     * shortcut: filtra as 30 partidas da paragem; numa paragem cheia uma linha rara pode ficar sem nenhuma, subir o n se acontecer.
+     */
+    suspend fun chegadasDaLinha(paragemId: String, rotas: Set<String>, s: SentidoCatalogo, agora: Instant): Resultado<List<Chegada>> =
+        http.pedir(urlChegadas(paragemId)) { TransitousParser.chegadas(it, paragemId, agora).filter { c -> daLinhaNoSentido(c, rotas, s) } }
+
+    /**
+     * As horas a que a linha parte da paragem no [dia] de serviço (das 03:00 de Lisboa às 03:00 do dia seguinte), pela ordem do dia,
+     * só do horário (realtimeMode=OFF). Com `window`, o `n=1` devolve a janela inteira (361 partidas, 650 KB, numa estação do Metro).
+     */
+    suspend fun horarioDoDia(paragemId: String, modo: Modo, rotas: Set<String>, s: SentidoCatalogo, dia: LocalDate): Resultado<List<LocalTime>> {
+        val inicio = dia.atTime(3, 0).atZone(LISBOA).toInstant()
+        val url = "$base/api/v6/stoptimes?stopId=${enc(paragemId)}&time=$inicio&window=86400&n=1&realtimeMode=OFF&${zonaDaParagem(paragemId, modosDe(modo))}"
+        return http.pedir(url) { json ->
+            TransitousParser.partidas(json, paragemId)
+                .filter { daLinhaNoSentido(it, rotas, s) }
+                .sortedBy { it.programada }
+                .map { it.programada.atZone(LISBOA).toLocalTime() }
+        }
+    }
+
+    /** As paragens da viagem pela ordem em que passa nelas; a posição de uma paragem na viagem é o índice + 1. */
+    suspend fun paragensDaViagem(tripId: String): Resultado<List<String>> =
+        http.pedir("$base/api/v6/trip?tripId=${enc(tripId)}", TransitousParser::paragensDaViagem)
 
     suspend fun paragensNaZona(minLat: Double, minLon: Double, maxLat: Double, maxLon: Double): Resultado<List<Paragem>> =
         http.pedir("$base/api/v6/map/stops?min=$minLat,$minLon&max=$maxLat,$maxLon", TransitousParser::paragensNoMapa)

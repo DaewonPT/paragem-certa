@@ -144,6 +144,37 @@ class RepositorioTest {
         }
     }
 
+    private val semRede = object : Http {
+        override suspend fun get(url: String): Resposta { kotlinx.coroutines.delay(30_000); return Resposta(200, "[]") }
+    }
+
+    @Test fun chegadasGuardadasGuardamOSentidoEOPadrao() = runTest {
+        repo(HttpPorUrl("arrivals" to listOf({ Resposta(200, fixture("cm-arrivals-060419.json")) }))).chegadas(terminal).test {
+            awaitItem()
+            cancelAndIgnoreRemainingEvents()
+        }
+        repo(semRede).chegadas(terminal).test {
+            val guardadas = awaitItem().chegadas
+            assertEquals(listOf(0, 1, 0), guardadas.map { it.sentido })
+            assertEquals(listOf("3708_0_1", "3708_0_2", "3708_0_1"), guardadas.map { it.padrao })
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun chegadasGuardadasAntesDoSentidoAindaLeemSe() = runTest {
+        // O que a 0.3 guardou não tem "sentido" nem "padrao".
+        val antiga = """[{"fonte":"CM","linhaId":"3708","linhaNome":"3708","destino":"Lisboa (C. Sodré)","programada":1792992300,"prevista":null,""" +
+            """"idViagem":null,"idVeiculo":null,"modo":"AUTOCARRO","cor":null,"acessivel":null}]"""
+        bd.chegadas().guardar(ChegadasGuardadasEntidade(terminal.chave, antiga, manha.epochSecond))
+        repo(semRede).chegadas(terminal).test {
+            val c = awaitItem().chegadas.single()
+            assertEquals("Lisboa (C. Sodré)", c.destino)
+            assertNull(c.sentido)
+            assertNull(c.padrao)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     @Test fun linhaQueFalhaNaoFicaGuardadaVazia() = runTest {
         val http = HttpPorUrl(
             "/stops" to listOf({ Resposta(200, fixture("cm-stops.json")) }),
