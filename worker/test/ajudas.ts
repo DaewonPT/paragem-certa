@@ -3,13 +3,6 @@ import { env } from "cloudflare:workers";
 import worker from "../src/index";
 import { criarSessao } from "../src/sessoes";
 
-declare global {
-  interface Env {
-    /** Só nos testes: JSON com os interruptores que sobrepõem os do config.json (o portão da comunidade, Task 2). */
-    TESTE_INTERRUPTORES?: string;
-  }
-}
-
 const servidor: Required<Pick<ExportedHandler<Env>, "fetch" | "scheduled">> = worker;
 
 interface Opcoes {
