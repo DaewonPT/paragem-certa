@@ -10,6 +10,7 @@ import { aplicarPrazos } from "./prazos";
 import { paginaPrivacidade } from "./privacidade";
 import { criarRelato, votar } from "./relatos";
 import { erro, json } from "./respostas";
+import { resumoAoAutor } from "./resumo";
 import { sair } from "./sessoes";
 
 export default {
@@ -58,8 +59,10 @@ export default {
     }
   },
 
-  // Cron Trigger diário (corre na Cloudflare, não no telemóvel). A hora vem do controlador, para os testes a poderem escolher.
+  // Cron Trigger diário (corre na Cloudflare, não no telemóvel): prazos e o resumo ao autor. A hora vem do controlador,
+  // para os testes a poderem escolher.
   async scheduled(controlo, env, ctx): Promise<void> {
-    ctx.waitUntil(Promise.all([limparExpirados(env, controlo.scheduledTime), aplicarPrazos(env, controlo.scheduledTime)]));
+    const agora = controlo.scheduledTime;
+    ctx.waitUntil(Promise.all([limparExpirados(env, agora), aplicarPrazos(env, agora), resumoAoAutor(env, agora)]));
   },
 } satisfies ExportedHandler<Env>;

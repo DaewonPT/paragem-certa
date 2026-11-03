@@ -1,5 +1,6 @@
+import { fazerAcao } from "./acoes";
 import { verificarAcesso } from "./acesso";
-import { paginaDeRevisao } from "./paginas";
+import { paginaDeRevisao, type Aviso } from "./paginas";
 
 // Em todas as respostas, a 403 incluída: nada de scripts, nada de molduras noutros sítios, nada guardado em cache.
 const CABECALHOS = {
@@ -11,6 +12,12 @@ const TEXTO = "text/plain; charset=utf-8";
 
 function resposta(corpo: BodyInit | null, estado: number, tipo: string): Response {
   return new Response(corpo, { status: estado, headers: { ...CABECALHOS, "content-type": tipo } });
+}
+
+/** Depois de uma ação, de volta à página (303: o recarregar não repete o POST), com os avisos como chaves fixas. */
+function voltar(avisos: Aviso[]): Response {
+  const busca = [...new Set(avisos)].map((aviso) => `aviso=${aviso}`).join("&");
+  return new Response(null, { status: 303, headers: { ...CABECALHOS, location: busca ? `/?${busca}` : "/" } });
 }
 
 /** GET /foto/<id>: a foto por rever (ou a aprovada) para o autor ver; a rejeitada já não tem ficheiro. */
@@ -31,9 +38,16 @@ async function responder(pedido: Request, env: Env): Promise<Response> {
   if (pedido.method !== "GET" && pedido.headers.get("origin") !== url.origin) return resposta("Sem acesso", 403, TEXTO);
 
   if (pedido.method === "GET") {
-    if (url.pathname === "/") return resposta(await paginaDeRevisao(env), 200, "text/html; charset=utf-8");
+    if (url.pathname === "/") return resposta(await paginaDeRevisao(env, url.searchParams.getAll("aviso")), 200, "text/html; charset=utf-8");
     const id = /^\/foto\/([^/]+)$/.exec(url.pathname)?.[1];
     if (id) return foto(env, id);
+  }
+
+  if (pedido.method === "POST") {
+    const desfecho = await fazerAcao(pedido, env, url.pathname);
+    if (desfecho === 400) return resposta("Formulário inválido: falta o porquê (até 500 caracteres), a regra, a decisão ou um email válido.", 400, TEXTO);
+    if (desfecho === 404) return resposta("Não existe ou já foi decidido", 404, TEXTO);
+    if (desfecho) return voltar(desfecho);
   }
   return resposta("Não existe", 404, TEXTO);
 }

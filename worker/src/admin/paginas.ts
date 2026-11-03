@@ -1,7 +1,18 @@
+import { REGRAS } from "../explicacoes";
 import { escaparHtml } from "../privacidade";
 
 const LIMITE = 100;
 const DIA = 24 * 60 * 60_000;
+
+/** O que as ações dizem ao voltar (`/?aviso=<chave>`): só estas chaves se mostram, sempre com este texto. */
+export const AVISOS = {
+  cache_falhou: "A cache não limpou: a foto desaparece em 24 h.",
+  email_falhou: "O email não saiu: ficou em Emails por enviar.",
+  conta_apagada: "Conta apagada.",
+  conta_nao_existe: "Não há nenhuma conta com esse email.",
+  apagar_falhou: "O R2 falhou: nada foi apagado. Tenta outra vez.",
+} satisfies Record<string, string>;
+export type Aviso = keyof typeof AVISOS;
 
 /** HTML já montado: só o `html` o cria, por isso nenhum texto da base de dados chega aqui sem passar por escaparHtml. */
 class Html {
@@ -32,6 +43,24 @@ function secao<T>(titulo: string, linhas: T[], item: (linha: T) => Html): Html {
   return html`<h2>${titulo} (${linhas.length})</h2>${linhas.length ? html`<ul>${linhas.map(item)}</ul>` : html`<p>Nada.</p>`}`;
 }
 
+const OPCOES_DAS_REGRAS = html`<option value="">Regra…</option>${Object.entries(REGRAS).map(([id, texto]) => html`<option value="${id}">${texto}</option>`)}`;
+
+/** Uma ação sem perguntas. */
+function botao(acao: string, rotulo: string): Html {
+  return html`<form method="post" action="${acao}"><button>${rotulo}</button></form>`;
+}
+
+/** Uma ação que restringe alguém: pede o porquê e a regra, que vão no email a essa pessoa. */
+function comRazao(acao: string, rotulo: string, antes: Html | string = ""): Html {
+  return html`<form method="post" action="${acao}">${antes}<input name="motivo" required maxlength="500" aria-label="Porquê (vai no email)" placeholder="Porquê (vai no email)">
+<select name="regra" required aria-label="Regra em causa">${OPCOES_DAS_REGRAS}</select> <button>${rotulo}</button></form>`;
+}
+
+function bloquearConta(contaId: string | null, denunciaId?: string): Html | string {
+  if (!contaId) return "";
+  return comRazao(`/contas/${contaId}/bloquear`, "Bloquear conta", denunciaId ? html`<input type="hidden" name="denuncia" value="${denunciaId}">` : "");
+}
+
 type Foto = { id: string; paragem: string; criada_em: number; conta_id: string; email: string | null };
 type Correcao = Foto & { tipo: string; lat: number | null; lon: number | null; nome: string | null };
 type Denuncia = {
@@ -53,12 +82,20 @@ const SQL_DENUNCIAS = `
   WHERE d.decidida_em IS NULL AND (d.motivo = 'perigo') = ?
   ORDER BY d.criada_em LIMIT ?`;
 
-/** A página de revisão: o que há por rever, o mais antigo primeiro, e quem enviou cada coisa. */
-export async function paginaDeRevisao(env: Env, agora = Date.now()): Promise<string> {
-  const [fotos, correcoes, perigo, outras, relatos, bloqueios, emails, ativas] = await env.DB.batch([
+/**
+ * A página de revisão: o que há por rever, o mais antigo primeiro, quem enviou cada coisa e os botões das ações.
+ * `avisos` vem do endereço: só as chaves de AVISOS aparecem, com o texto fixo delas.
+ */
+export async function paginaDeRevisao(env: Env, avisos: string[] = [], agora = Date.now()): Promise<string> {
+  const [fotos, aprovadas, correcoes, perigo, outras, relatos, bloqueios, emails, ativas] = await env.DB.batch([
     env.DB.prepare(
       `SELECT f.id, f.paragem, f.criada_em, f.conta_id, c.email FROM fotos f LEFT JOIN contas c ON c.id = f.conta_id
        WHERE f.estado = 'pendente' ORDER BY f.criada_em LIMIT ?`,
+    ).bind(LIMITE),
+    // Para se poder apagar uma aprovada sem esperar por uma denúncia.
+    env.DB.prepare(
+      `SELECT f.id, f.paragem, f.criada_em, f.conta_id, c.email FROM fotos f LEFT JOIN contas c ON c.id = f.conta_id
+       WHERE f.estado = 'aprovada' ORDER BY f.criada_em DESC LIMIT ?`,
     ).bind(LIMITE),
     env.DB.prepare(
       `SELECT k.id, k.paragem, k.tipo, k.lat, k.lon, k.nome, k.criada_em, k.conta_id, c.email FROM correcoes k LEFT JOIN contas c ON c.id = k.conta_id
@@ -79,6 +116,7 @@ export async function paginaDeRevisao(env: Env, agora = Date.now()): Promise<str
   ]);
   const ativos = (relatos.results as Relato[]).sort((a, b) => b.criado_em - a.criado_em);
   const denuncias = [...(perigo.results as Denuncia[]), ...(outras.results as Denuncia[])];
+  const conhecidos = [...new Set(avisos)].filter((aviso): aviso is Aviso => Object.hasOwn(AVISOS, aviso));
 
   return html`<!doctype html>
 <html lang="pt">
@@ -92,21 +130,34 @@ li { margin: 0.75rem 0; }
 img { display: block; max-width: 20rem; max-height: 20rem; }
 pre { white-space: pre-wrap; }
 .perigo { color: #b00020; }
+.aviso { padding: 0.5rem; border: 2px solid #b00020; }
+form { display: inline-block; margin: 0.25rem 0.5rem 0.25rem 0; }
 </style>
 </head>
 <body>
 <h1>Paragem Certa · revisão</h1>
+${conhecidos.map((aviso) => html`<p class="aviso">${AVISOS[aviso]}</p>`)}
 <p>Contas com sessão usada nos últimos 30 dias: ${(ativas.results[0] as { n: number }).n}</p>
 ${secao("Fotos por rever", fotos.results as Foto[], (f) => html`<li>${f.id} · ${f.paragem} · ${hora(f.criada_em)} · ${quem(f.conta_id, f.email)}
-<img src="/foto/${f.id}" alt="Foto enviada para ${f.paragem}"></li>`)}
+<img src="/foto/${f.id}" alt="Foto enviada para ${f.paragem}">
+${botao(`/fotos/${f.id}/aprovar`, "Aprovar")} ${comRazao(`/fotos/${f.id}/rejeitar`, "Rejeitar")} ${bloquearConta(f.conta_id)}</li>`)}
+${secao("Fotos aprovadas (as mais recentes)", aprovadas.results as Foto[], (f) => html`<li>${f.id} · ${f.paragem} · ${hora(f.criada_em)} · ${quem(f.conta_id, f.email)}
+<img src="/foto/${f.id}" alt="Foto aprovada de ${f.paragem}">
+${comRazao(`/fotos/${f.id}/apagar`, "Apagar")} ${bloquearConta(f.conta_id)}</li>`)}
 ${secao("Correções por rever", correcoes.results as Correcao[], (k) => html`<li>${k.id} · ${k.paragem} · ${hora(k.criada_em)} · ${quem(k.conta_id, k.email)}<br>
-${k.tipo === "posicao" ? html`Posição: ${k.lat}, ${k.lon}` : k.tipo === "nome" ? html`Nome: ${k.nome}` : html`Já não existe`}</li>`)}
+${k.tipo === "posicao" ? html`Posição: ${k.lat}, ${k.lon}` : k.tipo === "nome" ? html`Nome: ${k.nome}` : html`Já não existe`}<br>
+${botao(`/correcoes/${k.id}/aprovar`, "Aprovar")} ${comRazao(`/correcoes/${k.id}/rejeitar`, "Rejeitar")} ${bloquearConta(k.conta_id)}</li>`)}
 ${secao("Denúncias abertas", denuncias, (d) => html`<li${d.motivo === "perigo" ? html` class="perigo"` : ""}>${d.id} · motivo ${d.motivo} · ${hora(d.criada_em)}<br>
 Conteúdo ${d.conteudo}, de ${quem(d.conta_id, d.conta_email)}<br>
-Denunciado por ${d.nome} (${d.email})${d.explicacao ? html`<br>Explicação: ${d.explicacao}` : ""}${d.motivo === "perigo" ? html`<br><strong>Ameaça à vida ou à segurança: comunica à PSP ou à PJ</strong>` : ""}</li>`)}
-${secao("Relatos ativos", ativos, (r) => html`<li>${r.id} · ${r.tipo}${r.linha ? html` · linha ${r.linha}` : ""} · ${r.paragem} · ${hora(r.criado_em)} até ${hora(r.expira_em)} · ${quem(r.conta_id, r.email)}</li>`)}
-${secao("Contas bloqueadas", bloqueios.results as Bloqueio[], (b) => html`<li>${b.email_hash} · ${hora(b.criado_em)} · ${b.motivo}</li>`)}
-${secao("Emails por enviar", emails.results as EmailPorEnviar[], (e) => html`<li>${e.id} · para ${e.para} · ${hora(e.criado_em)} · ${e.assunto}<pre>${e.texto}</pre></li>`)}
+Denunciado por ${d.nome} (${d.email})${d.explicacao ? html`<br>Explicação: ${d.explicacao}` : ""}${d.motivo === "perigo" ? html`<br><strong>Ameaça à vida ou à segurança: comunica à PSP ou à PJ</strong>` : ""}<br>
+${comRazao(`/denuncias/${d.id}/decidir`, "Decidir", html`<select name="acao" aria-label="Decisão"><option value="remover">Remover o conteúdo</option><option value="manter">Manter o conteúdo</option></select> `)} ${bloquearConta(d.conta_id, d.id)}</li>`)}
+${secao("Relatos ativos", ativos, (r) => html`<li>${r.id} · ${r.tipo}${r.linha ? html` · linha ${r.linha}` : ""} · ${r.paragem} · ${hora(r.criado_em)} até ${hora(r.expira_em)} · ${quem(r.conta_id, r.email)}<br>
+${comRazao(`/relatos/${r.id}/apagar`, "Apagar")} ${bloquearConta(r.conta_id)}</li>`)}
+${secao("Contas bloqueadas", bloqueios.results as Bloqueio[], (b) => html`<li>${b.email_hash} · ${hora(b.criado_em)} · ${b.motivo} ${botao(`/bloqueios/${b.email_hash}/desbloquear`, "Desbloquear")}</li>`)}
+${secao("Emails por enviar", emails.results as EmailPorEnviar[], (e) => html`<li>${e.id} · para ${e.para} · ${hora(e.criado_em)} · ${e.assunto}<pre>${e.texto}</pre>${botao(`/emails/${e.id}/enviar`, "Enviar agora")}</li>`)}
+<h2>Apagar conta por email</h2>
+<p>Para os pedidos de apagar-conta.html: apaga todas as contas desse email, com as fotos (também no R2 e na cache), relatos e correções.</p>
+<form method="post" action="/contas/apagar"><input type="email" name="email" required aria-label="Email da conta" placeholder="Email da conta"> <button>Apagar conta</button></form>
 </body>
 </html>
 `.texto;
