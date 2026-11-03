@@ -20,6 +20,7 @@ import kotlinx.serialization.Serializable
     val lat: Double,
     val lon: Double,
     @SerialName("wheelchair_boarding") val cadeiraDeRodas: Boolean? = null,
+    @SerialName("line_ids") val linhas: List<String> = emptyList(),
 )
 
 @Serializable internal class CmLinhaJson(

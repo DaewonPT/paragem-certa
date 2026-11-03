@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import pt.pixellusitano.paragemcerta.core.atraso.aindaPorChegar
+import pt.pixellusitano.paragemcerta.core.comunidade.chaveLinha
 import pt.pixellusitano.paragemcerta.core.fontes.cm.CarrisMetropolitana
 import pt.pixellusitano.paragemcerta.core.fontes.cm.CmParser
 import pt.pixellusitano.paragemcerta.core.fontes.cm.cmParagemDeTransitous
@@ -20,9 +21,12 @@ import pt.pixellusitano.paragemcerta.core.fontes.geoapi.ehCodigoPostal
 import pt.pixellusitano.paragemcerta.core.fontes.geoapi.normalizarCodigoPostal
 import pt.pixellusitano.paragemcerta.core.fontes.geoapi.paraLugar
 import pt.pixellusitano.paragemcerta.core.fontes.servidor.FavoritoRemoto
+import pt.pixellusitano.paragemcerta.core.fontes.servidor.Interruptores
+import pt.pixellusitano.paragemcerta.core.fontes.servidor.ServidorParagemCerta
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.Transitous
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.chavesDosNomes
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.comNomesAcentuados
+import pt.pixellusitano.paragemcerta.core.linhas.RefLinha
 import pt.pixellusitano.paragemcerta.core.modelo.Alerta
 import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.modelo.Etapa
@@ -56,6 +60,32 @@ data class EstadoChegadas(
 data class LocalGuardado(val id: Long, val nome: String, val lugar: Lugar, val tipo: String, val ordem: Int)
 
 data class ViagemRecente(val de: Lugar, val para: Lugar, val em: Instant)
+
+/** Uma linha favorita num sentido, com a paragem habitual; [nome] e [destino] são os de quando se guardou (o catálogo pode não ter chegado). */
+data class LinhaFavorita(val ref: RefLinha, val sentido: Int, val paragem: RefParagem, val nome: String, val destino: String, val ordem: Int)
+
+private fun chaveLinhaFavorita(ref: RefLinha, sentido: Int, paragem: RefParagem) = "LINHA|${ref.chave}|$sentido|${paragem.chave}"
+
+/** "LINHA|<linha>|<sentido>|<paragem>" pelo fim: o sentido e a paragem não têm "|", o nome de uma linha pode ter. */
+private fun daChaveLinhaFavorita(chave: String): Triple<RefLinha, Int, RefParagem>? {
+    val resto = chave.removePrefix("LINHA|").takeIf { it != chave } ?: return null
+    val semParagem = resto.substringBeforeLast('|', "")
+    val paragem = RefParagem.daChave(resto.substringAfterLast('|')) ?: return null
+    val sentido = semParagem.substringAfterLast('|').toIntOrNull() ?: return null
+    val linha = RefLinha.daChave(semParagem.substringBeforeLast('|', "")) ?: return null
+    return Triple(linha, sentido, paragem)
+}
+
+private fun LinhaFavoritaEntidade.paraLinhaFavorita(): LinhaFavorita? =
+    LinhaFavorita(RefLinha.daChave(linha) ?: return null, sentido, RefParagem.daChave(paragem) ?: return null, nome, destino, ordem)
+
+// Na conta só há um nome: o destino vai nele, depois de um "\n" (que nenhum nome de linha nem destino tem).
+private fun LinhaFavoritaEntidade.paraRemoto() = FavoritoRemoto(chave, TIPO_LINHA, "$nome\n$destino", lat, lon, ordem, apagado = false)
+
+private const val TIPO_LINHA = "LINHA"
+
+/** O servidor recusa o pedido inteiro com uma chave de linha maior (worker/src/favoritos.ts): essas ficam só no telemóvel. */
+private const val MAX_CHAVE_LINHA = 250
 
 @Serializable
 private class ChegadaGuardada(
@@ -96,6 +126,9 @@ class Repositorio(
     private val transitous: Transitous,
     private val geoApi: GeoApi,
     private val relogio: () -> Instant = Instant::now,
+    // As leituras do servidor (Carris ao vivo) e os interruptores do config.json; com omissão, para os testes que não os usam.
+    private val servidor: ServidorParagemCerta? = null,
+    private val interruptores: () -> Interruptores = { Interruptores() },
 ) {
     /** Consulta ao ritmo da fonte enquanto alguém recolhe o fluxo; sem rede ou com erro, emite o último resultado bom. */
     fun chegadas(ref: RefParagem): Flow<EstadoChegadas> = flow {
@@ -192,6 +225,44 @@ class Repositorio(
     suspend fun reordenarFavoritas(ordem: List<Favorita>) =
         bd.favoritas().guardarTodas(ordem.mapIndexed { i, f -> FavoritaEntidade(f.ref.chave, f.nome, i, f.lat, f.lon) })
 
+    fun linhasFavoritas(): Flow<List<LinhaFavorita>> = bd.linhasFavoritas().todas().map { lista -> lista.mapNotNull { it.paraLinhaFavorita() } }
+
+    /** Uma por linha e sentido: se a linha já é favorita nesse sentido (em qualquer paragem), deixa de ser; senão fica com [paragem]. */
+    suspend fun alternarLinhaFavorita(ref: RefLinha, sentido: Int, destino: String, paragem: Paragem, nome: String) = bd.withTransaction {
+        val dao = bd.linhasFavoritas()
+        val ja = dao.daLinha(ref.chave, sentido)
+        if (ja.isNotEmpty()) {
+            ja.forEach { apagado(it.chave, TIPO_LINHA); dao.apagar(it.chave) }
+            return@withTransaction
+        }
+        val chave = chaveLinhaFavorita(ref, sentido, paragem.ref)
+        bd.apagados().apagar(chave)
+        dao.guardar(LinhaFavoritaEntidade(chave, ref.chave, sentido, paragem.ref.chave, nome, destino, dao.proximaOrdem(), paragem.lat, paragem.lon))
+    }
+
+    /** A paragem faz parte da chave: na conta é apagar a antiga e criar a nova, no mesmo lugar da lista. */
+    suspend fun mudarParagemHabitual(f: LinhaFavorita, paragem: Paragem) = bd.withTransaction {
+        val antiga = chaveLinhaFavorita(f.ref, f.sentido, f.paragem)
+        val nova = chaveLinhaFavorita(f.ref, f.sentido, paragem.ref)
+        if (antiga == nova) return@withTransaction
+        apagado(antiga, TIPO_LINHA)
+        bd.linhasFavoritas().apagar(antiga)
+        bd.apagados().apagar(nova)
+        bd.linhasFavoritas().guardar(
+            LinhaFavoritaEntidade(nova, f.ref.chave, f.sentido, paragem.ref.chave, f.nome, f.destino, f.ordem, paragem.lat, paragem.lon),
+        )
+    }
+
+    /** As chaveLinha das linhas que passam nas paragens favoritas: as da CM pela rede guardada, as outras pelas últimas chegadas guardadas. */
+    suspend fun linhasDasParagensFavoritas(): Set<String> {
+        val chaves = bd.favoritas().todas().first().map { it.chave }
+        val cm = bd.paragens().porChaves(chaves).filter { it.fonte == Fonte.CM.name }.flatMap { it.linhas.split(',') }
+        val outras = chaves.filter { RefParagem.daChave(it)?.fonte == Fonte.TRANSITOUS }.flatMap { c ->
+            bd.chegadas().porChave(c)?.let { g -> JSON.decodeFromString<List<ChegadaGuardada>>(g.json).map { it.linhaNome } }.orEmpty()
+        }
+        return (cm + outras).filter { it.isNotBlank() }.mapTo(HashSet(), ::chaveLinha)
+    }
+
     suspend fun paragem(ref: RefParagem): Paragem? = bd.paragens().porChave(ref.chave)?.paraParagem()
 
     /** Carris Metropolitana da base local mais as do Transitous pela rede (que ficam guardadas para o ecrã da paragem). */
@@ -229,21 +300,30 @@ class Repositorio(
 
     suspend fun linhasCm(): Map<String, Linha> = bd.linhas().todas().associate { it.id to it.paraLinha() }
 
+    /** Volta a emitir quando a rede chega ou muda (o separador Linhas mostra-as assim que há). */
+    fun linhasCmFlow(): Flow<List<Linha>> = bd.linhas().fluxo().map { lista -> lista.map { it.paraLinha() } }
+
     suspend fun coresDasLinhasCm(): Map<String, String> =
         bd.linhas().todas().mapNotNull { l -> l.cor?.let { l.id to it } }.toMap()
 
-    suspend fun redeEmFalta(): Boolean = bd.paragens().contarCm() == 0
+    /** Sem paragens da CM, ou só com as que a versão anterior guardou sem as linhas de cada uma (depois da migração para a v4). */
+    suspend fun redeEmFalta(): Boolean = bd.paragens().contarCmComLinhas() == 0
 
     /** Paragens e linhas da Carris Metropolitana (uma vez por dia). Devolve falso se alguma falhar. */
     suspend fun atualizarRede(): Boolean {
-        val paragens = cm.paragens() as? Resultado.Ok ?: return false
+        val paragensJson = cm.paragensJson() as? Resultado.Ok ?: return false
         val linhasJson = cm.linhasJson() as? Resultado.Ok ?: return false
         // Milhares de paragens: converter fora da linha do ecrã.
-        val (linhas, entidades) = withContext(Dispatchers.Default) {
-            val padroes = CmParser.padroesDasLinhas(linhasJson.valor)
-            CmParser.linhas(linhasJson.valor).map {
-                LinhaEntidade(it.id, it.nomeCurto, it.nomeLongo, it.cor, it.corTexto, padroes[it.id].orEmpty().joinToString(","))
-            } to paragens.valor.map { it.paraEntidade() }
+        val (linhas, entidades) = try {
+            withContext(Dispatchers.Default) {
+                val padroes = CmParser.padroesDasLinhas(linhasJson.valor)
+                val linhasDe = CmParser.linhasDasParagens(paragensJson.valor)
+                CmParser.linhas(linhasJson.valor).map {
+                    LinhaEntidade(it.id, it.nomeCurto, it.nomeLongo, it.cor, it.corTexto, padroes[it.id].orEmpty().joinToString(","))
+                } to CmParser.paragens(paragensJson.valor).map { it.paraEntidade().copy(linhas = linhasDe[it.ref.id].orEmpty().joinToString(",")) }
+            }
+        } catch (e: IllegalArgumentException) {
+            return false // JSON estragado (o SerializationException é um IllegalArgumentException): fica a rede que havia
         }
         bd.paragens().substituirFonte(Fonte.CM.name, entidades)
         bd.linhas().substituir(linhas)
@@ -349,8 +429,9 @@ class Repositorio(
     @Volatile var comConta = false
 
     // Guarda-se antes de apagar: se a app morrer a meio, a conta apaga-o na mesma e a resposta apaga-o cá.
+    // Uma linha com a chave comprida nunca foi para a conta: não há lá nada a apagar.
     private suspend fun apagado(chave: String, tipo: String) {
-        if (comConta) bd.apagados().guardar(ApagadoEntidade(chave, tipo))
+        if (comConta && !(tipo == TIPO_LINHA && chave.length > MAX_CHAVE_LINHA)) bd.apagados().guardar(ApagadoEntidade(chave, tipo))
     }
 
     /** Muda sempre que há uma escrita nos favoritos ou nos sítios; > 0 = há alterações por enviar à conta. */
@@ -360,6 +441,7 @@ class Repositorio(
     suspend fun porSincronizar(soNoTelemovel: Set<String> = emptySet()): List<FavoritoRemoto> =
         (bd.apagados().todos().map { FavoritoRemoto(it.chave, it.tipo, "", 0.0, 0.0, 0, apagado = true) } +
             bd.favoritas().pendentes().map { FavoritoRemoto(it.chave, TIPO_PARAGEM, it.nome, it.lat, it.lon, it.ordem, apagado = false) } +
+            bd.linhasFavoritas().pendentes().filter { it.chave.length <= MAX_CHAVE_LINHA }.map { it.paraRemoto() } +
             bd.locais().pendentes().map { FavoritoRemoto(it.uuid, it.tipo, it.nome, it.lat, it.lon, it.ordem, apagado = false) })
             .filter { it.chave !in soNoTelemovel }
             // O servidor recusa o pedido inteiro com um nome maior; a resposta traz o nome cortado e fica assim cá também.
@@ -379,6 +461,7 @@ class Repositorio(
                 when {
                     it.apagado -> bd.apagados().apagar(it.chave)
                     it.tipo == TIPO_PARAGEM -> bd.favoritas().enviada(it.chave)
+                    it.tipo == TIPO_LINHA -> bd.linhasFavoritas().enviada(it.chave)
                     else -> bd.locais().enviado(it.chave)
                 }
             }
@@ -394,6 +477,16 @@ class Repositorio(
                 else bd.locais().inserir(
                     LocalEntidade(bd.locais().porUuid(f.chave)?.id ?: 0, f.nome, f.lat, f.lon, f.tipo, f.ordem, f.chave, pendente = false),
                 )
+            TIPO_LINHA ->
+                if (f.apagado) bd.linhasFavoritas().apagar(f.chave)
+                else daChaveLinhaFavorita(f.chave)?.let { (linha, sentido, paragem) ->
+                    bd.linhasFavoritas().guardar(
+                        LinhaFavoritaEntidade(
+                            f.chave, linha.chave, sentido, paragem.chave, f.nome.substringBefore('\n'), f.nome.substringAfter('\n', ""),
+                            f.ordem, f.lat, f.lon, pendente = false,
+                        ),
+                    )
+                }
             // Um tipo novo de uma versão futura do servidor: fica para essa versão da app.
         }
     }
@@ -401,16 +494,19 @@ class Repositorio(
     /** Ao entrar e juntar: tudo o que está no telemóvel vai para a conta (fica marcado até ir mesmo). */
     suspend fun marcarTudoPorEnviar() = bd.withTransaction {
         bd.favoritas().marcarTodas(true)
+        bd.linhasFavoritas().marcarTodas(true)
         bd.locais().marcarTodos(true)
     }
 
     /** As chaves que a conta conheceria de tudo o que está no telemóvel. */
     suspend fun chavesNoTelemovel(): Set<String> =
-        (bd.favoritas().todas().first().map { it.chave } + bd.locais().lista().map { it.uuid }).toSet()
+        (bd.favoritas().todas().first().map { it.chave } + bd.linhasFavoritas().todas().first().map { it.chave } +
+            bd.locais().lista().map { it.uuid }).toSet()
 
     /** Ao sair da conta: os favoritos ficam, mas nada fica por enviar. */
     suspend fun limparMarcas() = bd.withTransaction {
         bd.favoritas().marcarTodas(false)
+        bd.linhasFavoritas().marcarTodas(false)
         bd.locais().marcarTodos(false)
         bd.apagados().apagarTodos()
     }
@@ -432,7 +528,7 @@ class Repositorio(
         ),
     )
 
-    /** Favoritas, locais, viagens recentes e chegadas guardadas; também esquece o que tem em memória. */
+    /** Favoritas (paragens e linhas), locais, viagens recentes e chegadas guardadas; também esquece o que tem em memória. */
     suspend fun apagarDadosDoTelemovel() {
         bd.locais().apagarDadosPessoais()
         paragensDasLinhas.clear()

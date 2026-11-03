@@ -49,6 +49,13 @@ class CarrisMetropolitanaTest {
         assertEquals(false, p.acessivel)
     }
 
+    @Test fun linhasDasParagens() {
+        assertEquals(
+            mapOf("060419" to listOf("3708"), "060451" to listOf("3708"), "062000" to emptyList()),
+            CmParser.linhasDasParagens(fixture("cm-stops.json")),
+        )
+    }
+
     @Test fun linhasComCorOficial() {
         val l = CmParser.linhas(fixture("cm-lines.json")).first { it.id == "3708" }
         assertEquals("#C61D23", l.cor)

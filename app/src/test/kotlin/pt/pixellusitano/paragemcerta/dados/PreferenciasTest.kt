@@ -102,13 +102,39 @@ class PreferenciasTest {
         assertEquals(EcraInicial.FAVORITOS, p.ecraInicial.first())
         p.definirEcraInicial(EcraInicial.ROTAS)
         assertEquals(EcraInicial.ROTAS, p.ecraInicial.first())
+        p.definirEcraInicial(EcraInicial.LINHAS)
+        assertEquals(EcraInicial.LINHAS, p.ecraInicial.first())
         p.definirEcraInicial(EcraInicial.MAPA)
         assertEquals(EcraInicial.MAPA, p.ecraInicial.first())
     }
 
     @Test fun ecraInicialDesconhecidoUsaMapa() = runTest {
-        val p = prefs(preferencesOf(stringPreferencesKey("ecra_inicial") to "LINHAS")) // só existe a partir da etapa 4
+        val p = prefs(preferencesOf(stringPreferencesKey("ecra_inicial") to "WIDGET")) // um valor de uma versão futura
         assertEquals(EcraInicial.MAPA, p.ecraInicial.first())
+    }
+
+    @Test fun camadasDoMapaLigadasPorOmissao() = runTest {
+        val p = prefs()
+        assertTrue(p.camadaAoVivo.first())
+        assertTrue(p.camadaGira.first())
+        p.definirCamadaAoVivo(false)
+        assertFalse(p.camadaAoVivo.first())
+        assertTrue(p.camadaGira.first()) // cada camada é independente
+        p.definirCamadaGira(false)
+        assertFalse(p.camadaGira.first())
+    }
+
+    @Test fun perturbacoesVistasGuardamAs500MaisRecentes() = runTest {
+        val p = prefs()
+        assertTrue(p.perturbacoesVistas.first().isEmpty())
+        p.marcarVistas((0..499).map { "cm:$it" }.toSet())
+        p.marcarVistas(setOf("cm:0", "metro:VD:0a1b2c3d")) // uma vista outra vez passa para o fim
+        val vistas = p.perturbacoesVistas.first()
+        assertEquals(500, vistas.size)
+        assertFalse("cm:1" in vistas) // sai a mais antiga
+        assertTrue("cm:0" in vistas && "metro:VD:0a1b2c3d" in vistas)
+        p.esquecerVistas()
+        assertTrue(p.perturbacoesVistas.first().isEmpty())
     }
 
     @Test fun avisoComSomEVibracaoPorOmissao() = runTest {

@@ -61,6 +61,10 @@ object CmParser {
             Paragem(RefParagem(Fonte.CM, it.id), it.nome ?: it.id, it.lat, it.lon, it.cadeiraDeRodas)
         }
 
+    /** As linhas (line_ids) que passam em cada paragem, pelo id da paragem. */
+    fun linhasDasParagens(json: String): Map<String, List<String>> =
+        JSON.decodeFromString<List<CmParagemJson>>(json).associate { p -> p.id to p.linhas.map(::cmIdLimpo) }
+
     fun linhas(json: String): List<Linha> =
         JSON.decodeFromString<List<CmLinhaJson>>(json).map {
             Linha(Fonte.CM, it.id, it.nomeCurto ?: it.id, it.nomeLongo, it.color, it.corTexto, Modo.AUTOCARRO)
@@ -141,7 +145,8 @@ class CarrisMetropolitana(private val http: Http, private val base: String = "ht
     suspend fun chegadas(paragemId: String, agora: Instant): Resultado<List<Chegada>> =
         http.pedir("${base}arrivals/by_stop/$paragemId") { CmParser.chegadas(it, agora) }
 
-    suspend fun paragens(): Resultado<List<Paragem>> = http.pedir("${base}stops", CmParser::paragens)
+    /** Devolve o corpo em bruto: o repositório tira daí as paragens e as linhas de cada uma. */
+    suspend fun paragensJson(): Resultado<String> = http.pedir("${base}stops") { it }
 
     /** Devolve o corpo em bruto: o repositório tira daí as linhas e os ids dos percursos de cada uma. */
     suspend fun linhasJson(): Resultado<String> = http.pedir("${base}lines") { it }

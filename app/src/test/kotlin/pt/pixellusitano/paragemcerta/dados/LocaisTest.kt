@@ -10,6 +10,7 @@ import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -238,7 +239,55 @@ class MigracaoTest {
             db.version = versao
         }
         return Room.databaseBuilder(contexto, BaseDados::class.java, ficheiro.absolutePath)
-            .addMigrations(MIGRACAO_2_3).allowMainThreadQueries().build()
+            .addMigrations(MIGRACAO_2_3, MIGRACAO_3_4).allowMainThreadQueries().build()
+    }
+
+    private val daVersao3 = arrayOf(
+        "INSERT INTO favoritas (chave, nome, ordem, lat, lon, pendente) VALUES ('CM:060419', 'Cais do Sodré', 0, 38.7, -9.14, 1)",
+        "INSERT INTO locais (id, nome, lat, lon, tipo, ordem, uuid, pendente) VALUES (1, 'Casa', 38.71, -9.15, 'CASA', 0, 'u-casa', 0)",
+        "INSERT INTO apagados (chave, tipo) VALUES ('CM:070001', 'PARAGEM')",
+        "INSERT INTO paragens (chave, fonte, id, nome, nomeNormalizado, lat, lon, acessivel) " +
+            "VALUES ('CM:060419', 'CM', '060419', 'Cais do Sodré (Terminal)', 'cais do sodre (terminal)', 38.7058, -9.1431, 0)",
+        "INSERT INTO paragens (chave, fonte, id, nome, nomeNormalizado, lat, lon, acessivel) " +
+            "VALUES ('TRANSITOUS:pt-Carris_3803', 'TRANSITOUS', 'pt-Carris_3803', 'Cais Sodré', 'cais sodre', 38.7062, -9.145, NULL)",
+    )
+
+    @Test fun migracao3Para4GuardaTudo() {
+        val bd = abrirDaVersao(3, *daVersao3)
+        kotlinx.coroutines.runBlocking {
+            val f = bd.favoritas().todas().first().single()
+            assertEquals("CM:060419" to "Cais do Sodré", f.chave to f.nome)
+            assertTrue(f.pendente) // o que estava por enviar continua por enviar
+            assertEquals(listOf("u-casa" to "Casa"), bd.locais().lista().map { it.uuid to it.nome })
+            assertEquals(listOf("CM:070001"), bd.apagados().todos().map { it.chave })
+            val paragens = bd.paragens().porChaves(listOf("CM:060419", "TRANSITOUS:pt-Carris_3803"))
+            assertEquals(listOf("Cais do Sodré (Terminal)", "Cais Sodré"), paragens.sortedBy { it.chave }.map { it.nome })
+            assertTrue(paragens.all { it.linhas.isEmpty() })
+            assertTrue(bd.linhasFavoritas().todas().first().isEmpty())
+            assertEquals(2, bd.apagados().porEnviar().first()) // a tabela nova entra na conta sem nada por enviar
+        }
+        bd.close()
+    }
+
+    @Test fun depoisDaMigracaoARedeAtualiza() {
+        val bd = abrirDaVersao(3, *daVersao3)
+        val agora = Instant.parse("2026-11-03T10:00:00Z")
+        // A rede foi atualizada há uma hora pela versão anterior: só a coluna nova das linhas, vazia, a faz vir outra vez.
+        contexto.getSharedPreferences("rede", android.content.Context.MODE_PRIVATE).edit()
+            .putLong("ultima_atualizacao", agora.minusSeconds(3600).epochSecond).commit()
+        val http = HttpPorUrl(
+            "/stops" to listOf({ Resposta(200, fixture("cm-stops.json")) }),
+            "/lines" to listOf({ Resposta(200, fixture("cm-lines.json")) }),
+        )
+        val repo = Repositorio(bd, CarrisMetropolitana(http), Transitous(http), GeoApi(http), relogio = { agora })
+        kotlinx.coroutines.runBlocking {
+            assertTrue(AtualizacaoDiaria.aoAbrir(contexto, repo, agora))
+            assertEquals("3708", bd.paragens().porChave("CM:060419")!!.linhas)
+            // Uma paragem sem linhas nenhumas (062000) não faz descarregar a rede em cada abertura.
+            assertEquals("", bd.paragens().porChave("CM:062000")!!.linhas)
+            assertFalse(AtualizacaoDiaria.aoAbrir(contexto, repo, agora.plusSeconds(60)))
+        }
+        bd.close()
     }
 
     @Test fun favoritaSobreviveAMigracao() {

@@ -80,9 +80,10 @@ fun DefinicoesEcra(preferencias: Preferencias, conta: Conta, aoVoltar: () -> Uni
         aoVoltar = aoVoltar,
         modifier = Modifier.fillMaxSize(),
         aoApagarDados = {
-            // A Conta não tem as Preferencias: os relatos e fotos escondidos também são um dado deste telemóvel.
+            // A Conta não tem as Preferencias: os relatos e fotos escondidos e as perturbações vistas também são dados deste telemóvel.
             escopo.launch {
                 preferencias.esquecerOcultos()
+                preferencias.esquecerVistas()
                 conta.apagarDadosDoTelemovel()
             }
             Toast.makeText(contexto, apagados, Toast.LENGTH_SHORT).show()

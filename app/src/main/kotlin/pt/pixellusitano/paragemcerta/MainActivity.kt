@@ -57,6 +57,7 @@ class MainActivity : ComponentActivity() {
                 launch { semFalhar { AtualizacaoDiaria.aoAbrir(applicationContext, ligacoes.repositorio) } }
                 launch { semFalhar { Atualizacoes.aoAbrir(applicationContext) } }
                 launch { semFalhar { ligacoes.configuracoes.aoAbrir() } }
+                launch { semFalhar { ligacoes.catalogoLinhas.aoAbrir() } }
                 launch { semFalhar { ligacoes.conta.aoAbrir() } }
             }
         }

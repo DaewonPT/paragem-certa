@@ -17,8 +17,8 @@ import pt.pixellusitano.paragemcerta.core.modelo.Ordem
 import pt.pixellusitano.paragemcerta.core.modelo.Ritmo
 import pt.pixellusitano.paragemcerta.ui.tema.ModoTema
 
-/** O ecrã em que a app abre; FAVORITOS é o Início com o painel dos favoritos aberto. As Linhas entram na etapa 4. */
-enum class EcraInicial { MAPA, ROTAS, FAVORITOS }
+/** O ecrã em que a app abre; FAVORITOS é o Início com o painel dos favoritos aberto. */
+enum class EcraInicial { MAPA, ROTAS, LINHAS, FAVORITOS }
 
 /** Definições do utilizador (modo claro/escuro, limites de atraso, filtros das rotas, ecrã inicial e avisos da viagem), guardadas no telemóvel. */
 class Preferencias(private val loja: DataStore<Preferences>) {
@@ -63,7 +63,14 @@ class Preferencias(private val loja: DataStore<Preferences>) {
     val camadaRelatos: Flow<Boolean> = loja.data.map { it[CAMADA_RELATOS] ?: true }
 
     /** Os relatos e fotos que a pessoa escondeu ("relato:<id>", "foto:<id>"), do mais antigo para o mais novo. Ficam só no telemóvel. */
-    val ocultos: Flow<Set<String>> = loja.data.map { lerOcultos(it) }
+    val ocultos: Flow<Set<String>> = loja.data.map { lerLista(it, OCULTOS) }
+
+    /** Se o mapa mostra os autocarros ao vivo (CM e Carris) e as estações GIRA. */
+    val camadaAoVivo: Flow<Boolean> = loja.data.map { it[CAMADA_AO_VIVO] ?: true }
+    val camadaGira: Flow<Boolean> = loja.data.map { it[CAMADA_GIRA] ?: true }
+
+    /** As perturbações oficiais já vistas ("cm:<id>", "metro:<linha>:<hash>"), da mais antiga para a mais nova; só no telemóvel. */
+    val perturbacoesVistas: Flow<Set<String>> = loja.data.map { lerLista(it, PERTURBACOES_VISTAS) }
 
     suspend fun definirAvisosComunidade(ligado: Boolean) {
         loja.edit { it[AVISOS_COMUNIDADE] = ligado }
@@ -73,18 +80,35 @@ class Preferencias(private val loja: DataStore<Preferences>) {
         loja.edit { it[CAMADA_RELATOS] = ligada }
     }
 
+    suspend fun definirCamadaAoVivo(ligada: Boolean) {
+        loja.edit { it[CAMADA_AO_VIVO] = ligada }
+    }
+
+    suspend fun definirCamadaGira(ligada: Boolean) {
+        loja.edit { it[CAMADA_GIRA] = ligada }
+    }
+
     /** Junta no fim (um id repetido passa para o fim) e, passando de [MAX_OCULTOS], tira os mais antigos. */
     suspend fun ocultar(id: String) {
-        loja.edit { it[OCULTOS] = Json.encodeToString((lerOcultos(it) - id + id).toList().takeLast(MAX_OCULTOS)) }
+        loja.edit { it[OCULTOS] = Json.encodeToString((lerLista(it, OCULTOS) - id + id).toList().takeLast(MAX_OCULTOS)) }
     }
 
     suspend fun esquecerOcultos() {
         loja.edit { it.remove(OCULTOS) }
     }
 
+    /** Como [ocultar], com várias de uma vez e o mesmo teto. */
+    suspend fun marcarVistas(ids: Set<String>) {
+        loja.edit { it[PERTURBACOES_VISTAS] = Json.encodeToString((lerLista(it, PERTURBACOES_VISTAS) - ids + ids).toList().takeLast(MAX_OCULTOS)) }
+    }
+
+    suspend fun esquecerVistas() {
+        loja.edit { it.remove(PERTURBACOES_VISTAS) }
+    }
+
     // Uma lista como texto numa só chave (um stringSet não guarda a ordem); um valor estragado é o mesmo que não ter nenhum.
-    private fun lerOcultos(p: Preferences): Set<String> =
-        p[OCULTOS]?.let { runCatching { Json.decodeFromString<List<String>>(it) }.getOrNull() }.orEmpty().toSet()
+    private fun lerLista(p: Preferences, chave: Preferences.Key<String>): Set<String> =
+        p[chave]?.let { runCatching { Json.decodeFromString<List<String>>(it) }.getOrNull() }.orEmpty().toSet()
 
     suspend fun definirSomAviso(ligado: Boolean) {
         loja.edit { it[SOM_AVISO] = ligado }
@@ -146,6 +170,9 @@ class Preferencias(private val loja: DataStore<Preferences>) {
         val AVISOS_COMUNIDADE = booleanPreferencesKey("avisos_comunidade")
         val CAMADA_RELATOS = booleanPreferencesKey("camada_relatos")
         val OCULTOS = stringPreferencesKey("ocultos")
+        val CAMADA_AO_VIVO = booleanPreferencesKey("camada_ao_vivo")
+        val CAMADA_GIRA = booleanPreferencesKey("camada_gira")
+        val PERTURBACOES_VISTAS = stringPreferencesKey("perturbacoes_vistas")
         const val MAX_OCULTOS = 500
     }
 }

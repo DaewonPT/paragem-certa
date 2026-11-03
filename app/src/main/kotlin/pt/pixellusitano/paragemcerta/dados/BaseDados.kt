@@ -17,7 +17,8 @@ import kotlinx.coroutines.flow.Flow
 import java.text.Normalizer
 import java.util.UUID
 
-/** Paragens da Carris Metropolitana (rede inteira, atualizada uma vez por dia) e do Transitous já vistas. */
+/** Paragens da Carris Metropolitana (rede inteira, atualizada uma vez por dia) e do Transitous já vistas.
+ *  linhas = os line_ids da CM separados por vírgulas (vazio nas do Transitous). */
 @Entity(tableName = "paragens")
 data class ParagemEntidade(
     @PrimaryKey val chave: String,
@@ -28,6 +29,7 @@ data class ParagemEntidade(
     val lat: Double,
     val lon: Double,
     val acessivel: Boolean?,
+    @ColumnInfo(defaultValue = "''") val linhas: String = "",
 )
 
 /** Linhas da Carris Metropolitana; padroes = ids dos percursos separados por vírgulas. */
@@ -50,6 +52,24 @@ data class FavoritaEntidade(
     val lat: Double,
     val lon: Double,
     @ColumnInfo(defaultValue = "0") val pendente: Boolean = true,
+)
+
+/**
+ * Uma linha favorita num sentido, com a paragem habitual. chave = "LINHA|<chave da linha>|<sentido>|<chave da paragem>" (a da
+ * conta); linha e paragem são as chaves de [pt.pixellusitano.paragemcerta.core.linhas.RefLinha] e de RefParagem; lat e lon, as da paragem.
+ */
+@Entity(tableName = "linhas_favoritas")
+data class LinhaFavoritaEntidade(
+    @PrimaryKey val chave: String,
+    val linha: String,
+    val sentido: Int,
+    val paragem: String,
+    val nome: String,
+    val destino: String,
+    val ordem: Int,
+    val lat: Double,
+    val lon: Double,
+    val pendente: Boolean = true,
 )
 
 /** Últimas chegadas boas de cada paragem, para mostrar sem rede. */
@@ -123,6 +143,10 @@ interface ParagensDao {
 
     @Query("SELECT COUNT(*) FROM paragens WHERE fonte = 'CM'")
     suspend fun contarCm(): Int
+
+    // Conta as que têm linhas, não as que não têm: há paragens da CM sem linhas nenhumas, que nunca deixariam de faltar.
+    @Query("SELECT COUNT(*) FROM paragens WHERE fonte = 'CM' AND linhas != ''")
+    suspend fun contarCmComLinhas(): Int
 }
 
 @Dao
@@ -147,6 +171,36 @@ interface LinhasDao {
 
     @Query("SELECT * FROM linhas")
     suspend fun todas(): List<LinhaEntidade>
+
+    @Query("SELECT * FROM linhas")
+    fun fluxo(): Flow<List<LinhaEntidade>>
+}
+
+@Dao
+interface LinhasFavoritasDao {
+    @Query("SELECT * FROM linhas_favoritas ORDER BY ordem")
+    fun todas(): Flow<List<LinhaFavoritaEntidade>>
+
+    @Query("SELECT * FROM linhas_favoritas WHERE linha = :linha AND sentido = :sentido")
+    suspend fun daLinha(linha: String, sentido: Int): List<LinhaFavoritaEntidade>
+
+    @Query("SELECT COALESCE(MAX(ordem), -1) + 1 FROM linhas_favoritas")
+    suspend fun proximaOrdem(): Int
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun guardar(f: LinhaFavoritaEntidade)
+
+    @Query("DELETE FROM linhas_favoritas WHERE chave = :chave")
+    suspend fun apagar(chave: String)
+
+    @Query("SELECT * FROM linhas_favoritas WHERE pendente")
+    suspend fun pendentes(): List<LinhaFavoritaEntidade>
+
+    @Query("UPDATE linhas_favoritas SET pendente = 0 WHERE chave = :chave")
+    suspend fun enviada(chave: String)
+
+    @Query("UPDATE linhas_favoritas SET pendente = :pendente")
+    suspend fun marcarTodas(pendente: Boolean)
 }
 
 @Dao
@@ -193,10 +247,11 @@ interface ApagadosDao {
     @Query("DELETE FROM apagados")
     suspend fun apagarTodos()
 
-    /** Quantas alterações há por enviar à conta; volta a emitir a cada escrita nestas tabelas. */
+    /** Quantas alterações há por enviar à conta; volta a emitir a cada escrita nestas tabelas. Uma linha favorita com a chave
+     *  maior do que o servidor aceita (250) nunca vai, por isso não conta. */
     @Query(
         "SELECT (SELECT COUNT(*) FROM favoritas WHERE pendente) + (SELECT COUNT(*) FROM locais WHERE pendente) + " +
-            "(SELECT COUNT(*) FROM apagados)",
+            "(SELECT COUNT(*) FROM linhas_favoritas WHERE pendente AND length(chave) <= 250) + (SELECT COUNT(*) FROM apagados)",
     )
     fun porEnviar(): Flow<Int>
 }
@@ -291,6 +346,9 @@ interface LocaisDao {
     @Query("DELETE FROM favoritas")
     suspend fun apagarFavoritas()
 
+    @Query("DELETE FROM linhas_favoritas")
+    suspend fun apagarLinhasFavoritas()
+
     @Query("DELETE FROM locais")
     suspend fun apagarLocais()
 
@@ -304,6 +362,7 @@ interface LocaisDao {
     @Transaction
     suspend fun apagarDadosPessoais() {
         apagarFavoritas()
+        apagarLinhasFavoritas()
         apagarLocais()
         apagarRecentes()
         apagarChegadas()
@@ -313,15 +372,16 @@ interface LocaisDao {
 @Database(
     entities = [
         ParagemEntidade::class, LinhaEntidade::class, FavoritaEntidade::class, ChegadasGuardadasEntidade::class,
-        LocalEntidade::class, RecenteEntidade::class, ApagadoEntidade::class,
+        LocalEntidade::class, RecenteEntidade::class, ApagadoEntidade::class, LinhaFavoritaEntidade::class,
     ],
-    version = 3,
+    version = 4,
     autoMigrations = [AutoMigration(from = 1, to = 2)],
 )
 abstract class BaseDados : RoomDatabase() {
     abstract fun paragens(): ParagensDao
     abstract fun linhas(): LinhasDao
     abstract fun favoritas(): FavoritasDao
+    abstract fun linhasFavoritas(): LinhasFavoritasDao
     abstract fun chegadas(): ChegadasDao
     abstract fun locais(): LocaisDao
     abstract fun apagados(): ApagadosDao
@@ -337,6 +397,19 @@ val MIGRACAO_2_3 = object : Migration(2, 3) {
         // randomblob corre uma vez por linha: cada sítio fica com o seu.
         db.execSQL("UPDATE locais SET uuid = lower(hex(randomblob(16))) WHERE uuid = ''")
         db.execSQL("CREATE TABLE IF NOT EXISTS `apagados` (`chave` TEXT NOT NULL, `tipo` TEXT NOT NULL, PRIMARY KEY(`chave`))")
+    }
+}
+
+/** 0.4, etapa 4: as linhas favoritas e as linhas de cada paragem da CM. As paragens ficam sem linhas até a rede vir outra vez,
+ *  o que acontece logo nessa abertura (o [Repositorio.redeEmFalta] dá verdadeiro). O SQL é o do 4.json, tal e qual. */
+val MIGRACAO_3_4 = object : Migration(3, 4) {
+    override fun migrate(db: SupportSQLiteDatabase) {
+        db.execSQL("ALTER TABLE paragens ADD COLUMN linhas TEXT NOT NULL DEFAULT ''")
+        db.execSQL(
+            "CREATE TABLE IF NOT EXISTS `linhas_favoritas` (`chave` TEXT NOT NULL, `linha` TEXT NOT NULL, `sentido` INTEGER NOT NULL, " +
+                "`paragem` TEXT NOT NULL, `nome` TEXT NOT NULL, `destino` TEXT NOT NULL, `ordem` INTEGER NOT NULL, `lat` REAL NOT NULL, " +
+                "`lon` REAL NOT NULL, `pendente` INTEGER NOT NULL, PRIMARY KEY(`chave`))",
+        )
     }
 }
 
