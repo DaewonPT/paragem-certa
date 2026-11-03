@@ -2,6 +2,7 @@ import { createExecutionContext, waitOnExecutionContext } from "cloudflare:test"
 import { env } from "cloudflare:workers";
 import { describe, expect, it, vi } from "vitest";
 import config from "../public/dados/config.json";
+import configDaApp from "../../app/src/main/assets/config.json";
 import apagarContaHtml from "../public/apagar-conta.html";
 import termosHtml from "../public/termos.html";
 import { REGRAS } from "../src/explicacoes";
@@ -223,6 +224,21 @@ describe("base do servidor", () => {
     });
     expect(resposta.status).toBe(204);
     expect(await env.DB.prepare("SELECT 1 AS um FROM aceites_termos WHERE conta_id = 'ana' AND versao_termos = '9'").first("um")).toBe(1);
+  });
+
+  it("mapasOficiaisNasDuasCopias", () => {
+    // Só os interruptores podem diferir entre a cópia do servidor e a da app (como no ConfiguracaoTest do :core).
+    const { interruptores: _doServidor, ...servidor } = config;
+    const { interruptores: _daApp, ...app } = configDaApp;
+    expect(app).toEqual(servidor);
+
+    expect(config.mapasOficiais.length).toBeGreaterThan(0);
+    const operadores = config.mapasOficiais.map((mapa) => mapa.operador);
+    expect(new Set(operadores).size).toBe(operadores.length);
+    for (const mapa of config.mapasOficiais) {
+      expect(mapa.operador).toMatch(/^(CM|pt-\S+)$/);
+      expect(mapa.url).toMatch(/^https:\/\/[^\s]+$/);
+    }
   });
 
   it("configTemAsRegrasDaComunidade", () => {

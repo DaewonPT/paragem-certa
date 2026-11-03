@@ -67,6 +67,10 @@ function lerAvisos(linhas: string[], segredos: Partial<Env> = LIGADO): Promise<R
   return pedir(`/api/avisos?linhas=${encodeURIComponent(linhas.join(","))}`, { metodo: "GET", segredos });
 }
 
+function lerComunidadeDeLinhas(linhas: string[], segredos: Partial<Env> = LIGADO): Promise<Response> {
+  return pedir(`/api/comunidade?linhas=${encodeURIComponent(linhas.join(","))}`, { metodo: "GET", segredos });
+}
+
 async function erroDe(resposta: Response): Promise<{ estado: number; erro: string }> {
   return { estado: resposta.status, erro: ((await resposta.json()) as { erro: string }).erro };
 }
@@ -266,10 +270,85 @@ describe("relatos e votos", () => {
     ]);
   });
 
+  it("avisosSemComunidadeTrazemPerturbacoes", async () => {
+    const { id } = await relatado(ana);
+    await votado(rui, id, "ainda_esta");
+
+    // Sem `comunidade` já não há 403: os relatos vêm vazios (e as perturbações do Metro, que só a Task 2 liga).
+    const semComunidade = await lerAvisos(["736"], {});
+    expect(semComunidade.status).toBe(200);
+    expect(await semComunidade.json()).toEqual({ relatos: [], perturbacoes: [] });
+    // O pedido mal feito continua a dar 400, com ou sem `comunidade`.
+    expect(await erroDe(await lerAvisos([], {}))).toEqual({ estado: 400, erro: "pedido_invalido" });
+
+    // Ligada a comunidade, o mesmo pedido traz o relato confirmado.
+    const comComunidade = await lerAvisos(["736"]);
+    expect(comComunidade.status).toBe(200);
+    expect(await comComunidade.json()).toEqual({
+      relatos: [{ id, tipo: "desvio", paragem: PARAGEM, linha: "736", criadoEm: INICIO, expiraEm: INICIO + 3 * HORA, confirmacoes: 2, confirmado: true }],
+      perturbacoes: [],
+    });
+  });
+
+  it("relatosDaLinhaTrazemPorConfirmar", async () => {
+    const confirmado = await relatado(ana);
+    await votado(rui, confirmado.id, "ainda_esta");
+    avancar(MINUTO);
+    const porConfirmar = await relatado(ana, { tipo: "acidente", paragem: "CM:1", linha: "15E" });
+    // Outra linha, e um relato da paragem sem linha: não são de nenhuma das pedidas.
+    await relatado(ana, { tipo: "acidente", paragem: PARAGEM, linha: "999" });
+    await relatado(ana, { tipo: "elevador", paragem: PARAGEM });
+
+    const resposta = await lerComunidadeDeLinhas(["736", "15e"]);
+    expect(resposta.status).toBe(200);
+    // Os dois, o mais recente primeiro; ao contrário do /api/avisos, também o que ainda não tem 2 confirmações.
+    expect(await resposta.json()).toEqual({
+      relatos: [
+        { id: porConfirmar.id, tipo: "acidente", paragem: "CM:1", linha: "15E", criadoEm: INICIO + MINUTO, expiraEm: INICIO + MINUTO + 2 * HORA, confirmacoes: 1, confirmado: false },
+        { id: confirmado.id, tipo: "desvio", paragem: PARAGEM, linha: "736", criadoEm: INICIO, expiraEm: INICIO + 3 * HORA, confirmacoes: 2, confirmado: true },
+      ],
+    });
+
+    // Só os ativos: passadas 4 horas, os dois já expiraram.
+    avancar(4 * HORA);
+    expect(await (await lerComunidadeDeLinhas(["736", "15E"])).json()).toEqual({ relatos: [] });
+
+    const linhas = Array.from({ length: 21 }, (_, n) => `L${n}`);
+    expect(await erroDe(await lerComunidadeDeLinhas(linhas))).toEqual({ estado: 400, erro: "pedido_invalido" });
+    expect((await lerComunidadeDeLinhas(linhas.slice(0, 20))).status).toBe(200);
+    expect(await erroDe(await lerComunidadeDeLinhas([]))).toEqual({ estado: 400, erro: "pedido_invalido" });
+    expect(await erroDe(await lerComunidadeDeLinhas(["<b>"]))).toEqual({ estado: 400, erro: "pedido_invalido" });
+  });
+
+  it("relatosDaLinhaSemComunidadeDa403", async () => {
+    const desligado = { estado: 403, erro: "desligado" };
+    expect(await erroDe(await lerComunidadeDeLinhas(["736"], {}))).toEqual(desligado);
+    // As fotos ou as correções ligadas não chegam: os relatos por linha são só da comunidade.
+    const soFotos = { ...LIGADO, TESTE_INTERRUPTORES: JSON.stringify({ fotos: true, correcoes: true }) };
+    expect(await erroDe(await lerComunidadeDeLinhas(["736"], soFotos))).toEqual(desligado);
+  });
+
+  it("relatosDaLinhaTemOLimiteDe100", async () => {
+    const agora = Date.now();
+    const relatos = Array.from({ length: 101 }, (_, n) =>
+      env.DB.prepare("INSERT INTO relatos (id, tipo, paragem, linha, conta_id, criado_em, expira_em) VALUES (?, 'desvio', ?, '736', ?, ?, ?)").bind(
+        `r${n}`,
+        `CM:${n}`,
+        "ana",
+        agora - n,
+        agora + HORA,
+      ),
+    );
+    await env.DB.batch(relatos);
+    const { relatos: lidos } = (await (await lerComunidadeDeLinhas(["736"])).json()) as { relatos: Relato[] };
+    expect(lidos).toHaveLength(100);
+    expect(lidos[0].id).toBe("r0");
+  });
+
   it("leiturasNaoMostramQuemRelatou", async () => {
     const { id } = await relatado(ana);
     await votado(rui, id, "ainda_esta");
-    for (const resposta of [await lerComunidade([PARAGEM]), await lerAvisos(["736"])]) {
+    for (const resposta of [await lerComunidade([PARAGEM]), await lerAvisos(["736"]), await lerComunidadeDeLinhas(["736"])]) {
       const texto = await resposta.text();
       expect(texto).toContain(id);
       for (const proibido of ["ana", "rui", "exemplo", "conta"]) expect(texto, proibido).not.toContain(proibido);
@@ -295,7 +374,6 @@ describe("relatos e votos", () => {
     const desligado = { estado: 403, erro: "desligado" };
     expect(await erroDe(await pedir("/api/relatos", { token: ana, corpo: DESVIO }))).toEqual(desligado);
     expect(await erroDe(await pedir("/api/votos", { token: rui, corpo: { relato: id, voto: "ainda_esta" } }))).toEqual(desligado);
-    expect(await erroDe(await lerAvisos(["736"], {}))).toEqual(desligado);
     expect(await erroDe(await lerComunidade([PARAGEM], {}))).toEqual(desligado);
 
     // Com só as fotos ligadas a leitura responde, mas sem os relatos.

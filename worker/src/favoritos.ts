@@ -4,7 +4,7 @@ import { contaDaSessao } from "./sessoes";
 
 export type Favorito = {
   chave: string;
-  tipo: "PARAGEM" | "CASA" | "TRABALHO" | "OUTRO";
+  tipo: "PARAGEM" | "CASA" | "TRABALHO" | "OUTRO" | "LINHA";
   nome: string;
   lat: number;
   lon: number;
@@ -12,17 +12,20 @@ export type Favorito = {
   apagado: boolean;
 };
 
-const TIPOS = new Set(["PARAGEM", "CASA", "TRABALHO", "OUTRO"]);
+const TIPOS = new Set(["PARAGEM", "CASA", "TRABALHO", "OUTRO", "LINHA"]);
 const MAX_ALTERACOES = 500;
 const MAX_TEXTO = 120;
+// "LINHA|<linha>|<sentido>|<paragem>": uma linha da CP sem nome curto já passa dos 120.
+const MAX_CHAVE_LINHA = 250;
 
 function favoritoValido(valor: unknown): valor is Favorito {
   if (valor === null || typeof valor !== "object") return false;
   const f = valor as Record<string, unknown>;
   // As comparações com `lat` e `lon` deixam de fora o NaN e o infinito.
   return (
-    typeof f.chave === "string" && f.chave.length > 0 && f.chave.length <= MAX_TEXTO &&
     typeof f.tipo === "string" && TIPOS.has(f.tipo) &&
+    typeof f.chave === "string" && f.chave.length > 0 && f.chave.length <= (f.tipo === "LINHA" ? MAX_CHAVE_LINHA : MAX_TEXTO) &&
+    (f.tipo !== "LINHA" || f.chave.startsWith("LINHA|")) &&
     typeof f.nome === "string" && f.nome.length <= MAX_TEXTO &&
     typeof f.lat === "number" && f.lat >= -90 && f.lat <= 90 &&
     typeof f.lon === "number" && f.lon >= -180 && f.lon <= 180 &&

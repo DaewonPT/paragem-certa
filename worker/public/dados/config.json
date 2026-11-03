@@ -34,5 +34,11 @@
     { "nome": "Carris Metropolitana", "url": "https://carrismetropolitana.pt/contacto" },
     { "nome": "Metro de Lisboa", "url": "https://www.metrolisboa.pt/informar/reclamacoes/" },
     { "nome": "CP", "url": "https://www.cp.pt/info/pt/w/reclamacao-cp" }
+  ],
+  "mapasOficiais": [
+    { "operador": "pt-Carris", "url": "https://www.carris.pt/viaje/informacao/diagrama-de-rede-carris/" },
+    { "operador": "pt-Metro-Lisboa", "url": "https://www.metrolisboa.pt/viajar/mapas-e-diagramas/" },
+    { "operador": "pt-Fergatus", "url": "https://www.fertagus.pt/pt/viajar/mapa-de-rede" },
+    { "operador": "pt-Transtejo-Soflusa", "url": "https://ttsl.pt/passageiros/diagrama-da-rede/" }
   ]
 }

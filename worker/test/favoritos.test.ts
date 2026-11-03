@@ -215,6 +215,61 @@ describe("sincronizar favoritos", () => {
     expect(await revisaoDaConta("ana")).toBe(0);
   });
 
+  it("favoritoDeLinhaSincroniza", async () => {
+    const linha = favorito("LINHA|CM:1009|0|CM:060419", { tipo: "LINHA", nome: "1009 · Sentido Lisboa" });
+    const outroSentido = favorito("LINHA|CM:1009|1|CM:060419", { tipo: "LINHA", nome: "1009 · Sentido Setúbal", ordem: 1 });
+    const doA = await sincronizado(telemovelA, 0, [linha, outroSentido]);
+    // Duas linhas favoritas do mesmo tipo convivem (só a Casa e o Trabalho são únicos).
+    expect(doA.alteracoes.map((f) => [f.chave, f.tipo, f.apagado])).toEqual([["LINHA|CM:1009|0|CM:060419", "LINHA", false], ["LINHA|CM:1009|1|CM:060419", "LINHA", false]]);
+
+    const doB = await sincronizado(telemovelB, 0);
+    expect(doB.alteracoes).toEqual([{ ...linha, revisao: 1 }, { ...outroSentido, revisao: 2 }]);
+
+    // Tirar a ★ chega ao outro telemóvel como as outras remoções.
+    await sincronizado(telemovelB, 2, [{ ...linha, apagado: true }]);
+    const depois = await sincronizado(telemovelA, 2);
+    expect(depois.alteracoes.map((f) => [f.chave, f.apagado])).toEqual([["LINHA|CM:1009|0|CM:060419", true]]);
+  });
+
+  it("favoritoDeLinhaDaCpSincroniza", async () => {
+    // Uma da CP sem nome curto: o nome longo e os ids com "ó" e parênteses passam dos 120 caracteres.
+    const prefixo = "LINHA|TRANSITOUS:pt-Comboios-de-Portugal(CP):Linha de Cascais - Cais do Sodré (Lisboa) ó Cascais|0|TRANSITOUS:pt-Comboios-de-Portugal(CP)_94_";
+    const chave = `${prefixo}${"6".repeat(180 - prefixo.length)}`;
+    expect(chave).toHaveLength(180);
+
+    const resposta = await sincronizado(telemovelA, 0, [favorito(chave, { tipo: "LINHA", nome: "Linha de Cascais" })]);
+    expect(resposta.alteracoes.map((f) => f.chave)).toEqual([chave]);
+    expect(await linhas("ana")).toEqual([{ chave, apagado: 0, revisao: 1 }]);
+  });
+
+  it("favoritoDeLinhaSemPrefixoOuComMaisDe250Da400", async () => {
+    const boa = favorito("CM:1");
+    const prefixo = "LINHA|TRANSITOUS:pt-Carris:728|0|";
+    const invalidos: [string, Favorito][] = [
+      ["sem o prefixo LINHA|", favorito("CM:1009|0|CM:060419", { tipo: "LINHA" })],
+      ["prefixo em minúsculas", favorito("linha|CM:1009|0|CM:060419", { tipo: "LINHA" })],
+      ["só o tipo, a chave de uma paragem", favorito("CM:060419", { tipo: "LINHA" })],
+      // O nome curto, para o que falha ser só a chave (o `favorito()` faz o nome a partir dela).
+      ["251 caracteres", favorito(`${prefixo}${"x".repeat(251 - prefixo.length)}`, { tipo: "LINHA", nome: "728" })],
+      // Os outros tipos continuam nos 120.
+      ["paragem com 121 caracteres", favorito(`CM:${"1".repeat(118)}`, { nome: "Paragem" })],
+    ];
+    for (const [descricao, mau] of invalidos) {
+      const resposta = await sincronizar(telemovelA, 0, [boa, mau]);
+      expect(resposta.status, descricao).toBe(400);
+      expect(await resposta.json(), descricao).toEqual({ erro: "pedido_invalido" });
+    }
+    // Tudo ou nada: o bom que ia junto também não ficou.
+    expect(await linhas("ana")).toEqual([]);
+
+    // Nos 250 certos serve, e o que não é LINHA continua a servir com 120.
+    const nos250 = favorito(`${prefixo}${"x".repeat(250 - prefixo.length)}`, { tipo: "LINHA", nome: "728" });
+    const nos120 = favorito(`CM:${"1".repeat(117)}`, { nome: "Paragem" });
+    expect(nos250.chave).toHaveLength(250);
+    expect(nos120.chave).toHaveLength(120);
+    expect((await sincronizado(telemovelA, 0, [nos250, nos120])).alteracoes).toHaveLength(2);
+  });
+
   it("nomeComExatamente120CaracteresServe", async () => {
     const resposta = await sincronizado(telemovelA, 0, [favorito("CM:1", { nome: "ã".repeat(120) }), favorito("CM:2", { lat: -90, lon: 180 })]);
     expect(resposta.alteracoes).toHaveLength(2);
