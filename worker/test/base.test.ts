@@ -2,6 +2,7 @@ import { createExecutionContext, waitOnExecutionContext } from "cloudflare:test"
 import { env } from "cloudflare:workers";
 import { describe, expect, it, vi } from "vitest";
 import config from "../public/dados/config.json";
+import apagarContaHtml from "../public/apagar-conta.html";
 import termosHtml from "../public/termos.html";
 import { REGRAS } from "../src/explicacoes";
 import worker from "../src/index";
@@ -266,6 +267,14 @@ describe("política de privacidade, termos e guia do autor", () => {
     expect(pt).toContain("Os emails por enviar para o teu endereço ficam até saírem, no máximo 30 dias, mesmo depois de apagares a conta");
     expect(en).toContain("If you delete the account while a report you filed is still undecided, the name and email on that report stay until it is decided");
     expect(en).toContain("Queued emails to your address stay until they are sent, 30 days at most, even after you delete the account");
+  });
+
+  it("apagarContaDizOQueFicaDeUmaDenunciaPorDecidir", () => {
+    const [pt, en] = apagarContaHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").split("Delete your Paragem Certa account");
+    expect(pt).toContain("Se apagares a conta com uma denúncia tua ainda por decidir, o nome e o email dessa denúncia ficam até ela ser decidida");
+    expect(pt).toContain("Os emails por enviar para o teu endereço ficam até saírem, no máximo 30 dias");
+    expect(en).toContain("If you delete the account while a report you filed is still undecided, the name and email on that report stay until it is decided");
+    expect(en).toContain("Queued emails to your address stay until they are sent, 30 days at most");
   });
 
   it("privacidadeDizDasFotosRejeitadasDoOcultarEDoDominioDasFotos", async () => {

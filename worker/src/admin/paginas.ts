@@ -56,9 +56,10 @@ function comRazao(acao: string, rotulo: string, antes: Html | string = ""): Html
 <select name="regra" required aria-label="Regra em causa">${OPCOES_DAS_REGRAS}</select> <button>${rotulo}</button></form>`;
 }
 
-function bloquearConta(contaId: string | null, denunciaId?: string): Html | string {
+/** Só nas denúncias: os termos prometem que só se bloqueia uma conta depois de uma denúncia. */
+function bloquearConta(contaId: string | null, denunciaId: string): Html | string {
   if (!contaId) return "";
-  return comRazao(`/contas/${contaId}/bloquear`, "Bloquear conta", denunciaId ? html`<input type="hidden" name="denuncia" value="${denunciaId}">` : "");
+  return comRazao(`/contas/${contaId}/bloquear`, "Bloquear conta", html`<input type="hidden" name="denuncia" value="${denunciaId}">`);
 }
 
 type Foto = { id: string; paragem: string; criada_em: number; conta_id: string; email: string | null };
@@ -140,19 +141,19 @@ ${conhecidos.map((aviso) => html`<p class="aviso">${AVISOS[aviso]}</p>`)}
 <p>Contas com sessão usada nos últimos 30 dias: ${(ativas.results[0] as { n: number }).n}</p>
 ${secao("Fotos por rever", fotos.results as Foto[], (f) => html`<li>${f.id} · ${f.paragem} · ${hora(f.criada_em)} · ${quem(f.conta_id, f.email)}
 <img src="/foto/${f.id}" alt="Foto enviada para ${f.paragem}">
-${botao(`/fotos/${f.id}/aprovar`, "Aprovar")} ${comRazao(`/fotos/${f.id}/rejeitar`, "Rejeitar")} ${bloquearConta(f.conta_id)}</li>`)}
+${botao(`/fotos/${f.id}/aprovar`, "Aprovar")} ${comRazao(`/fotos/${f.id}/rejeitar`, "Rejeitar")}</li>`)}
 ${secao("Fotos aprovadas (as mais recentes)", aprovadas.results as Foto[], (f) => html`<li>${f.id} · ${f.paragem} · ${hora(f.criada_em)} · ${quem(f.conta_id, f.email)}
 <img src="/foto/${f.id}" alt="Foto aprovada de ${f.paragem}">
-${comRazao(`/fotos/${f.id}/apagar`, "Apagar")} ${bloquearConta(f.conta_id)}</li>`)}
+${comRazao(`/fotos/${f.id}/apagar`, "Apagar")}</li>`)}
 ${secao("Correções por rever", correcoes.results as Correcao[], (k) => html`<li>${k.id} · ${k.paragem} · ${hora(k.criada_em)} · ${quem(k.conta_id, k.email)}<br>
 ${k.tipo === "posicao" ? html`Posição: ${k.lat}, ${k.lon}` : k.tipo === "nome" ? html`Nome: ${k.nome}` : html`Já não existe`}<br>
-${botao(`/correcoes/${k.id}/aprovar`, "Aprovar")} ${comRazao(`/correcoes/${k.id}/rejeitar`, "Rejeitar")} ${bloquearConta(k.conta_id)}</li>`)}
+${botao(`/correcoes/${k.id}/aprovar`, "Aprovar")} ${comRazao(`/correcoes/${k.id}/rejeitar`, "Rejeitar")}</li>`)}
 ${secao("Denúncias abertas", denuncias, (d) => html`<li${d.motivo === "perigo" ? html` class="perigo"` : ""}>${d.id} · motivo ${d.motivo} · ${hora(d.criada_em)}<br>
 Conteúdo ${d.conteudo}, de ${quem(d.conta_id, d.conta_email)}<br>
 Denunciado por ${d.nome} (${d.email})${d.explicacao ? html`<br>Explicação: ${d.explicacao}` : ""}${d.motivo === "perigo" ? html`<br><strong>Ameaça à vida ou à segurança: comunica à PSP ou à PJ</strong>` : ""}<br>
 ${comRazao(`/denuncias/${d.id}/decidir`, "Decidir", html`<select name="acao" aria-label="Decisão"><option value="remover">Remover o conteúdo</option><option value="manter">Manter o conteúdo</option></select> `)} ${bloquearConta(d.conta_id, d.id)}</li>`)}
 ${secao("Relatos ativos", ativos, (r) => html`<li>${r.id} · ${r.tipo}${r.linha ? html` · linha ${r.linha}` : ""} · ${r.paragem} · ${hora(r.criado_em)} até ${hora(r.expira_em)} · ${quem(r.conta_id, r.email)}<br>
-${comRazao(`/relatos/${r.id}/apagar`, "Apagar")} ${bloquearConta(r.conta_id)}</li>`)}
+${comRazao(`/relatos/${r.id}/apagar`, "Apagar")}</li>`)}
 ${secao("Contas bloqueadas", bloqueios.results as Bloqueio[], (b) => html`<li>${b.email_hash} · ${hora(b.criado_em)} · ${b.motivo} ${botao(`/bloqueios/${b.email_hash}/desbloquear`, "Desbloquear")}</li>`)}
 ${secao("Emails por enviar", emails.results as EmailPorEnviar[], (e) => html`<li>${e.id} · para ${e.para} · ${hora(e.criado_em)} · ${e.assunto}<pre>${e.texto}</pre>${botao(`/emails/${e.id}/enviar`, "Enviar agora")}</li>`)}
 <h2>Apagar conta por email</h2>

@@ -177,12 +177,15 @@ async function decidirDenuncia(env: Env, id: string, campos: URLSearchParams, ag
   return avisos;
 }
 
-/** Pela marca do email normalizado: apanha as variantes do mesmo endereço e sobrevive a apagar a conta. Dura 12 meses (Cron). */
+/**
+ * Pela marca do email normalizado: apanha as variantes do mesmo endereço e sobrevive a apagar a conta. Dura 12 meses (Cron).
+ * Só depois de uma denúncia, como prometem os termos e a spec 4.7.
+ */
 async function bloquear(env: Env, contaId: string, campos: URLSearchParams, agora: number): Promise<Desfecho> {
   const denunciaId = campos.get("denuncia") || null;
   const razao = razaoDe(campos, denunciaId);
-  if (!razao) return 400;
-  if (denunciaId && !(await env.DB.prepare("SELECT 1 FROM denuncias WHERE id = ? LIMIT 1").bind(denunciaId).first())) return 400;
+  if (!razao || !denunciaId) return 400;
+  if (!(await env.DB.prepare("SELECT 1 FROM denuncias WHERE id = ? LIMIT 1").bind(denunciaId).first())) return 400;
   const conta = await env.DB.prepare("SELECT email FROM contas WHERE id = ? LIMIT 1").bind(contaId).first<{ email: string }>();
   if (!conta) return 404;
   const emailHash = await marcaDoEmail(conta.email);

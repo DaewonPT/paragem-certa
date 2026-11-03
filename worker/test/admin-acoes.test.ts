@@ -273,6 +273,8 @@ describe("pc-admin: avisos e formulários", () => {
       ["/denuncias/denuncia-1/decidir", { acao: "remover", motivo: "x", regra: "inventada" }],
       ["/contas/rui/bloquear", { ...RAZAO, regra: "inventada" }],
       ["/contas/rui/bloquear", { ...RAZAO, denuncia: "nao-existe" }],
+      // Os termos prometem que só se bloqueia depois de uma denúncia.
+      ["/contas/rui/bloquear", RAZAO],
       ["/contas/apagar", { email: "isto não é um email" }],
     ];
     for (const [caminho, corpo] of invalidos) {
@@ -333,6 +335,8 @@ describe("pc-admin: avisos e formulários", () => {
     }
     for (const regra of Object.keys(REGRAS)) expect(html, regra).toContain(`<option value="${regra}">`);
     expect(html).toContain('name="denuncia" value="denuncia-1"');
+    // Só na denúncia: a foto, a correção e o relato do rui não trazem "Bloquear conta".
+    expect(html.split('action="/contas/rui/bloquear"').length - 1).toBe(1);
   });
 });
 
