@@ -1,3 +1,4 @@
+import { carrisAoVivo } from "./carris";
 import { confirmarCodigo, limparExpirados, pedirCodigo } from "./codigos";
 import { lerAvisos, lerComunidade } from "./comunidade";
 import { aceitarTermos, apagarConta } from "./conta";
@@ -6,6 +7,7 @@ import { denunciar } from "./denuncias";
 import { sincronizar } from "./favoritos";
 import { enviarFoto } from "./fotos";
 import { entrarComGoogle, novoNonce } from "./google";
+import { FonteFalhou } from "./fontes";
 import { aplicarPrazos } from "./prazos";
 import { paginaPrivacidade } from "./privacidade";
 import { criarRelato, votar } from "./relatos";
@@ -14,7 +16,7 @@ import { resumoAoAutor } from "./resumo";
 import { sair } from "./sessoes";
 
 export default {
-  async fetch(pedido, env): Promise<Response> {
+  async fetch(pedido, env, ctx): Promise<Response> {
     try {
       const { pathname } = new URL(pedido.url);
 
@@ -38,6 +40,7 @@ export default {
       if (pedido.method === "GET") {
         if (pathname === "/api/comunidade") return await lerComunidade(pedido, env);
         if (pathname === "/api/avisos") return await lerAvisos(pedido, env);
+        if (pathname === "/api/rt/carris") return await carrisAoVivo(env, ctx);
       }
 
       if (pathname === "/api/conta" && pedido.method === "DELETE") return await apagarConta(pedido, env);
@@ -53,6 +56,8 @@ export default {
 
       return erro("nao_existe", 404);
     } catch (falha) {
+      // Uma fonte externa em baixo nunca é uma pausa: a app volta ao horário de sempre.
+      if (falha instanceof FonteFalhou) return erro("fonte_falhou", 502);
       // O D1 grátis passou o limite do dia: a app para de pedir até à meia-noite UTC (spec 5.4). Os outros erros sobem como antes.
       if (String(falha).includes("exceeded D1's free tier daily")) return erro("em_pausa", 503);
       throw falha;

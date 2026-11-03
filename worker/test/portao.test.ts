@@ -33,7 +33,7 @@ describe("portão das escritas da comunidade", () => {
     for (const funcao of ["comunidade", "correcoes"] as const) {
       expect(await recusa(await portaoDeEscrita(pedidoComToken(token), soAsFotos, funcao)), funcao).toEqual({ estado: 403, erro: "desligado" });
     }
-    expect(interruptores(soAsFotos)).toEqual({ conta: false, comunidade: false, fotos: true, correcoes: false });
+    expect(interruptores(soAsFotos)).toEqual({ conta: false, comunidade: false, fotos: true, correcoes: false, carrisAoVivo: false, metro: false });
   });
 
   it("interruptoresDeTesteForaDoAmbienteDeTesteSaoIgnorados", async () => {

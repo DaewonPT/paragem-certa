@@ -5,7 +5,9 @@
     "conta": false,
     "comunidade": false,
     "fotos": false,
-    "correcoes": false
+    "correcoes": false,
+    "carrisAoVivo": false,
+    "metro": false
   },
   "comunidade": {
     "confirmadoCom": 2,

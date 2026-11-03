@@ -16,7 +16,14 @@ export type Escritor = { contaId: string; email: string; emailHash: string };
  * Os interruptores do config.json. Os de teste só valem com AMBIENTE "teste" e sem RESEND_API_KEY: o servidor
  * publicado tem sempre a chave do Resend (o wrangler.jsonc exige-a), por isso não há como ligar nada por aí.
  */
-export function interruptores(env: Env): { conta: boolean; comunidade: boolean; fotos: boolean; correcoes: boolean } {
+export function interruptores(env: Env): {
+  conta: boolean;
+  comunidade: boolean;
+  fotos: boolean;
+  correcoes: boolean;
+  carrisAoVivo: boolean;
+  metro: boolean;
+} {
   if (env.AMBIENTE === "teste" && !env.RESEND_API_KEY && env.TESTE_INTERRUPTORES) {
     return { ...config.interruptores, ...JSON.parse(env.TESTE_INTERRUPTORES) };
   }
