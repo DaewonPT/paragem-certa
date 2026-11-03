@@ -1,0 +1,47 @@
+[
+  {
+    "id_expl": "105",
+    "estacaolocalizacao": "105 - CC Vasco da Gama",
+    "latitude": 38.768548,
+    "longitude": -9.096222,
+    "horariofuncionamento": "||> 6h00 - 2h00",
+    "wifi": true,
+    "atualizacaodtt": "14-09-2026 07:00"
+  },
+  {
+    "id_expl": "107",
+    "estacaolocalizacao": "107 - Rotunda dos Vice-Reis",
+    "latitude": 38.774505,
+    "longitude": -9.095416,
+    "horariofuncionamento": "||> 6h00 - 2h00",
+    "wifi": true,
+    "atualizacaodtt": "14-09-2026 07:00"
+  },
+  {
+    "id_expl": "261",
+    "estacaolocalizacao": "261 - Calçada da Estrela / Assembleia da República ",
+    "latitude": 38.7114685,
+    "longitude": -9.1538708,
+    "horariofuncionamento": "||> 6h00 - 2h00",
+    "wifi": true,
+    "atualizacaodtt": "14-09-2026 07:00"
+  },
+  {
+    "id_expl": "454",
+    "estacaolocalizacao": "454 - Av. Álvaro Pais / Rua da Cruz Vermelha\t",
+    "latitude": 38.744971,
+    "longitude": -9.151449,
+    "horariofuncionamento": "||> 6h00 - 2h00",
+    "wifi": true,
+    "atualizacaodtt": "14-09-2026 07:00"
+  },
+  {
+    "id_expl": "483",
+    "estacaolocalizacao": "483 - Rua Professor Francisco Lucas Pires ",
+    "latitude": 38.75939,
+    "longitude": -9.16405,
+    "horariofuncionamento": "||> 6h00 - 2h00",
+    "wifi": true,
+    "atualizacaodtt": "14-09-2026 07:00"
+  }
+]

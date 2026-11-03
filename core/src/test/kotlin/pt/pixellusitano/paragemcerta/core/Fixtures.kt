@@ -10,14 +10,23 @@ data class PedidoEnviado(val metodo: String, val url: String, val corpo: String?
 
 class PedidoEmBytes(val metodo: String, val url: String, val corpo: ByteArray, val tipo: String, val cabecalhos: Map<String, String>)
 
-/** Http falso: devolve as respostas pela ordem e regista os URL pedidos (e, em [enviados] e [enviadosEmBytes], os pedidos com corpo). */
+/**
+ * Http falso: devolve as respostas pela ordem e regista os URL pedidos (e, em [enviados] e [enviadosEmBytes], os pedidos com
+ * corpo; em [cabecalhosDoGet], os cabeçalhos dos GET feitos com [getCom]).
+ */
 class HttpFalso(private vararg val respostas: () -> Resposta) : Http {
     val pedidos = mutableListOf<String>()
     val enviados = mutableListOf<PedidoEnviado>()
     val enviadosEmBytes = mutableListOf<PedidoEmBytes>()
+    val cabecalhosDoGet = mutableListOf<Map<String, String>>()
     override suspend fun get(url: String): Resposta {
         pedidos += url
         return respostas[minOf(pedidos.size - 1, respostas.size - 1)]()
+    }
+
+    override suspend fun getCom(url: String, cabecalhos: Map<String, String>): Resposta {
+        cabecalhosDoGet += cabecalhos
+        return get(url)
     }
 
     override suspend fun enviar(metodo: String, url: String, corpo: String?, cabecalhos: Map<String, String>): Resposta {

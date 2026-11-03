@@ -15,10 +15,14 @@ import okhttp3.Response
 import java.io.IOException
 import java.util.concurrent.TimeUnit
 
-data class Resposta(val codigo: Int, val corpo: String)
+/** etag: o cabeçalho ETag da resposta (com as aspas), para o pedido seguinte o mandar em If-None-Match; null se não o trouxe. */
+data class Resposta(val codigo: Int, val corpo: String, val etag: String? = null)
 
 interface Http {
     suspend fun get(url: String): Resposta
+
+    /** Um GET com cabeçalhos (If-None-Match). Quem só faz GET simples não precisa de o implementar: ignora os cabeçalhos. */
+    suspend fun getCom(url: String, cabecalhos: Map<String, String>): Resposta = get(url)
 
     /** Pedido com método e corpo (JSON, quando há). Quem só faz GET não precisa de o implementar. */
     suspend fun enviar(metodo: String, url: String, corpo: String?, cabecalhos: Map<String, String> = emptyMap()): Resposta =
@@ -54,6 +58,12 @@ class OkHttpHttp(
 ) : Http {
     override suspend fun get(url: String): Resposta = executar(Request.Builder().url(url).header("User-Agent", agente))
 
+    override suspend fun getCom(url: String, cabecalhos: Map<String, String>): Resposta {
+        val pedido = Request.Builder().url(url).header("User-Agent", agente)
+        cabecalhos.forEach { (nome, valor) -> pedido.header(nome, valor) }
+        return executar(pedido)
+    }
+
     override suspend fun enviar(metodo: String, url: String, corpo: String?, cabecalhos: Map<String, String>): Resposta {
         val pedido = Request.Builder().url(url).header("User-Agent", agente)
         cabecalhos.forEach { (nome, valor) -> pedido.header(nome, valor) }
@@ -76,7 +86,7 @@ class OkHttpHttp(
         null // o endereço vem do servidor: um que o OkHttp não aceita é como não haver foto
     }
 
-    private suspend fun executar(pedido: Request.Builder): Resposta = executar(pedido) { Resposta(it.code, it.body.string()) }
+    private suspend fun executar(pedido: Request.Builder): Resposta = executar(pedido) { Resposta(it.code, it.body.string(), it.header("ETag")) }
 
     private suspend fun <T> executar(pedido: Request.Builder, ler: (Response) -> T): T = withContext(Dispatchers.IO) {
         cliente.newCall(pedido.build()).execute().use(ler)

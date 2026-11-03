@@ -65,13 +65,16 @@ class RedeTest {
         assertTrue(resultado.exceptionOrNull() is UnsupportedOperationException)
     }
 
-    /** Servidor HTTP local do JDK que guarda o que recebeu e responde [codigo] com [resposta] (por omissão, 200 "ok"). */
-    private fun comServidorLocal(codigo: Int = 200, resposta: ByteArray = "ok".toByteArray(), teste: (url: String, recebido: () -> Recebido) -> Unit) {
+    /** Servidor HTTP local do JDK que guarda o que recebeu e responde [codigo] com [resposta] (por omissão, 200 "ok") e o cabeçalho ETag [etag], se houver. */
+    private fun comServidorLocal(
+        codigo: Int = 200, resposta: ByteArray = "ok".toByteArray(), etag: String? = null, teste: (url: String, recebido: () -> Recebido) -> Unit,
+    ) {
         val guardado = AtomicReference<Recebido>()
         val servidor = HttpServer.create(InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0)
         servidor.createContext("/") { t ->
             guardado.set(Recebido(t.requestMethod, t.requestBody.readBytes(), t.requestHeaders.toMap()))
-            t.sendResponseHeaders(codigo, resposta.size.toLong())
+            etag?.let { t.responseHeaders.add("ETag", it) }
+            t.sendResponseHeaders(codigo, if (resposta.isEmpty()) -1 else resposta.size.toLong()) // -1: sem corpo (o 304 não pode levar)
             t.responseBody.use { it.write(resposta) }
         }
         servidor.start()
@@ -157,6 +160,33 @@ class RedeTest {
         assertEquals(Resultado.Falha(400, false), com(true, Resposta(400, """{"erro":{"a":1}}""")))
         assertTrue(Resultado.Falha(503, true, "em_pausa").emPausa)
         assertFalse(Resultado.Falha(503, true).emPausa)
+    }
+
+    @Test fun etagGuardadoEEnviado() = comServidorLocal(etag = "\"v2\"") { url, recebido ->
+        val http = OkHttpHttp(userAgent("0.4.0"))
+        // O ETag da resposta chega em Resposta.etag; o do pedido (o que ficou guardado) vai em If-None-Match, com o User-Agent de sempre.
+        val r = runBlocking { http.getCom(url, mapOf("If-None-Match" to "\"v1\"")) }
+        assertEquals(Resposta(200, "ok", "\"v2\""), r)
+        assertEquals("\"v1\"", recebido().cabecalhos["if-none-match"])
+        assertEquals(userAgent("0.4.0"), recebido().cabecalhos["user-agent"])
+        // Um GET sem cabeçalhos extra continua a ler o ETag e não manda If-None-Match.
+        assertEquals("\"v2\"", runBlocking { http.get(url) }.etag)
+        assertNull(recebido().cabecalhos["if-none-match"])
+    }
+
+    @Test fun naoModificadoChegaAoChamadorSemCorpo() = comServidorLocal(codigo = 304, resposta = ByteArray(0)) { url, _ ->
+        val r = runBlocking { OkHttpHttp(userAgent("0.4.0")).getCom(url, mapOf("If-None-Match" to "\"v1\"")) }
+        assertEquals(Resposta(304, ""), r)
+        // O converterResposta continua a tratar o que não é 2xx como falha: quem aceita o 304 olha para ele antes.
+        assertEquals(Resultado.Falha(304, limite = false), runBlocking { HttpFalso({ r }).pedir("u") { it } })
+    }
+
+    @Test fun httpSemGetComFazGet() {
+        val soGet = object : Http {
+            override suspend fun get(url: String) = Resposta(200, url)
+        }
+        // Os cabeçalhos só contam para quem os implementa; um Http que só faz GET continua a servir (e a compilar).
+        assertEquals(Resposta(200, "u"), runBlocking { soGet.getCom("u", mapOf("If-None-Match" to "\"v1\"")) })
     }
 
     @Test fun enviarDeleteSemCorpo() = comServidorLocal { url, recebido ->
