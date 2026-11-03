@@ -229,7 +229,7 @@ As leituras da comunidade não têm limite por IP (nas redes móveis muita gente
 
 ## 19. Carris ao vivo
 
-O `/api/rt/carris` lê o feed oficial das posições da Carris (GTFS-RT), tira as posições com mais de 5 minutos, as do futuro e as que não dizem a que paragem vão, e guarda o resultado 30 segundos na cache da Cloudflare. A Carris recebe no máximo um pedido por 30 segundos, por muita gente que tenha a app aberta; ninguém lhe pede nada diretamente do telemóvel. A app mostra os autocarros no mapa e no ecrã de uma linha, e "ao vivo, a N paragens" nas chegadas. Não leva nenhum segredo: não há nada para pôr na Cloudflare nem no GitHub.
+O `/api/rt/carris` lê o feed oficial das posições da Carris (GTFS-RT), tira as posições com mais de 5 minutos, as do futuro e as que não dizem a que paragem vão, e guarda o resultado 30 segundos na cache da Cloudflare, que é de cada centro de dados. A Carris recebe no máximo um pedido por 30 segundos de cada centro de dados (em Portugal, quase sempre só o de Lisboa), por muita gente que tenha a app aberta; ninguém lhe pede nada diretamente do telemóvel. A app mostra os autocarros no mapa e no ecrã de uma linha, e "ao vivo, a N paragens" nas chegadas. Não leva nenhum segredo: não há nada para pôr na Cloudflare nem no GitHub.
 
 O interruptor `carrisAoVivo` fica `false` até a Carris responder **por escrito** ao email do rascunho `rascunhos/email-carris.md` (fora do repositório; envias tu, do teu email). Com ele desligado, o `/api/rt/carris` dá 403 `desligado` e a app não mostra nem pede nada disto. Se a Carris pedir um crédito, junta-o ao ecrã Sobre antes de ligar.
 
