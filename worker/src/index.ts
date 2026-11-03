@@ -2,6 +2,7 @@ import { confirmarCodigo, limparExpirados, pedirCodigo } from "./codigos";
 import { lerAvisos, lerComunidade } from "./comunidade";
 import { aceitarTermos, apagarConta } from "./conta";
 import { criarCorrecao } from "./correcoes";
+import { denunciar } from "./denuncias";
 import { sincronizar } from "./favoritos";
 import { enviarFoto } from "./fotos";
 import { entrarComGoogle, novoNonce } from "./google";
@@ -29,6 +30,7 @@ export default {
         if (pathname === "/api/votos") return await votar(pedido, env);
         if (pathname === "/api/fotos") return await enviarFoto(pedido, env);
         if (pathname === "/api/correcoes") return await criarCorrecao(pedido, env);
+        if (pathname === "/api/denuncias") return await denunciar(pedido, env);
       }
 
       if (pedido.method === "GET") {
