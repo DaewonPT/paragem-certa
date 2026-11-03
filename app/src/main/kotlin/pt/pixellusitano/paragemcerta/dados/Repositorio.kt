@@ -5,13 +5,18 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import pt.pixellusitano.paragemcerta.core.atraso.aindaPorChegar
+import pt.pixellusitano.paragemcerta.core.aovivo.paragensEmFalta
 import pt.pixellusitano.paragemcerta.core.aovivo.veiculoDaCarris
+import pt.pixellusitano.paragemcerta.core.aovivo.viagemCarrisDeTransitous
 import pt.pixellusitano.paragemcerta.core.comunidade.chaveLinha
 import pt.pixellusitano.paragemcerta.core.fontes.cm.CarrisMetropolitana
 import pt.pixellusitano.paragemcerta.core.fontes.cm.CmParser
@@ -21,6 +26,7 @@ import pt.pixellusitano.paragemcerta.core.fontes.geoapi.GeoApi
 import pt.pixellusitano.paragemcerta.core.fontes.geoapi.ehCodigoPostal
 import pt.pixellusitano.paragemcerta.core.fontes.geoapi.normalizarCodigoPostal
 import pt.pixellusitano.paragemcerta.core.fontes.geoapi.paraLugar
+import pt.pixellusitano.paragemcerta.core.fontes.servidor.AoVivoCarris
 import pt.pixellusitano.paragemcerta.core.fontes.servidor.FavoritoRemoto
 import pt.pixellusitano.paragemcerta.core.fontes.servidor.Interruptores
 import pt.pixellusitano.paragemcerta.core.fontes.servidor.ServidorParagemCerta
@@ -58,6 +64,9 @@ data class EstadoChegadas(
     val semLigacao: Boolean,
     val tempoRealIndisponivel: Boolean,
 )
+
+/** O autocarro ao vivo de uma chegada da Carris: [paragensEmFalta] até à paragem (0 = a chegar; nunca negativo: se já passou não há [AoVivo]). */
+data class AoVivo(val idViagem: String, val paragensEmFalta: Int)
 
 data class LocalGuardado(val id: Long, val nome: String, val lugar: Lugar, val tipo: String, val ordem: Int)
 
@@ -188,32 +197,72 @@ class Repositorio(
     }
 
     /**
-     * Os autocarros da Carris ao vivo (do servidor, que guarda o GTFS-RT 30 s) de 30 em 30 s. Sem servidor ou com o `carrisAoVivo`
-     * desligado dá a lista vazia sem pedir, e volta a ver o interruptor daí a pouco (o config.json pode chegar depois de o mapa
-     * abrir); numa falha dá a lista vazia e espera como a CM.
+     * As posições da Carris ao vivo (do servidor, que guarda o GTFS-RT 30 s) de 30 em 30 s. Sem servidor ou com o `carrisAoVivo`
+     * desligado dá null sem pedir, e volta a ver o interruptor daí a pouco (o config.json pode chegar depois de o ecrã abrir); numa
+     * falha dá null e espera como a CM.
      */
-    fun veiculosCarris(): Flow<List<Veiculo>> = flow {
+    private fun leiturasCarris(): Flow<AoVivoCarris?> = flow {
         var tentativa = 0
         while (true) {
             val doServidor = servidor
             if (doServidor == null || !interruptores().carrisAoVivo) {
-                emit(emptyList())
+                emit(null)
                 delay(ESPERA_SEM_CARRIS.toMillis())
                 continue
             }
             when (val r = doServidor.carrisAoVivo()) {
                 is Resultado.Ok -> {
                     tentativa = 0
-                    val catalogo = catalogo()
-                    emit(r.valor.veiculos.map { veiculoDaCarris(it, catalogo) })
+                    emit(r.valor)
                     delay(INTERVALO_CARRIS.toMillis())
                 }
                 is Resultado.Falha -> {
-                    emit(emptyList())
+                    emit(null)
                     delay(pausaDepoisDeFalha(Fonte.CM, tentativa++).toMillis())
                 }
             }
         }
+    }
+
+    /** Os autocarros da Carris ao vivo de [leiturasCarris]; sem leitura, a lista vazia. */
+    fun veiculosCarris(): Flow<List<Veiculo>> = leiturasCarris().map { leitura ->
+        val catalogo = catalogo()
+        leitura?.veiculos?.map { veiculoDaCarris(it, catalogo) }.orEmpty()
+    }
+
+    // As paragens de cada viagem lidas ao Transitous, para a sessão: a lista de uma viagem não muda.
+    private val paragensDasViagens = mutableMapOf<String, List<String>>()
+
+    /**
+     * "ao vivo, a N paragens" das [chegadas] da paragem da Carris [paragemId], pelo `idViagem` de cada uma: só as que têm um autocarro
+     * ao vivo que ainda não passou nela. N sai da posição da paragem na viagem (o `/api/v6/trip`, lido uma vez por sessão) menos o
+     * `current_stop_sequence` do autocarro; as posições vêm de [leiturasCarris]. Cada chamada (um ecrã) lê no máximo 3 viagens. Outra
+     * paragem, sem servidor, sem o `carrisAoVivo` ou numa falha: nada, e o ecrã fica com o horário.
+     */
+    fun aoVivoCarris(paragemId: String, chegadas: Flow<List<Chegada>>): Flow<Map<String, AoVivo>> {
+        if (!paragemId.startsWith(PARAGEM_CARRIS)) return emptyFlow()
+        var lidas = 0
+        return flow {
+            combine(chegadas, leiturasCarris(), ::Pair).collect { (lista, leitura) ->
+                val agora = relogio()
+                val veiculos = leitura?.veiculos.orEmpty().associateBy { it.viagem }
+                val vivos = mutableMapOf<String, AoVivo>()
+                for (c in lista) {
+                    val idViagem = c.idViagem ?: continue
+                    val veiculo = veiculos[viagemCarrisDeTransitous(idViagem)] ?: continue
+                    if (!aindaPorChegar(c, agora)) continue
+                    val paragens = paragensDasViagens[idViagem] ?: run {
+                        if (lidas >= MAX_VIAGENS_POR_ECRA) return@run null
+                        lidas++
+                        (transitous.paragensDaViagem(idViagem) as? Resultado.Ok)?.valor?.also { paragensDasViagens[idViagem] = it }
+                    } ?: continue
+                    // shortcut: uma paragem que a viagem repete (circulares) conta pela primeira vez, e um autocarro já a meio do percurso fica sem etiqueta nela; contar a primeira depois do seq se pesar.
+                    val posicao = paragens.indexOf(paragemId) + 1
+                    if (posicao > 0) paragensEmFalta(posicao, veiculo.seq)?.let { vivos[idViagem] = AoVivo(idViagem, it) }
+                }
+                emit(vivos)
+            }
+        }.distinctUntilChanged()
     }
 
     private var alertasEmCache: Pair<Instant, List<Alerta>>? = null
@@ -578,6 +627,8 @@ class Repositorio(
         val INTERVALO_VEICULOS: Duration = Duration.ofSeconds(15)
         val INTERVALO_CARRIS: Duration = Duration.ofSeconds(30)
         val ESPERA_SEM_CARRIS: Duration = Duration.ofSeconds(5)
+        const val PARAGEM_CARRIS = "pt-Carris_"
+        const val MAX_VIAGENS_POR_ECRA = 3
         val VALIDADE_ALERTAS: Duration = Duration.ofMinutes(5)
         val VALIDADE_PARTIDAS: Duration = Duration.ofSeconds(20)
         const val RAIO_REPETIDOS_METROS = 400.0

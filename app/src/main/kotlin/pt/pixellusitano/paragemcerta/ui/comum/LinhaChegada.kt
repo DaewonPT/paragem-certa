@@ -15,12 +15,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.pluralStringResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.core.atraso.EstadoAtraso
 import pt.pixellusitano.paragemcerta.core.atraso.Limites
 import pt.pixellusitano.paragemcerta.core.atraso.estado
@@ -30,6 +33,7 @@ import pt.pixellusitano.paragemcerta.core.atraso.rotuloTempo
 import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.modelo.Linha
 import pt.pixellusitano.paragemcerta.core.modelo.Modo
+import pt.pixellusitano.paragemcerta.dados.AoVivo
 import pt.pixellusitano.paragemcerta.ui.tema.CoresAtraso
 import pt.pixellusitano.paragemcerta.ui.tema.LocalEscuro
 import java.time.Duration
@@ -69,8 +73,11 @@ fun situacaoAtraso(programada: Instant, prevista: Instant?, limites: Limites): S
     }
 }
 
-/** Frase completa para o leitor de ecrã, por exemplo "Linha 728 para Restelo, daqui a 7 minutos, atrasado 3 minutos". */
-fun descricaoChegada(c: Chegada, agora: Instant, limites: Limites = Limites()): String {
+/**
+ * Frase completa para o leitor de ecrã, por exemplo "Linha 728 para Restelo, daqui a 7 minutos, atrasado 3 minutos". [aoVivo] é o texto
+ * "ao vivo, a 5 paragens" que se vê no lugar do "horário": o leitor diz o mesmo em vez de "hora do horário, sem tempo real".
+ */
+fun descricaoChegada(c: Chegada, agora: Instant, limites: Limites = Limites(), aoVivo: String? = null): String {
     val quando = when {
         c.prevista == null -> "às ${HORA.format(c.programada.atZone(LISBOA_FUSO))}"
         else -> {
@@ -82,7 +89,7 @@ fun descricaoChegada(c: Chegada, agora: Instant, limites: Limites = Limites()): 
             }
         }
     }
-    val situacao = situacaoAtraso(c.programada, c.prevista, limites)
+    val situacao = aoVivo ?: situacaoAtraso(c.programada, c.prevista, limites)
     val acessivel = if (c.acessivel == true) ", acessível a cadeira de rodas" else ""
     return "Linha ${c.linhaNome} para ${c.destino}, $quando, $situacao$acessivel"
 }
@@ -99,10 +106,19 @@ fun SeloLinha(nome: String, cor: Color, corTexto: Color = Color.White) {
     )
 }
 
+/** "ao vivo, a 5 paragens" ou, a zero, "ao vivo, a chegar". */
 @Composable
-fun LinhaChegada(c: Chegada, linha: Linha?, agora: Instant, limites: Limites = LocalLimites.current) {
-    val cor = CoresAtraso.cor(estado(c, limites), LocalEscuro.current)
-    val descricao = descricaoChegada(c, agora, limites)
+private fun textoAoVivo(a: AoVivo): String =
+    if (a.paragensEmFalta == 0) stringResource(R.string.ao_vivo_a_chegar)
+    else pluralStringResource(R.plurals.ao_vivo_paragens, a.paragensEmFalta, a.paragensEmFalta)
+
+/** [aoVivo] (só Carris) toma o lugar do "horário", a verde; com tempo real do Transitous na chegada, esse é que se mostra. */
+@Composable
+fun LinhaChegada(c: Chegada, linha: Linha?, agora: Instant, limites: Limites = LocalLimites.current, aoVivo: AoVivo? = null) {
+    val escuro = LocalEscuro.current
+    val cor = CoresAtraso.cor(estado(c, limites), escuro)
+    val etiquetaAoVivo = aoVivo?.takeIf { c.prevista == null }?.let { textoAoVivo(it) }
+    val descricao = descricaoChegada(c, agora, limites, etiquetaAoVivo)
     Row(
         Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(vertical = 6.dp).clearAndSetSemantics { contentDescription = descricao },
         verticalAlignment = Alignment.CenterVertically,
@@ -122,7 +138,8 @@ fun LinhaChegada(c: Chegada, linha: Linha?, agora: Instant, limites: Limites = L
         )
         Column(horizontalAlignment = Alignment.End) {
             Text(rotuloTempo(c, agora, LISBOA_FUSO), color = cor, fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.titleMedium)
-            Text(rotuloAtraso(c, limites), color = cor, style = MaterialTheme.typography.labelSmall)
+            if (etiquetaAoVivo != null) Text(etiquetaAoVivo, color = CoresAtraso.cor(EstadoAtraso.A_HORAS, escuro), style = MaterialTheme.typography.labelSmall)
+            else Text(rotuloAtraso(c, limites), color = cor, style = MaterialTheme.typography.labelSmall)
         }
     }
 }

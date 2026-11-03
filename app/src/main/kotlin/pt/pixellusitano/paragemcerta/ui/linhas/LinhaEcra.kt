@@ -51,6 +51,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.map
 import org.maplibre.android.geometry.LatLng
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.core.atraso.aindaPorChegar
@@ -62,6 +63,7 @@ import pt.pixellusitano.paragemcerta.core.modelo.Gravidade
 import pt.pixellusitano.paragemcerta.core.modelo.Linha
 import pt.pixellusitano.paragemcerta.core.modelo.Paragem
 import pt.pixellusitano.paragemcerta.core.modelo.Veiculo
+import pt.pixellusitano.paragemcerta.dados.AoVivo
 import pt.pixellusitano.paragemcerta.dados.Comunidade
 import pt.pixellusitano.paragemcerta.dados.Configuracoes
 import pt.pixellusitano.paragemcerta.dados.DetalheDasLinhas
@@ -85,6 +87,7 @@ import pt.pixellusitano.paragemcerta.ui.mapa.Percurso
 import pt.pixellusitano.paragemcerta.ui.mapa.daCarris
 import pt.pixellusitano.paragemcerta.ui.mapa.veiculosDaLinha
 import pt.pixellusitano.paragemcerta.ui.paragem.estiloDaGravidade
+import pt.pixellusitano.paragemcerta.ui.paragem.rememberAoVivoCarris
 import pt.pixellusitano.paragemcerta.ui.rotas.hex
 import pt.pixellusitano.paragemcerta.ui.tema.FrisoAzulejo
 import pt.pixellusitano.paragemcerta.ui.tema.LocalEscuro
@@ -115,6 +118,7 @@ data class EstadoLinha(
     val horarioAberto: Boolean = false,
     val horarioFalhou: Boolean = false,
     val falhou: Boolean = false,
+    val aoVivo: Map<String, AoVivo> = emptyMap(),
 )
 
 // "CM" ou o id do operador no Transitous ("pt-Carris"): como o `config.json` identifica o mapa da rede de cada um.
@@ -143,6 +147,8 @@ fun LinhaEcra(
     val cm = remember(ref) { if (ref.fonte == Fonte.CM) repositorio.veiculos() else emptyFlow<List<Veiculo>>() }
     val carris = remember(ref) { if (ref.daCarris) repositorio.veiculosCarris() else emptyFlow<List<Veiculo>>() }
     val aoVivo = rememberVeiculosDoMapa(cm, carris, preferencias)
+    // As próximas da paragem escolhida com o "ao vivo, a N paragens" da Carris, como no ecrã da paragem; recomeça ao escolher outra paragem.
+    val aoVivoDasProximas = rememberAoVivoCarris(repositorio, estado.escolhida?.ref?.id, remember(vm) { vm.estado.map { it.chegadas?.chegadas.orEmpty() } })
     val agora by produceState(Instant.now()) {
         while (true) {
             delay(15_000)
@@ -152,7 +158,7 @@ fun LinhaEcra(
     val mapaOficial = estado.detalhe?.let { d -> config.mapasOficiais.firstOrNull { it.operador == operadorDoMapa(d.ref) }?.url }
     val escuro = LocalEscuro.current
     LinhaConteudo(
-        estado = estado.copy(mapaOficial = mapaOficial),
+        estado = estado.copy(mapaOficial = mapaOficial, aoVivo = aoVivoDasProximas),
         aoMudarSentido = vm::mudarSentido,
         aoEscolherParagem = vm::escolherParagem,
         aoAbrirParagem = aoAbrirParagem,
@@ -356,7 +362,7 @@ private fun PainelDaParagem(
         when {
             e == null -> Texto(stringResource(R.string.a_carregar))
             visiveis.isNullOrEmpty() && !e.semLigacao && !e.tempoRealIndisponivel -> Texto(stringResource(R.string.sem_chegadas))
-            else -> visiveis.orEmpty().forEach { LinhaChegada(it, linha, agora) }
+            else -> visiveis.orEmpty().forEach { LinhaChegada(it, linha, agora, aoVivo = estado.aoVivo[it.idViagem]) }
         }
         Button(onClick = { aoAbrirParagem(p) }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
             Text(stringResource(R.string.linha_abrir_paragem))

@@ -40,6 +40,10 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import pt.pixellusitano.paragemcerta.BuildConfig
 import pt.pixellusitano.paragemcerta.R
@@ -48,10 +52,12 @@ import pt.pixellusitano.paragemcerta.core.atraso.aindaPorChegar
 import pt.pixellusitano.paragemcerta.core.comunidade.chaveLinha
 import pt.pixellusitano.paragemcerta.core.fontes.servidor.RelatoRemoto
 import pt.pixellusitano.paragemcerta.core.modelo.Alerta
+import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.modelo.Gravidade
 import pt.pixellusitano.paragemcerta.core.modelo.Linha
 import pt.pixellusitano.paragemcerta.core.modelo.Paragem
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
+import pt.pixellusitano.paragemcerta.dados.AoVivo
 import pt.pixellusitano.paragemcerta.dados.Comunidade
 import pt.pixellusitano.paragemcerta.dados.Configuracoes
 import pt.pixellusitano.paragemcerta.dados.EstadoChegadas
@@ -104,6 +110,7 @@ fun ParagemEcra(
     val vigiadas by ServicoAvisoChegada.paragensVigiadas.collectAsStateWithLifecycle()
     val vigiada = ref.chave in vigiadas
     var avisaMe by rememberSaveable { mutableStateOf(false) }
+    val aoVivo = rememberAoVivoCarris(repositorio, ref.id, remember(vm) { vm.estado.filterNotNull().map { it.chegadas } })
     val relatos = rememberRelatosDaParagem(ref.chave, paragem, comunidade, configuracoes, preferencias, aoAbrirConta)
     // A paragem como os passageiros a corrigiram (as correções aprovadas): é a que se mostra e a que "Encontrar a paragem" procura.
     val corrigida = paragem?.let { aplicarCorrecoes(it, relatos.correcoes) }
@@ -148,9 +155,20 @@ fun ParagemEcra(
         fotos = { FotosDaParagem(ref.chave, relatos, comunidade, configuracoes, carregarFoto, aoAbrirConta) },
         jaNaoExiste = corrigida?.second == true,
         corrigir = { CorrigirNaParagem(vista, comunidade, configuracoes, aoAbrirConta) },
+        aoVivo = aoVivo,
     )
     // O serviço vigia as linhas pelo nome que a pessoa vê (o do Transitous não é o id).
     if (avisaMe) AvisaMe(ref, nome, presentes.map { it.second }.distinct(), aoFechar = { avisaMe = false })
+}
+
+/**
+ * O "ao vivo, a N paragens" das [chegadas] da paragem [paragemId], pelo `idViagem` de cada uma (ver [Repositorio.aoVivoCarris]); vazio
+ * enquanto não há (outro operador, interruptor desligado, falha). Só lê com o ecrã à vista (STARTED), como as chegadas.
+ */
+@Composable
+fun rememberAoVivoCarris(repositorio: Repositorio, paragemId: String?, chegadas: Flow<List<Chegada>>): Map<String, AoVivo> {
+    val fluxo = remember(paragemId) { if (paragemId == null) emptyFlow() else repositorio.aoVivoCarris(paragemId, chegadas) }
+    return fluxo.collectAsStateWithLifecycle(emptyMap()).value
 }
 
 /** Conteúdo puro do ecrã da paragem (testado com capturas). */
@@ -182,6 +200,7 @@ fun ParagemConteudo(
     fotos: @Composable () -> Unit = {},
     jaNaoExiste: Boolean = false,
     corrigir: @Composable () -> Unit = {},
+    aoVivo: Map<String, AoVivo> = emptyMap(),
 ) {
     Column(modifier.background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState())) {
         Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.primary).statusBarsPadding().padding(start = 4.dp, end = 4.dp, bottom = 12.dp)) {
@@ -235,7 +254,7 @@ fun ParagemConteudo(
                 visiveis.isNullOrEmpty() && !estado.semLigacao && !estado.tempoRealIndisponivel ->
                     Text(stringResource(R.string.sem_chegadas), color = MaterialTheme.colorScheme.onSurfaceVariant,
                         modifier = Modifier.padding(vertical = 16.dp))
-                else -> visiveis.orEmpty().forEach { LinhaChegada(it, linhas[it.linhaId], agora) }
+                else -> visiveis.orEmpty().forEach { LinhaChegada(it, linhas[it.linhaId], agora, aoVivo = aoVivo[it.idViagem]) }
             }
             // Sem linhas à vista não há o que escolher; se a paragem já está vigiada, "Parar" serve sempre.
             Button(onClick = aoAvisaMe, enabled = vigiada || linhasPresentes.isNotEmpty(), modifier = Modifier.padding(top = 16.dp).fillMaxWidth()) {

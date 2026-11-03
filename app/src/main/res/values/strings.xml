@@ -45,6 +45,12 @@
     <string name="sem_ligacao">Sem ligação — atualizado há %1$d min</string>
     <string name="sem_ligacao_nada">Sem ligação — ainda não há dados guardados</string>
     <string name="tempo_real_indisponivel">Tempo real indisponível</string>
+    <!-- Uma chegada da Carris com o autocarro ao vivo, no lugar do "horário" -->
+    <plurals name="ao_vivo_paragens">
+        <item quantity="one">ao vivo, a %d paragem</item>
+        <item quantity="other">ao vivo, a %d paragens</item>
+    </plurals>
+    <string name="ao_vivo_a_chegar">ao vivo, a chegar</string>
     <string name="acessivel">Acessível a cadeira de rodas</string>
 
     <!-- Paragem -->
