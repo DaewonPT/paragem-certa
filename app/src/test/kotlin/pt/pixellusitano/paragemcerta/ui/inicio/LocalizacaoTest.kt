@@ -11,6 +11,8 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performScrollTo
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -19,6 +21,7 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowLooper
+import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.ui.tema.ModoTema
 import pt.pixellusitano.paragemcerta.ui.tema.TemaParagemCerta
 
@@ -34,6 +37,12 @@ class LocalizacaoTest {
             }
         }
         regra.onNodeWithText("Agora não").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test fun pedidoDeLocalizacaoNaoPrometeOQueNaoCumpre() {
+        val texto = RuntimeEnvironment.getApplication().getString(R.string.loc_texto)
+        assertTrue("a posição vai nos pedidos ao Transitous", "Transitous" in texto)
+        assertFalse("a posição sai do telemóvel", "fica no telemóvel" in texto)
     }
 
     @Test fun pedeAPosicaoAtual() {

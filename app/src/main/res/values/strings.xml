@@ -20,7 +20,7 @@
 
     <!-- Início e localização -->
     <string name="loc_titulo">Paragens perto de ti</string>
-    <string name="loc_texto">A Paragem Certa usa a tua localização para mostrar as paragens e as chegadas mais próximas. A posição fica no telemóvel: só é usada enquanto a app está aberta.</string>
+    <string name="loc_texto">A Paragem Certa usa a tua localização para mostrar as paragens e as chegadas mais próximas, e só enquanto a app está aberta. A posição não vai para o servidor da Paragem Certa, mas vai nos pedidos ao Transitous, o serviço que dá as paragens e as rotas.</string>
     <string name="loc_aceitar">Permitir localização</string>
     <string name="loc_recusar">Agora não</string>
     <string name="centrar_posicao">Centrar na minha posição</string>
@@ -335,7 +335,7 @@
     <string name="prep_notificacoes_titulo">Avisos sem notificação</string>
     <string name="prep_notificacoes_texto">Os avisos Prepara-te e Sai agora vão só tocar e vibrar, sem aparecer no ecrã.</string>
     <string name="prep_bateria_titulo">Poupança de bateria</string>
-    <string name="prep_bateria_texto">Alguns telemóveis fecham as apps quando o ecrã está desligado e a viagem pára sem avisar. Tira a Paragem Certa da poupança de bateria para os avisos não falharem.</string>
+    <string name="prep_bateria_texto">Alguns telemóveis fecham as apps quando o ecrã está desligado e a viagem para sem avisar. Tira a Paragem Certa da poupança de bateria para os avisos não falharem.</string>
     <string name="prep_bateria_definicoes">Abrir definições da bateria</string>
     <string name="prep_bateria_guia">Ver o guia para o teu telemóvel</string>
     <string name="prep_volume_titulo">Volume do alarme a zero</string>
