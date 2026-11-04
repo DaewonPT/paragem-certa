@@ -5,10 +5,16 @@ import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.view.View
 import android.widget.FrameLayout
+import android.widget.ImageButton
 import android.widget.TextView
+import androidx.core.graphics.ColorUtils
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -18,6 +24,7 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import org.robolectric.annotation.GraphicsMode
 import org.robolectric.shadow.api.Shadow
 import org.robolectric.shadows.ShadowBroadcastPendingResult
 import org.robolectric.shadows.ShadowLooper
@@ -74,6 +81,62 @@ class WidgetChegadasTest {
     private fun configuracao() = contexto.resources.getXml(R.xml.widget_chegadas).apply { while (name != "appwidget-provider") next() }
 
     private fun desenhado(conteudo: ConteudoWidget) = vistas(contexto, 1, conteudo).apply(contexto, FrameLayout(contexto))
+
+    private fun noModo(escuro: Boolean) = contexto.createConfigurationContext(
+        Configuration(contexto.resources.configuration).apply {
+            uiMode = (uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or (if (escuro) Configuration.UI_MODE_NIGHT_YES else Configuration.UI_MODE_NIGHT_NO)
+        },
+    )
+
+    /** O launcher volta a aplicar os mesmos RemoteViews quando o telemóvel muda de modo, sem nada redesenhar. */
+    private fun aplicadoNoOutroModo(desenhadoEscuro: Boolean, conteudo: ConteudoWidget): View {
+        val ecra = noModo(!desenhadoEscuro)
+        return vistas(noModo(desenhadoEscuro), 1, conteudo).apply(ecra, FrameLayout(ecra))
+    }
+
+    private val comChegadas = ConteudoWidget(
+        "Cais",
+        listOf(LinhaWidget("728", "Restelo", "14:32", aoVivo = true), LinhaWidget("15E", "Algés", "14:40", aoVivo = false)),
+        "14:00", cinzento = false, EstadoWidget.Normal,
+    )
+
+    @Test fun oTextoLeSeDepoisDeMudarDeModo() {
+        val textos = listOf(
+            R.id.widget_paragem, R.id.widget_aviso, R.id.widget_rodape,
+            R.id.widget_linha_1_nome, R.id.widget_linha_1_destino, R.id.widget_linha_1_hora,
+            R.id.widget_linha_2_nome, R.id.widget_linha_2_destino, R.id.widget_linha_2_hora,
+        )
+        val casos = listOf(
+            comChegadas,
+            comChegadas.copy(cinzento = true),
+            comChegadas.copy(linhas = emptyList()),
+            ConteudoWidget(null, emptyList(), null, false, EstadoWidget.Normal),
+        )
+        for (escuro in listOf(false, true)) for (conteudo in casos) {
+            val v = aplicadoNoOutroModo(escuro, conteudo)
+            val fundo = (v.background as GradientDrawable).color!!.defaultColor
+            // O texto de uma linha escondida continua VISIBLE; quem esconde é a linha, a mãe dele.
+            textos.map { v.findViewById<TextView>(it) }.filter { it.visibility == View.VISIBLE && (it.parent as View).visibility == View.VISIBLE }.forEach {
+                val contraste = ColorUtils.calculateContrast(it.currentTextColor, fundo)
+                assertTrue("desenhado escuro=$escuro, ${it.resources.getResourceEntryName(it.id)} em $conteudo: $contraste", contraste >= 4.5)
+            }
+        }
+    }
+
+    // A pixeis: o que conta é a cor que se vê, e no ícone há um android:tint a competir com a cor posta no desenho.
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test fun oAtualizarFicaNaCorDoDesenho() {
+        for (escuro in listOf(false, true)) {
+            val botao = aplicadoNoOutroModo(escuro, comChegadas).findViewById<ImageButton>(R.id.widget_atualizar)
+            val lado = View.MeasureSpec.makeMeasureSpec(48, View.MeasureSpec.EXACTLY)
+            botao.measure(lado, lado)
+            botao.layout(0, 0, 48, 48)
+            val imagem = Bitmap.createBitmap(48, 48, Bitmap.Config.ARGB_8888).also { botao.draw(Canvas(it)) }
+            val pixeis = IntArray(48 * 48).also { imagem.getPixels(it, 0, 48, 0, 0, 48, 48) }
+            assertTrue("desenhado escuro=$escuro", noModo(escuro).getColor(R.color.widget_texto) in pixeis)
+            assertFalse("desenhado escuro=$escuro", noModo(!escuro).getColor(R.color.widget_texto) in pixeis)
+        }
+    }
 
     @Test fun naoAcordaSozinho() = assertEquals(0, configuracao().getAttributeIntValue(ANDROID, "updatePeriodMillis", -1))
 

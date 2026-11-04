@@ -5,6 +5,7 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.Context
 import android.content.Intent
+import android.content.res.Configuration
 import android.view.View
 import android.widget.RemoteViews
 import kotlinx.coroutines.CoroutineScope
@@ -74,7 +75,7 @@ private val LINHAS = listOf(
     IdsLinha(R.id.widget_linha_3, R.id.widget_linha_3_nome, R.id.widget_linha_3_destino, R.id.widget_linha_3_hora),
 )
 
-// shortcut: as cores postas aqui ficam as do modo (claro ou escuro) de quando se desenhou, até ao redesenho seguinte; setColorStateList só existe no Android 12+.
+// shortcut: o widget fica no modo (claro ou escuro) de quando se desenhou até ao redesenho seguinte, mas sempre legível; quando o minSdk for 31, setColorStateList deixa-o acompanhar o modo.
 fun vistas(contexto: Context, id: Int, conteudo: ConteudoWidget): RemoteViews {
     val v = RemoteViews(contexto.packageName, R.layout.widget_chegadas)
     if (conteudo.paragem == null) {
@@ -85,6 +86,13 @@ fun vistas(contexto: Context, id: Int, conteudo: ConteudoWidget): RemoteViews {
     }
     val cinzento = contexto.getColor(R.color.widget_cinzento)
     fun cor(normal: Int) = if (conteudo.cinzento) cinzento else contexto.getColor(normal)
+
+    // O launcher volta a aplicar isto quando o telemóvel muda de modo: o que seguisse o modo novo deixava de se ler contra o que ficou fixo.
+    val escuro = contexto.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
+    v.setInt(R.id.widget_raiz, "setBackgroundResource", if (escuro) R.drawable.widget_fundo_escuro else R.drawable.widget_fundo_claro)
+    v.setInt(R.id.widget_atualizar, "setColorFilter", contexto.getColor(R.color.widget_texto))
+    v.setTextColor(R.id.widget_aviso, cor(R.color.widget_texto))
+    v.setTextColor(R.id.widget_rodape, cinzento)
 
     v.setTextViewText(R.id.widget_paragem, conteudo.paragem)
     v.setTextColor(R.id.widget_paragem, cor(R.color.widget_texto))

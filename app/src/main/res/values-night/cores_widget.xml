@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="widget_fundo">#FF121B30</color>
+    <drawable name="widget_fundo">@drawable/widget_fundo_escuro</drawable>
     <color name="widget_texto">#FFEAF0FB</color>
     <color name="widget_verde">#FF4ADE80</color>
     <color name="widget_cinzento">#FF8D9AB3</color>
