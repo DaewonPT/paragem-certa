@@ -1,10 +1,10 @@
 # Publicar o servidor da Paragem Certa
 
-Guia para o autor. Nada disto foi feito por nós: o servidor (`worker/`) só corre no PC até fazeres estes passos, e só os fazes depois do teu "publica". Os comandos correm numa janela de terminal dentro da pasta `worker/` (`npm ci` primeiro, uma vez).
+Guia para o autor. O servidor (`worker/`) só corre no PC até fazeres estes passos. Os comandos correm numa janela de terminal dentro da pasta `worker/` (`npm ci` primeiro, uma vez).
 
 Precisas de: a conta da Cloudflare (com a zona `pixellusitano.com`), uma conta na Resend, uma conta na Google Cloud, o repositório no GitHub e o Node 24.
 
-**Regra de ouro:** nenhuma chave, token, nome ou id do cliente da Google vai para o repositório nem para uma conversa. Colas tu cada valor, no sítio indicado.
+**Regra de ouro:** nenhuma chave, token, nome ou id do cliente da Google vai para o repositório. Colas cada valor no sítio indicado.
 
 **Quando:** só com a 0.4.0, no fim da etapa 5. A política de privacidade já descreve a comunidade, as fotos e os dados ao vivo da Carris, que só existem nessa altura. Antes de publicar, relê-a contra o que a app faz mesmo.
 
@@ -14,17 +14,15 @@ A ordem conta: o `wrangler.jsonc` exige seis segredos (`secrets.required`) e os 
 
 ## Publicar a 0.4.0, por esta ordem
 
-Nada disto começa antes do teu "publica". Depois dele, os passos marcados **(assistente)** podem ser feitos por mim; os marcados **(tu)** pedem as tuas contas ou chaves.
+1. Enviar o ramo `versao-0-4` para o GitHub.
+2. **Capturas de referência:** Actions → Android → Run workflow, no ramo `versao-0-4`, com `record_screenshots` ligado. Descarregar o artefacto `roborazzi-goldens`, fazer commit das capturas em `app/src/test/screenshots` e correr o mesmo workflow outra vez, sem `record_screenshots`, até ficar verde.
+3. Juntar o ramo ao `main`.
+4. Este guia, do passo 1 ao passo 18: Cloudflare, Resend, Google, segredos, R2, Zero Trust e `pc-admin`. Relê a política de privacidade antes.
+5. A variável `SERVIDOR_PUBLICADO` = `sim` e **Servidor → Run workflow**, no `main` (passo 20). Põe no ar o `linhas.json` e o `fotos-de-rua.json`. Confirma que `https://paragemcerta.pixellusitano.com/dados/linhas.json` responde.
+6. Ligar os interruptores em `worker/public/dados/config.json` (passos 9 e 16), **Servidor → Run workflow**, e só depois os mesmos em `app/src/main/assets/config.json`. O `carrisAoVivo` fica `false` até haver o OK escrito da Carris (passo 19). Se deixares algum desligado, tira a linha dele do `## 0.4.0` do `PATCHNOTES.md`: esse texto é o do aviso de atualização.
+7. A tag `v0.4.0`, no `main`. O CI assina o APK e cria a Release com o texto do `PATCHNOTES.md`; os telemóveis com a 0.3.2 recebem o aviso de atualização.
 
-1. **(assistente)** Enviar o ramo `versao-0-4` para o GitHub.
-2. **(assistente) Capturas de referência:** Actions → Android → Run workflow, no ramo `versao-0-4`, com `record_screenshots` ligado. Descarregar o artefacto `roborazzi-goldens`, fazer commit das capturas em `app/src/test/screenshots` e correr o mesmo workflow outra vez, sem `record_screenshots`, até ficar verde.
-3. **(assistente)** Juntar o ramo ao `main`.
-4. **(tu)** Este guia, do passo 1 ao passo 18: Cloudflare, Resend, Google, segredos, R2, Zero Trust e `pc-admin`. Relê a política de privacidade antes.
-5. **(tu)** A variável `SERVIDOR_PUBLICADO` = `sim` e **Servidor → Run workflow**, no `main` (passo 20). Põe no ar o `linhas.json` e o `fotos-de-rua.json`. Confirma que `https://paragemcerta.pixellusitano.com/dados/linhas.json` responde.
-6. **(tu, e eu faço os commits se pedires)** Ligar os interruptores em `worker/public/dados/config.json` (passos 9 e 16), **Servidor → Run workflow**, e só depois os mesmos em `app/src/main/assets/config.json`. O `carrisAoVivo` fica `false` até haver o OK escrito da Carris (passo 19). Se deixares algum desligado, tira a linha dele do `## 0.4.0` do `PATCHNOTES.md`: esse texto é o do aviso de atualização.
-7. **(assistente)** A tag `v0.4.0`, no `main`. O CI assina o APK e cria a Release com o texto do `PATCHNOTES.md`; os telemóveis com a 0.3.2 recebem o aviso de atualização.
-
-Antes de passar de 720 `/plan` por dia, a mensagem à equipa do Transitous no Matrix é tua, escrita por ti.
+Antes de passar de 720 `/plan` por dia, fala com a equipa do Transitous no Matrix.
 
 ## 1. Entrar na Cloudflare
 
@@ -37,7 +35,7 @@ Antes de passar de 720 `/plan` por dia, a mensagem à equipa do Transitous no Ma
 1. `npx wrangler d1 create paragem-certa --jurisdiction=eu`
    - A jurisdição só se escolhe agora, na criação. Se te enganares, tens de criar outra base.
    - Quando perguntar "Would you like Wrangler to add it on your behalf?", responde **não**.
-2. Copia o `database_id` que o comando mostra para `worker/wrangler.jsonc` (troca o texto `ID-DA-BASE-DE-DADOS-CRIADA-PELO-AUTOR`). O id não é um segredo; faz commit dele.
+2. Copia o `database_id` que o comando mostra para `worker/wrangler.jsonc` **e** para `worker/wrangler.admin.jsonc` (troca o texto `ID-DA-BASE-DE-DADOS-CRIADA-PELO-AUTOR` nos dois). O id não é um segredo; faz commit dele.
 3. `npx wrangler d1 info paragem-certa` mostra a base, para confirmares.
 
 ## 3. Resend (emails com o código de entrada)
@@ -214,6 +212,8 @@ A página de revisão é um Worker à parte, o `pc-admin` (`worker/wrangler.admi
 5. **A AUD:** copia a etiqueta de audiência da aplicação (Application Audience (AUD) Tag, na página da aplicação) e substitui o `por-preencher`: `npx wrangler secret put ACCESS_AUD -c wrangler.admin.jsonc`.
 6. **Prova:** numa janela privada do browser, o endereço do `pc-admin` mostra a página do PIN da Cloudflare, nunca a página de revisão. Escreve o teu email, mete o código que chega e aparece a página. E `curl -i https://pc-admin.<subdomínio>.workers.dev/` nunca devolve a página de revisão (só um redirecionamento ou um 403).
 
+Numa denúncia, se quiseres bloquear a conta, bloqueia antes de carregares em Decidir: depois de decidires, a denúncia sai da lista e o botão vai com ela.
+
 ## 15. Segredos novos no GitHub
 
 Para o trabalho `publicar` (passo 7) enviar os segredos aos dois Workers, junta no GitHub (Settings → Secrets and variables → Actions → New repository secret) cinco segredos novos, com os mesmos valores dos passos 13 e 14: `CF_PURGE_TOKEN`, `CF_ZONA`, `EMAIL_AUTOR`, `ACCESS_AUD` e `ACCESS_EQUIPA`. O `RESEND_API_KEY` já lá está desde o passo 7. Em `ACCESS_AUD` vai a AUD verdadeira (ponto 5 do passo 14), nunca o `por-preencher`.
@@ -232,7 +232,7 @@ Só no fim, depois do parecer do advogado sobre o DSA e as fotos.
 Quem não tem a app pede por email, como diz a página `apagar-conta.html`, e a conta tem de ser apagada no máximo em 30 dias.
 
 1. Confirma que o email do pedido veio do endereço da conta.
-2. Abre a página de revisão do `pc-admin` (passo 14), escreve esse email em **Apagar conta por email** e carrega em "Apagar conta". Apaga todas as contas desse email, com as fotos (também as aprovadas, no R2 e na cache), os relatos, as confirmações e as correções.
+2. Abre a página de revisão do `pc-admin` (passo 14), escreve esse email em **Apagar conta por email** e carrega em "Apagar conta". Apaga todas as contas desse email, com as fotos (também as aprovadas, no R2 e na cache), os relatos, as confirmações e as correções. A procura é pelo endereço exato: se disser que não há conta, pede à pessoa o endereço com que entrou (com o + ou os pontos, se os usou).
 3. Responde ao pedido a dizer que a conta foi apagada. A página não envia nenhum email.
 
 Nunca apagues pelo `wrangler d1 execute … DELETE`: deixava as fotos aprovadas no ar.
@@ -245,7 +245,7 @@ As leituras da comunidade não têm limite por IP (nas redes móveis muita gente
 
 O `/api/rt/carris` lê o feed oficial das posições da Carris (GTFS-RT), tira as posições com mais de 5 minutos, as do futuro e as que não dizem a que paragem vão, e guarda o resultado 30 segundos na cache da Cloudflare, que é de cada centro de dados. A Carris recebe no máximo um pedido por 30 segundos de cada centro de dados (em Portugal, quase sempre só o de Lisboa), por muita gente que tenha a app aberta; ninguém lhe pede nada diretamente do telemóvel. A app mostra os autocarros no mapa e no ecrã de uma linha, e "ao vivo, a N paragens" nas chegadas. Não leva nenhum segredo: não há nada para pôr na Cloudflare nem no GitHub.
 
-O interruptor `carrisAoVivo` fica `false` até a Carris responder **por escrito** ao email do rascunho `rascunhos/email-carris.md` (fora do repositório; envias tu, do teu email). Com ele desligado, o `/api/rt/carris` dá 403 `desligado` e a app não mostra nem pede nada disto. Se a Carris pedir um crédito, junta-o ao ecrã Sobre antes de ligar.
+O interruptor `carrisAoVivo` fica `false` até a Carris responder **por escrito** ao email do rascunho `rascunhos/email-carris.md` (fora do repositório; envias do teu email). Com ele desligado, o `/api/rt/carris` dá 403 `desligado` e a app não mostra nem pede nada disto. Se a Carris pedir um crédito, junta-o ao ecrã Sobre antes de ligar.
 
 Com o OK da Carris (e a 0.4.0 já publicada):
 
