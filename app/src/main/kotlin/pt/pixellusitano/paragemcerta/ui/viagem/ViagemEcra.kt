@@ -59,6 +59,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import org.maplibre.android.geometry.LatLng
 import pt.pixellusitano.paragemcerta.R
+import pt.pixellusitano.paragemcerta.core.comunidade.chaveDaParagemEtapa
 import pt.pixellusitano.paragemcerta.core.modelo.Etapa
 import pt.pixellusitano.paragemcerta.core.modelo.Lugar
 import pt.pixellusitano.paragemcerta.core.modelo.Veiculo
@@ -96,7 +97,7 @@ import java.time.Duration
 @Composable
 fun ViagemEcra(
     aoVoltar: () -> Unit,
-    aoEncontrar: (Lugar) -> Unit = {},
+    aoEncontrar: (Lugar, String?) -> Unit = { _, _ -> },
     mapa: (@Composable (seguir: Boolean, aoDeixarDeSeguir: () -> Unit) -> Unit)? = null,
     comunidade: Comunidade? = null,
     comunidadeLigada: Boolean = false,
@@ -210,7 +211,7 @@ fun ViagemConteudo(
     aoPartilhar: () -> Unit,
     aoVoltar: () -> Unit,
     modifier: Modifier = Modifier,
-    aoEncontrar: (Lugar) -> Unit = {},
+    aoEncontrar: (Lugar, String?) -> Unit = { _, _ -> },
     comLocalizacao: Boolean = false,
     mapa: @Composable (seguir: Boolean, aoDeixarDeSeguir: () -> Unit) -> Unit = { _, _ -> },
     aoRelatar: (() -> Unit)? = null,
@@ -276,7 +277,7 @@ fun ViagemConteudo(
 }
 
 @Composable
-private fun Cartao(ecra: EcraViagem, i: Int, aoEncontrar: (Lugar) -> Unit) {
+private fun Cartao(ecra: EcraViagem, i: Int, aoEncontrar: (Lugar, String?) -> Unit) {
     val c = ecra.cartoes[i]
     Column(Modifier.fillMaxSize()) {
         Cabecalho(ecra, c, i, aoEncontrar)
@@ -285,7 +286,7 @@ private fun Cartao(ecra: EcraViagem, i: Int, aoEncontrar: (Lugar) -> Unit) {
 }
 
 @Composable
-private fun Cabecalho(ecra: EcraViagem, c: CartaoEtapa, i: Int, aoEncontrar: (Lugar) -> Unit) {
+private fun Cabecalho(ecra: EcraViagem, c: CartaoEtapa, i: Int, aoEncontrar: (Lugar, String?) -> Unit) {
     val cores = MaterialTheme.colorScheme
     val contexto = LocalContext.current
     val estado = ecra.estado
@@ -313,7 +314,9 @@ private fun Cabecalho(ecra: EcraViagem, c: CartaoEtapa, i: Int, aoEncontrar: (Lu
             Text(stringResource(R.string.rotas_a_pe, minutosDe(Duration.between(e.partida, e.chegada)).toInt()), color = cores.onSurfaceVariant)
             // A última etapa a pé acaba no destino, não numa paragem.
             if (c.situacao == Situacao.ATUAL && i < ecra.cartoes.lastIndex) {
-                OutlinedButton(onClick = { aoEncontrar(e.para) }) { Text(stringResource(R.string.bussola_encontrar)) }
+                // A foto da bússola é a da paragem onde se embarca: a primeira da etapa em veículo que vem a seguir (sem ela, sem foto).
+                val embarque = chaveDaParagemEtapa(ecra.cartoes.getOrNull(i + 1)?.etapa?.paragens?.firstOrNull()?.id)
+                OutlinedButton(onClick = { aoEncontrar(e.para, embarque) }) { Text(stringResource(R.string.bussola_encontrar)) }
             }
         } else {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {

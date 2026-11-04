@@ -15,6 +15,7 @@
     <string name="sobre_fonte_metro">Metropolitano de Lisboa (CC BY 4.0)</string>
     <string name="sobre_fonte_operadores">Linhas dos outros operadores: GTFS processados pelo Transitous</string>
     <string name="sobre_fonte_carris">Carris (posições ao vivo)</string>
+    <string name="sobre_fonte_panoramax">Fotos de rua: Panoramax</string>
     <string name="sobre_contacto">Contacto</string>
 
     <!-- Início e localização -->
@@ -516,6 +517,8 @@
     <string name="foto_nao_carregou">Não foi possível carregar a foto.</string>
     <string name="foto_mais_opcoes">Mais opções da foto</string>
     <string name="foto_ocultar">Ocultar esta foto</string>
+    <string name="foto_rua_credito">Foto: %1$s · %2$s · Panoramax · %3$s</string>
+    <string name="foto_rua_descricao">Foto de rua da paragem, do Panoramax</string>
     <!-- Comunidade: corrigir os dados de uma paragem -->
     <string name="corrigir_dados">Corrigir dados</string>
     <string name="corrigir_titulo">O que está errado?</string>

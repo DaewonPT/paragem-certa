@@ -51,6 +51,7 @@ import pt.pixellusitano.paragemcerta.aviso.ServicoAvisoChegada
 import pt.pixellusitano.paragemcerta.core.atraso.aindaPorChegar
 import pt.pixellusitano.paragemcerta.core.comunidade.chaveLinha
 import pt.pixellusitano.paragemcerta.core.fontes.servidor.RelatoRemoto
+import pt.pixellusitano.paragemcerta.core.fotos.FotoDeRua
 import pt.pixellusitano.paragemcerta.core.modelo.Alerta
 import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.modelo.Gravidade
@@ -70,12 +71,16 @@ import pt.pixellusitano.paragemcerta.ui.comunidade.CorrigirNaParagem
 import pt.pixellusitano.paragemcerta.ui.comunidade.FotosDaParagem
 import pt.pixellusitano.paragemcerta.ui.comunidade.RelatarNaParagem
 import pt.pixellusitano.paragemcerta.ui.comunidade.aplicarCorrecoes
+import pt.pixellusitano.paragemcerta.ui.comunidade.fotoDeRuaVisivel
 import pt.pixellusitano.paragemcerta.ui.comunidade.rememberRelatosDaParagem
 import pt.pixellusitano.paragemcerta.ui.tema.FrisoAzulejo
 import pt.pixellusitano.paragemcerta.ui.tema.LocalEscuro
 import java.time.Instant
 
-/** Ecrã da paragem ligado aos dados. */
+/**
+ * Ecrã da paragem ligado aos dados. [fotoDeRua] é a foto do Panoramax que o ficheiro do servidor tem para esta paragem (null se não
+ * tem ou ainda não chegou) e [aoAbrirPagina] abre a página dela.
+ */
 @Composable
 fun ParagemEcra(
     ref: RefParagem,
@@ -87,6 +92,8 @@ fun ParagemEcra(
     aoEncontrar: (Paragem) -> Unit,
     aoAbrirConta: () -> Unit,
     aoVoltar: () -> Unit,
+    fotoDeRua: FotoDeRua? = null,
+    aoAbrirPagina: (String) -> Unit = {},
 ) {
     val contexto = LocalContext.current
     val vm = viewModel(key = ref.chave) { ParagemViewModel(repositorio.chegadas(ref)) }
@@ -112,6 +119,7 @@ fun ParagemEcra(
     var avisaMe by rememberSaveable { mutableStateOf(false) }
     val aoVivo = rememberAoVivoCarris(repositorio, ref.id, remember(vm) { vm.estado.filterNotNull().map { it.chegadas } })
     val relatos = rememberRelatosDaParagem(ref.chave, paragem, comunidade, configuracoes, preferencias, aoAbrirConta)
+    val rua = fotoDeRuaVisivel(fotoDeRua, preferencias)
     // A paragem como os passageiros a corrigiram (as correções aprovadas): é a que se mostra e a que "Encontrar a paragem" procura.
     val corrigida = paragem?.let { aplicarCorrecoes(it, relatos.correcoes) }
     val vista = corrigida?.first
@@ -152,7 +160,12 @@ fun ParagemEcra(
         aoVotar = relatos.aoVotar,
         aoDenunciar = relatos.aoDenunciar,
         aoOcultar = relatos.aoOcultar,
-        fotos = { FotosDaParagem(ref.chave, relatos, comunidade, configuracoes, carregarFoto, aoAbrirConta) },
+        fotos = {
+            FotosDaParagem(
+                ref.chave, relatos, comunidade, configuracoes, carregarFoto, aoAbrirConta, rua = rua, aoAbrirPagina = aoAbrirPagina,
+                aoOcultarRua = { rua?.let { escopo.launch { preferencias.ocultar("foto:${it.id}") } } },
+            )
+        },
         jaNaoExiste = corrigida?.second == true,
         corrigir = { CorrigirNaParagem(vista, comunidade, configuracoes, aoAbrirConta) },
         aoVivo = aoVivo,

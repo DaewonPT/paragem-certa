@@ -7,4 +7,4 @@ Feita pela **Pixel Lusitano** (Alize.On.Me). Código sob a licença GPL-3.0; o n
 - Notas de versão: `PATCHNOTES.md`
 - Contacto: contact@pixellusitano.com
 
-Dados: Carris Metropolitana (dados abertos), Transitous, OpenFreeMap e © colaboradores do OpenStreetMap.
+Dados: Carris Metropolitana (dados abertos), Transitous, Panoramax (fotos de rua), OpenFreeMap e © colaboradores do OpenStreetMap.

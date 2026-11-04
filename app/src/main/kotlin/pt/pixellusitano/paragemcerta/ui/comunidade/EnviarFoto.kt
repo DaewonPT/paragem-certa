@@ -63,6 +63,7 @@ import kotlinx.coroutines.withContext
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.comunidade.prepararFoto
 import pt.pixellusitano.paragemcerta.core.fontes.servidor.FotoRemota
+import pt.pixellusitano.paragemcerta.core.fotos.FotoDeRua
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import pt.pixellusitano.paragemcerta.dados.Comunidade
 import pt.pixellusitano.paragemcerta.dados.Configuracoes
@@ -111,10 +112,12 @@ internal fun erroDaFoto(f: Resultado.Falha): Int = when (f.erro) {
 }
 
 /**
- * A parte das fotos do ecrã da paragem [chave], só com a comunidade e as fotos ligadas e depois de a leitura da paragem
- * chegar (sem ela não se sabe se já há foto): a foto aprovada, "Foto em revisão" ou o botão "Enviar foto" (só sem nenhuma das
- * duas). Os dados são os de [relatos], lidos num só pedido. Um 403 `desligado` ao enviar (a config da app é a antiga) esconde
- * a secção até a config mudar.
+ * A parte das fotos do ecrã da paragem [chave], só com as fotos ligadas: uma só foto, a da comunidade ou a de [rua] (a que o
+ * ficheiro do Panoramax tem para a paragem, já sem a que a pessoa ocultou), a mais recente das duas (ver [escolherFoto]).
+ * A de rua não depende da comunidade nem da leitura da paragem. A da comunidade, "Foto em revisão" e o botão "Enviar foto"
+ * (só sem nenhuma foto) precisam da comunidade ligada e de a leitura da paragem chegar (sem ela não se sabe se já há foto).
+ * Os dados da comunidade são os de [relatos], lidos num só pedido. [aoAbrirPagina] recebe a página da foto de rua e
+ * [aoOcultarRua] oculta-a. Um 403 `desligado` ao enviar (a config da app é a antiga) esconde a secção até a config mudar.
  */
 @Composable
 fun FotosDaParagem(
@@ -124,24 +127,35 @@ fun FotosDaParagem(
     configuracoes: Configuracoes,
     carregar: suspend (String) -> ByteArray?,
     aoAbrirConta: () -> Unit,
+    rua: FotoDeRua? = null,
+    aoAbrirPagina: (String) -> Unit = {},
+    aoOcultarRua: () -> Unit = {},
 ) {
     val contexto = LocalContext.current
     val config by configuracoes.atual.collectAsStateWithLifecycle()
     var desligada by remember(config) { mutableStateOf(false) }
     val publicar = rememberPublicar(comunidade, aoAbrirConta, R.string.foto_entrar_texto)
     var folha by rememberSaveable { mutableStateOf(false) }
-    if (!(config.interruptores.comunidade && config.interruptores.fotos) || desligada || !relatos.carregado) return
+    if (!config.interruptores.fotos || desligada) return
 
-    relatos.fotos.forEach { f ->
-        key(f.id) { FotoDaParagem(f, carregar, aoOcultar = { relatos.aoOcultarFoto(f) }, aoDenunciar = { relatos.aoDenunciarFoto(f) }) }
+    val comunidadeLida = config.interruptores.comunidade && relatos.carregado
+    val daComunidade = if (comunidadeLida) relatos.fotos.firstOrNull() else null
+    val escolhida = escolherFoto(rua, daComunidade)
+    when (escolhida) {
+        is FotoEscolhida.DaRua -> key(escolhida.foto.id) { FotoDeRuaNaParagem(escolhida.foto, carregar, aoAbrirPagina, aoOcultar = aoOcultarRua) }
+        is FotoEscolhida.DaComunidade -> key(escolhida.foto.id) {
+            val f = escolhida.foto
+            FotoDaParagem(f, carregar, aoOcultar = { relatos.aoOcultarFoto(f) }, aoDenunciar = { relatos.aoDenunciarFoto(f) })
+        }
+        null -> Unit
     }
-    if (relatos.fotos.isEmpty()) {
+    if (comunidadeLida && daComunidade == null) {
         if (relatos.fotoEmRevisao) {
             Text(
                 stringResource(R.string.foto_em_revisao), color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(top = 16.dp),
             )
-        } else {
+        } else if (escolhida == null) {
             OutlinedButton(onClick = { folha = true }, modifier = Modifier.padding(top = 16.dp).fillMaxWidth()) {
                 Text(stringResource(R.string.foto_enviar))
             }
@@ -315,53 +329,71 @@ internal fun FolhaEnviarFotoConteudo(
     }
 }
 
-private sealed interface Carga {
+internal sealed interface Carga {
     data object ACarregar : Carga
     data object Falhou : Carga
     class Pronta(val imagem: ImageBitmap) : Carga
 }
 
-/**
- * A foto aprovada de uma paragem, com o crédito, e no menu "Ocultar esta foto" e "Denunciar". [carregar] devolve os bytes do
- * endereço da foto (null se não der); lê-se e decodifica-se fora da linha do ecrã, com o tamanho limitado ([decodificarFoto]).
- */
+/** Lê e decodifica a imagem de [url] fora da linha do ecrã, com o tamanho limitado ([decodificarFoto]). */
 @Composable
-fun FotoDaParagem(foto: FotoRemota, carregar: suspend (String) -> ByteArray?, aoOcultar: () -> Unit, aoDenunciar: () -> Unit) {
-    val carga by produceState<Carga>(Carga.ACarregar, foto.url) {
-        val imagem = withContext(Dispatchers.IO) { carregar(foto.url)?.let(::decodificarFoto) }
+internal fun carregarImagem(url: String, carregar: suspend (String) -> ByteArray?): Carga {
+    val carga by produceState<Carga>(Carga.ACarregar, url) {
+        val imagem = withContext(Dispatchers.IO) { carregar(url)?.let(::decodificarFoto) }
         value = if (imagem == null) Carga.Falhou else Carga.Pronta(imagem.asImageBitmap())
     }
-    val atual = carga
-    FotoDaParagemConteudo((atual as? Carga.Pronta)?.imagem, falhou = atual == Carga.Falhou, aoOcultar = aoOcultar, aoDenunciar = aoDenunciar)
+    return carga
+}
+
+/**
+ * A foto aprovada de uma paragem, com o crédito, e no menu "Ocultar esta foto" e "Denunciar" (os que forem dados; sem nenhum, sem
+ * menu). [carregar] devolve os bytes do endereço da foto (null se não der).
+ */
+@Composable
+fun FotoDaParagem(foto: FotoRemota, carregar: suspend (String) -> ByteArray?, aoOcultar: (() -> Unit)?, aoDenunciar: (() -> Unit)?) {
+    val carga = carregarImagem(foto.url, carregar)
+    FotoDaParagemConteudo((carga as? Carga.Pronta)?.imagem, falhou = carga == Carga.Falhou, aoOcultar = aoOcultar, aoDenunciar = aoDenunciar)
 }
 
 /** A foto e o crédito, sem pedidos (as capturas de ecrã compõem-no com uma imagem já feita). */
 @Composable
-internal fun FotoDaParagemConteudo(imagem: ImageBitmap?, falhou: Boolean, aoOcultar: () -> Unit, aoDenunciar: () -> Unit) {
-    var menu by remember { mutableStateOf(false) }
-    val descricao = stringResource(R.string.foto_da_paragem)
-    val opcoes = stringResource(R.string.foto_mais_opcoes)
+internal fun FotoDaParagemConteudo(imagem: ImageBitmap?, falhou: Boolean, aoOcultar: (() -> Unit)?, aoDenunciar: (() -> Unit)?) {
     Column(Modifier.padding(top = 16.dp).fillMaxWidth()) {
-        if (imagem != null) {
-            Image(imagem, descricao, Modifier.fillMaxWidth().clip(RoundedCornerShape(10.dp)), contentScale = ContentScale.FillWidth)
-        } else {
-            Text(
-                stringResource(if (falhou) R.string.foto_nao_carregou else R.string.a_carregar),
-                color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 16.dp),
-            )
-        }
+        ImagemDaFoto(imagem, falhou, stringResource(R.string.foto_da_paragem), Modifier.clip(RoundedCornerShape(10.dp)))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 stringResource(R.string.foto_credito), style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.weight(1f),
             )
-            Box {
-                TextButton(onClick = { menu = true }, modifier = Modifier.semantics { contentDescription = opcoes }) { Text("⋯") }
-                DropdownMenu(menu, onDismissRequest = { menu = false }) {
-                    DropdownMenuItem(text = { Text(stringResource(R.string.foto_ocultar)) }, onClick = { menu = false; aoOcultar() })
-                    DropdownMenuItem(text = { Text(stringResource(R.string.relato_denunciar)) }, onClick = { menu = false; aoDenunciar() })
-                }
-            }
+            MenuDaFoto(aoOcultar, aoDenunciar)
+        }
+    }
+}
+
+/** A imagem inteira (sem recortar) ou, enquanto não a há, o que se passa com ela. */
+@Composable
+internal fun ImagemDaFoto(imagem: ImageBitmap?, falhou: Boolean, descricao: String, modifier: Modifier = Modifier) {
+    if (imagem != null) {
+        Image(imagem, descricao, modifier.fillMaxWidth(), contentScale = ContentScale.FillWidth)
+    } else {
+        Text(
+            stringResource(if (falhou) R.string.foto_nao_carregou else R.string.a_carregar),
+            color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(vertical = 16.dp),
+        )
+    }
+}
+
+/** O "⋯" da foto com as opções dadas; sem nenhuma, não há botão. */
+@Composable
+internal fun MenuDaFoto(aoOcultar: (() -> Unit)?, aoDenunciar: (() -> Unit)?) {
+    var menu by remember { mutableStateOf(false) }
+    val opcoes = stringResource(R.string.foto_mais_opcoes)
+    if (aoOcultar == null && aoDenunciar == null) return
+    Box {
+        TextButton(onClick = { menu = true }, modifier = Modifier.semantics { contentDescription = opcoes }) { Text("⋯") }
+        DropdownMenu(menu, onDismissRequest = { menu = false }) {
+            aoOcultar?.let { ocultar -> DropdownMenuItem(text = { Text(stringResource(R.string.foto_ocultar)) }, onClick = { menu = false; ocultar() }) }
+            aoDenunciar?.let { denunciar -> DropdownMenuItem(text = { Text(stringResource(R.string.relato_denunciar)) }, onClick = { menu = false; denunciar() }) }
         }
     }
 }

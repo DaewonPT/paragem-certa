@@ -2,6 +2,10 @@ package pt.pixellusitano.paragemcerta.ui.bussola
 
 import android.Manifest
 import android.app.Application
+import android.graphics.Bitmap
+import android.graphics.Canvas
+import android.graphics.Color
+import android.graphics.Paint
 import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorManager
@@ -19,6 +23,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
@@ -40,6 +45,8 @@ import org.robolectric.annotation.GraphicsMode
 import org.robolectric.shadows.ShadowSensor
 import org.robolectric.util.ReflectionHelpers
 import org.robolectric.util.ReflectionHelpers.ClassParameter
+import pt.pixellusitano.paragemcerta.core.fotos.FotoDeRua
+import pt.pixellusitano.paragemcerta.ui.comunidade.FotoDeRuaConteudo
 import pt.pixellusitano.paragemcerta.ui.tema.ModoTema
 import pt.pixellusitano.paragemcerta.ui.tema.TemaParagemCerta
 
@@ -147,6 +154,27 @@ class BussolaEcraTest {
     // A seta fixa em 60° (a paragem a nordeste, com o telemóvel a apontar para o norte-noroeste).
     @Test fun bussola() = captureRoboImage("src/test/screenshots/bussola.png") {
         Conteudo(EstadoBussola.Ativa(120.0, rumo = 40.0, angulo = 60.0, semSensor = false, calibrar = false))
+    }
+
+    // A foto de rua por baixo do alvo, sem menu: a imagem é feita aqui, sem esperar por nenhum pedido.
+    @Test fun bussola_com_foto_claro() = captureRoboImage("src/test/screenshots/bussola_com_foto_claro.png") {
+        val imagem = Bitmap.createBitmap(960, 720, Bitmap.Config.ARGB_8888).also {
+            val tela = Canvas(it)
+            tela.drawColor(Color.rgb(120, 170, 220))
+            tela.drawRect(0f, 480f, 960f, 720f, Paint().apply { color = Color.rgb(90, 90, 100) })
+        }
+        TemaParagemCerta(ModoTema.CLARO) {
+            BussolaConteudo(
+                "Cais do Sodré", EstadoBussola.Ativa(120.0, rumo = 40.0, angulo = 60.0, semSensor = false, calibrar = false),
+                aoPermitir = {}, aoVoltar = {}, modifier = Modifier.width(360.dp),
+                foto = {
+                    FotoDeRuaConteudo(
+                        FotoDeRua("pan-1", "https://panoramax.exemplo/pan-1/thumb.jpg", "Robot8A", "CC BY-SA 4.0", "2022-03-13"),
+                        imagem.asImageBitmap(), falhou = false, aoAbrirPagina = {}, aoOcultar = null,
+                    )
+                },
+            )
+        }
     }
 
     // ---- o ecrã ligado à localização e ao sensor ----

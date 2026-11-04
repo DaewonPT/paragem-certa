@@ -58,6 +58,13 @@ class SobreScreenshotTest {
         regra.onNodeWithText("Metropolitano de Lisboa (CC BY 4.0)").assertExists()
     }
 
+    @Test fun sobreTemOPanoramax() {
+        var aberto: String? = null
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { SobreEcra(versao = "0.1.0", aoAbrir = { aberto = it }) } }
+        regra.onNodeWithText("Fotos de rua: Panoramax").performScrollTo().assertHasClickAction().performClick()
+        assertEquals("https://panoramax.fr", aberto)
+    }
+
     @Test fun fonteGeoApi_temLigacao() {
         var aberto: String? = null
         regra.setContent { TemaParagemCerta(ModoTema.CLARO) { SobreEcra(versao = "0.1.0", aoAbrir = { aberto = it }) } }

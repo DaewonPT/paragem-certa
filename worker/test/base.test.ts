@@ -324,6 +324,16 @@ describe("política de privacidade, termos e guia do autor", () => {
     expect(en).not.toMatch(/\bMetro\b/);
   });
 
+  it("politicaFalaDoPanoramaxEDoWidget", async () => {
+    const { pt, en } = await politica();
+    expect(pt).toContain("as miniaturas de fotos de rua que vês");
+    expect(pt).toContain("o GitHub Actions também lê o Panoramax e a lista de paragens da Carris Metropolitana para escolher as fotos de rua");
+    expect(pt).toContain("só vai buscar dados quando lhe tocas ou quando abres a app; fora disso o Android pode arrancá-la por instantes para redesenhar os últimos dados guardados");
+    expect(en).toContain("the street photo thumbnails you view");
+    expect(en).toContain("GitHub Actions also reads Panoramax and the Carris Metropolitana stop list to choose the street photos");
+    expect(en).toContain("only fetches data when you tap it or when you open the app; otherwise Android may start the app for a moment to redraw the last saved data");
+  });
+
   it("termosTemAIdadeEOsMecanismos", () => {
     // Guarda de regressão: o que a spec (4.7) manda explicar nos termos.
     const { pt, en } = emDuasLinguas(termosHtml);

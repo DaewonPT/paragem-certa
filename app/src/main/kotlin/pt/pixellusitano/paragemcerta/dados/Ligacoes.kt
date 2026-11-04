@@ -9,6 +9,7 @@ import pt.pixellusitano.paragemcerta.core.fontes.emel.Gira
 import pt.pixellusitano.paragemcerta.core.fontes.geoapi.GeoApi
 import pt.pixellusitano.paragemcerta.core.fontes.servidor.ServidorParagemCerta
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.Transitous
+import pt.pixellusitano.paragemcerta.core.fotos.lerFotosDeRua
 import pt.pixellusitano.paragemcerta.core.rede.OkHttpHttp
 import pt.pixellusitano.paragemcerta.core.rede.userAgent
 import java.time.Instant
@@ -25,6 +26,7 @@ class Ligacoes(contexto: Context) {
     val servidor = ServidorParagemCerta(http)
     val configuracoes = Configuracoes(contexto, servidor)
     val catalogoLinhas = CatalogoLinhas(contexto.filesDir, http, BASE_SERVIDOR)
+    val fotosDeRua = FicheiroDoServidor(contexto.filesDir, "fotos-de-rua.json", http, "$BASE_SERVIDOR/dados/fotos-de-rua.json", ler = ::lerFotosDeRua)
     val repositorio = Repositorio(
         bd, cm, transitous, GeoApi(http), servidor = servidor, interruptores = { configuracoes.atual.value.interruptores },
         catalogo = { catalogoLinhas.atual },
@@ -37,7 +39,7 @@ class Ligacoes(contexto: Context) {
     val perturbacoes = FontePerturbacoes(cm)
 
     private companion object {
-        // O mesmo do ServidorParagemCerta: o linhas.json está nos ficheiros de dados do servidor.
+        // O mesmo do ServidorParagemCerta: o linhas.json e o fotos-de-rua.json estão nos ficheiros de dados do servidor.
         const val BASE_SERVIDOR = "https://paragemcerta.pixellusitano.com"
     }
 }

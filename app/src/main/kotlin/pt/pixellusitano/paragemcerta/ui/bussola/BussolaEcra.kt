@@ -73,9 +73,12 @@ sealed interface EstadoBussola {
     data class Ativa(val distancia: Double, val rumo: Double, val angulo: Double?, val semSensor: Boolean, val calibrar: Boolean) : EstadoBussola
 }
 
-/** O ecrã "Encontrar a paragem" ligado à localização e ao sensor de rotação, que só trabalham enquanto o ecrã está à vista. */
+/**
+ * O ecrã "Encontrar a paragem" ligado à localização e ao sensor de rotação, que só trabalham enquanto o ecrã está à vista.
+ * [foto] desenha-se por baixo do alvo (a foto da paragem, quando a há).
+ */
 @Composable
-fun BussolaEcra(nome: String, lat: Double, lon: Double, aoVoltar: () -> Unit) {
+fun BussolaEcra(nome: String, lat: Double, lon: Double, aoVoltar: () -> Unit, foto: @Composable () -> Unit = {}) {
     val contexto = LocalContext.current
     val vista = LocalView.current
 
@@ -140,7 +143,7 @@ fun BussolaEcra(nome: String, lat: Double, lon: Double, aoVoltar: () -> Unit) {
     BussolaConteudo(
         nome, estado,
         aoPermitir = { pedir.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)) },
-        aoVoltar = aoVoltar, modifier = Modifier.fillMaxSize(),
+        aoVoltar = aoVoltar, modifier = Modifier.fillMaxSize(), foto = foto,
     )
 }
 
@@ -183,9 +186,16 @@ internal fun orientacaoGraus(vetor: FloatArray, rotacaoEcra: Int): Double {
     return Math.toDegrees(angulos[0].toDouble())
 }
 
-/** O conteúdo puro do ecrã (testado com capturas). */
+/** O conteúdo puro do ecrã (testado com capturas). [foto] vai por baixo de tudo o resto, seja qual for o estado. */
 @Composable
-fun BussolaConteudo(nome: String, estado: EstadoBussola, aoPermitir: () -> Unit, aoVoltar: () -> Unit, modifier: Modifier = Modifier) {
+fun BussolaConteudo(
+    nome: String,
+    estado: EstadoBussola,
+    aoPermitir: () -> Unit,
+    aoVoltar: () -> Unit,
+    modifier: Modifier = Modifier,
+    foto: @Composable () -> Unit = {},
+) {
     val cores = MaterialTheme.colorScheme
     Column(modifier.fillMaxSize().background(cores.background)) {
         TextButton(onClick = aoVoltar, Modifier.statusBarsPadding().padding(start = 4.dp)) { Text("← " + stringResource(R.string.voltar)) }
@@ -203,6 +213,7 @@ fun BussolaConteudo(nome: String, estado: EstadoBussola, aoPermitir: () -> Unit,
                 EstadoBussola.AProcurar -> Mensagem(stringResource(R.string.bussola_a_procurar))
                 is EstadoBussola.Ativa -> Alvo(nome, estado)
             }
+            foto()
         }
     }
 }

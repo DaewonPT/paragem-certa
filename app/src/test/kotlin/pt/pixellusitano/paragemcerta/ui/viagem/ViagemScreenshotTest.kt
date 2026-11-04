@@ -59,7 +59,7 @@ class ViagemScreenshotTest {
     private fun Ecra(
         e: EstadoViagem, p: PlanoViagem = plano,
         aoSilenciar: () -> Unit = {}, aoJaSai: () -> Unit = {}, aoParar: () -> Unit = {}, aoPartilhar: () -> Unit = {},
-        aoEncontrar: (Lugar) -> Unit = {},
+        aoEncontrar: (Lugar, String?) -> Unit = { _, _ -> },
     ) = ViagemConteudo(
         ecraDaViagem(p, e, ex.viagem(p)), aoSilenciar, aoJaSai, aoParar, aoPartilhar, aoVoltar = {},
         aoEncontrar = aoEncontrar, modifier = Modifier.width(360.dp),
@@ -120,10 +120,13 @@ class ViagemScreenshotTest {
 
     @Test fun aPeAteUmaParagemOfereceEncontrarAParagem() {
         var lugar: Lugar? = null
-        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Ecra(ex.aPe(plano, etapa = 0, falta = 120.0), aoEncontrar = { lugar = it }) } }
+        var chave: String? = null
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Ecra(ex.aPe(plano, etapa = 0, falta = 120.0), aoEncontrar = { l, c -> lugar = l; chave = c }) } }
         texto("Encontrar a paragem").performClick()
         assertEquals(plano.itinerario.etapas[0].para, lugar)
         assertEquals("Cais do Sodré", lugar?.nome)
+        // A foto da bússola é a da paragem de embarque: a primeira da etapa em veículo que vem a seguir.
+        assertEquals("TRANSITOUS:736-0", chave)
     }
 
     @Test fun aBordoNaoHaParagemParaEncontrar() {

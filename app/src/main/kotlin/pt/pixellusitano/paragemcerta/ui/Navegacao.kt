@@ -59,6 +59,8 @@ import pt.pixellusitano.paragemcerta.dados.LinhaFavorita
 import pt.pixellusitano.paragemcerta.dados.Ligacoes
 import pt.pixellusitano.paragemcerta.ui.bussola.BussolaEcra
 import pt.pixellusitano.paragemcerta.ui.comum.gelatina
+import pt.pixellusitano.paragemcerta.ui.comunidade.FotoNaBussola
+import pt.pixellusitano.paragemcerta.ui.comunidade.fotoDa
 import pt.pixellusitano.paragemcerta.ui.inicio.InicioEcra
 import pt.pixellusitano.paragemcerta.ui.inicio.Painel
 import pt.pixellusitano.paragemcerta.ui.linhas.FaixaAoAbrir
@@ -95,8 +97,8 @@ import pt.pixellusitano.paragemcerta.viagem.FicheirosViagem
 @Serializable data object Viagem
 @Serializable data class Paragem(val chave: String)
 
-/** "Encontrar a paragem": o nome e a posição do sítio para onde a seta aponta. */
-@Serializable data class Bussola(val nome: String, val lat: Double, val lon: Double)
+/** "Encontrar a paragem": o nome e a posição do sítio para onde a seta aponta; [chave] é a da paragem (`RefParagem.chave`), para a foto, quando se sabe. */
+@Serializable data class Bussola(val nome: String, val lat: Double, val lon: Double, val chave: String? = null)
 
 /** origem e destino codificados como "nome|lat|lon" (ver paraRota); origem null = "A minha posição". */
 @Serializable data class Rotas(val origem: String? = null, val destino: String? = null)
@@ -253,9 +255,11 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
                 if (ref == null) nav.popBackStack() else ParagemEcra(
                     ref, repositorio, ligacoes.comunidade, ligacoes.configuracoes, ligacoes.preferencias,
                     carregarFoto = { ligacoes.http.obterBytes(it) },
-                    aoEncontrar = { nav.navigate(Bussola(it.nome, it.lat, it.lon)) },
+                    aoEncontrar = { nav.navigate(Bussola(it.nome, it.lat, it.lon, ref.chave)) },
                     aoAbrirConta = { nav.navigate(ContaRota) },
                     aoVoltar = { nav.popBackStack() },
+                    fotoDeRua = ligacoes.fotosDeRua.fotoDa(ref.chave),
+                    aoAbrirPagina = ::abrirUrl,
                 )
             }
             composable<Rotas> { entrada ->
@@ -331,14 +335,23 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
             }
             composable<Viagem> {
                 ViagemEcra(
-                    aoVoltar = { nav.popBackStack() }, aoEncontrar = { nav.navigate(Bussola(it.nome, it.lat, it.lon)) },
+                    aoVoltar = { nav.popBackStack() }, aoEncontrar = { lugar, chave -> nav.navigate(Bussola(lugar.nome, lugar.lat, lugar.lon, chave)) },
                     comunidade = ligacoes.comunidade, comunidadeLigada = config.interruptores.comunidade,
                     aoAbrirConta = { nav.navigate(ContaRota) },
                 )
             }
             composable<Bussola> { entrada ->
                 val b = entrada.toRoute<Bussola>()
-                BussolaEcra(b.nome, b.lat, b.lon, aoVoltar = { nav.popBackStack() })
+                val rua = ligacoes.fotosDeRua.fotoDa(b.chave)
+                BussolaEcra(
+                    b.nome, b.lat, b.lon, aoVoltar = { nav.popBackStack() },
+                    foto = {
+                        FotoNaBussola(
+                            b.chave, rua, ligacoes.comunidade, ligacoes.configuracoes, ligacoes.preferencias,
+                            carregar = { ligacoes.http.obterBytes(it) }, aoAbrirPagina = ::abrirUrl,
+                        )
+                    },
+                )
             }
             composable<Sobre> {
                 SobreEcra(versao = BuildConfig.VERSION_NAME, aoAbrir = ::abrirUrl, carrisAoVivo = config.interruptores.carrisAoVivo)
