@@ -69,7 +69,8 @@ class EscolherParagemAtividadeTest {
 
     @Test fun voltarAtrasCancela() {
         val cena = abrir()
-        regra.waitForIdle()
+        // A lista lê-se noutra linha de execução: sem esta espera, o @After fechava a base de dados com a leitura a meio.
+        esperarPor(app.getString(R.string.widget_sem_favoritas))
         cena.onActivity { it.onBackPressedDispatcher.onBackPressed() }
         esperarQueFeche(cena)
         assertEquals(Activity.RESULT_CANCELED, cena.result.resultCode)
