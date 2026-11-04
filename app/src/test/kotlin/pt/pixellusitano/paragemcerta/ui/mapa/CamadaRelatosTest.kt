@@ -22,6 +22,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
+import org.junit.Assert.fail
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -199,6 +200,16 @@ class CamadaRelatosTest {
         regra.mainClock.advanceTimeByFrame()
     }
 
+    // Converter uma resposta passa por fios de verdade: o relógio do teste não os espera, por isso espera-se em tempo real, um quadro de cada vez.
+    private fun esperarPor(condicao: () -> Boolean) {
+        repeat(600) {
+            if (condicao()) return
+            Thread.sleep(10)
+            quadro()
+        }
+        fail("não chegou o que se esperava; marcadas: $marcadas")
+    }
+
     // Muda o ciclo de vida da app (à vista = STARTED, em segundo plano = CREATED) e deixa os observadores tratarem disso.
     private fun irPara(estado: Lifecycle.State) {
         regra.runOnUiThread { dono!!.registo.currentState = estado }
@@ -216,8 +227,7 @@ class CamadaRelatosTest {
         assertTrue(http.pedidos.isEmpty())
         passar(1)
         assertEquals(listOf(listOf("CM:060419")), http.chaves("/api/comunidade", "paragens"))
-        quadro()
-        assertEquals("CM:060419:true", marcadas)
+        esperarPor { marcadas == "CM:060419:true" }
     }
 
     @Test fun camadaDesligadaNaoPede() {
