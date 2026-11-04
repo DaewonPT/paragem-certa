@@ -9,7 +9,7 @@ plugins {
     alias(libs.plugins.room)
 }
 
-val versao = "0.3.2"
+val versao = "0.4.0"
 
 // Chave de lançamento: no CI vem dos segredos do GitHub; no PC vem de ../Chave Privada/keystore.properties (fora do repositório).
 val propsChave = rootProject.file("../Chave Privada/keystore.properties")

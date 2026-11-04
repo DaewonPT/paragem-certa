@@ -12,6 +12,20 @@ Precisas de: a conta da Cloudflare (com a zona `pixellusitano.com`), uma conta n
 
 A ordem conta: o `wrangler.jsonc` exige seis segredos (`secrets.required`) e os dois buckets do R2, por isso o `wrangler deploy` falha enquanto algum faltar. Os passos 3 e 4 têm de vir antes do 5, e os passos 10 a 13 (R2, buckets e os segredos novos) antes da primeira publicação do passo 6. O `pc-admin`, a página de revisão, é outro Worker e só se publica no passo 14.
 
+## Publicar a 0.4.0, por esta ordem
+
+Nada disto começa antes do teu "publica". Depois dele, os passos marcados **(assistente)** podem ser feitos por mim; os marcados **(tu)** pedem as tuas contas ou chaves.
+
+1. **(assistente)** Enviar o ramo `versao-0-4` para o GitHub.
+2. **(assistente) Capturas de referência:** Actions → Android → Run workflow, no ramo `versao-0-4`, com `record_screenshots` ligado. Descarregar o artefacto `roborazzi-goldens`, fazer commit das capturas em `app/src/test/screenshots` e correr o mesmo workflow outra vez, sem `record_screenshots`, até ficar verde.
+3. **(assistente)** Juntar o ramo ao `main`.
+4. **(tu)** Este guia, do passo 1 ao passo 18: Cloudflare, Resend, Google, segredos, R2, Zero Trust e `pc-admin`. Relê a política de privacidade antes.
+5. **(tu)** A variável `SERVIDOR_PUBLICADO` = `sim` e **Servidor → Run workflow**, no `main` (passo 20). Põe no ar o `linhas.json` e o `fotos-de-rua.json`. Confirma que `https://paragemcerta.pixellusitano.com/dados/linhas.json` responde.
+6. **(tu, e eu faço os commits se pedires)** Ligar os interruptores em `worker/public/dados/config.json` (passos 9 e 16), **Servidor → Run workflow**, e só depois os mesmos em `app/src/main/assets/config.json`. O `carrisAoVivo` fica `false` até haver o OK escrito da Carris (passo 19). Se deixares algum desligado, tira a linha dele do `## 0.4.0` do `PATCHNOTES.md`: esse texto é o do aviso de atualização.
+7. **(assistente)** A tag `v0.4.0`, no `main`. O CI assina o APK e cria a Release com o texto do `PATCHNOTES.md`; os telemóveis com a 0.3.2 recebem o aviso de atualização.
+
+Antes de passar de 720 `/plan` por dia, a mensagem à equipa do Transitous no Matrix é tua, escrita por ti.
+
 ## 1. Entrar na Cloudflare
 
 1. `npx wrangler login` abre o browser; autoriza.

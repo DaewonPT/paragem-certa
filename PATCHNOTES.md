@@ -2,6 +2,17 @@
 
 A versão mais recente aparece primeiro.
 
+## 0.4.0 — Comunidade e extras
+
+- Relatos de quem anda nos transportes (acidentes, desvios, autocarros cheios): confirmas ou dizes que já não está.
+- Fotos das paragens: as que enviares, revistas antes de aparecerem, e fotos de rua do Panoramax.
+- Conta opcional, com o Google ou com um código por email, para levar os favoritos para outro telemóvel.
+- Separador Linhas: percurso, paragens e horário de hoje da Carris Metropolitana, Carris, Metro, CP, Fertagus, Transtejo, MobiCascais e TCB Barreiro.
+- Perturbações oficiais no início e durante a viagem, e estações GIRA no mapa.
+- Widget "Próximas chegadas": só vai à rede quando tocas em ↻ ou abres a app.
+- Rotas com as próximas partidas, mais cedo e mais tarde, e preferências. Procura por código postal. Sítios e linhas nos favoritos.
+- Com a app fechada continua a não correr nada.
+
 ## 0.3.2 — Avisos de chegada
 
 - "Avisa-me" na paragem: escolhe as linhas e os minutos, e a app avisa-te quando o autocarro estiver a chegar, mesmo com a app fechada.
