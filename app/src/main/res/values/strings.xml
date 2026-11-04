@@ -571,4 +571,19 @@
     <string name="perturbacoes_falhou">Não foi possível carregar as perturbações. Tenta outra vez mais tarde.</string>
     <string name="linhas_perturbacoes">Perturbações (%1$d)</string>
     <string name="perturbacao_na">⚠ Perturbação na %1$s</string>
+    <!-- Widget -->
+    <string name="widget_nome">Próximas chegadas</string>
+    <string name="widget_descricao">As próximas chegadas de uma paragem favorita.</string>
+    <string name="widget_atualizar">Atualizar</string>
+    <string name="widget_atualizado">atualizado às %1$s</string>
+    <string name="widget_a_atualizar">A atualizar…</string>
+    <string name="widget_sem_ligacao">Sem ligação — dados das %1$s</string>
+    <string name="widget_sem_ligacao_nunca">Sem ligação</string>
+    <string name="widget_sem_dados">Ainda sem chegadas. Toca em ↻.</string>
+    <string name="widget_escolher">Toca para escolher a paragem</string>
+    <string name="widget_escolher_titulo">Escolhe a paragem do widget</string>
+    <string name="widget_sem_favoritas">Ainda não tens paragens favoritas. Abre a app e toca na estrela de uma paragem.</string>
+    <string name="widget_abrir_app">Abrir a app</string>
+    <string name="widget_linha_descricao">%1$s para %2$s às %3$s</string>
+    <string name="widget_linha_descricao_tempo_real">%1$s para %2$s às %3$s, em tempo real</string>
 </resources>

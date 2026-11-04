@@ -40,6 +40,11 @@ private suspend fun semFalhar(tarefa: suspend () -> Unit) {
 }
 
 class MainActivity : ComponentActivity() {
+    companion object {
+        /** A chave da paragem que um widget tocado quer abrir. */
+        const val EXTRA_ABRIR_PARAGEM = "pt.pixellusitano.paragemcerta.ABRIR_PARAGEM"
+    }
+
     /** A notificação da viagem foi tocada: a Navegacao abre o ecrã da viagem e desliga isto. */
     private var abrirViagem by mutableStateOf(false)
 

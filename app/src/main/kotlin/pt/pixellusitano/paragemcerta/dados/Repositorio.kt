@@ -146,22 +146,20 @@ class Repositorio(
     /** Consulta ao ritmo da fonte enquanto alguém recolhe o fluxo; sem rede ou com erro, emite o último resultado bom. */
     fun chegadas(ref: RefParagem): Flow<EstadoChegadas> = flow {
         // Mostra logo o que está guardado, para não ficar em branco enquanto a rede responde (até 30 s com rede fraca).
-        guardadas(ref, relogio())?.takeIf { it.first.isNotEmpty() }?.let { (lista, em) ->
+        chegadasGuardadas(ref, relogio())?.takeIf { it.first.isNotEmpty() }?.let { (lista, em) ->
             emit(EstadoChegadas(lista, em, semLigacao = false, tempoRealIndisponivel = false))
         }
         var tentativa = 0
         while (true) {
             val agora = relogio()
-            when (val r = chegadasAgora(ref, agora)) {
+            when (val r = atualizarGuardadas(ref, agora)) {
                 is Resultado.Ok -> {
                     tentativa = 0
-                    val json = JSON.encodeToString(r.valor.map { it.paraGuardar() })
-                    bd.chegadas().guardar(ChegadasGuardadasEntidade(ref.chave, json, agora.epochSecond))
                     emit(EstadoChegadas(r.valor, agora, semLigacao = false, tempoRealIndisponivel = false))
                     delay(intervaloNormal(ref.fonte).toMillis())
                 }
                 is Resultado.Falha -> {
-                    val (anteriores, em) = guardadas(ref, agora) ?: (emptyList<Chegada>() to null)
+                    val (anteriores, em) = chegadasGuardadas(ref, agora) ?: (emptyList<Chegada>() to null)
                     emit(EstadoChegadas(anteriores, em, semLigacao = r.codigo == null, tempoRealIndisponivel = r.codigo != null))
                     delay(pausaDepoisDeFalha(ref.fonte, tentativa++).toMillis())
                 }
@@ -175,10 +173,20 @@ class Repositorio(
         Fonte.TRANSITOUS -> transitous.chegadas(ref.id, agora)
     }
 
-    private suspend fun guardadas(ref: RefParagem, agora: Instant): Pair<List<Chegada>, Instant>? {
+    /** Uma consulta à fonte; se veio, fica guardada para quando não houver rede (o ecrã da paragem e os widgets leem as mesmas). */
+    suspend fun atualizarGuardadas(ref: RefParagem, agora: Instant = relogio()): Resultado<List<Chegada>> =
+        chegadasAgora(ref, agora).also { r ->
+            if (r is Resultado.Ok) {
+                val json = JSON.encodeToString(r.valor.map { it.paraGuardar() })
+                bd.chegadas().guardar(ChegadasGuardadasEntidade(ref.chave, json, agora.epochSecond))
+            }
+        }
+
+    /** As que ainda vêm e a hora em que se guardaram; nada guardado, ou o que se guardou não se lê: null. */
+    suspend fun chegadasGuardadas(ref: RefParagem, agora: Instant): Pair<List<Chegada>, Instant>? {
         val g = bd.chegadas().porChave(ref.chave) ?: return null
-        val lista = JSON.decodeFromString<List<ChegadaGuardada>>(g.json).map { it.paraChegada() }.filter { aindaPorChegar(it, agora) }
-        return lista to Instant.ofEpochSecond(g.guardadoEm)
+        val lista = runCatching { JSON.decodeFromString<List<ChegadaGuardada>>(g.json).map { it.paraChegada() } }.getOrNull() ?: return null
+        return lista.filter { aindaPorChegar(it, agora) } to Instant.ofEpochSecond(g.guardadoEm)
     }
 
     /** Veículos da Carris Metropolitana a cada 15 s; numa falha mantém a última lista e espera mais. */

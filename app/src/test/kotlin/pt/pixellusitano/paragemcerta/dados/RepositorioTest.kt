@@ -181,6 +181,35 @@ class RepositorioTest {
         }
     }
 
+    @Test fun guardadasEstragadasNaoPartem() = runTest {
+        bd.chegadas().guardar(ChegadasGuardadasEntidade(terminal.chave, "{isto não é json", manha.epochSecond))
+        assertNull(repo(semRede).chegadasGuardadas(terminal, manha))
+        // Nem o ecrã da paragem, que lê as mesmas: fica sem nada guardado até a rede responder.
+        repo(HttpPorUrl("arrivals" to listOf({ Resposta(200, fixture("cm-arrivals-060419.json")) }))).chegadas(terminal).test {
+            assertEquals(3, awaitItem().chegadas.size)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun chegadasGuardadasSoTrazemAsQueAindaVem() = runTest {
+        val http = HttpPorUrl("arrivals" to listOf({ Resposta(200, fixture("cm-arrivals-060419.json")) }))
+        repo(http).atualizarGuardadas(terminal, manha)
+        val (lista, em) = repo(semRede).chegadasGuardadas(terminal, manha)!!
+        assertEquals(3, lista.size)
+        assertEquals(manha, em)
+        assertTrue(repo(semRede).chegadasGuardadas(terminal, manha.plusSeconds(86_400))!!.first.isEmpty())
+    }
+
+    @Test fun nadaGuardadoDaNull() = runTest { assertNull(repo(semRede).chegadasGuardadas(terminal, manha)) }
+
+    @Test fun atualizarGuardadasSoGuardaOQueVeio() = runTest {
+        val http = HttpPorUrl("arrivals" to listOf({ Resposta(200, fixture("cm-arrivals-060419.json")) }, { Resposta(500, "") }))
+        assertEquals(3, (repo(http).atualizarGuardadas(terminal, manha) as Resultado.Ok).valor.size)
+        val depois = manha.plusSeconds(10)
+        assertEquals(Resultado.Falha(500, limite = false), repo(http).atualizarGuardadas(terminal, depois))
+        assertEquals("a falha não toca no que estava guardado", manha, repo(semRede).chegadasGuardadas(terminal, manha)!!.second)
+    }
+
     @Test fun chegadasGuardadasAntesDoSentidoAindaLeemSe() = runTest {
         // O que a 0.3 guardou não tem "sentido" nem "padrao".
         val antiga = """[{"fonte":"CM","linhaId":"3708","linhaNome":"3708","destino":"Lisboa (C. Sodré)","programada":1792992300,"prevista":null,""" +

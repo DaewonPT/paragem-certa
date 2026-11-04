@@ -36,6 +36,27 @@
             </intent-filter>
         </activity>
 
+        <!-- O widget só desenha o que está guardado quando o Android o acorda: updatePeriodMillis 0, nada agendado. -->
+        <receiver
+            android:name=".widget.WidgetChegadas"
+            android:label="@string/widget_nome"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_chegadas" />
+        </receiver>
+
+        <activity
+            android:name=".widget.EscolherParagemAtividade"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
         <!-- A viagem corre noutro processo: se o resto da app falhar, o aviso de saída continua. -->
         <service
             android:name=".viagem.ServicoViagem"
