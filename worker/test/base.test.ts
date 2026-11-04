@@ -334,6 +334,14 @@ describe("política de privacidade, termos e guia do autor", () => {
     expect(en).toContain("only fetches data when you tap it or when you open the app; otherwise Android may start the app for a moment to redraw the last saved data");
   });
 
+  it("politicaDizQueOTransitousRecebeAPosicao", async () => {
+    const { pt, en } = await politica();
+    expect(pt).toContain("as paragens das próximas partidas. Também recebe a zona do mapa que estás a ver, o ponto onde fazes um toque longo no mapa");
+    expect(pt).toContain("com a localização ligada, a tua posição, para mostrar as paragens perto de ti e ordenar os resultados das pesquisas.");
+    expect(en).toContain("the stops for upcoming departures. It also receives the map area you are viewing, the point you long-press on the map");
+    expect(en).toContain("with location on, your position, to show the stops near you and to sort search results.");
+  });
+
   it("termosTemAIdadeEOsMecanismos", () => {
     // Guarda de regressão: o que a spec (4.7) manda explicar nos termos.
     const { pt, en } = emDuasLinguas(termosHtml);
