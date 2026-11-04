@@ -29,6 +29,9 @@ import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.Paragem
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
 
+// Esta atividade abre a base de dados verdadeira, em disco: com a máquina muito ocupada, a primeira leitura leva vários segundos.
+private const val ESPERA_MS = 30_000L
+
 @RunWith(RobolectricTestRunner::class)
 @Config(application = ParagemCertaApp::class)
 class EscolherParagemAtividadeTest {
@@ -40,10 +43,10 @@ class EscolherParagemAtividadeTest {
     private fun abrir(intent: Intent = Intent(app, EscolherParagemAtividade::class.java).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, 7)) =
         ActivityScenario.launchActivityForResult<EscolherParagemAtividade>(intent)
 
-    private fun esperarPor(texto: String) = regra.waitUntil(5_000) { regra.onAllNodes(hasText(texto)).fetchSemanticsNodes().isNotEmpty() }
+    private fun esperarPor(texto: String) = regra.waitUntil(ESPERA_MS) { regra.onAllNodes(hasText(texto)).fetchSemanticsNodes().isNotEmpty() }
 
     // O Robolectric não chega a destruir uma atividade que fez finish() depois de abrir: fica só "a acabar".
-    private fun esperarQueFeche(cena: ActivityScenario<EscolherParagemAtividade>) = regra.waitUntil(5_000) {
+    private fun esperarQueFeche(cena: ActivityScenario<EscolherParagemAtividade>) = regra.waitUntil(ESPERA_MS) {
         var aAcabar = cena.state == Lifecycle.State.DESTROYED
         if (!aAcabar) cena.onActivity { aAcabar = it.isFinishing }
         aAcabar
