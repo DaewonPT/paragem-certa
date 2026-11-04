@@ -249,7 +249,7 @@ O catálogo das linhas de Carris, Metro, CP, Fertagus, Transtejo, MobiCascais e 
 Quem o gera:
 
 - **O trabalho `publicar`** (passo 7) gera-o antes do deploy. Se o Transitous falhar, fica a cópia que já está no ar; só pára se não houver nenhuma (a primeira publicação com o Transitous em baixo: corre outra vez mais tarde).
-- **O workflow `Dados`** (`dados.yml`) corre à segunda-feira às 04:17 UTC. Faz o checkout só do **último commit que o Servidor publicou** (o da última corrida à mão que acabou bem), gera o catálogo, compara-o com o que está no ar (sem o campo `geradoEm`) e **só faz o deploy se o catálogo mudou**. Assim nunca publica código que ainda não publicaste. Se a última corrida do Servidor falhou ou ainda está a correr, pára com um erro: corre o Servidor outra vez e depois este.
+- **O workflow `Dados`** (`dados.yml`) corre à segunda-feira às 04:17 UTC e trata dos dois ficheiros gerados: este e o das fotos de rua (passo 21). Faz o checkout só do **último commit que o Servidor publicou** (o da última corrida à mão que acabou bem), gera o catálogo, gera as fotos ou copia as que estão no ar, compara os dois com o que está no ar (sem o campo `geradoEm`) e **só faz o deploy se algum mudou**. Assim nunca publica código que ainda não publicaste. Se a última corrida do Servidor falhou ou ainda está a correr, pára com um erro: corre o Servidor outra vez e depois este.
 
 Depois da 0.4.0:
 
@@ -258,6 +258,20 @@ Depois da 0.4.0:
 3. Para atualizar já, sem esperar pela segunda-feira: **Actions → Dados → Run workflow**, no `main`.
 
 **Os 60 dias:** num repositório público, o GitHub desliga sozinho os workflows agendados ao fim de 60 dias sem atividade (commits, por exemplo). Quando isso acontece, o catálogo fica velho, mas a app continua a funcionar com ele. Para voltar a ligar: **Actions → Dados** e carrega em **Enable workflow** no aviso que lá aparece.
+
+## 21. Fotos de rua
+
+As fotos de rua do ecrã da paragem e da bússola vêm do Panoramax (fotos abertas, sem chave nem conta). O ficheiro `/dados/fotos-de-rua.json` diz que foto mostrar em cada paragem: a mais recente a menos de 30 m e virada para ela. Quem o gera é o `worker/ferramentas/gerar-fotos-rua.mjs`, no GitHub Actions. Nunca está no repositório (`.gitignore`) e, como um deploy apaga do ar o que não leva, vai em todos os deploys. Sem ficheiro no ar, a app mostra só as fotos da comunidade e continua a funcionar.
+
+Quando se gera:
+
+- **O workflow `Dados`** gera-o na primeira segunda-feira do mês (dias 1 a 7). Nas outras segundas-feiras, copia o que está no ar.
+- **O trabalho `publicar`** (passo 7) copia o que está no ar e só gera se não houver nada.
+- **Se gerar falhar** (Panoramax em baixo, uma resposta que não se percebe, menos de 500 fotos, a API da Carris Metropolitana em baixo), fica o que está no ar, com um aviso na corrida. Sem nada no ar, fica um ficheiro vazio, e a segunda-feira seguinte tenta outra vez. Nunca pára uma publicação.
+
+**Para gerar já:** **Actions → Dados → Run workflow**, no `main`. À mão, gera sempre.
+
+**Para esconder uma foto má:** o id é o que vem depois de `pic=` na página da foto (a ligação do crédito na app). Junta-o à lista de `worker/ferramentas/fotos-excluidas.json`, por exemplo `["94c6834a-70ea-4038-9517-5a4a59570efb"]`, e faz commit. O `Dados` só usa código já publicado, por isso corre primeiro o **Servidor → Run workflow** e depois o **Dados → Run workflow**.
 
 ## Custos e limites
 

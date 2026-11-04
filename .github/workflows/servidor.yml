@@ -51,7 +51,7 @@ jobs:
       - name: Types
         run: npm run tipos
 
-      - name: Lines catalogue generator (Node, small hand-written GTFS)
+      - name: Data generators (Node, small hand-written data)
         run: npm run ferramentas
 
   publicar:
@@ -110,6 +110,12 @@ jobs:
         run: |
           curl -fsSL --retry 2 -o public/dados/linhas.json https://paragemcerta.pixellusitano.com/dados/linhas.json
           jq -e '.versao == 1 and (.linhas | length) > 0' public/dados/linhas.json > /dev/null
+
+      # Um deploy apaga do ar o que não leva: copia as fotos de rua que lá estão e só gera se não houver nenhumas. Uma
+      # falha do Panoramax não pára a publicação.
+      - name: Keep the live street photos
+        working-directory: worker
+        run: node ferramentas/gerar-fotos-rua.mjs manter public/dados/linhas.json public/dados/fotos-de-rua.json
 
       # As migrações vão primeiro: só acrescentam tabelas, por isso o código antigo continua a funcionar até ao deploy.
       - name: Apply D1 migrations (remote, EU)

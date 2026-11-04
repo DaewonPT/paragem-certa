@@ -1,7 +1,8 @@
 # .github/workflows/dados.yml
-# Atualiza o catálogo das linhas (/dados/linhas.json) à segunda-feira de manhã. Só corre depois de o autor pôr a
-# variável do repositório SERVIDOR_PUBLICADO = sim, só no main, só com o último commit que o "Servidor" já publicou
-# (nunca código que o autor ainda não publicou) e só quando o catálogo mudou. Ver docs/servidor.md.
+# Atualiza o catálogo e as fotos de rua (/dados/linhas.json e /dados/fotos-de-rua.json): o catálogo à segunda-feira de
+# manhã, as fotos na primeira segunda-feira do mês. Só corre depois de o autor pôr a variável do repositório
+# SERVIDOR_PUBLICADO = sim, só no main, só com o último commit que o "Servidor" já publicou (nunca código que o autor
+# ainda não publicou) e só quando algum dos dois mudou. Ver docs/servidor.md.
 name: Dados
 
 on:
@@ -22,7 +23,7 @@ concurrency:
 
 jobs:
   linhas:
-    name: Weekly lines catalogue
+    name: Weekly lines catalogue and street photos
     if: github.ref == 'refs/heads/main' && vars.SERVIDOR_PUBLICADO == 'sim'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -82,24 +83,32 @@ jobs:
           done
           node ferramentas/gerar-linhas.mjs "$gtfs" public/dados/linhas.json
 
+      # Corre todas as semanas porque um deploy apaga do ar o que não leva: o gerador decide se gera ou copia o que lá está.
+      # Com o agendamento gera nos dias 1 a 7 do mês; à mão gera sempre. Uma falha do Panoramax não pára nada.
+      - name: Get the street photos
+        working-directory: worker
+        env:
+          MODO: ${{ github.event_name == 'workflow_dispatch' && 'sempre' || 'mensal' }}
+        run: node ferramentas/gerar-fotos-rua.mjs "$MODO" public/dados/linhas.json public/dados/fotos-de-rua.json
+
       # Sem o geradoEm e com as chaves por ordem; um ficheiro em falta ou estragado no ar conta como mudança.
-      - name: Compare with the live catalogue
+      - name: Compare with the live files
         id: compara
         shell: bash
         working-directory: worker
         run: |
-          jq -S 'del(.geradoEm)' public/dados/linhas.json > "$RUNNER_TEMP/novo.json"
-          curl -fsSL --retry 2 -o "$RUNNER_TEMP/no-ar.json" https://paragemcerta.pixellusitano.com/dados/linhas.json || echo '{}' > "$RUNNER_TEMP/no-ar.json"
-          jq -S 'del(.geradoEm)' "$RUNNER_TEMP/no-ar.json" > "$RUNNER_TEMP/antigo.json" || echo '{}' > "$RUNNER_TEMP/antigo.json"
-          if cmp -s "$RUNNER_TEMP/novo.json" "$RUNNER_TEMP/antigo.json"; then
-            echo "mudou=nao" >> "$GITHUB_OUTPUT"
-            echo "O catálogo não mudou; nada a publicar."
-          else
-            echo "mudou=sim" >> "$GITHUB_OUTPUT"
-          fi
+          mudou=nao
+          for ficheiro in linhas.json fotos-de-rua.json; do
+            jq -S 'del(.geradoEm)' "public/dados/$ficheiro" > "$RUNNER_TEMP/novo.json"
+            curl -fsSL --retry 2 -o "$RUNNER_TEMP/no-ar.json" "https://paragemcerta.pixellusitano.com/dados/$ficheiro" || echo '{}' > "$RUNNER_TEMP/no-ar.json"
+            jq -S 'del(.geradoEm)' "$RUNNER_TEMP/no-ar.json" > "$RUNNER_TEMP/antigo.json" || echo '{}' > "$RUNNER_TEMP/antigo.json"
+            if ! cmp -s "$RUNNER_TEMP/novo.json" "$RUNNER_TEMP/antigo.json"; then mudou=sim; fi
+          done
+          echo "mudou=$mudou" >> "$GITHUB_OUTPUT"
+          if [ "$mudou" = nao ]; then echo "O catálogo e as fotos não mudaram; nada a publicar."; fi
 
       # O mesmo deploy (e os mesmos segredos) do "Servidor"; sem migrações, porque este commit já foi publicado.
-      - name: Deploy the Worker with the new catalogue
+      - name: Deploy the Worker with the new files
         if: steps.compara.outputs.mudou == 'sim'
         uses: cloudflare/wrangler-action@v4
         with:
