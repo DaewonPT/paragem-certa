@@ -42,7 +42,7 @@ import java.io.IOException
 import java.time.Instant
 
 /** O servidor da Paragem Certa em memória: o token é o email, cada email é uma conta, e as revisões sobem como no verdadeiro. */
-private class ServidorDeTeste : Http {
+internal class ServidorDeTeste : Http {
     var semRede = false
     var recusarSessao = false
     /** Corre enquanto o pedido de sincronização "está na rede" (a pessoa mexe nos favoritos entretanto). */

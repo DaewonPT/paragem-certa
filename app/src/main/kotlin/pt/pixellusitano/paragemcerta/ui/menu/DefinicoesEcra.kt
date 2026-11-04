@@ -37,7 +37,9 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.atualizar.Atualizacoes
 import pt.pixellusitano.paragemcerta.core.atraso.Limites
@@ -83,12 +85,15 @@ fun DefinicoesEcra(preferencias: Preferencias, conta: Conta, aoVoltar: () -> Uni
         modifier = Modifier.fillMaxSize(),
         aoApagarDados = {
             // A Conta não tem as Preferencias: os relatos e fotos escondidos e as perturbações vistas também são dados deste telemóvel.
+            // Sair ou rodar o ecrã a meio não pode deixar metade por apagar (a sincronização antes de sair pode levar 30 s).
             escopo.launch {
-                preferencias.esquecerOcultos()
-                preferencias.esquecerVistas()
-                conta.apagarDadosDoTelemovel()
+                withContext(NonCancellable) {
+                    preferencias.esquecerOcultos()
+                    preferencias.esquecerVistas()
+                    conta.apagarDadosDoTelemovel()
+                    Toast.makeText(contexto.applicationContext, apagados, Toast.LENGTH_SHORT).show()
+                }
             }
-            Toast.makeText(contexto, apagados, Toast.LENGTH_SHORT).show()
         },
         aoApagarConta = if (estadoConta is EstadoConta.Com) ({ escopo.launch { conta.apagarEAvisar(contexto) } }) else null,
         camadaRelatos = camadaRelatos,
