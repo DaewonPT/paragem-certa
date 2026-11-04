@@ -3,6 +3,7 @@ package pt.pixellusitano.paragemcerta.widget
 import android.app.PendingIntent
 import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
+import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
 import android.content.res.Configuration
@@ -14,6 +15,7 @@ import kotlinx.coroutines.launch
 import pt.pixellusitano.paragemcerta.MainActivity
 import pt.pixellusitano.paragemcerta.ParagemCertaApp
 import pt.pixellusitano.paragemcerta.R
+import pt.pixellusitano.paragemcerta.dados.Repositorio
 
 /** Só desenha quando o Android o acorda; a única ida à rede daqui é o toque em ↻. */
 open class WidgetChegadas : AppWidgetProvider() {
@@ -57,13 +59,16 @@ open class WidgetChegadas : AppWidgetProvider() {
 }
 
 /** As ligações só se criam aqui, com o Android a acordar o widget: o resto da app continua sem correr nada ao arrancar. */
-internal fun atualizadorWidgets(contexto: Context): AtualizadorWidgets {
-    val app = contexto.applicationContext
-    val repositorio = (app as ParagemCertaApp).ligacoes.repositorio
+internal fun atualizadorWidgets(contexto: Context): AtualizadorWidgets = (contexto.applicationContext as ParagemCertaApp).ligacoes.widgets
+
+/** Ligado ao Android a sério: desenha com o AppWidgetManager e pergunta-lhe que widgets estão postos. */
+internal fun criarAtualizadorWidgets(app: Context, repositorio: Repositorio): AtualizadorWidgets {
     val gestor = AppWidgetManager.getInstance(app)
+    val provider = ComponentName(app, WidgetChegadas::class.java)
     return AtualizadorWidgets(
         DadosWidget(app), repositorio::chegadasGuardadas, repositorio::atualizarGuardadas,
         desenhar = { id, conteudo -> gestor.updateAppWidget(id, vistas(app, id, conteudo)) },
+        todos = { gestor.getAppWidgetIds(provider).toList() },
     )
 }
 

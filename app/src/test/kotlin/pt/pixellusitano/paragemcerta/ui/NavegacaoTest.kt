@@ -1,6 +1,9 @@
 package pt.pixellusitano.paragemcerta.ui
 
 import androidx.compose.material3.Text
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.navigation.NavDestination.Companion.hasRoute
 import androidx.navigation.NavHostController
@@ -28,6 +31,9 @@ import pt.pixellusitano.paragemcerta.dados.LinhaFavorita
 class NavegacaoTest {
     @get:Rule val regra = createComposeRule()
     private lateinit var nav: NavHostController
+    /** O que a MainActivity guarda quando um widget é tocado, e quantas vezes a Navegacao avisou que já abriu. */
+    private var pedidoDoWidget by mutableStateOf<String?>(null)
+    private var avisos = 0
 
     @Before fun montar() {
         regra.setContent {
@@ -40,7 +46,9 @@ class NavegacaoTest {
                 composable<LinhaRota> { Text("linha") }
                 composable<Viagem> { Text("viagem") }
                 composable<Menu> { Text("menu") }
+                composable<Paragem> { Text("paragem") }
             }
+            AbrirParagemDoWidget(nav, pedidoDoWidget, aoAbrir = { pedidoDoWidget = null; avisos++ })
         }
     }
 
@@ -128,6 +136,49 @@ class NavegacaoTest {
     @Test fun inicioVoltaDepoisDoSeparadorMenu() {
         regra.runOnIdle { nav.irParaSeparador(Menu) }
         regra.runOnIdle { nav.irParaSeparador(Inicio) }
+        regra.runOnIdle { assertTrue(naInicio()) }
+    }
+
+    @Test fun widgetAbreAParagem() {
+        regra.runOnIdle { nav.abrirParagemDoWidget("CM:060419") }
+        regra.runOnIdle {
+            assertEquals(Paragem("CM:060419"), nav.currentBackStackEntry!!.toRoute<Paragem>())
+            nav.popBackStack()
+        }
+        regra.runOnIdle { assertTrue("voltar regressa ao que estava aberto", naInicio()) }
+    }
+
+    @Test fun chaveInvalidaNaoFazNada() {
+        regra.runOnIdle { nav.abrirParagemDoWidget("isto não é uma chave") }
+        regra.runOnIdle { assertTrue(naInicio()) }
+        regra.runOnIdle { pedidoDoWidget = "isto também não" }
+        regra.runOnIdle {
+            assertTrue(naInicio())
+            assertEquals("mesmo sem abrir, o pedido gasta-se", 1, avisos)
+            assertEquals(null, pedidoDoWidget)
+        }
+    }
+
+    @Test fun pedidoDoWidgetAbreUmaVezEAvisa() {
+        regra.runOnIdle { pedidoDoWidget = "CM:060419" }
+        regra.runOnIdle {
+            assertEquals(Paragem("CM:060419"), nav.currentBackStackEntry!!.toRoute<Paragem>())
+            assertEquals(1, avisos)
+            assertEquals(null, pedidoDoWidget)
+            nav.popBackStack()
+        }
+        // Tocar outra vez na mesma paragem, com a app ainda aberta, tem de a abrir de novo.
+        regra.runOnIdle { pedidoDoWidget = "CM:060419" }
+        regra.runOnIdle {
+            assertEquals(Paragem("CM:060419"), nav.currentBackStackEntry!!.toRoute<Paragem>())
+            assertEquals(2, avisos)
+        }
+    }
+
+    @Test fun paragemDoWidgetJaAbertaNaoEmpilhaOutraIgual() {
+        regra.runOnIdle { pedidoDoWidget = "CM:060419" }
+        regra.runOnIdle { pedidoDoWidget = "CM:060419" }
+        regra.runOnIdle { nav.popBackStack() }
         regra.runOnIdle { assertTrue(naInicio()) }
     }
 }

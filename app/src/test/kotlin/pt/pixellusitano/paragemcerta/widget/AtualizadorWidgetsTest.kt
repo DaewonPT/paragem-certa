@@ -39,6 +39,7 @@ class AtualizadorWidgetsTest {
     private val desenhos = mutableListOf<Pair<Int, ConteudoWidget>>()
     private val guardadas = mutableMapOf<RefParagem, Pair<List<Chegada>, Instant>>()
     private var pedidos = 0
+    private val widgets = mutableListOf<Int>()
 
     private fun TestScope.atualizador(
         despacho: CoroutineDispatcher = StandardTestDispatcher(testScheduler),
@@ -48,6 +49,7 @@ class AtualizadorWidgetsTest {
         { ref, _ -> guardadas[ref] },
         { ref, em -> pedidos++; pedir(ref, em) },
         { id, c -> desenhos += id to c },
+        { widgets },
         { inicio.plusMillis(testScheduler.currentTime) },
         despacho,
     )
@@ -197,5 +199,118 @@ class AtualizadorWidgetsTest {
         atualizador().aoTocar(1)
         assertEquals(0, pedidos)
         assertNull(desenhos.single().second.paragem)
+    }
+
+    private val outra = RefParagem(Fonte.CM, "060500")
+    private val pedidasPara = mutableListOf<RefParagem>()
+
+    /** Um `pedir` que guarda a resposta como o repositório faz, para o redesenho a seguir a ler. */
+    private fun guardando(linha: String): suspend (RefParagem, Instant) -> Resultado<List<Chegada>> = { ref, em ->
+        pedidasPara += ref
+        val nova = listOf(chegada(linha, em.plusSeconds(600)))
+        guardadas[ref] = nova to em
+        Resultado.Ok(nova)
+    }
+
+    @Test fun aoAbrirSemWidgetsNaoPedeNada() = runTest {
+        dados.escolher(1, cais.chave, "Cais") // sobra de um widget que já não existe
+        atualizador().aoAbrirApp()
+        assertEquals(0, pedidos)
+        assertTrue(desenhos.isEmpty())
+    }
+
+    @Test fun aoAbrirComWidgetsSemParagemNaoPedeNada() = runTest {
+        widgets += listOf(1, 2)
+        atualizador().aoAbrirApp()
+        assertEquals(0, pedidos)
+        assertEquals(listOf(null, null), desenhos.map { it.second.paragem })
+    }
+
+    @Test fun aoAbrirRecenteNaoPede() = runTest {
+        widgets += 1
+        dados.escolher(1, cais.chave, "Cais")
+        // Exatamente 60 s: só "mais de 60 s" conta como velha.
+        guardadas[cais] = listOf(chegada("728", inicio.plusSeconds(600))) to inicio.minusSeconds(60)
+        atualizador().aoAbrirApp()
+        assertEquals(0, pedidos)
+        assertEquals(listOf("728"), desenhos.single().second.linhas.map { it.linha })
+    }
+
+    @Test fun aoAbrirVelhaPedeUmaVezPorParagem() = runTest {
+        widgets += listOf(1, 2, 3)
+        dados.escolher(1, cais.chave, "Cais")
+        dados.escolher(2, cais.chave, "Cais")
+        dados.escolher(3, outra.chave, "Outra")
+        guardadas[cais] = listOf(chegada("velha", inicio.plusSeconds(600))) to inicio.minusSeconds(61)
+        // A segunda paragem não tem nada guardado: também se pede.
+        atualizador(pedir = guardando("nova")).aoAbrirApp()
+
+        assertEquals(listOf(cais, outra), pedidasPara)
+        assertEquals(listOf(1, 2, 3), desenhos.map { it.first })
+        assertEquals(listOf("nova", "nova", "nova"), desenhos.map { it.second.linhas.single().linha })
+        assertTrue(estados.all { it == EstadoWidget.Normal })
+        assertNull("abrir a app não conta como toque no ↻", dados.ultimaTentativa(1))
+    }
+
+    @Test fun aoAbrirComAGuardadaNoFuturoPede() = runTest {
+        widgets += 1
+        dados.escolher(1, cais.chave, "Cais")
+        // O relógio andou para trás: uma guardada "de amanhã" não pode impedir os pedidos até ele voltar.
+        guardadas[cais] = listOf(chegada("728", inicio.plusSeconds(600))) to inicio.plusSeconds(3600)
+        atualizador(pedir = guardando("nova")).aoAbrirApp()
+        assertEquals(listOf(cais), pedidasPara)
+    }
+
+    @Test fun aoAbrirFalhaNaoParte() = runTest {
+        widgets += listOf(1, 2, 3)
+        dados.escolher(1, cais.chave, "Cais")
+        dados.escolher(2, outra.chave, "Outra")
+        guardadas[cais] = listOf(chegada("728", inicio.plusSeconds(600))) to inicio.minusSeconds(3600)
+        atualizador { ref, _ ->
+            pedidasPara += ref
+            if (ref == cais) throw IOException("rebentou") else Resultado.Falha(null, false)
+        }.aoAbrirApp()
+
+        assertEquals("uma falha não impede o pedido da paragem seguinte", listOf(cais, outra), pedidasPara)
+        assertEquals("nem o redesenho, com o que estava guardado", listOf(1, 2, 3), desenhos.map { it.first })
+        assertEquals(listOf("728"), desenhos[0].second.linhas.map { it.linha })
+    }
+
+    @Test fun aoAbrirCanceladoNaoEngoleOCancelamento() = runTest {
+        widgets += 1
+        dados.escolher(1, cais.chave, "Cais")
+        val toque = launch { atualizador { _, _ -> delay(60_000); Resultado.Ok(emptyList()) }.aoAbrirApp() }
+        runCurrent()
+        toque.cancel()
+        runCurrent()
+        assertTrue("sair da app corta o pedido", toque.isCancelled)
+        assertTrue("e não desenha por cima do redesenho da saída", desenhos.isEmpty())
+    }
+
+    @Test fun aoSairNaoVaiARede() = runTest {
+        widgets += listOf(1, 2)
+        dados.escolher(1, cais.chave, "Cais")
+        guardadas[cais] = listOf(chegada("728", inicio.plusSeconds(600))) to inicio.minusSeconds(3600)
+        atualizador().aoSairDaApp()
+        assertEquals(0, pedidos)
+        assertEquals(listOf(1, 2), desenhos.map { it.first })
+        assertEquals(listOf("728"), desenhos[0].second.linhas.map { it.linha })
+        assertTrue("uma hora depois da última atualização", desenhos[0].second.cinzento)
+        assertNull(desenhos[1].second.paragem)
+    }
+
+    @Test fun apagarDadosEsqueceOsWidgets() = runTest {
+        widgets += listOf(1, 2)
+        dados.escolher(1, cais.chave, "Cais")
+        dados.escolher(2, outra.chave, "Outra")
+        dados.marcarTentativa(1, inicio)
+        guardadas[cais] = listOf(chegada("728", inicio.plusSeconds(600))) to inicio
+        atualizador().aoApagarDados()
+
+        assertNull(dados.escolha(1))
+        assertNull(dados.escolha(2))
+        assertNull(dados.ultimaTentativa(1))
+        assertEquals("os widgets continuam no ecrã, a pedir uma paragem", listOf(null, null), desenhos.map { it.second.paragem })
+        assertEquals(0, pedidos)
     }
 }

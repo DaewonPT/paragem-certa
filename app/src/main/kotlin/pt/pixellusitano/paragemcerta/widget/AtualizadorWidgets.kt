@@ -14,19 +14,52 @@ import java.time.Duration
 import java.time.Instant
 
 private val ENTRE_TOQUES: Duration = Duration.ofSeconds(30)
+private val GUARDADA_VALE: Duration = Duration.ofSeconds(60)
 private const val MAX_PEDIDO_MS = 8_000L
 
-/** [despachoDoPedido]: os testes trocam-no para o pedido correr no tempo virtual deles. */
+/** [todos]: os ids dos widgets postos agora (o Android é que sabe); [despachoDoPedido]: os testes trocam-no para o pedido correr no tempo virtual deles. */
 class AtualizadorWidgets(
     private val dados: DadosWidget,
     private val lerGuardadas: suspend (RefParagem, Instant) -> Pair<List<Chegada>, Instant>?,
     private val pedir: suspend (RefParagem, Instant) -> Resultado<List<Chegada>>,
     private val desenhar: (Int, ConteudoWidget) -> Unit,
+    private val todos: () -> Collection<Int>,
     private val relogio: () -> Instant = Instant::now,
     private val despachoDoPedido: CoroutineDispatcher = Dispatchers.IO,
 ) {
     /** Só o que está guardado: é o que corre quando o Android acorda o widget, por isso nunca vai à rede. */
     suspend fun redesenhar(ids: Collection<Int>) = ids.forEach { desenharGuardadas(it, EstadoWidget.Normal) }
+
+    /**
+     * A app abriu: uma leitura por paragem de widget (dois widgets na mesma paragem fazem um pedido), só se a guardada tiver
+     * mais de 60 s, para voltar à app várias vezes não gastar pedidos. Depois redesenha todos, com ou sem resposta.
+     */
+    suspend fun aoAbrirApp() {
+        val ids = todos().toList()
+        ids.mapNotNull { paragemDe(it)?.first }.distinct().forEach { ref ->
+            val agora = relogio() // de cada vez: um pedido lento não pode dar a hora velha ao seguinte
+            val guardadaEm = lerGuardadas(ref, agora)?.second
+            // Negativo: o relógio andou para trás, e uma guardada "do futuro" não pode calar os pedidos até ele a alcançar.
+            val passou = guardadaEm?.let { Duration.between(it, agora) }
+            if (passou != null && !passou.isNegative && passou <= GUARDADA_VALE) return@forEach
+            try {
+                pedir(ref, agora)
+            } catch (e: Exception) {
+                currentCoroutineContext().ensureActive() // uma paragem que falha não impede as outras; sair da app (cancelar) continua a subir
+            }
+        }
+        redesenhar(ids)
+    }
+
+    /** A app fechou: só o que já está guardado, sem rede. */
+    suspend fun aoSairDaApp() = redesenhar(todos())
+
+    /** Apagar dados do telemóvel: os widgets deixam de ter paragem e ficam a pedir uma. */
+    suspend fun aoApagarDados() {
+        val ids = todos().toList()
+        dados.esquecerTudo()
+        redesenhar(ids)
+    }
 
     suspend fun aoTocar(id: Int) {
         val (ref, nome) = paragemDe(id) ?: return desenharGuardadas(id, EstadoWidget.Normal)

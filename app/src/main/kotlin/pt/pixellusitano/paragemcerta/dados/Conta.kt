@@ -44,6 +44,8 @@ class Conta(
     private val servidor: ServidorParagemCerta,
     private val repositorio: Repositorio,
     private val relogio: () -> Instant = Instant::now,
+    /** Os widgets guardam a paragem escolhida no telemóvel, fora da base de dados: também saem com os dados. */
+    private val esquecerWidgets: suspend () -> Unit = {},
 ) {
     // Em noBackupFilesDir: o Android nunca o copia, por isso o token não vai parar a outro telemóvel.
     private val ficheiro = File(contexto.noBackupFilesDir, "conta.json")
@@ -136,6 +138,7 @@ class Conta(
     suspend fun apagarDadosDoTelemovel() {
         sair()
         repositorio.apagarDadosDoTelemovel()
+        esquecerWidgets()
     }
 
     /** Apaga a conta e os favoritos guardados nela; no telemóvel ficam. */

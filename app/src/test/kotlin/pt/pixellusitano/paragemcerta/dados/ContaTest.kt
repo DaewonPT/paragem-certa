@@ -98,7 +98,8 @@ class ContaTest {
     private val repo = Repositorio(bd, CarrisMetropolitana(http), Transitous(http), GeoApi(http))
     private val servidor = ServidorDeTeste()
     private val agora = Instant.parse("2026-11-02T08:00:00Z")
-    private fun conta() = Conta(contexto, ServidorParagemCerta(servidor), repo, relogio = { agora })
+    private var widgetsEsquecidos = 0
+    private fun conta() = Conta(contexto, ServidorParagemCerta(servidor), repo, relogio = { agora }, esquecerWidgets = { widgetsEsquecidos++ })
     private val ficheiro get() = File(contexto.noBackupFilesDir, "conta.json")
 
     private val cais = Paragem(RefParagem(Fonte.CM, "060419"), "Cais do Sodré", 38.7056, -9.1448, null)
@@ -260,6 +261,24 @@ class ContaTest {
         assertEquals(listOf("ana@exemplo.pt"), servidor.sessoesTerminadas)
         assertEquals(setOf("CM:060419"), servidor.contas["ana@exemplo.pt"]!!.keys) // o que faltava foi antes de sair
         assertTrue(chavesFavoritas().isEmpty())
+    }
+
+    @Test fun apagarDadosDoTelemovelEsqueceOsWidgets() = runTest {
+        val c = conta()
+        entrar(c)
+        assertEquals("entrar e sair da conta não mexem nos widgets", 0, widgetsEsquecidos)
+        c.apagarDadosDoTelemovel()
+        assertEquals(1, widgetsEsquecidos)
+    }
+
+    @Test fun apagarAContaNaoEsqueceOsWidgets() = runTest {
+        // Os favoritos ficam no telemóvel (conta_apagar_confirmar), por isso as paragens escolhidas nos widgets continuam a existir.
+        val c = conta()
+        entrar(c)
+        repo.alternarFavorita(cais)
+        assertEquals(Resultado.Ok(Unit), c.apagarConta())
+        assertEquals(listOf("CM:060419"), chavesFavoritas())
+        assertEquals(0, widgetsEsquecidos)
     }
 
     @Test fun sairEnviaPrimeiroOQueFaltava() = runTest {

@@ -50,7 +50,7 @@ class WidgetChegadasTest {
     private var pedidos = 0
 
     private fun atualizador(ler: suspend () -> Pair<List<Chegada>, Instant>? = { null }) =
-        AtualizadorWidgets(dados, { _, _ -> ler() }, { _, _ -> pedidos++; Resultado.Ok(emptyList()) }, { _, _ -> }, { agora })
+        AtualizadorWidgets(dados, { _, _ -> ler() }, { _, _ -> pedidos++; Resultado.Ok(emptyList()) }, { _, _ -> }, { emptyList() }, { agora })
 
     /** O onReceive como o Android o chama, com um PendingResult que sabe se levou com o finish(). */
     private fun entregar(receiver: BroadcastReceiver, intent: Intent): BroadcastReceiver.PendingResult {

@@ -137,12 +137,33 @@ fun NavController.irParaSeparador(rota: Any) = navigate(rota) {
     restoreState = rota !is Inicio
 }
 
+/** Um widget foi tocado: abre a paragem por cima do que está aberto; uma chave que não se lê não faz nada. */
+fun NavController.abrirParagemDoWidget(chave: String) {
+    val ref = RefParagem.daChave(chave) ?: return
+    navigate(Paragem(ref.chave)) { launchSingleTop = true }
+}
+
+/** [chave] é a do widget tocado; avisa-se sempre (aoAbrir), mesmo sem abrir nada, para tocar outra vez na mesma paragem a abrir de novo. */
+@Composable
+internal fun AbrirParagemDoWidget(nav: NavController, chave: String?, aoAbrir: () -> Unit) {
+    LaunchedEffect(chave) {
+        if (chave != null) {
+            nav.abrirParagemDoWidget(chave)
+            aoAbrir()
+        }
+    }
+}
+
 /**
  * Ecrãs com a barra de baixo (Início, Rotas, Linhas e Menu). abrirViagem: a notificação da viagem foi tocada, por isso
- * abre-se o ecrã da viagem e avisa-se (aoAbrirViagem) para o pedido não se repetir.
+ * abre-se o ecrã da viagem e avisa-se (aoAbrirViagem) para o pedido não se repetir. abrirParagem: o mesmo para um widget
+ * (a chave da paragem dele).
  */
 @Composable
-fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: () -> Unit = {}) {
+fun Navegacao(
+    ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: () -> Unit = {},
+    abrirParagem: String? = null, aoAbrirParagem: () -> Unit = {},
+) {
     val nav = rememberNavController()
     val contexto = LocalContext.current
     LaunchedEffect(abrirViagem) {
@@ -151,6 +172,7 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
             aoAbrirViagem()
         }
     }
+    AbrirParagemDoWidget(nav, abrirParagem, aoAbrirParagem)
     val atual by nav.currentBackStackEntryAsState()
     val destino = atual?.destination
     val naInicio = destino?.hasRoute(Inicio::class) == true
@@ -166,12 +188,13 @@ fun Navegacao(ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: (
     }
 
     // O ecrã inicial lê-se uma vez por arranque (rememberSaveable: rodar o ecrã não o repete) e nunca quando a app abre pela
-    // notificação da viagem. O Início é sempre o destino de partida: ROTAS segue para o separador Rotas, FAVORITOS abre o painel.
+    // notificação da viagem nem por um widget (o separador escolhido ficava por cima da paragem). O Início é sempre o destino
+    // de partida: ROTAS segue para o separador Rotas, FAVORITOS abre o painel.
     var ecraInicialAplicado by rememberSaveable { mutableStateOf(false) }
     var abrirFavoritos by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         if (ecraInicialAplicado) return@LaunchedEffect
-        val ecra = if (abrirViagem) EcraInicial.MAPA else ligacoes.preferencias.ecraInicial.first()
+        val ecra = if (abrirViagem || abrirParagem != null) EcraInicial.MAPA else ligacoes.preferencias.ecraInicial.first()
         ecraInicialAplicado = true
         destinoInicial(ecra).let { if (it !is Inicio) separador(it) }
         abrirFavoritos = ecra == EcraInicial.FAVORITOS

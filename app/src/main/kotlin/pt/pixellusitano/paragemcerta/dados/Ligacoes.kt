@@ -12,6 +12,7 @@ import pt.pixellusitano.paragemcerta.core.fontes.transitous.Transitous
 import pt.pixellusitano.paragemcerta.core.fotos.lerFotosDeRua
 import pt.pixellusitano.paragemcerta.core.rede.OkHttpHttp
 import pt.pixellusitano.paragemcerta.core.rede.userAgent
+import pt.pixellusitano.paragemcerta.widget.criarAtualizadorWidgets
 import java.time.Instant
 
 private val Context.lojaPreferencias by preferencesDataStore(name = "preferencias")
@@ -32,7 +33,8 @@ class Ligacoes(contexto: Context) {
         catalogo = { catalogoLinhas.atual },
     )
     val preferencias = Preferencias(contexto.applicationContext.lojaPreferencias)
-    val conta = Conta(contexto, servidor, repositorio)
+    val widgets = criarAtualizadorWidgets(contexto.applicationContext, repositorio)
+    val conta = Conta(contexto, servidor, repositorio, esquecerWidgets = widgets::aoApagarDados)
     val comunidade by lazy { Comunidade(servidor, conta, configuracoes, preferencias) }
     val detalheDasLinhas = DetalheDasLinhas(cm, transitous, catalogoLinhas, repositorio)
     val estacoesGira = EstacoesGira(contexto.filesDir, Gira(http), Instant::now)

@@ -48,10 +48,14 @@ class MainActivity : ComponentActivity() {
     /** A notificação da viagem foi tocada: a Navegacao abre o ecrã da viagem e desliga isto. */
     private var abrirViagem by mutableStateOf(false)
 
+    /** A chave da paragem de um widget tocado: a Navegacao abre-a e põe isto a null. */
+    private var abrirParagem by mutableStateOf<String?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Só na abertura: depois de rodar o ecrã o intent é o mesmo e o ecrã da viagem não se abria outra vez.
         abrirViagem = savedInstanceState == null && intent.getBooleanExtra(Notificacoes.EXTRA_ABRIR_VIAGEM, false)
+        abrirParagem = if (savedInstanceState == null) intent.getStringExtra(EXTRA_ABRIR_PARAGEM) else null
         // Aqui e não na Application: essa corre também no processo :trip, que não pode tocar no WorkManager.
         AtualizacaoDiaria.cancelarTrabalhosAntigos(applicationContext)
         enableEdgeToEdge()
@@ -65,6 +69,7 @@ class MainActivity : ComponentActivity() {
                 launch { semFalhar { ligacoes.catalogoLinhas.aoAbrir() } }
                 launch { semFalhar { ligacoes.fotosDeRua.aoAbrir() } }
                 launch { semFalhar { ligacoes.conta.aoAbrir() } }
+                launch { semFalhar { ligacoes.widgets.aoAbrirApp() } }
             }
         }
         setContent {
@@ -83,21 +88,31 @@ class MainActivity : ComponentActivity() {
             }
             TemaParagemCerta(modo) {
                 CompositionLocalProvider(LocalLimites provides limites) {
-                    Navegacao(ligacoes, abrirViagem, aoAbrirViagem = { abrirViagem = false })
+                    Navegacao(
+                        ligacoes, abrirViagem, aoAbrirViagem = { abrirViagem = false },
+                        abrirParagem = abrirParagem, aoAbrirParagem = { abrirParagem = null },
+                    )
                 }
             }
         }
     }
 
-    /** A pessoa saiu da app (rodar o ecrã também pára a atividade, mas não é sair): é a altura de instalar a versão já descarregada. */
+    /**
+     * A pessoa saiu da app (rodar o ecrã também pára a atividade, mas não é sair): é a altura de instalar a versão já descarregada
+     * e de redesenhar os widgets com o que a app guardou, sem rede.
+     */
     override fun onStop() {
         super.onStop()
-        if (!isChangingConfigurations) Atualizacoes.aoSair(applicationContext)
+        if (isChangingConfigurations) return
+        Atualizacoes.aoSair(applicationContext)
+        val ligacoes = (application as ParagemCertaApp).ligacoes
+        lifecycleScope.launch { semFalhar { ligacoes.widgets.aoSairDaApp() } }
     }
 
-    /** A app já estava aberta (SINGLE_TOP) e a notificação da viagem foi tocada. */
+    /** A app já estava aberta (SINGLE_TOP) e a notificação da viagem ou um widget foi tocado. */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         if (intent.getBooleanExtra(Notificacoes.EXTRA_ABRIR_VIAGEM, false)) abrirViagem = true
+        intent.getStringExtra(EXTRA_ABRIR_PARAGEM)?.let { abrirParagem = it }
     }
 }
