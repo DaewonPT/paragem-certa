@@ -82,7 +82,8 @@ private val JSON = Json { ignoreUnknownKeys = true }
     val confirmado: Boolean,
 )
 
-@Serializable data class FotoRemota(val paragem: String, val id: String, val url: String)
+/** [data]: AAAA-MM-DD (UTC) em que foi aprovada; um servidor que ainda não a manda deixa-a a `null`. */
+@Serializable data class FotoRemota(val paragem: String, val id: String, val url: String, val data: String? = null)
 
 /** Só os campos do tipo vêm preenchidos: `posicao` traz lat e lon, `nome` traz o nome, `ja_nao_existe` nenhum. */
 @Serializable data class CorrecaoRemota(val paragem: String, val tipo: String, val lat: Double? = null, val lon: Double? = null, val nome: String? = null)

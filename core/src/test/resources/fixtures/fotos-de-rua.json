@@ -1,0 +1,20 @@
+{
+  "versao": 1,
+  "geradoEm": "2026-11-04",
+  "fotos": {
+    "CM:060419": {
+      "id": "7d9a3f10-5c2e-4b86-a1d4-0e8f6b2c9a37",
+      "miniatura": "https://panoramax.example/api/pictures/7d9a3f10-5c2e-4b86-a1d4-0e8f6b2c9a37/thumb.jpg",
+      "autor": "Robot8A",
+      "licenca": "CC BY-SA 4.0",
+      "data": "2022-03-13"
+    },
+    "TRANSITOUS:pt-Carris_920": {
+      "id": "b1e4c7a2-9d03-4f58-8c6a-3a5d1e7f2b94",
+      "miniatura": "https://panoramax.example/api/pictures/b1e4c7a2-9d03-4f58-8c6a-3a5d1e7f2b94/thumb.jpg",
+      "autor": "Câmara Municipal",
+      "licenca": "Licence Ouverte 2.0",
+      "data": "2024-09-30"
+    }
+  }
+}

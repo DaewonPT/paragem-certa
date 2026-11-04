@@ -12,7 +12,8 @@ export const URL_FOTOS = "https://fotos.pixellusitano.com";
 /** 500 KB: a app envia 150–300 KB; o que passa disto não vem da app, e cada foto tem de ser revista e fica no R2. */
 export const MAX_FOTO = 500 * 1024;
 
-export type FotoPublica = { paragem: string; id: string; url: string };
+/** `data`: AAAA-MM-DD (UTC) em que o autor a aprovou; a app compara-a com a da foto de rua e mostra a mais recente. */
+export type FotoPublica = { paragem: string; id: string; url: string; data: string };
 
 /** Marcadores sem tamanho (ou que não cabem entre segmentos): ZERO, TEM, SOI, RST0–RST7 e o preenchimento FF. */
 function semTamanho(marcador: number): boolean {
@@ -156,12 +157,15 @@ export async function enviarFoto(pedido: Request, env: Env): Promise<Response> {
  */
 export async function fotosDaComunidade(env: Env, paragens: string[]): Promise<{ fotos: FotoPublica[]; emRevisao: string[] }> {
   const { results } = await env.DB.prepare(
-    "SELECT id, paragem, chave, estado FROM fotos WHERE paragem IN (SELECT value FROM json_each(?1)) AND estado <> 'rejeitada' LIMIT ?2",
+    // A aprovada tem sempre `decidida_em`; o `criada_em` só evita uma data de 1970 se alguma vez faltar.
+    "SELECT id, paragem, chave, estado, COALESCE(decidida_em, criada_em) AS quando FROM fotos WHERE paragem IN (SELECT value FROM json_each(?1)) AND estado <> 'rejeitada' LIMIT ?2",
   )
     .bind(JSON.stringify(paragens), MAX_FOTOS_LIDAS)
-    .all<{ id: string; paragem: string; chave: string | null; estado: string }>();
+    .all<{ id: string; paragem: string; chave: string | null; estado: string; quando: number }>();
   return {
-    fotos: results.filter((f) => f.estado === "aprovada" && f.chave).map((f) => ({ paragem: f.paragem, id: f.id, url: `${URL_FOTOS}/${f.chave}` })),
+    fotos: results
+      .filter((f) => f.estado === "aprovada" && f.chave)
+      .map((f) => ({ paragem: f.paragem, id: f.id, url: `${URL_FOTOS}/${f.chave}`, data: new Date(f.quando).toISOString().slice(0, 10) })),
     emRevisao: results.filter((f) => f.estado === "pendente").map((f) => f.paragem),
   };
 }

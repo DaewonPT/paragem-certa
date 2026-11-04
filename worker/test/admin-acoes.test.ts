@@ -124,7 +124,7 @@ describe("pc-admin: fotos", () => {
     expect(new Uint8Array(await publica!.arrayBuffer())).toEqual(jpeg(1));
     expect(await env.FOTOS_PENDENTES.get(chave)).toBeNull();
     expect(await linhaFoto(id)).toEqual({ estado: "aprovada", chave, decidida_em: INICIO });
-    expect(await comunidade("CM:1")).toMatchObject({ fotos: [{ paragem: "CM:1", id, url: `https://fotos.pixellusitano.com/${chave}` }], emRevisao: [] });
+    expect(await comunidade("CM:1")).toMatchObject({ fotos: [{ paragem: "CM:1", id, url: `https://fotos.pixellusitano.com/${chave}`, data: "2026-11-03" }], emRevisao: [] });
     // Aprovar não é uma restrição: nenhum email, nenhuma decisão. Um segundo clique já não encontra nada por rever.
     expect(mensagensEnviadas).toEqual([]);
     expect(await decisoes()).toEqual([]);

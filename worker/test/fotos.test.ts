@@ -113,9 +113,9 @@ async function contadorDeFotos(): Promise<number> {
   return (await env.DB.prepare("SELECT quantos FROM contadores WHERE dia = ? AND nome = 'fotos'").bind(HOJE).first<number>("quantos")) ?? 0;
 }
 
-function inserirFoto(id: string, contaId: string, paragem: string, estado: string, chave: string | null, criadaEm = Date.now()): Promise<unknown> {
-  return env.DB.prepare("INSERT INTO fotos (id, paragem, conta_id, chave, estado, criada_em) VALUES (?, ?, ?, ?, ?, ?)")
-    .bind(id, paragem, contaId, chave, estado, criadaEm)
+function inserirFoto(id: string, contaId: string, paragem: string, estado: string, chave: string | null, criadaEm = Date.now(), decididaEm: number | null = null): Promise<unknown> {
+  return env.DB.prepare("INSERT INTO fotos (id, paragem, conta_id, chave, estado, criada_em, decidida_em) VALUES (?, ?, ?, ?, ?, ?, ?)")
+    .bind(id, paragem, contaId, chave, estado, criadaEm, decididaEm)
     .run();
 }
 
@@ -318,6 +318,21 @@ describe("envio de fotos", () => {
     expect(await resposta.json()).toMatchObject({ fotos: [{ paragem: PARAGEM, id: "f1", url: `${URL_FOTOS}/abc123.jpg` }], emRevisao: [] });
     expect(URL_FOTOS).toBe("https://fotos.pixellusitano.com");
     expect(JSON.stringify(await (await lerComunidade([PARAGEM])).json())).not.toContain("ana");
+  });
+
+  it("aprovadaTrazADataDaDecisaoEmUtcEAPendenteContinuaSemFoto", async () => {
+    // 23:30 UTC de 2 de julho já é dia 3 em Lisboa: a data é a UTC, e a da decisão (não a do envio).
+    await inserirFoto("f1", "ana", PARAGEM, "aprovada", "abc123.jpg", Date.UTC(2026, 5, 30, 9, 0), Date.UTC(2026, 6, 2, 23, 30));
+    await inserirFoto("f2", "rui", "CM:2", "pendente", "def456.jpg");
+    const dados = await (await lerComunidade([PARAGEM, "CM:2"])).json();
+    expect(dados).toMatchObject({ fotos: [{ paragem: PARAGEM, id: "f1", url: `${URL_FOTOS}/abc123.jpg`, data: "2026-07-02" }], emRevisao: ["CM:2"] });
+    expect((dados as { fotos: unknown[] }).fotos).toHaveLength(1);
+  });
+
+  it("aprovadaSemDataDeDecisaoUsaADoEnvio", async () => {
+    // Nunca devia acontecer (aprovar grava as duas), mas uma data de 1970 faria a foto perder sempre contra a de rua.
+    await inserirFoto("f1", "ana", PARAGEM, "aprovada", "abc123.jpg", Date.UTC(2026, 5, 30, 9, 0));
+    expect(await (await lerComunidade([PARAGEM])).json()).toMatchObject({ fotos: [{ id: "f1", data: "2026-06-30" }] });
   });
 
   it("rejeitadaNaoApareceNaLeitura", async () => {
