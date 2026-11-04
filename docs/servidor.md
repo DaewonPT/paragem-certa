@@ -17,7 +17,7 @@ A ordem conta: o `wrangler.jsonc` exige seis segredos (`secrets.required`) e os 
 1. Enviar o ramo `versao-0-4` para o GitHub.
 2. **Capturas de referência:** Actions → Android → Run workflow, no ramo `versao-0-4`, com `record_screenshots` ligado. Descarregar o artefacto `roborazzi-goldens`, fazer commit das capturas em `app/src/test/screenshots` e correr o mesmo workflow outra vez, sem `record_screenshots`, até ficar verde.
 3. Juntar o ramo ao `main`.
-4. Este guia, do passo 1 ao passo 18: Cloudflare, Resend, Google, segredos, R2, Zero Trust e `pc-admin`. Relê a política de privacidade antes.
+4. Este guia, do passo 1 ao passo 18, menos o 9 e o 16, que ligam os interruptores e ficam para o ponto 6: Cloudflare, Resend, Google, segredos, R2, Zero Trust e `pc-admin`. Relê a política de privacidade antes.
 5. A variável `SERVIDOR_PUBLICADO` = `sim` e **Servidor → Run workflow**, no `main` (passo 20). Põe no ar o `linhas.json` e o `fotos-de-rua.json`. Confirma que `https://paragemcerta.pixellusitano.com/dados/linhas.json` responde.
 6. Ligar os interruptores em `worker/public/dados/config.json` (passos 9 e 16), **Servidor → Run workflow**, e só depois os mesmos em `app/src/main/assets/config.json`. O `carrisAoVivo` fica `false` até haver o OK escrito da Carris (passo 19). Se deixares algum desligado, tira a linha dele do `## 0.4.0` do `PATCHNOTES.md`: esse texto é o do aviso de atualização.
 7. A tag `v0.4.0`, no `main`. O CI assina o APK e cria a Release com o texto do `PATCHNOTES.md`; os telemóveis com a 0.3.2 recebem o aviso de atualização.
@@ -265,7 +265,7 @@ Quem o gera:
 - **O trabalho `publicar`** (passo 7) gera-o antes do deploy. Se o Transitous falhar, fica a cópia que já está no ar; só pára se não houver nenhuma (a primeira publicação com o Transitous em baixo: corre outra vez mais tarde).
 - **O workflow `Dados`** (`dados.yml`) corre à segunda-feira às 04:17 UTC e trata dos dois ficheiros gerados: este e o das fotos de rua (passo 21). Faz o checkout só do **último commit que o Servidor publicou** (o da última corrida à mão que acabou bem), gera o catálogo, gera as fotos ou copia as que estão no ar, compara os dois com o que está no ar (sem o campo `geradoEm`) e **só faz o deploy se algum mudou**. Assim nunca publica código que ainda não publicaste. Se a última corrida do Servidor falhou ou ainda está a correr, pára com um erro: corre o Servidor outra vez e depois este.
 
-Depois da 0.4.0:
+Ao publicar a 0.4.0 (ponto 5 de "Publicar a 0.4.0"):
 
 1. No GitHub, no repositório: Settings → Secrets and variables → Actions → separador **Variables** → New repository variable, nome `SERVIDOR_PUBLICADO`, valor `sim`. É uma variável, não um segredo. Sem ela o `Dados` não faz nada (por isso antes da 0.4.0 não corre nada).
 2. A primeira publicação à mão do passo 6 não leva o `linhas.json` (não está no repositório). Se a fizeste, corre logo a seguir o **Servidor → Run workflow** (passo 7), que o gera e o põe no ar.
