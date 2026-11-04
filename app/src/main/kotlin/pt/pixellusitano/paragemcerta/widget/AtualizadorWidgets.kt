@@ -3,9 +3,11 @@ package pt.pixellusitano.paragemcerta.widget
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.async
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeoutOrNull
 import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
@@ -52,7 +54,8 @@ class AtualizadorWidgets(
     }
 
     /** A app fechou: só o que já está guardado, sem rede. */
-    suspend fun aoSairDaApp() = redesenhar(todos())
+    // Só leituras locais e um desenho; o Back no Android 8 a 11 cancela o âmbito da atividade logo a seguir ao onStop.
+    suspend fun aoSairDaApp() = withContext(NonCancellable) { redesenhar(todos()) }
 
     /** Apagar dados do telemóvel: os widgets deixam de ter paragem e ficam a pedir uma. */
     suspend fun aoApagarDados() {

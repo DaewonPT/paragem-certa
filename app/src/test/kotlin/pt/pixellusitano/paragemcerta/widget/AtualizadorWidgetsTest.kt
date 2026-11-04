@@ -43,10 +43,11 @@ class AtualizadorWidgetsTest {
 
     private fun TestScope.atualizador(
         despacho: CoroutineDispatcher = StandardTestDispatcher(testScheduler),
+        lerGuardadas: suspend (RefParagem, Instant) -> Pair<List<Chegada>, Instant>? = { ref, _ -> guardadas[ref] },
         pedir: suspend (RefParagem, Instant) -> Resultado<List<Chegada>> = { _, _ -> Resultado.Ok(emptyList()) },
     ) = AtualizadorWidgets(
         dados,
-        { ref, _ -> guardadas[ref] },
+        lerGuardadas,
         { ref, em -> pedidos++; pedir(ref, em) },
         { id, c -> desenhos += id to c },
         { widgets },
@@ -297,6 +298,20 @@ class AtualizadorWidgetsTest {
         assertEquals(listOf("728"), desenhos[0].second.linhas.map { it.linha })
         assertTrue("uma hora depois da última atualização", desenhos[0].second.cinzento)
         assertNull(desenhos[1].second.paragem)
+    }
+
+    @Test fun aoSairCanceladoDesenhaNaMesma() = runTest {
+        widgets += 1
+        dados.escolher(1, cais.chave, "Cais")
+        val leitura = CompletableDeferred<Unit>()
+        val saida = launch {
+            atualizador(lerGuardadas = { ref, _ -> leitura.await(); guardadas[ref] }).aoSairDaApp()
+        }
+        runCurrent()
+        saida.cancel() // o Back no Android 8 a 11 cancela o âmbito da atividade logo a seguir ao onStop
+        leitura.complete(Unit)
+        runCurrent()
+        assertEquals("a saída cancelada ainda redesenha o widget", listOf(1), desenhos.map { it.first })
     }
 
     @Test fun apagarDadosEsqueceOsWidgets() = runTest {
