@@ -31,6 +31,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
@@ -227,6 +228,24 @@ private fun CartaoAcao(simbolo: String, titulo: String, detalhe: String, aoAbrir
     }
 }
 
+/** A Casa ou o Trabalho ([tipo]) ainda sem morada: como o [CartaoLocal], mas só com duas linhas, para caber ao lado do outro. */
+@Composable
+private fun CartaoPorDefinir(tipo: String, nome: String, modifier: Modifier, aoDefinir: () -> Unit) {
+    OutlinedCard(modifier) {
+        Column(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button, onClick = aoDefinir).padding(12.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                // O leitor de ecrã lê "Casa, Toca para escolher a morada", sem o símbolo.
+                Text(simboloLocal(tipo), Modifier.clearAndSetSemantics {}, style = MaterialTheme.typography.titleSmall)
+                Text(nome, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
+            Text(
+                stringResource(R.string.painel_definir_local), style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis,
+            )
+        }
+    }
+}
+
 /** Conteúdo puro do painel (testado com capturas). */
 @Composable
 fun PainelConteudo(
@@ -257,12 +276,18 @@ fun PainelConteudo(
         }
         Text(stringResource(R.string.painel_favoritos), style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
-        // Casa e Trabalho estão sempre cá: a que ainda não tem morada convida a escolhê-la.
+        // Casa e Trabalho estão sempre cá: as guardadas com o cartão de sempre e as que ainda não têm morada lado a lado numa fila baixa,
+        // para não empurrarem as paragens para fora do painel fechado.
+        val tipos = listOf("CASA" to R.string.locais_casa, "TRABALHO" to R.string.locais_trabalho)
+        val porDefinir = tipos.filter { (t, _) -> locais.none { it.local.tipo == t } }
         Column(Modifier.padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("CASA" to R.string.locais_casa, "TRABALHO" to R.string.locais_trabalho).forEach { (tipo, nome) ->
-                val b = locais.firstOrNull { it.local.tipo == tipo }
-                if (b != null) CartaoLocal(b.local, b.estado, b.itinerario, b.aCalcular, { aoTocarLocal(b) }, { aoVerMaisLocal(b) })
-                else CartaoAcao(simboloLocal(tipo), stringResource(nome), stringResource(R.string.painel_definir_local)) { aoDefinirLocal(tipo) }
+            tipos.forEach { (t, _) ->
+                locais.firstOrNull { it.local.tipo == t }?.let { b ->
+                    CartaoLocal(b.local, b.estado, b.itinerario, b.aCalcular, { aoTocarLocal(b) }, { aoVerMaisLocal(b) })
+                }
+            }
+            if (porDefinir.isNotEmpty()) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                porDefinir.forEach { (t, nome) -> CartaoPorDefinir(t, stringResource(nome), Modifier.weight(1f)) { aoDefinirLocal(t) } }
             }
         }
         // A dica fica onde aparecem as paragens e as linhas, enquanto não há nada guardado.

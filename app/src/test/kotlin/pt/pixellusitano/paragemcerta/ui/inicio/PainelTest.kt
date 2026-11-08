@@ -6,7 +6,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -14,6 +13,7 @@ import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -21,6 +21,8 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.height
+import androidx.compose.ui.unit.width
 import androidx.room.Room
 import androidx.test.espresso.Espresso
 import kotlinx.coroutines.flow.first
@@ -270,7 +272,12 @@ class PainelTest {
         // Um só botão por cartão, do tamanho dos outros, que o TalkBack lê "Casa, Toca para escolher a morada" (sem o símbolo).
         casa.assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button)).assertHeightIsAtLeast(48.dp)
         assertEquals(listOf("Casa", convite), casa.fetchSemanticsNode().config[SemanticsProperties.Text].map { it.text })
-        assertTrue(casa.fetchSemanticsNode().boundsInRoot.top < trabalho.fetchSemanticsNode().boundsInRoot.top)
+        // Lado a lado numa só fila (a Casa primeiro) e baixos: no painel fechado não empurram as paragens para fora.
+        val c = casa.getBoundsInRoot()
+        val t = trabalho.getBoundsInRoot()
+        assertEquals(c.top, t.top)
+        assertTrue(c.right <= t.left)
+        assertTrue("${c.height} ${t.height}", c.height <= 72.dp && t.height <= 72.dp)
         // Sem mais nada guardado, a dica de como guardar continua.
         regra.onNodeWithText(dica).assertIsDisplayed()
 
@@ -286,6 +293,10 @@ class PainelTest {
         regra.onNodeWithText("🏠 Casa").assertIsDisplayed() // o cartão de sempre, com a sugestão quando há posição
         regra.onAllNodesWithText(convite).assertCountEquals(1)
         regra.onNodeWithText(dica).assertDoesNotExist()
+        // Sozinho na fila, o convite ocupa a largura toda, como o cartão da Casa por cima.
+        val trabalho = regra.onNode(convite("Trabalho")).getBoundsInRoot()
+        assertEquals(regra.onNodeWithText("🏠 Casa").getBoundsInRoot().width, trabalho.width)
+        assertTrue("${trabalho.height}", trabalho.height <= 72.dp)
 
         regra.onNode(convite("Trabalho")).performClick()
         assertEquals(listOf("TRABALHO"), pedidos)
