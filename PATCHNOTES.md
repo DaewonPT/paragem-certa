@@ -2,10 +2,9 @@
 
 A versão mais recente aparece primeiro.
 
-## 0.4.0 — Comunidade e extras
+## 0.4.0 — Conta, linhas e extras
 
-- Relatos de quem anda nos transportes (acidentes, desvios, autocarros cheios): confirmas ou dizes que já não está.
-- Fotos das paragens: as que enviares, revistas antes de aparecerem, e fotos de rua do Panoramax.
+- Fotos de rua do Panoramax na paragem e na bússola.
 - Conta opcional, com o Google ou com um código por email, para levar os favoritos para outro telemóvel.
 - Separador Linhas: percurso, paragens e horário de hoje da Carris Metropolitana, Carris, Metro, CP, Fertagus, Transtejo, MobiCascais e TCB Barreiro.
 - Perturbações oficiais no início e durante a viagem, e estações GIRA no mapa.
