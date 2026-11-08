@@ -6,6 +6,7 @@ A versão mais recente aparece primeiro.
 
 - Casa e Trabalho aparecem sempre nos Favoritos do início: toca para escolher a morada e passas a ver como lá chegar.
 - Ao tocar sem largar num ponto do mapa, podes guardá-lo como casa, como trabalho ou como local.
+- Entrar com o Google já não fica preso a carregar em alguns telemóveis.
 
 ## 0.4.0 — Conta, linhas e extras
 
