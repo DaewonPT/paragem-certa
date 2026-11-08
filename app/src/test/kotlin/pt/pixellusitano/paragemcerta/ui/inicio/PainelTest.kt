@@ -302,6 +302,17 @@ class PainelTest {
         assertEquals(listOf("TRABALHO"), pedidos)
     }
 
+    @Test fun antesDeLerOsLocaisNaoConvidaNemDaADica() {
+        // Nos primeiros instantes ainda não se sabe se há Casa: um toque no convite substituiria a que já está guardada.
+        regra.setContent {
+            TemaParagemCerta(ModoTema.CLARO) {
+                PainelConteudo(emptyList(), emptyList(), emptyMap(), agora, {}, {}, Modifier.width(360.dp), locaisCarregados = false)
+            }
+        }
+        regra.onAllNodesWithText(convite).assertCountEquals(0)
+        regra.onNodeWithText(dica).assertDoesNotExist()
+    }
+
     /** O painel e a escolha da morada ligados como no Início: o convite abre a escolha no ecrã todo e quem guarda é o ecrã de baixo. */
     private fun painelComEscolha(repo: Repositorio) {
         val linhas = catalogoLinhas()

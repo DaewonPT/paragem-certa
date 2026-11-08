@@ -246,7 +246,10 @@ private fun CartaoPorDefinir(tipo: String, nome: String, modifier: Modifier, aoD
     }
 }
 
-/** Conteúdo puro do painel (testado com capturas). */
+/**
+ * Conteúdo puro do painel (testado com capturas). [locaisCarregados] = false enquanto os sítios guardados não chegaram: não se sabe
+ * se há Casa e Trabalho, e não se convida a escolhê-los.
+ */
 @Composable
 fun PainelConteudo(
     favoritas: List<BlocoParagem>,
@@ -264,6 +267,7 @@ fun PainelConteudo(
     linhasFavoritas: List<BlocoLinha> = emptyList(),
     aoAbrirLinha: (LinhaFavorita) -> Unit = {},
     aoDefinirLocal: (tipo: String) -> Unit = {},
+    locaisCarregados: Boolean = true,
 ) {
     // "Favoritos" por esta ordem: Casa, Trabalho, as paragens, as linhas e os outros sítios (cada grupo pela ordem em que o utilizador o pôs).
     val outros = locais.filter { it.local.tipo != "CASA" && it.local.tipo != "TRABALHO" }
@@ -277,9 +281,9 @@ fun PainelConteudo(
         Text(stringResource(R.string.painel_favoritos), style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
         // Casa e Trabalho estão sempre cá: as guardadas com o cartão de sempre e as que ainda não têm morada lado a lado numa fila baixa,
-        // para não empurrarem as paragens para fora do painel fechado.
+        // para não empurrarem as paragens para fora do painel fechado. Só depois de lidos os locais: antes, um toque substituiria a guardada.
         val tipos = listOf("CASA" to R.string.locais_casa, "TRABALHO" to R.string.locais_trabalho)
-        val porDefinir = tipos.filter { (t, _) -> locais.none { it.local.tipo == t } }
+        val porDefinir = if (locaisCarregados) tipos.filter { (t, _) -> locais.none { it.local.tipo == t } } else emptyList()
         Column(Modifier.padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             tipos.forEach { (t, _) ->
                 locais.firstOrNull { it.local.tipo == t }?.let { b ->
@@ -291,7 +295,7 @@ fun PainelConteudo(
             }
         }
         // A dica fica onde aparecem as paragens e as linhas, enquanto não há nada guardado.
-        if (favoritas.isEmpty() && locais.isEmpty() && linhasFavoritas.isEmpty()) {
+        if (locaisCarregados && favoritas.isEmpty() && locais.isEmpty() && linhasFavoritas.isEmpty()) {
             Text(stringResource(R.string.painel_sem_favoritas), color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(vertical = 8.dp))
         }
@@ -412,7 +416,9 @@ fun Painel(
 ) {
     val favoritas by remember { repositorio.favoritas() }.collectAsStateWithLifecycle(initialValue = emptyList())
     val linhasGuardadas by remember { repositorio.linhasFavoritas() }.collectAsStateWithLifecycle(initialValue = emptyList())
-    val locais by remember { repositorio.locais() }.collectAsStateWithLifecycle(initialValue = emptyList())
+    // null até à 1.ª leitura: sem ela, quem já tem Casa veria o convite (e um toque nele substituía-a).
+    val lidos by remember { repositorio.locais() }.collectAsStateWithLifecycle<List<LocalGuardado>?>(initialValue = null)
+    val locais = lidos.orEmpty()
     val recentes by remember { repositorio.recentes() }.collectAsStateWithLifecycle(initialValue = emptyList())
     val agora by produceState(Instant.now()) {
         while (true) {
@@ -474,5 +480,6 @@ fun Painel(
         linhasFavoritas = rememberBlocosDeLinhas(repositorio, catalogo, linhasGuardadas, estados),
         aoAbrirLinha = aoAbrirLinha,
         aoDefinirLocal = aoDefinirLocal,
+        locaisCarregados = lidos != null,
     )
 }
