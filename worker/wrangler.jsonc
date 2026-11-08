@@ -5,6 +5,8 @@
   "compatibility_date": "2026-10-01",
   // Só o domínio próprio (paragemcerta.pixellusitano.com); o endereço workers.dev fica desligado.
   "workers_dev": false,
+  // Desligar o workers.dev não desliga os endereços de pré-visualização; sem eles não há caminho à volta da regra da zona.
+  "preview_urls": false,
   // Os ficheiros de public/ (termos, apagar conta, dados/config.json) saem sem passar pelo Worker;
   // só a API e a política de privacidade (que leva o nome do responsável) passam por ele.
   "assets": {
