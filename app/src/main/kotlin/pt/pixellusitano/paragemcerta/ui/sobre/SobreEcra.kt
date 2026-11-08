@@ -41,9 +41,12 @@ private fun fontes(carrisAoVivo: Boolean) = listOfNotNull(
     R.string.sobre_fonte_panoramax to "https://panoramax.fr",
 )
 
-/** aoAbrir recebe um URL https:// ou mailto:; quem chama abre-o com Intent.ACTION_VIEW. [carrisAoVivo]: o interruptor da config. */
+/**
+ * aoAbrir recebe um URL https:// ou mailto:; quem chama abre-o com Intent.ACTION_VIEW. [carrisAoVivo]: o interruptor da config.
+ * [urlDoacoes]: a página dos donativos, só na versão do GitHub (nula na da Play).
+ */
 @Composable
-fun SobreEcra(versao: String, aoAbrir: (String) -> Unit, carrisAoVivo: Boolean = false) {
+fun SobreEcra(versao: String, aoAbrir: (String) -> Unit, carrisAoVivo: Boolean = false, urlDoacoes: String? = null) {
     Column(
         Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
             .verticalScroll(rememberScrollState()).padding(16.dp),
@@ -53,6 +56,7 @@ fun SobreEcra(versao: String, aoAbrir: (String) -> Unit, carrisAoVivo: Boolean =
         FrisoAzulejo(Modifier.fillMaxWidth().padding(vertical = 12.dp))
         Text(stringResource(R.string.sobre_autor), color = MaterialTheme.colorScheme.onBackground)
         Ligacao(R.string.sobre_licenca, URL_REPOSITORIO, aoAbrir)
+        urlDoacoes?.let { Ligacao(R.string.sobre_apoiar, it, aoAbrir) }
 
         Text(stringResource(R.string.sobre_fontes), style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.padding(top = 20.dp, bottom = 4.dp))

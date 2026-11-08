@@ -62,9 +62,12 @@ android {
         create("pessoal") {
             dimension = "distribuicao"
             applicationIdSuffix = ".pessoal"
+            buildConfigField("String", "URL_DOACOES", "\"https://pixel-lusitano.dotatie.com\"")
         }
         create("play") {
             dimension = "distribuicao"
+            // A Play só aceita pagamentos fora dela em casos apertados: aqui não há ligação para donativos.
+            buildConfigField("String", "URL_DOACOES", "\"\"")
         }
     }
 
