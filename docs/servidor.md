@@ -68,7 +68,7 @@ Se o projeto ainda não tiver nada configurado, a consola mostra primeiro o bot�
 
 ## 5. Segredos do Worker
 
-Ainda na pasta `worker/`, um comando por segredo; cada um pede o valor e tu colas (não aparece no ecrã):
+Ainda na pasta `worker/`, um comando por segredo; cada um pede o valor e tu colas (não aparece no ecrã). Cola com o botão direito do rato, nunca com Ctrl+V: nesta pergunta escondida o Ctrl+V guarda o carácter de controlo da tecla em vez do texto, e o segredo fica estragado sem nenhum aviso. Em alternativa, põe os valores num ficheiro `NOME=valor` em UTF-8, fora da pasta `codigo`, e envia-os de uma vez com `npx wrangler secret bulk caminho-do-ficheiro` (com `-c wrangler.admin.jsonc` para o `pc-admin`):
 
 ```
 npx wrangler secret put RESEND_API_KEY
@@ -176,7 +176,7 @@ Quando rejeitas ou apagas uma foto aprovada, o servidor pede à Cloudflare para 
 2. **`CF_ZONA`:** o id da zona `pixellusitano.com`, no painel da zona (Overview, na coluna da direita, "Zone ID").
 3. **`EMAIL_AUTOR`:** o teu email. Recebe o aviso das denúncias de perigo e o resumo diário, e é o único que o `pc-admin` deixa entrar. Tem de ser o mesmo endereço que puseres na política do Access (passo 14).
 
-Um comando por segredo e por Worker (cada um pede o valor e tu colas):
+Um comando por segredo e por Worker (cada um pede o valor e tu colas com o botão direito, como no passo 5, ou usa o `secret bulk` do passo 5):
 
 ```
 npx wrangler secret put CF_PURGE_TOKEN
