@@ -2,6 +2,11 @@
 
 A versão mais recente aparece primeiro.
 
+## 0.4.2 — Ícone novo e apoio
+
+- Ícone novo: o autocarro amarelo sobre o azulejo azul.
+- No ecrã Sobre há uma ligação para apoiares a Paragem Certa com um donativo, se quiseres.
+
 ## 0.4.1 — Casa e Trabalho
 
 - Casa e Trabalho aparecem sempre nos Favoritos do início: toca para escolher a morada e passas a ver como lá chegar.
