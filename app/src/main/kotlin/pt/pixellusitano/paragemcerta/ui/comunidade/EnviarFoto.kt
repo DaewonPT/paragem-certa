@@ -112,12 +112,12 @@ internal fun erroDaFoto(f: Resultado.Falha): Int = when (f.erro) {
 }
 
 /**
- * A parte das fotos do ecrã da paragem [chave], só com as fotos ligadas: uma só foto, a da comunidade ou a de [rua] (a que o
- * ficheiro do Panoramax tem para a paragem, já sem a que a pessoa ocultou), a mais recente das duas (ver [escolherFoto]).
- * A de rua não depende da comunidade nem da leitura da paragem. A da comunidade, "Foto em revisão" e o botão "Enviar foto"
- * (só sem nenhuma foto) precisam da comunidade ligada e de a leitura da paragem chegar (sem ela não se sabe se já há foto).
- * Os dados da comunidade são os de [relatos], lidos num só pedido. [aoAbrirPagina] recebe a página da foto de rua e
- * [aoOcultarRua] oculta-a. Um 403 `desligado` ao enviar (a config da app é a antiga) esconde a secção até a config mudar.
+ * A parte das fotos do ecrã da paragem [chave]: uma só foto, a da comunidade ou a de [rua] (a que o ficheiro do Panoramax tem
+ * para a paragem, já sem a que a pessoa ocultou), a mais recente das duas (ver [escolherFoto]).
+ * A de rua não depende de nenhum interruptor nem da leitura da paragem. A da comunidade, "Foto em revisão" e o botão "Enviar foto"
+ * (só sem nenhuma foto) precisam das fotos e da comunidade ligadas e de a leitura da paragem chegar (sem ela não se sabe se já
+ * há foto). Os dados da comunidade são os de [relatos], lidos num só pedido. [aoAbrirPagina] recebe a página da foto de rua e
+ * [aoOcultarRua] oculta-a. Um 403 `desligado` ao enviar (a config da app é a antiga) esconde a parte da comunidade até a config mudar.
  */
 @Composable
 fun FotosDaParagem(
@@ -136,9 +136,8 @@ fun FotosDaParagem(
     var desligada by remember(config) { mutableStateOf(false) }
     val publicar = rememberPublicar(comunidade, aoAbrirConta, R.string.foto_entrar_texto)
     var folha by rememberSaveable { mutableStateOf(false) }
-    if (!config.interruptores.fotos || desligada) return
-
-    val comunidadeLida = config.interruptores.comunidade && relatos.carregado
+    val fotosDaComunidade = config.interruptores.fotos && !desligada
+    val comunidadeLida = fotosDaComunidade && config.interruptores.comunidade && relatos.carregado
     val daComunidade = if (comunidadeLida) relatos.fotos.firstOrNull() else null
     val escolhida = escolherFoto(rua, daComunidade)
     when (escolhida) {
@@ -161,7 +160,7 @@ fun FotosDaParagem(
             }
         }
     }
-    if (folha) {
+    if (folha && fotosDaComunidade) {
         FolhaEnviarFoto(chave, publicar, aoEnviar = { jpeg ->
             comunidade.enviarFoto(chave, jpeg).also { r ->
                 val erro = (r as? Resultado.Falha)?.erro

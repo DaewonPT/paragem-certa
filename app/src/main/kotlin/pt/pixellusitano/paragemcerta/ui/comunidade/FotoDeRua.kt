@@ -104,8 +104,9 @@ internal fun FotoDeRuaConteudo(foto: FotoDeRua, imagem: ImageBitmap?, falhou: Bo
 
 /**
  * A foto da paragem [chave] por baixo do alvo da bússola, sem menu: a de [rua] (a do ficheiro, para esta paragem) ou a da comunidade,
- * a mais recente (a mesma regra do ecrã da paragem). Lê a comunidade num só pedido; sem [chave] (a viagem não sabe qual é a
- * paragem) ou com as fotos desligadas não mostra nem pede nada. As que a pessoa ocultou no ecrã da paragem ficam ocultas.
+ * a mais recente (a mesma regra do ecrã da paragem). Lê a comunidade num só pedido, e só com as fotos ligadas: a de rua não
+ * depende de nenhum interruptor. Sem [chave] (a viagem não sabe qual é a paragem) não mostra nem pede nada. As que a pessoa
+ * ocultou no ecrã da paragem ficam ocultas.
  */
 @Composable
 fun FotoNaBussola(
@@ -119,9 +120,9 @@ fun FotoNaBussola(
 ) {
     val config by configuracoes.atual.collectAsStateWithLifecycle()
     val ocultos = ocultosDaPessoa(preferencias)
-    if (chave == null || !config.interruptores.fotos) return
+    if (chave == null) return
     val fotos by produceState(emptyList<FotoRemota>(), chave, config) {
-        value = (comunidade.daParagem(chave) as? Resultado.Ok)?.valor?.fotos.orEmpty()
+        value = if (!config.interruptores.fotos) emptyList() else (comunidade.daParagem(chave) as? Resultado.Ok)?.valor?.fotos.orEmpty()
     }
     val daRua = rua?.takeIf { !ocultada(ocultos, it.id) }
     val daComunidade = fotos.firstOrNull { !ocultada(ocultos, it.id) }

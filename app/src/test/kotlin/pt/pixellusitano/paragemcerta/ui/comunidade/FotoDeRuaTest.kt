@@ -175,15 +175,21 @@ class FotoDeRuaTest {
         assertEquals(setOf("foto:pan-1"), runBlocking { preferencias.ocultos.first() })
     }
 
-    @Test fun fotosDesligadasNaoMostraNemPede() {
+    @Test fun fotosDesligadasMostraSoARua() {
+        // O interruptor `fotos` é o das fotos da comunidade: as de rua (Panoramax, já publicadas) não dependem dele.
         http.config = http.config.replace("\"fotos\": true", "\"fotos\": false")
+        http.fotos = listOf(fotoF1) // mais nova do que a de rua: ganhava se as fotos da comunidade estivessem ligadas
         ligar()
-        abrir()
+        var daRua by mutableStateOf<FotoDeRua?>(rua)
+        abrir { daRua }
+        esperarPor(creditoRua)
         esperarPelaLeitura()
-        semTexto(creditoRua)
+        semTexto(creditoComunidade)
+        assertTrue("a da comunidade não devia ser pedida: $carregadas", "https://fotos.exemplo.pt/f1.jpg" !in carregadas)
+        // Sem nenhuma foto, também não oferece "Enviar foto".
+        daRua = null
+        regra.waitForIdle()
         semTexto("Enviar foto")
-        regra.onNodeWithContentDescription("Foto de rua da paragem, do Panoramax").assertDoesNotExist()
-        assertTrue("não devia pedir nenhuma imagem: $carregadas", carregadas.isEmpty())
     }
 
     @Test fun fotoDeRuaComComunidadeMaisNovaMostraADaComunidade() {
@@ -312,12 +318,14 @@ class FotoDeRuaTest {
         assertTrue(carregadas.isEmpty())
     }
 
-    @Test fun bussolaComFotosDesligadasNaoMostraNemPede() {
+    @Test fun bussolaComFotosDesligadasMostraSoARuaSemPedir() {
         http.config = http.config.replace("\"fotos\": true", "\"fotos\": false")
+        http.fotos = listOf(fotoF1)
         ligar()
         bussola(ref.chave)
+        esperarPor(creditoRua)
         regra.waitForIdle()
-        semTexto(creditoRua)
-        assertTrue(carregadas.isEmpty())
+        semTexto(creditoComunidade)
+        assertEquals(0, http.leituras()) // sem as fotos da comunidade, a bússola não pede nada ao servidor
     }
 }
