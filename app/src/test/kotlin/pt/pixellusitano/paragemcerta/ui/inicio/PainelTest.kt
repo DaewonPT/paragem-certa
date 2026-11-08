@@ -17,9 +17,12 @@ import androidx.compose.ui.test.getBoundsInRoot
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.height
 import androidx.compose.ui.unit.width
@@ -350,6 +353,29 @@ class PainelTest {
         assertEquals(cafe.lat, casas[0].lugar.lat, 1e-9)
         assertEquals(cafe.lon, casas[0].lugar.lon, 1e-9)
         assertEquals(2, guardados.size) // o café continua lá
+    }
+
+    @Test fun guardarPeloMenuComoOQueSeEstaAEscolherFechaAEscolha() {
+        val repo = repositorio(HttpPorUrl("geocode" to listOf({ Resposta(200, "[]") })))
+        runBlocking { repo.guardarLocal("Café Central", Lugar("Café Central", 38.7101, -9.1402, TipoLugar.LOCAL), "OUTRO") }
+        painelComEscolha(repo)
+        regra.onNode(convite("Casa")).performClick()
+        regra.onNodeWithText("Onde é a tua casa?").performTextInput("Café")
+        fun guardarComo(texto: String) {
+            regra.waitUntil(5_000) { regra.onAllNodesWithContentDescription("Mais opções").fetchSemanticsNodes().isNotEmpty() }
+            regra.onNodeWithContentDescription("Mais opções").performClick()
+            regra.onNodeWithText(texto).performClick()
+        }
+
+        // Guardar como trabalho não é o que se está a escolher: a escolha da casa continua aberta.
+        guardarComo("Guardar como trabalho")
+        regra.waitForIdle()
+        regra.onNodeWithText("Onde é a tua casa?").assertIsDisplayed()
+        // Guardar como casa é escolher: volta ao painel.
+        guardarComo("Guardar como casa")
+        regra.waitUntil(5_000) { regra.onAllNodesWithText("🏠 Casa").fetchSemanticsNodes().isNotEmpty() }
+        regra.onAllNodesWithText("Onde é a tua casa?").assertCountEquals(0)
+        assertEquals(setOf("CASA", "TRABALHO", "OUTRO"), runBlocking { repo.locais().first() }.map { it.tipo }.toSet())
     }
 
     @Test fun voltarDaEscolhaNaoGuardaNemSaiDaApp() {

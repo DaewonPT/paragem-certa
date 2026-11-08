@@ -441,7 +441,11 @@ internal fun DefinirLocalEcra(repositorio: Repositorio, tipo: String, guardar: (
             aoFechar()
         },
         aoVoltar = aoFechar,
-        aoGuardar = guardar,
+        // Guardar pelo "⋯" como o que se está a escolher é escolher; como outra coisa, a escolha continua.
+        aoGuardar = { l, t ->
+            guardar(l, t)
+            if (t == tipo) aoFechar()
+        },
     )
 }
 
