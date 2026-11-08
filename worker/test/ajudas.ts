@@ -28,7 +28,7 @@ export async function pedir(caminho: string, opcoes: Opcoes = {}): Promise<Respo
       headers: cabecalhos,
       body: opcoes.corpo === undefined ? undefined : corpo,
     }),
-    { ...env, RESEND_API_KEY: undefined, ...opcoes.segredos } as Env,
+    { ...env, RESEND_API_KEY: undefined, LIMITE_AUTH: limitador(Infinity), ...opcoes.segredos } as Env,
     ctx,
   );
   await waitOnExecutionContext(ctx);
@@ -40,7 +40,7 @@ export async function correrCron(opcoes: { segredos?: Partial<Env>; agora?: numb
   const ctx = createExecutionContext();
   await servidor.scheduled(
     createScheduledController({ cron: "0 3 * * *", scheduledTime: opcoes.agora ?? Date.now() }),
-    { ...env, RESEND_API_KEY: undefined, ...opcoes.segredos } as Env,
+    { ...env, RESEND_API_KEY: undefined, LIMITE_AUTH: limitador(Infinity), ...opcoes.segredos } as Env,
     ctx,
   );
   await waitOnExecutionContext(ctx);

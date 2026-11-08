@@ -5,7 +5,7 @@
   "compatibility_date": "2026-10-01",
   // Só o domínio próprio (paragemcerta.pixellusitano.com); o endereço workers.dev fica desligado.
   "workers_dev": false,
-  // Desligar o workers.dev não desliga os endereços de pré-visualização; sem eles não há caminho à volta da regra da zona.
+  // Desligar o workers.dev não desliga os endereços de pré-visualização: também ficam desligados, para o servidor só existir no domínio próprio.
   "preview_urls": false,
   // Os ficheiros de public/ (termos, apagar conta, dados/config.json) saem sem passar pelo Worker;
   // só a API e a política de privacidade (que leva o nome do responsável) passam por ele.
@@ -29,7 +29,12 @@
     { "binding": "FOTOS", "bucket_name": "pc-fotos", "jurisdiction": "eu" }
   ],
   // No máximo 10 escritas da comunidade por minuto e por conta (a chave é o id da conta).
-  "ratelimits": [{ "name": "LIMITADOR", "namespace_id": "1001", "simple": { "limit": 10, "period": 60 } }],
+  // LIMITE_AUTH: no máximo 5 pedidos de entrada (/api/auth/) em 10 segundos por IP. Fica aqui porque a única regra grátis
+  // de limite de pedidos da zona pixellusitano.com é a do site.
+  "ratelimits": [
+    { "name": "LIMITADOR", "namespace_id": "1001", "simple": { "limit": 10, "period": 60 } },
+    { "name": "LIMITE_AUTH", "namespace_id": "1002", "simple": { "limit": 5, "period": 10 } }
+  ],
   // Corre na Cloudflare, não no telemóvel: apaga o que passou os prazos.
   "triggers": { "crons": ["0 3 * * *"] },
   // Definidos pelo autor com `wrangler secret put`; nunca ficam no repositório.

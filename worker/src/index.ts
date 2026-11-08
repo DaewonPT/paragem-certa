@@ -22,6 +22,12 @@ export default {
 
       if (pathname === "/api/saude" && pedido.method === "GET") return json({ ok: true });
 
+      // Cada entrada escreve na base (um nonce, um código): sem isto, um só IP podia gastar a quota diária de escritas.
+      if (pathname.startsWith("/api/auth/")) {
+        const { success } = await env.LIMITE_AUTH.limit({ key: pedido.headers.get("cf-connecting-ip") ?? "sem-ip" });
+        if (!success) return erro("muitos_pedidos", 429);
+      }
+
       if (pedido.method === "POST") {
         if (pathname === "/api/auth/email/pedir") return await pedirCodigo(pedido, env);
         if (pathname === "/api/auth/email/confirmar") return await confirmarCodigo(pedido, env);

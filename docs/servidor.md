@@ -15,7 +15,7 @@ A ordem conta: o `wrangler.jsonc` exige seis segredos (`secrets.required`), por 
 ## Publicar a 0.4.0, por esta ordem
 
 1 a 3. Já estão feitos: o ramo `versao-0-4` está no GitHub e já entrou no `main`, as capturas estão em `app/src/test/screenshots` e o Android passou a verde no `main` (05/11/2026). Começa no ponto 4.
-4. Este guia, por esta ordem: passos 1, 2, 3, 4 e 5; depois 10, 11, 12 e 13; só então o 6; depois 7, 8, 14 e 15. O 9 e o 16 ligam os interruptores e ficam para o ponto 6. O 17 e o 18 são para quando for preciso: lê-os já, mas não há nada para fazer. Relê a política de privacidade antes.
+4. Este guia, por esta ordem: passos 1, 2, 3, 4 e 5; depois 10, 11, 12 e 13; só então o 6; depois 7, 14 e 15 (o 8 já está feito no servidor). O 9 e o 16 ligam os interruptores e ficam para o ponto 6. O 17 e o 18 são para quando for preciso: lê-os já, mas não há nada para fazer. Relê a política de privacidade antes.
 5. Envia para o GitHub o que mudaste no PC (pelo menos os `database_id` do passo 2): `git push origin main`. Depois **Servidor → Run workflow**, no `main`, que põe no ar o `linhas.json` e o `fotos-de-rua.json`. Quando ficar verde, cria a variável `SERVIDOR_PUBLICADO` = `sim` (passo 20). Confirma que `https://paragemcerta.pixellusitano.com/dados/linhas.json` responde.
 6. Liga os interruptores em `worker/public/dados/config.json` (passos 9 e 16), ajusta os testes do servidor, faz commit e `git push origin main`. Esse push abre sozinho uma corrida do Servidor (só testes): espera que acabe e só então **Servidor → Run workflow**, no `main`. Confirma em `https://paragemcerta.pixellusitano.com/dados/config.json` e só depois liga os mesmos em `app/src/main/assets/config.json` (com os testes da app), faz commit e `git push origin main`. O `carrisAoVivo` fica `false` até haver o OK escrito da Carris (passo 19). Se deixares algum desligado, tira a linha dele do `## 0.4.0` do `PATCHNOTES.md`: esse texto é o do aviso de atualização.
 7. Faz commit do `app/src/main/assets/config.json` e do `PATCHNOTES.md` no `main` e envia-o (`git push`). Espera que o workflow **Android** fique verde no `main`. Depois, no terminal: `git checkout main`, `git pull`, `git tag v0.4.0` e `git push origin v0.4.0`. O CI assina o APK e cria a Release com o texto do `## 0.4.0` do `PATCHNOTES.md`; os telemóveis com a 0.3.2 recebem o aviso de atualização.
@@ -111,16 +111,14 @@ Confirma, quando o certificado estiver pronto (pode demorar uns minutos):
 3. Para publicar: **Actions → Servidor → Run workflow**, no ramo `main`. Da primeira vez, só no ponto 5 de «Publicar a 0.4.0», depois do passo 15: antes disso faltam segredos e o `publicar` pára a meio. O trabalho `publicar` (no GitHub aparece como «Publish to Cloudflare») espera pelo trabalho dos testes e dos tipos («Tests and types»), aplica as migrações na base remota, faz o deploy do Worker principal e a seguir o do `pc-admin`, enviando outra vez os segredos de cada um. Só corre assim, à mão e no `main`: um commit ou um pedido de alterações nunca publica nada.
 4. O segredo `GOOGLE_WEB_CLIENT_ID` também serve ao `android.yml`: a Release assinada leva o id no APK. Sem ele, o botão do Google não aparece.
 
-## 8. Regra grátis contra abusos em `/api/auth/*`
+## 8. Limite contra abusos em `/api/auth/*` (já está no servidor)
 
-Na Cloudflare, na zona `pixellusitano.com`, vai a **Security → Security rules**, carrega em **Create rule** e escolhe **Rate limiting rules**. (Se ainda te aparecer o painel antigo, o caminho é Security → WAF → Rate limiting rules → Create rule.) O plano grátis só deixa uma regra, por IP, com janelas de 10 s.
+Não há nada para fazer neste passo. O limite das entradas está no próprio Worker: no máximo 5 pedidos para `/api/auth/` em 10 segundos por IP (o limitador `LIMITE_AUTH` do `wrangler.jsonc`); o sexto recebe `429`. Não se usa uma regra de limite de pedidos da Cloudflare porque o plano grátis só deixa uma por zona e a da zona `pixellusitano.com` é a do site (`/api/feedback`).
 
-- Nome: `auth`.
-- Quando: **URI Path** começa por `/api/auth/` (em texto: `starts_with(http.request.uri.path, "/api/auth/")`). O plano grátis só aceita o caminho (sem o Hostname); o site principal não tem este caminho, por isso a regra só apanha o servidor.
-- Contar por **IP**: 5 pedidos em 10 segundos. Ação **Block**, durante 10 segundos.
-- Uma entrada normal faz 2 ou 3 pedidos. Com mais, um só IP podia gastar sozinho as 100 000 escritas por dia da base grátis (cada pedido de `/api/auth/google/nonce` escreve uma linha) e parar as entradas e a sincronização de toda a gente até à meia-noite UTC. Quem partilhar o IP e for bloqueado espera 10 segundos.
+- Uma entrada normal faz 2 ou 3 pedidos. Sem limite, um só IP podia gastar sozinho as 100 000 escritas por dia da base grátis (cada pedido de `/api/auth/google/nonce` escreve uma linha) e parar as entradas e a sincronização de toda a gente até à meia-noite UTC. Quem partilhar o IP e passar o limite espera 10 segundos.
+- O limitador do Worker é contado em cada centro de dados da Cloudflare e não é exato ao pedido; chega para isto. Os pedidos recusados continuam a contar para os 100 000 pedidos por dia do Worker (passo 18).
 
-Os limites de email por endereço (3 por hora) e por dia (70) são contados no servidor e não dependem desta regra.
+Os limites de email por endereço (3 por hora) e por dia (70) são contados no servidor e não dependem deste.
 
 ## 9. Ligar a conta na app
 

@@ -395,3 +395,33 @@ describe("política de privacidade, termos e guia do autor", () => {
     expect(guia).not.toContain("ficam para o guia da etapa 3");
   });
 });
+
+// A zona pixellusitano.com só tem uma regra grátis de limite de pedidos, e é a do site: o limite das entradas fica no Worker.
+describe("limite das entradas por IP", () => {
+  const ip = { "cf-connecting-ip": "203.0.113.7" };
+
+  it("sextoPedidoDeEntradaDoMesmoIpDa429", async () => {
+    const limite = limitador(5);
+    for (let i = 0; i < 5; i++) {
+      expect((await chamar("/api/auth/google/nonce", { cabecalhos: ip, segredos: { LIMITE_AUTH: limite } })).status).toBe(200);
+    }
+    const recusado = await chamar("/api/auth/google/nonce", { cabecalhos: ip, segredos: { LIMITE_AUTH: limite } });
+    expect(recusado.status).toBe(429);
+    expect(await recusado.json()).toEqual({ erro: "muitos_pedidos" });
+    expect(limite.chaves).toEqual(Array(6).fill("203.0.113.7"));
+    // O sexto nem chegou à base: só há os cinco nonces que passaram.
+    const { n } = (await env.DB.prepare("SELECT COUNT(*) AS n FROM nonces").first<{ n: number }>())!;
+    expect(n).toBe(5);
+  });
+
+  it("soAsEntradasContam", async () => {
+    const limite = limitador(0);
+    expect((await chamar("/api/saude", { metodo: "GET", cabecalhos: ip, segredos: { LIMITE_AUTH: limite } })).status).toBe(200);
+    expect(limite.chaves).toEqual([]);
+  });
+
+  it("configTemOLimiteDasEntradas", () => {
+    const publico = lerJsonc(env.TEST_CONFIG);
+    expect(publico.ratelimits).toContainEqual({ name: "LIMITE_AUTH", namespace_id: "1002", simple: { limit: 5, period: 10 } });
+  });
+});

@@ -260,7 +260,7 @@ describe("pc-admin: separado do Worker público", () => {
     expect(publico.main).toBe("src/index.ts");
     expect(publico.assets.run_worker_first).toEqual(["/api/*", "/privacidade"]);
     expect(publico.workers_dev).toBe(false);
-    // Sem endereços de pré-visualização no workers.dev: saltavam a regra contra abusos da zona.
+    // Sem endereços de pré-visualização no workers.dev: o servidor só existe no domínio próprio.
     expect(publico.preview_urls).toBe(false);
   });
 });
