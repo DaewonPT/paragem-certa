@@ -4,6 +4,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
@@ -55,6 +56,15 @@ class MenuPontoTest {
             regra.onNode(hasText(texto)).assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button)).performClick()
         }
         assertEquals(listOf("CASA", "TRABALHO", "OUTRO"), pedidos)
+    }
+
+    @Test @Config(qualifiers = "w360dp-h560dp")
+    fun abreInteiroNumEcraBaixo() {
+        regra.setContent {
+            TemaParagemCerta(ModoTema.CLARO) { MenuPonto(ponto, aoIrPara = {}, aoPartirDaqui = {}, aoGuardar = {}, aoFechar = {}) }
+        }
+        // Aberto a meio, as últimas das cinco opções ficavam por baixo do ecrã.
+        regra.onNodeWithText("Guardar como local").assertIsDisplayed()
     }
 
     @Test fun guardarComoTrabalhoSubstituiOAnterior() {

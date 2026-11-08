@@ -29,6 +29,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberBottomSheetScaffoldState
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -397,7 +398,8 @@ fun InicioEcra(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun MenuPonto(lugar: Lugar, aoIrPara: () -> Unit, aoPartirDaqui: () -> Unit, aoGuardar: (tipo: String) -> Unit, aoFechar: () -> Unit) {
-    ModalBottomSheet(onDismissRequest = aoFechar) {
+    // Sempre aberto por inteiro: a meio, num ecrã baixo, as últimas das cinco opções ficavam por baixo.
+    ModalBottomSheet(onDismissRequest = aoFechar, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
         Text(
             lugar.nome, Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
             style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface,
