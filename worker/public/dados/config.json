@@ -2,7 +2,7 @@
   "versao": 1,
   "versaoTermos": "1",
   "interruptores": {
-    "conta": false,
+    "conta": true,
     "comunidade": false,
     "fotos": false,
     "correcoes": false,

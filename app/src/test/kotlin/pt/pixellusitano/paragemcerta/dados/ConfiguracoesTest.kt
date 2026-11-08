@@ -2,7 +2,6 @@ package pt.pixellusitano.paragemcerta.dados
 
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -30,7 +29,7 @@ class ConfiguracoesTest {
         val c = configuracoes(semRede)
         c.aoAbrir()
         assertEquals(1, c.atual.value.versao)
-        assertFalse(c.atual.value.interruptores.conta)
+        assertTrue(c.atual.value.interruptores.conta) // a cópia da app segue o servidor publicado
         assertEquals(70, c.atual.value.emails.codigosPorDia)
         assertTrue(c.atual.value.canaisReclamacao.any { it.nome == "Livro de Reclamações Eletrónico" })
     }

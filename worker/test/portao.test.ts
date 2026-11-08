@@ -28,7 +28,10 @@ describe("portão das escritas da comunidade", () => {
 
   it("cadaFuncaoTemOSeuInterruptor", async () => {
     const token = await criarConta("ana", "ana@exemplo.pt");
-    const soAsFotos = ligado({ TESTE_INTERRUPTORES: JSON.stringify({ fotos: true }) });
+    // Os seis explícitos: o teste não depende do que estiver ligado no config.json.
+    const soAsFotos = ligado({
+      TESTE_INTERRUPTORES: JSON.stringify({ conta: false, comunidade: false, fotos: true, correcoes: false, carrisAoVivo: false, metro: false }),
+    });
     expect(await portaoDeEscrita(pedidoComToken(token), soAsFotos, "fotos")).toMatchObject({ contaId: "ana" });
     for (const funcao of ["comunidade", "correcoes"] as const) {
       expect(await recusa(await portaoDeEscrita(pedidoComToken(token), soAsFotos, funcao)), funcao).toEqual({ estado: 403, erro: "desligado" });

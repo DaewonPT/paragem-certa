@@ -161,9 +161,9 @@ describe("base do servidor", () => {
   });
 
   it("configTemOsInterruptoresDesligados", () => {
-    // A app traz uma cópia deste ficheiro (etapa 2, Task 6): as funções só se ligam quando o servidor estiver publicado.
+    // O estado publicado dos interruptores. A app traz uma cópia deste ficheiro: muda os dois ao mesmo tempo (docs/servidor.md, passos 9 e 16).
     expect(config.versao).toBe(1);
-    expect(config.interruptores).toEqual({ conta: false, comunidade: false, fotos: false, correcoes: false, carrisAoVivo: false, metro: false });
+    expect(config.interruptores).toEqual({ conta: true, comunidade: false, fotos: false, correcoes: false, carrisAoVivo: false, metro: false });
     expect(config.emails.codigosPorDia).toBe(70);
     expect(config.canaisReclamacao).toHaveLength(5);
     for (const canal of config.canaisReclamacao) {
@@ -242,7 +242,7 @@ describe("base do servidor", () => {
   });
 
   it("configTemAsRegrasDaComunidade", () => {
-    expect(config.interruptores).toEqual({ conta: false, comunidade: false, fotos: false, correcoes: false, carrisAoVivo: false, metro: false });
+    expect(config.interruptores).toEqual({ conta: true, comunidade: false, fotos: false, correcoes: false, carrisAoVivo: false, metro: false });
     expect(config.versaoTermos).toBe("1");
     expect(config.comunidade).toEqual({
       confirmadoCom: 2,
