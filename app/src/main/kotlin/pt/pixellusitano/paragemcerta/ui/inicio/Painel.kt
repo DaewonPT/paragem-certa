@@ -28,6 +28,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
@@ -212,9 +215,10 @@ fun CartaoLocal(
 
 @Composable
 private fun CartaoAcao(simbolo: String, titulo: String, detalhe: String, aoAbrir: () -> Unit) {
-    OutlinedCard(onClick = aoAbrir, modifier = Modifier.fillMaxWidth()) {
+    OutlinedCard(onClick = aoAbrir, modifier = Modifier.fillMaxWidth().semantics { role = Role.Button }) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(simbolo, style = MaterialTheme.typography.titleLarge)
+            // O leitor de ecrã lê o título e o detalhe, não o símbolo.
+            Text(simbolo, Modifier.clearAndSetSemantics {}, style = MaterialTheme.typography.titleLarge)
             Column(Modifier.weight(1f)) {
                 Text(titulo, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
                 Text(detalhe, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -240,9 +244,9 @@ fun PainelConteudo(
     aoRepetir: (ViagemRecente) -> Unit = {},
     linhasFavoritas: List<BlocoLinha> = emptyList(),
     aoAbrirLinha: (LinhaFavorita) -> Unit = {},
+    aoDefinirLocal: (tipo: String) -> Unit = {},
 ) {
     // "Favoritos" por esta ordem: Casa, Trabalho, as paragens, as linhas e os outros sítios (cada grupo pela ordem em que o utilizador o pôs).
-    val casaETrabalho = listOf("CASA", "TRABALHO").mapNotNull { t -> locais.firstOrNull { it.local.tipo == t } }
     val outros = locais.filter { it.local.tipo != "CASA" && it.local.tipo != "TRABALHO" }
     Column(modifier.background(MaterialTheme.colorScheme.surface).padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
         FrisoAzulejo(Modifier.fillMaxWidth().padding(bottom = 8.dp))
@@ -253,11 +257,19 @@ fun PainelConteudo(
         }
         Text(stringResource(R.string.painel_favoritos), style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
+        // Casa e Trabalho estão sempre cá: a que ainda não tem morada convida a escolhê-la.
+        Column(Modifier.padding(vertical = 6.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("CASA" to R.string.locais_casa, "TRABALHO" to R.string.locais_trabalho).forEach { (tipo, nome) ->
+                val b = locais.firstOrNull { it.local.tipo == tipo }
+                if (b != null) CartaoLocal(b.local, b.estado, b.itinerario, b.aCalcular, { aoTocarLocal(b) }, { aoVerMaisLocal(b) })
+                else CartaoAcao(simboloLocal(tipo), stringResource(nome), stringResource(R.string.painel_definir_local)) { aoDefinirLocal(tipo) }
+            }
+        }
+        // A dica fica onde aparecem as paragens e as linhas, enquanto não há nada guardado.
         if (favoritas.isEmpty() && locais.isEmpty() && linhasFavoritas.isEmpty()) {
             Text(stringResource(R.string.painel_sem_favoritas), color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(vertical = 8.dp))
         }
-        CartoesLocais(casaETrabalho, aoTocarLocal, aoVerMaisLocal)
         favoritas.forEach { Bloco(it, "★ ", linhas, agora, aoAbrirParagem) }
         linhasFavoritas.forEach { BlocoDeLinha(it, linhas, agora, aoAbrirLinha) }
         CartoesLocais(outros, aoTocarLocal, aoVerMaisLocal)
@@ -370,6 +382,8 @@ fun Painel(
     catalogo: CatalogoLinhas,
     aoAbrirRotas: (Rotas) -> Unit = {},
     aoAbrirLinha: (LinhaFavorita) -> Unit = {},
+    /** Tocar na Casa ou no Trabalho ainda sem morada ("CASA" ou "TRABALHO"). */
+    aoDefinirLocal: (tipo: String) -> Unit = {},
 ) {
     val favoritas by remember { repositorio.favoritas() }.collectAsStateWithLifecycle(initialValue = emptyList())
     val linhasGuardadas by remember { repositorio.linhasFavoritas() }.collectAsStateWithLifecycle(initialValue = emptyList())
@@ -434,5 +448,6 @@ fun Painel(
         aoRepetir = { r -> aoAbrirRotas(Rotas(origem = r.de.takeIf { it.nome != MINHA_POSICAO }?.paraRota(), destino = r.para.paraRota())) },
         linhasFavoritas = rememberBlocosDeLinhas(repositorio, catalogo, linhasGuardadas, estados),
         aoAbrirLinha = aoAbrirLinha,
+        aoDefinirLocal = aoDefinirLocal,
     )
 }

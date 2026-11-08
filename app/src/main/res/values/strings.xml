@@ -232,6 +232,9 @@
     <string name="guardar_como_casa">Guardar como casa</string>
     <string name="guardar_como_trabalho">Guardar como trabalho</string>
     <string name="guardar_como_local">Guardar como local</string>
+    <string name="painel_definir_local">Toca para escolher a morada</string>
+    <string name="definir_casa">Onde é a tua casa?</string>
+    <string name="definir_trabalho">Onde é o teu trabalho?</string>
     <string name="mais_opcoes">Mais opções</string>
     <string name="dialogo_nome">Nome</string>
     <string name="guardar">Guardar</string>

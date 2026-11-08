@@ -1,16 +1,29 @@
 package pt.pixellusitano.paragemcerta.ui.inicio
 
 import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.boundsInRoot
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import androidx.room.Room
+import androidx.test.espresso.Espresso
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -24,6 +37,7 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import org.robolectric.shadows.ShadowToast
 import pt.pixellusitano.paragemcerta.core.fontes.cm.CarrisMetropolitana
 import pt.pixellusitano.paragemcerta.core.fontes.geoapi.GeoApi
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.Transitous
@@ -32,8 +46,10 @@ import pt.pixellusitano.paragemcerta.core.linhas.lerCatalogo
 import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.Linha
+import pt.pixellusitano.paragemcerta.core.modelo.Lugar
 import pt.pixellusitano.paragemcerta.core.modelo.Modo
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
+import pt.pixellusitano.paragemcerta.core.modelo.TipoLugar
 import pt.pixellusitano.paragemcerta.core.rede.Resposta
 import pt.pixellusitano.paragemcerta.dados.BaseDados
 import pt.pixellusitano.paragemcerta.dados.CatalogoLinhas
@@ -42,8 +58,10 @@ import pt.pixellusitano.paragemcerta.dados.EstadoChegadas
 import pt.pixellusitano.paragemcerta.dados.HttpComEtag
 import pt.pixellusitano.paragemcerta.dados.HttpPorUrl
 import pt.pixellusitano.paragemcerta.dados.LinhaFavorita
+import pt.pixellusitano.paragemcerta.dados.LocalGuardado
 import pt.pixellusitano.paragemcerta.dados.Repositorio
 import pt.pixellusitano.paragemcerta.dados.fixture
+import pt.pixellusitano.paragemcerta.ui.rotas.rememberGuardarLocal
 import pt.pixellusitano.paragemcerta.ui.tema.ModoTema
 import pt.pixellusitano.paragemcerta.ui.tema.TemaParagemCerta
 import java.io.IOException
@@ -227,5 +245,106 @@ class PainelTest {
         painel(listOf(blocoDaLinha(f3708, noTerminal, true)))
         regra.onNodeWithText("Toca na ☆ de uma paragem, de uma linha ou de um sítio para o veres aqui").assertDoesNotExist()
         regra.onNodeWithText("★ 3708 → $costa").assertIsDisplayed()
+    }
+
+    private val convite = "Toca para escolher a morada"
+    private val dica = "Toca na ☆ de uma paragem, de uma linha ou de um sítio para o veres aqui"
+
+    /** O cartão que convida a escolher a morada da Casa ou do Trabalho ([nome]). */
+    private fun convite(nome: String) = hasText(nome) and hasText(convite)
+
+    private fun painelComLocais(locais: List<BlocoLocal>, aoDefinirLocal: (String) -> Unit) = regra.setContent {
+        TemaParagemCerta(ModoTema.CLARO) {
+            PainelConteudo(
+                emptyList(), emptyList(), emptyMap(), agora, {}, {}, Modifier.width(360.dp),
+                locais = locais, aoDefinirLocal = aoDefinirLocal,
+            )
+        }
+    }
+
+    @Test fun semCasaNemTrabalhoConvidaAEscolherAMorada() {
+        val pedidos = mutableListOf<String>()
+        painelComLocais(emptyList()) { pedidos += it }
+        val casa = regra.onNode(convite("Casa"))
+        val trabalho = regra.onNode(convite("Trabalho"))
+        // Um só botão por cartão, do tamanho dos outros, que o TalkBack lê "Casa, Toca para escolher a morada" (sem o símbolo).
+        casa.assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button)).assertHeightIsAtLeast(48.dp)
+        assertEquals(listOf("Casa", convite), casa.fetchSemanticsNode().config[SemanticsProperties.Text].map { it.text })
+        assertTrue(casa.fetchSemanticsNode().boundsInRoot.top < trabalho.fetchSemanticsNode().boundsInRoot.top)
+        // Sem mais nada guardado, a dica de como guardar continua.
+        regra.onNodeWithText(dica).assertIsDisplayed()
+
+        casa.performClick()
+        trabalho.performClick()
+        assertEquals(listOf("CASA", "TRABALHO"), pedidos)
+    }
+
+    @Test fun soComCasaMostraACasaEConvidaParaOTrabalho() {
+        val pedidos = mutableListOf<String>()
+        val casa = LocalGuardado(1, "Casa", Lugar("Casa", 38.72, -9.14, TipoLugar.LOCAL), "CASA", 0)
+        painelComLocais(listOf(BlocoLocal(casa, EstadoLocal.SEM_POSICAO))) { pedidos += it }
+        regra.onNodeWithText("🏠 Casa").assertIsDisplayed() // o cartão de sempre, com a sugestão quando há posição
+        regra.onAllNodesWithText(convite).assertCountEquals(1)
+        regra.onNodeWithText(dica).assertDoesNotExist()
+
+        regra.onNode(convite("Trabalho")).performClick()
+        assertEquals(listOf("TRABALHO"), pedidos)
+    }
+
+    /** O painel e a escolha da morada ligados como no Início: o convite abre a escolha no ecrã todo e quem guarda é o ecrã de baixo. */
+    private fun painelComEscolha(repo: Repositorio) {
+        val linhas = catalogoLinhas()
+        regra.setContent {
+            TemaParagemCerta(ModoTema.CLARO) {
+                var definir by remember { mutableStateOf<String?>(null) }
+                val guardar = rememberGuardarLocal(repo)
+                val tipo = definir
+                if (tipo == null) Painel(repo, null, {}, {}, catalogo = linhas, aoDefinirLocal = { definir = it })
+                else DefinirLocalEcra(repo, tipo, guardar, aoFechar = { definir = null })
+            }
+        }
+    }
+
+    @Test fun escolherACasaGuardaUmaSoCasaNoSitioEscolhido() {
+        val repo = repositorio(HttpPorUrl())
+        val cafe = Lugar("Café Central", 38.7101, -9.1402, TipoLugar.LOCAL)
+        runBlocking { repo.guardarLocal("Café Central", cafe, "OUTRO") }
+        painelComEscolha(repo)
+
+        regra.onNode(convite("Casa")).performClick()
+        regra.onNodeWithText("Onde é a tua casa?").assertIsDisplayed()
+        // Os sítios guardados estão na lista: escolhe-se o café.
+        regra.waitUntil(5_000) { regra.onAllNodesWithText("Café Central").fetchSemanticsNodes().isNotEmpty() }
+        regra.onNodeWithText("Café Central").performClick()
+
+        // De volta ao painel, com a Casa no lugar do convite.
+        regra.waitUntil(5_000) { regra.onAllNodesWithText("🏠 Casa").fetchSemanticsNodes().isNotEmpty() }
+        regra.onAllNodes(convite("Casa")).assertCountEquals(0)
+        assertEquals("Guardado nos favoritos", ShadowToast.getTextOfLatestToast())
+        val guardados = runBlocking { repo.locais().first() }
+        val casas = guardados.filter { it.tipo == "CASA" }
+        assertEquals(1, casas.size)
+        assertEquals("Casa", casas[0].nome)
+        assertEquals(cafe.lat, casas[0].lugar.lat, 1e-9)
+        assertEquals(cafe.lon, casas[0].lugar.lon, 1e-9)
+        assertEquals(2, guardados.size) // o café continua lá
+    }
+
+    @Test fun voltarDaEscolhaNaoGuardaNemSaiDaApp() {
+        val repo = repositorio(HttpPorUrl())
+        painelComEscolha(repo)
+
+        regra.onNode(convite("Trabalho")).performClick()
+        regra.onNodeWithText("Onde é o teu trabalho?").assertIsDisplayed()
+        Espresso.pressBack() // o voltar do sistema; falha se fechar a app
+        regra.waitForIdle()
+        regra.onNode(convite("Trabalho")).assertIsDisplayed()
+
+        // O ← do ecrã também volta sem guardar.
+        regra.onNode(convite("Casa")).performClick()
+        regra.onNodeWithText("Onde é a tua casa?").assertIsDisplayed()
+        regra.onNodeWithText("←").performClick()
+        regra.onNode(convite("Casa")).assertIsDisplayed()
+        assertTrue(runBlocking { repo.locais().first() }.isEmpty())
     }
 }

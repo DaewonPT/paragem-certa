@@ -4,6 +4,7 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -91,6 +92,10 @@ import pt.pixellusitano.paragemcerta.dados.Preferencias
 import pt.pixellusitano.paragemcerta.ui.mapa.daCarris
 import pt.pixellusitano.paragemcerta.ui.mapa.paragensDoMapa
 import pt.pixellusitano.paragemcerta.ui.mapa.veiculosDoMapa
+import pt.pixellusitano.paragemcerta.ui.rotas.EscolherLugarEcra
+import pt.pixellusitano.paragemcerta.ui.rotas.lugaresRecentes
+import pt.pixellusitano.paragemcerta.ui.rotas.rememberGuardarLocal
+import pt.pixellusitano.paragemcerta.ui.rotas.simboloLocal
 import pt.pixellusitano.paragemcerta.ui.viagem.rememberRetomarViagem
 import pt.pixellusitano.paragemcerta.ui.viagem.viagemEmCurso
 import pt.pixellusitano.paragemcerta.ui.viagem.viagemInterrompida
@@ -194,7 +199,7 @@ fun InicioEcra(
     estacoesGira: EstacoesGira,
     aoAbrirParagem: (Paragem) -> Unit,
     aoPesquisar: () -> Unit = {},
-    painel: @Composable (posicao: Pair<Double, Double>?) -> Unit = {},
+    painel: @Composable (posicao: Pair<Double, Double>?, aoDefinirLocal: (tipo: String) -> Unit) -> Unit = { _, _ -> },
     aoIrPara: (Rotas) -> Unit = {},
     aoAbrirViagem: () -> Unit = {},
     abrirFavoritos: Boolean = false,
@@ -203,6 +208,9 @@ fun InicioEcra(
     val vm = viewModel { InicioViewModel(repositorio::paragensNaZona, repositorio::veiculos, repositorio::lugarEm, repositorio::veiculosCarris) }
     val menu by vm.menu.collectAsStateWithLifecycle()
     var guardar by remember { mutableStateOf<Lugar?>(null) }
+    // "CASA" ou "TRABALHO" enquanto se escolhe a morada no ecrã todo; null = o mapa.
+    var definir by rememberSaveable { mutableStateOf<String?>(null) }
+    val guardarLocal = rememberGuardarLocal(repositorio)
     val escopo = rememberCoroutineScope()
     val paragens by vm.paragens.collectAsStateWithLifecycle()
     val veiculos = rememberVeiculosDoMapa(vm.veiculos, vm.veiculosCarris, preferencias)
@@ -269,12 +277,17 @@ fun InicioEcra(
             folha.bottomSheetState.expand()
         }
     }
+    val tipo = definir
+    if (tipo != null) {
+        DefinirLocalEcra(repositorio, tipo, guardarLocal, aoFechar = { definir = null })
+        return
+    }
     Box(Modifier.fillMaxSize()) {
     BottomSheetScaffold(
         scaffoldState = folha,
         sheetPeekHeight = 260.dp,
         sheetContainerColor = MaterialTheme.colorScheme.surface,
-        sheetContent = { painel(posicao) },
+        sheetContent = { painel(posicao) { definir = it } },
     ) { _ ->
     Box(Modifier.fillMaxSize()) {
         Mapa(
@@ -356,8 +369,9 @@ fun InicioEcra(
                 lugar,
                 aoIrPara = { vm.irParaAqui()?.let(aoIrPara) },
                 aoPartirDaqui = { vm.partirDaqui()?.let(aoIrPara) },
-                aoGuardar = {
-                    guardar = lugar
+                // Casa e Trabalho guardam-se logo, com o nome fixo; um local pede o nome.
+                aoGuardar = { t ->
+                    if (t == "OUTRO") guardar = lugar else guardarLocal(lugar, t)
                     vm.fecharMenu()
                 },
                 aoFechar = vm::fecharMenu,
@@ -379,10 +393,10 @@ fun InicioEcra(
     }
 }
 
-/** Menu de um ponto tocado sem largar: o nome e as três ações. */
+/** Menu de um ponto tocado sem largar: o nome, ir para lá, partir de lá e guardá-lo como casa, trabalho ou local ([aoGuardar] com o tipo). */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun MenuPonto(lugar: Lugar, aoIrPara: () -> Unit, aoPartirDaqui: () -> Unit, aoGuardar: () -> Unit, aoFechar: () -> Unit) {
+internal fun MenuPonto(lugar: Lugar, aoIrPara: () -> Unit, aoPartirDaqui: () -> Unit, aoGuardar: (tipo: String) -> Unit, aoFechar: () -> Unit) {
     ModalBottomSheet(onDismissRequest = aoFechar) {
         Text(
             lugar.nome, Modifier.padding(horizontal = 16.dp, vertical = 8.dp),
@@ -391,7 +405,9 @@ private fun MenuPonto(lugar: Lugar, aoIrPara: () -> Unit, aoPartirDaqui: () -> U
         listOf(
             "🧭" to R.string.menu_ir_para_aqui to aoIrPara,
             "🚩" to R.string.menu_partir_daqui to aoPartirDaqui,
-            "⭐" to R.string.menu_guardar_local to aoGuardar,
+            simboloLocal("CASA") to R.string.guardar_como_casa to { aoGuardar("CASA") },
+            simboloLocal("TRABALHO") to R.string.guardar_como_trabalho to { aoGuardar("TRABALHO") },
+            simboloLocal("OUTRO") to R.string.guardar_como_local to { aoGuardar("OUTRO") },
         ).forEach { (simboloTexto, acao) ->
             ItemLista(onClick = acao) {
                 Text(simboloTexto.first, color = MaterialTheme.colorScheme.primary)
@@ -400,6 +416,31 @@ private fun MenuPonto(lugar: Lugar, aoIrPara: () -> Unit, aoPartirDaqui: () -> U
         }
         Spacer(Modifier.navigationBarsPadding().padding(bottom = 16.dp))
     }
+}
+
+/**
+ * A morada da Casa ou do Trabalho ([tipo]), no ecrã todo como nas Rotas: um sítio guardado, um recente ou uma pesquisa. O escolhido
+ * guarda-se com [guardar] (de quem fica aberto: este ecrã fecha logo) e o ecrã fecha; ← e o voltar do sistema fecham sem guardar.
+ */
+@Composable
+internal fun DefinirLocalEcra(repositorio: Repositorio, tipo: String, guardar: (Lugar, tipo: String) -> Unit, aoFechar: () -> Unit) {
+    val contexto = LocalContext.current
+    val locais by remember { repositorio.locais() }.collectAsStateWithLifecycle(emptyList())
+    val recentes by remember { repositorio.recentes() }.collectAsStateWithLifecycle(emptyList())
+    BackHandler(onBack = aoFechar)
+    EscolherLugarEcra(
+        titulo = stringResource(if (tipo == "CASA") R.string.definir_casa else R.string.definir_trabalho),
+        comPosicao = false,
+        locais = locais,
+        recentes = lugaresRecentes(recentes),
+        pesquisar = { t -> repositorio.pesquisarLugares(t, ultimaPosicao(contexto)) },
+        aoEscolher = { l ->
+            if (l != null) guardar(l, tipo)
+            aoFechar()
+        },
+        aoVoltar = aoFechar,
+        aoGuardar = guardar,
+    )
 }
 
 @Composable

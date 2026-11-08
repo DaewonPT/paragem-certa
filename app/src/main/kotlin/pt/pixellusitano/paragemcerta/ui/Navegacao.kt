@@ -250,7 +250,7 @@ fun Navegacao(
                         aoIrPara = { nav.navigate(it) },
                         aoAbrirViagem = { nav.navigate(Viagem) },
                         abrirFavoritos = abrirFavoritos,
-                        painel = { posicao ->
+                        painel = { posicao, aoDefinirLocal ->
                             Painel(
                                 repositorio, posicao,
                                 aoAbrirParagem = { nav.navigate(Paragem(it.chave)) },
@@ -258,6 +258,7 @@ fun Navegacao(
                                 catalogo = ligacoes.catalogoLinhas,
                                 aoAbrirRotas = { nav.navigate(it) },
                                 aoAbrirLinha = { nav.navigate(it.rotaDaLinha()) },
+                                aoDefinirLocal = aoDefinirLocal,
                             )
                         },
                     )
