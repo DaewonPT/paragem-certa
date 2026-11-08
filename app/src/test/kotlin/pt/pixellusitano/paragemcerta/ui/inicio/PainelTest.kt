@@ -1,5 +1,8 @@
 package pt.pixellusitano.paragemcerta.ui.inicio
 
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -287,6 +290,21 @@ class PainelTest {
         casa.performClick()
         trabalho.performClick()
         assertEquals(listOf("CASA", "TRABALHO"), pedidos)
+    }
+
+    @Test fun comLetraGrandeOsConvitesFicamUmPorBaixoDoOutro() {
+        // Lado a lado, a 200% o nome ficava "Trab…": com letra grande cada convite tem a largura toda.
+        regra.setContent {
+            CompositionLocalProvider(LocalDensity provides Density(LocalDensity.current.density, fontScale = 2f)) {
+                TemaParagemCerta(ModoTema.CLARO) {
+                    PainelConteudo(emptyList(), emptyList(), emptyMap(), agora, {}, {}, Modifier.width(360.dp), locais = emptyList())
+                }
+            }
+        }
+        val c = regra.onNode(convite("Casa")).getBoundsInRoot()
+        val t = regra.onNode(convite("Trabalho")).getBoundsInRoot()
+        assertTrue("${c.bottom} ${t.top}", c.bottom <= t.top)
+        assertEquals(c.width, t.width)
     }
 
     @Test fun soComCasaMostraACasaEConvidaParaOTrabalho() {

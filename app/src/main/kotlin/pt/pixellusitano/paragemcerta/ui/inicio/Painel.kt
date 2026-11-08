@@ -1,5 +1,6 @@
 package pt.pixellusitano.paragemcerta.ui.inicio
 
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -230,17 +231,17 @@ private fun CartaoAcao(simbolo: String, titulo: String, detalhe: String, aoAbrir
 
 /** A Casa ou o Trabalho ([tipo]) ainda sem morada: como o [CartaoLocal], mas só com duas linhas, para caber ao lado do outro. */
 @Composable
-private fun CartaoPorDefinir(tipo: String, nome: String, modifier: Modifier, aoDefinir: () -> Unit) {
+private fun CartaoPorDefinir(tipo: String, nome: String, modifier: Modifier, linhas: Int, aoDefinir: () -> Unit) {
     OutlinedCard(modifier) {
         Column(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button, onClick = aoDefinir).padding(12.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 // O leitor de ecrã lê "Casa, Toca para escolher a morada", sem o símbolo.
                 Text(simboloLocal(tipo), Modifier.clearAndSetSemantics {}, style = MaterialTheme.typography.titleSmall)
-                Text(nome, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(nome, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface, maxLines = linhas, overflow = TextOverflow.Ellipsis)
             }
             Text(
                 stringResource(R.string.painel_definir_local), style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = linhas, overflow = TextOverflow.Ellipsis,
             )
         }
     }
@@ -290,8 +291,11 @@ fun PainelConteudo(
                     CartaoLocal(b.local, b.estado, b.itinerario, b.aCalcular, { aoTocarLocal(b) }, { aoVerMaisLocal(b) })
                 }
             }
-            if (porDefinir.isNotEmpty()) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                porDefinir.forEach { (t, nome) -> CartaoPorDefinir(t, stringResource(nome), Modifier.weight(1f)) { aoDefinirLocal(t) } }
+            // Com letra grande não cabem lado a lado sem cortar o nome ("Trab…"): um por baixo do outro, com a largura toda.
+            if (LocalDensity.current.fontScale >= 1.3f) {
+                porDefinir.forEach { (t, nome) -> CartaoPorDefinir(t, stringResource(nome), Modifier.fillMaxWidth(), linhas = 2) { aoDefinirLocal(t) } }
+            } else if (porDefinir.isNotEmpty()) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                porDefinir.forEach { (t, nome) -> CartaoPorDefinir(t, stringResource(nome), Modifier.weight(1f), linhas = 1) { aoDefinirLocal(t) } }
             }
         }
         // A dica fica onde aparecem as paragens e as linhas, enquanto não há nada guardado.
