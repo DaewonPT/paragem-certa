@@ -1,5 +1,6 @@
 package pt.pixellusitano.paragemcerta.ui.rotas
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,12 +23,14 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.contentDescription
@@ -36,18 +39,47 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.core.fontes.geoapi.ehCodigoPostal
 import pt.pixellusitano.paragemcerta.core.fontes.geoapi.ehLugarDeCodigoPostal
 import pt.pixellusitano.paragemcerta.core.modelo.Lugar
 import pt.pixellusitano.paragemcerta.core.modelo.TipoLugar
 import pt.pixellusitano.paragemcerta.dados.LocalGuardado
+import pt.pixellusitano.paragemcerta.dados.Repositorio
+import pt.pixellusitano.paragemcerta.dados.ViagemRecente
 import pt.pixellusitano.paragemcerta.ui.comum.ItemLista
 
 internal fun simboloLocal(tipo: String) = when (tipo) {
     "CASA" -> "🏠"
     "TRABALHO" -> "💼"
     else -> "⭐"
+}
+
+/** Os lugares das viagens recentes para escolher: sem "A minha posição", sem nomes repetidos, no máximo 8. */
+internal fun lugaresRecentes(recentes: List<ViagemRecente>): List<Lugar> =
+    recentes.flatMap { listOf(it.para, it.de) }.filter { it.nome != MINHA_POSICAO }.distinctBy { it.nome }.take(8)
+
+/**
+ * Guarda um lugar nos favoritos e avisa: Casa e Trabalho com esse nome (só há uma de cada, a nova substitui a anterior), os outros
+ * com o nome do lugar. Guarda no escopo de quem a chama: um ecrã que fecha logo a seguir cancelaria o que ele próprio lançasse.
+ */
+@Composable
+internal fun rememberGuardarLocal(repositorio: Repositorio): (Lugar, tipo: String) -> Unit {
+    val contexto = LocalContext.current
+    val escopo = rememberCoroutineScope()
+    val casa = stringResource(R.string.locais_casa)
+    val trabalho = stringResource(R.string.locais_trabalho)
+    val guardado = stringResource(R.string.local_guardado)
+    return { l, tipo ->
+        val nome = when (tipo) {
+            "CASA" -> casa
+            "TRABALHO" -> trabalho
+            else -> l.nome
+        }
+        escopo.launch { repositorio.guardarLocal(nome, l, tipo) }
+        Toast.makeText(contexto, guardado, Toast.LENGTH_SHORT).show()
+    }
 }
 
 private fun simboloLugar(t: TipoLugar) = when (t) {
