@@ -62,7 +62,7 @@ android {
         create("pessoal") {
             dimension = "distribuicao"
             applicationIdSuffix = ".pessoal"
-            buildConfigField("String", "URL_DOACOES", "\"https://pixel-lusitano.dotatie.com\"")
+            buildConfigField("String", "URL_DOACOES", "\"https://pixel-lusitano.dotatie.com/?lang=en\"")
         }
         create("play") {
             dimension = "distribuicao"
