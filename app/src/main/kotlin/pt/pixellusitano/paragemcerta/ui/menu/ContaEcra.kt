@@ -50,12 +50,13 @@ import pt.pixellusitano.paragemcerta.ui.sobre.URL_PRIVACIDADE
 import pt.pixellusitano.paragemcerta.ui.sobre.URL_TERMOS
 import java.time.format.DateTimeFormatter
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
 import kotlin.time.Duration.Companion.seconds
 
 private val HORA = DateTimeFormatter.ofPattern("HH:mm")
 
 /** Quanto se espera pela Google: há telemóveis em que a janela dela nunca aparece e o pedido nunca volta. */
-private val ESPERA_GOOGLE = 90.seconds
+private val ESPERA_GOOGLE = 3.minutes
 
 /** Em que ponto da entrada a pessoa está: a escolher como entrar, a escrever o email ou a escrever o código que recebeu. */
 enum class PassoEntrada { ESCOLHA, EMAIL, CODIGO }
