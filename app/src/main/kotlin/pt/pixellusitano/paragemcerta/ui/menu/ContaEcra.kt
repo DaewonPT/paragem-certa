@@ -37,6 +37,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import pt.pixellusitano.paragemcerta.core.rede.emPausa
@@ -48,14 +49,20 @@ import pt.pixellusitano.paragemcerta.ui.comum.LISBOA_FUSO
 import pt.pixellusitano.paragemcerta.ui.sobre.URL_PRIVACIDADE
 import pt.pixellusitano.paragemcerta.ui.sobre.URL_TERMOS
 import java.time.format.DateTimeFormatter
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 private val HORA = DateTimeFormatter.ofPattern("HH:mm")
+
+/** Quanto se espera pela Google: há telemóveis em que a janela dela nunca aparece e o pedido nunca volta. */
+private val ESPERA_GOOGLE = 90.seconds
 
 /** Em que ponto da entrada a pessoa está: a escolher como entrar, a escrever o email ou a escrever o código que recebeu. */
 enum class PassoEntrada { ESCOLHA, EMAIL, CODIGO }
 
 /**
- * Menu → Conta, ligado à [conta]. [webClientId] vazio = sem botão do Google. [pedirToken] é o Credential Manager (trocável nos testes).
+ * Menu → Conta, ligado à [conta]. [webClientId] vazio = sem botão do Google. [pedirToken] é o Credential Manager (trocável nos testes),
+ * que desiste passada a [espera].
  * Antes de entrar, se há favoritos no telemóvel, pergunta se vão para a conta: podem ser de outra pessoa que usou este telemóvel.
  */
 @Composable
@@ -67,6 +74,7 @@ fun ContaEcra(
     aoVoltar: () -> Unit,
     modifier: Modifier = Modifier,
     pedirToken: suspend (Activity, String, String) -> String? = ::pedirTokenGoogle,
+    espera: Duration = ESPERA_GOOGLE,
 ) {
     val contexto = LocalContext.current
     val escopo = rememberCoroutineScope()
@@ -113,7 +121,7 @@ fun ContaEcra(
                 when (val nonce = conta.nonceGoogle()) {
                     is Resultado.Falha -> mensagem = erroDoGoogle(nonce)
                     is Resultado.Ok -> {
-                        val token = contexto.atividade()?.let { pedirToken(it, webClientId, nonce.valor) }
+                        val token = contexto.atividade()?.let { withTimeoutOrNull(espera) { pedirToken(it, webClientId, nonce.valor) } }
                         if (token == null) mensagem = R.string.conta_erro_google
                         else entrar { juntar -> acabar(conta.entrarComGoogle(token, juntar), ::erroDoGoogle) }
                     }

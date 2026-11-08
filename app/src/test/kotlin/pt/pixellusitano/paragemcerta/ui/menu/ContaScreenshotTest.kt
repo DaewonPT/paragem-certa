@@ -3,6 +3,7 @@ package pt.pixellusitano.paragemcerta.ui.menu
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -12,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import androidx.room.Room
 import androidx.test.espresso.Espresso
 import com.github.takahirom.roborazzi.captureRoboImage
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
@@ -46,6 +48,8 @@ import pt.pixellusitano.paragemcerta.ui.tema.TemaParagemCerta
 import java.io.File
 import java.io.IOException
 import java.time.Instant
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 /** O servidor da Paragem Certa à mão: responde ao que o ecrã da conta pede e regista o que recebe (caminho → corpo). */
 private class ServidorFalso : Http {
@@ -112,12 +116,15 @@ class ContaScreenshotTest {
     )
 
     /** O ecrã a sério, ligado à [conta] de teste; [pedirToken] faz de Credential Manager. */
-    private fun abrirEcra(webClientId: String = "cliente-web", pedirToken: suspend (android.app.Activity, String, String) -> String? = { _, _, _ -> null }) =
-        regra.setContent {
-            TemaParagemCerta(ModoTema.CLARO) {
-                ContaEcra(conta, repo, webClientId, aoAbrir = {}, aoVoltar = {}, pedirToken = pedirToken)
-            }
+    private fun abrirEcra(
+        webClientId: String = "cliente-web",
+        espera: Duration = 90.seconds,
+        pedirToken: suspend (android.app.Activity, String, String) -> String? = { _, _, _ -> null },
+    ) = regra.setContent {
+        TemaParagemCerta(ModoTema.CLARO) {
+            ContaEcra(conta, repo, webClientId, aoAbrir = {}, aoVoltar = {}, pedirToken = pedirToken, espera = espera)
         }
+    }
 
     private fun esperarPor(texto: String) = regra.waitUntil(5_000) { regra.onAllNodesWithText(texto).fetchSemanticsNodes().isNotEmpty() }
 
@@ -213,6 +220,17 @@ class ContaScreenshotTest {
         esperarPor("Não foi possível entrar com o Google neste telemóvel. Usa o código por email.")
         regra.onNodeWithText("Entrar com email").assertExists()
         assertTrue(servidor.enviadas("auth/google").isEmpty())
+    }
+
+    @Test @Config(qualifiers = "w360dp-h780dp")
+    fun googleQueNuncaRespondeDesisteEDeixaTentarOutraVez() {
+        // Há telemóveis em que a janela da Google nunca aparece e o pedido nunca volta: o ecrã não pode ficar em "A carregar…".
+        abrirEcra(espera = 1.seconds, pedirToken = { _, _, _ -> awaitCancellation() })
+        regra.onNodeWithText("Iniciar sessão com o Google").performClick()
+        regra.mainClock.advanceTimeBy(2_000)
+        esperarPor("Não foi possível entrar com o Google neste telemóvel. Usa o código por email.")
+        regra.onNodeWithText("Iniciar sessão com o Google").assertIsEnabled()
+        assertFalse(existe("A carregar…"))
     }
 
     @Test @Config(qualifiers = "w360dp-h780dp")
