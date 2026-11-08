@@ -29,8 +29,8 @@
     { "binding": "FOTOS", "bucket_name": "pc-fotos", "jurisdiction": "eu" }
   ],
   // No máximo 10 escritas da comunidade por minuto e por conta (a chave é o id da conta).
-  // LIMITE_AUTH: no máximo 5 pedidos de entrada (/api/auth/) em 10 segundos por IP. Fica aqui porque a única regra grátis
-  // de limite de pedidos da zona pixellusitano.com é a do site.
+  // LIMITE_AUTH: 5 pedidos de entrada (/api/auth/) em 10 segundos por IP, aproximado (a Cloudflare junta as contas em segundo
+  // plano e deixa passar rajadas). Fica aqui porque a única regra grátis de limite de pedidos da zona é a do site.
   "ratelimits": [
     { "name": "LIMITADOR", "namespace_id": "1001", "simple": { "limit": 10, "period": 60 } },
     { "name": "LIMITE_AUTH", "namespace_id": "1002", "simple": { "limit": 5, "period": 10 } }
