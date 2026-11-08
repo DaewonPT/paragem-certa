@@ -1,6 +1,6 @@
 # Publicar o servidor da Paragem Certa
 
-Guia para o autor. O servidor (`worker/`) só corre no PC até fazeres estes passos. Os comandos correm numa janela de terminal dentro da pasta `worker/` (`npm ci` primeiro, uma vez).
+Guia para o autor. O servidor (`worker/`) só corre no PC até fazeres estes passos. Os comandos correm na «Linha de comandos» (cmd), dentro da pasta `worker/` (`npm ci` primeiro, uma vez), e não no PowerShell: o PowerShell do Windows vem com os scripts desligados, por isso o `npx` não corre lá, e o `curl` do PowerShell é outro comando (por isso os comandos com curl levam `curl.exe`).
 
 Precisas de: a conta da Cloudflare (com a zona `pixellusitano.com`), uma conta na Resend, uma conta na Google Cloud, o repositório no GitHub e o Node 24.
 
@@ -8,26 +8,24 @@ Precisas de: a conta da Cloudflare (com a zona `pixellusitano.com`), uma conta n
 
 **Quando:** só com a 0.4.0, no fim da etapa 5. A política de privacidade já descreve a comunidade, as fotos e os dados ao vivo da Carris, que só existem nessa altura. Antes de publicar, relê-a contra o que a app faz mesmo.
 
-`AMBIENTE` e `TESTE_GOOGLE_JWKS` são só para os testes: nunca os ponhas como variáveis nem segredos do Worker publicado.
+`AMBIENTE`, `TESTE_GOOGLE_JWKS`, `TESTE_ACCESS_JWKS` e `TESTE_INTERRUPTORES` são só para os testes: nunca os ponhas como variáveis nem segredos de nenhum dos dois Workers publicados (`paragem-certa` e `pc-admin`).
 
-A ordem conta: o `wrangler.jsonc` exige seis segredos (`secrets.required`) e os dois buckets do R2, por isso o `wrangler deploy` falha enquanto algum faltar. Os passos 3 e 4 têm de vir antes do 5, e os passos 10 a 13 (R2, buckets e os segredos novos) antes da primeira publicação do passo 6. O `pc-admin`, a página de revisão, é outro Worker e só se publica no passo 14.
+A ordem conta: o `wrangler.jsonc` exige seis segredos (`secrets.required`), por isso o `wrangler deploy` falha enquanto algum faltar. Precisa também do R2 ativo (passo 10). Os buckets já não fazem falhar o deploy: se ainda não existirem, o deploy cria-os sozinho na UE (mesmo que depois falhe por faltar um segredo) e o passo 11 dá erro a dizer que já existem; nesse caso, passa à frente. Os passos 3 e 4 têm de vir antes do 5, e os passos 10 a 13 (R2, buckets e os segredos novos) antes da primeira publicação do passo 6. O `pc-admin`, a página de revisão, é outro Worker e só se publica no passo 14.
 
 ## Publicar a 0.4.0, por esta ordem
 
-1. Enviar o ramo `versao-0-4` para o GitHub.
-2. **Capturas de referência:** Actions → Android → Run workflow, no ramo `versao-0-4`, com `record_screenshots` ligado. Descarregar o artefacto `roborazzi-goldens`, fazer commit das capturas em `app/src/test/screenshots` e correr o mesmo workflow outra vez, sem `record_screenshots`, até ficar verde.
-3. Juntar o ramo ao `main`.
-4. Este guia, do passo 1 ao passo 18, menos o 9 e o 16, que ligam os interruptores e ficam para o ponto 6: Cloudflare, Resend, Google, segredos, R2, Zero Trust e `pc-admin`. Relê a política de privacidade antes.
-5. A variável `SERVIDOR_PUBLICADO` = `sim` e **Servidor → Run workflow**, no `main` (passo 20). Põe no ar o `linhas.json` e o `fotos-de-rua.json`. Confirma que `https://paragemcerta.pixellusitano.com/dados/linhas.json` responde.
-6. Ligar os interruptores em `worker/public/dados/config.json` (passos 9 e 16), **Servidor → Run workflow**, e só depois os mesmos em `app/src/main/assets/config.json`. O `carrisAoVivo` fica `false` até haver o OK escrito da Carris (passo 19). Se deixares algum desligado, tira a linha dele do `## 0.4.0` do `PATCHNOTES.md`: esse texto é o do aviso de atualização.
-7. A tag `v0.4.0`, no `main`. O CI assina o APK e cria a Release com o texto do `PATCHNOTES.md`; os telemóveis com a 0.3.2 recebem o aviso de atualização.
+1 a 3. Já estão feitos: o ramo `versao-0-4` está no GitHub e já entrou no `main`, as capturas estão em `app/src/test/screenshots` e o Android passou a verde no `main` (05/11/2026). Começa no ponto 4.
+4. Este guia, por esta ordem: passos 1, 2, 3, 4 e 5; depois 10, 11, 12 e 13; só então o 6; depois 7, 8, 14 e 15. O 9 e o 16 ligam os interruptores e ficam para o ponto 6. O 17 e o 18 são para quando for preciso: lê-os já, mas não há nada para fazer. Relê a política de privacidade antes.
+5. Envia para o GitHub o que mudaste no PC (pelo menos os `database_id` do passo 2): `git push origin main`. Depois **Servidor → Run workflow**, no `main`, que põe no ar o `linhas.json` e o `fotos-de-rua.json`. Quando ficar verde, cria a variável `SERVIDOR_PUBLICADO` = `sim` (passo 20). Confirma que `https://paragemcerta.pixellusitano.com/dados/linhas.json` responde.
+6. Liga os interruptores em `worker/public/dados/config.json` (passos 9 e 16), ajusta os testes do servidor, faz commit e `git push origin main`. Esse push abre sozinho uma corrida do Servidor (só testes): espera que acabe e só então **Servidor → Run workflow**, no `main`. Confirma em `https://paragemcerta.pixellusitano.com/dados/config.json` e só depois liga os mesmos em `app/src/main/assets/config.json` (com os testes da app), faz commit e `git push origin main`. O `carrisAoVivo` fica `false` até haver o OK escrito da Carris (passo 19). Se deixares algum desligado, tira a linha dele do `## 0.4.0` do `PATCHNOTES.md`: esse texto é o do aviso de atualização.
+7. Faz commit do `app/src/main/assets/config.json` e do `PATCHNOTES.md` no `main` e envia-o (`git push`). Espera que o workflow **Android** fique verde no `main`. Depois, no terminal: `git checkout main`, `git pull`, `git tag v0.4.0` e `git push origin v0.4.0`. O CI assina o APK e cria a Release com o texto do `## 0.4.0` do `PATCHNOTES.md`; os telemóveis com a 0.3.2 recebem o aviso de atualização.
 
 Antes de passar de 720 `/plan` por dia, fala com a equipa do Transitous no Matrix.
 
 ## 1. Entrar na Cloudflare
 
 1. `npx wrangler login` abre o browser; autoriza.
-   - Para guardar o acesso no cofre do Windows em vez de num ficheiro, usa `npx wrangler login --use-keyring`.
+   - Opcional: para o acesso não ficar num ficheiro em texto simples, usa `npx wrangler login --use-keyring`. Fica num ficheiro cifrado, com a chave no Gestor de Credenciais do Windows. Da primeira vez, a wrangler descarrega com o npm um pacote pequeno (`@napi-rs/keyring`, uns 2 MB).
 2. `npx wrangler whoami` mostra a conta e o **id da conta**. Vais precisar dele no passo 7.
 
 ## 2. Base de dados na UE
@@ -35,12 +33,12 @@ Antes de passar de 720 `/plan` por dia, fala com a equipa do Transitous no Matri
 1. `npx wrangler d1 create paragem-certa --jurisdiction=eu`
    - A jurisdição só se escolhe agora, na criação. Se te enganares, tens de criar outra base.
    - Quando perguntar "Would you like Wrangler to add it on your behalf?", responde **não**.
-2. Copia o `database_id` que o comando mostra para `worker/wrangler.jsonc` **e** para `worker/wrangler.admin.jsonc` (troca o texto `ID-DA-BASE-DE-DADOS-CRIADA-PELO-AUTOR` nos dois). O id não é um segredo; faz commit dele.
+2. Copia o `database_id` que o comando mostra para `worker/wrangler.jsonc` **e** para `worker/wrangler.admin.jsonc` (troca o texto `ID-DA-BASE-DE-DADOS-CRIADA-PELO-AUTOR` nos dois). O id não é um segredo: faz commit dele no `main` e envia-o para o GitHub com `git push origin main`. O **Run workflow** usa o que está no GitHub, não o que tens no PC.
 3. `npx wrangler d1 info paragem-certa` mostra a base, para confirmares.
 
 ## 3. Resend (emails com o código de entrada)
 
-1. Cria a conta em resend.com. O plano grátis dá 100 emails por dia; o `config.json` reserva 70 para códigos de entrada (`codigosPorDia`).
+1. Cria a conta em resend.com. O plano grátis dá 100 emails por dia e 3000 por mês. O `config.json` divide os 100 do dia: 70 para os códigos de entrada (`codigosPorDia`) e 30 para os outros emails, como recibos, decisões e o resumo diário (`outrosPorDia`). Se gastares os 100 todos os dias, ao fim de 30 dias chegas aos 3000 e a Resend deixa de enviar até o mês renovar. Nessa altura os códigos falham, e os outros emails ficam guardados para enviares mais tarde com "Enviar agora".
 2. Em **Domains → Add Domain**, escreve `mail.pixellusitano.com` (um subdomínio, para não mexer nos registos do email Proton) e escolhe a região **Ireland (eu-west-1)**.
 3. Acrescenta na Cloudflare (zona `pixellusitano.com` → DNS → Records) os registos que a Resend mostra, tal e qual. São todos do subdomínio `mail`; não alteres os registos da raiz.
 4. Espera que o domínio passe a "Verified".
@@ -52,16 +50,21 @@ O remetente que o servidor usa é `Paragem Certa <codigo@mail.pixellusitano.com>
 
 Na consola da Google Cloud (console.cloud.google.com), num projeto teu, abre **Google Auth Platform**. Os nomes dos menus mudam de vez em quando; segue o que a consola mostrar.
 
-1. **Branding:** nome "Paragem Certa", email de apoio contact@pixellusitano.com, domínio `pixellusitano.com`, ligação da política `https://paragemcerta.pixellusitano.com/privacidade` e dos termos `https://paragemcerta.pixellusitano.com/termos`.
-2. **Audience:** "External". Quando tudo estiver pronto, passa a "In production" (sem isso só os utilizadores de teste conseguem entrar). A app só pede o email e o perfil básico.
-3. **Clients → Create client → Web application**, com o nome "Paragem Certa (servidor)". Guarda o **Client ID**: é o valor de `GOOGLE_WEB_CLIENT_ID`, que o servidor usa para conferir os tokens e a app para pedir o login. Não precisas de origens nem de endereços de retorno.
+Se o projeto ainda não tiver nada configurado, a consola mostra primeiro o botão **Get started**. Carrega nele e preenche: nome «Paragem Certa», email de apoio (ver o ponto 1 abaixo), Audience **External** e, em **Contact Information**, o teu email (é para lá que a Google manda os avisos do projeto). No fim aceita a política de dados da Google e carrega em **Create**. Depois completa o resto em **Branding**.
+
+1. **Branding:** nome "Paragem Certa", domínio `pixellusitano.com`, ligação da política `https://paragemcerta.pixellusitano.com/privacidade` e dos termos `https://paragemcerta.pixellusitano.com/termos`. O **email de apoio** é uma lista: só aparece o email da conta Google com que entraste na consola (ou um Grupo Google teu), e quem entrar na app com o Google vai vê-lo. Para escolheres contact@pixellusitano.com, antes de fazeres este passo 4 cria uma conta Google com esse endereço: em accounts.google.com → Criar conta, escolhe a opção de usar o email que já tens (o código de confirmação chega ao Proton). Depois faz o passo 4 todo com essa conta. Se o projeto for de outra conta tua, dá à nova o papel Editor no IAM do projeto, sai e volta a entrar com ela. Não escolhas o teu Gmail pessoal, senão fica à vista de toda a gente.
+2. **Audience:** "External". A app só pede o email e o perfil básico (Entrar com o Google), por isso qualquer conta Google consegue entrar já em "Testing", sem precisares de pôr utilizadores de teste. Quando tudo estiver pronto, carrega em **Publish app** para passar a "In production". Enquanto a marca não for verificada (ponto 6 abaixo), o Google mostra só o domínio `pixellusitano.com` em vez do nome «Paragem Certa».
+3. **Clients → Create client → Web application**, com o nome "Paragem Certa (servidor)". Guarda o **Client ID**: é o valor de `GOOGLE_WEB_CLIENT_ID`, que o servidor usa para conferir os tokens e a app para pedir o login. Não precisas de origens nem de endereços de retorno. A consola mostra também um **Client secret**: não precisas dele, não o guardes nem o ponhas em lado nenhum.
 4. **Clients → Create client → Android**, um por cada chave com que se assina a app, sempre com o pacote `pt.pixellusitano.paragemcerta.pessoal`:
-   - **Lançamento:** a SHA-1 da chave de lançamento. Tira-a de um APK assinado com ela (o da última Release no GitHub serve, a chave é sempre a mesma):
-     `C:\Android\sdk\build-tools\36.0.0\apksigner.bat verify --print-certs paragem-certa-vX.Y.Z.apk`
-     Copia a linha "Signer #1 certificate SHA-1 digest".
-   - **Testes:** o mesmo comando num APK de debug feito no PC (`app\build\outputs\apk\pessoal\debug\app-pessoal-debug.apk`), para poderes experimentar o login em builds locais.
+   - **Lançamento:** a SHA-1 da chave de lançamento. Tira-a de um APK assinado com ela (o da última Release no GitHub serve, a chave é sempre a mesma). Descarrega o APK da última Release em github.com/DaewonPT/paragem-certa/releases (por exemplo `paragem-certa-v0.3.2.apk`, que vai para Transferências), abre a Linha de comandos nessa pasta e corre o comando com o nome verdadeiro do ficheiro:
+     `C:\Android\sdk\build-tools\36.0.0\apksigner.bat verify --print-certs paragem-certa-v0.3.2.apk`
+   - **Testes:** o mesmo comando num APK de debug feito no PC, para poderes experimentar o login em builds locais. Abre a Linha de comandos na pasta `codigo` (a de cima da `worker`). Se ainda não compilaste a app no PC, corre primeiro `gradlew.bat assemblePessoalDebug`. Depois corre:
+     `C:\Android\sdk\build-tools\36.0.0\apksigner.bat verify --print-certs app\build\outputs\apk\pessoal\debug\app-pessoal-debug.apk`
+   - Estes dois comandos não correm na pasta `worker/`. Em cada um, da linha "Signer #1 certificate SHA-1 digest:" copia só o código de 40 letras e números que vem a seguir, sem o texto antes. Se a consola o recusar, põe «:» entre cada par (AB:CD:EF:…).
    - A variante `play` (pacote `pt.pixellusitano.paragemcerta`, chave da Play) só entra quando a app for para a Play.
-5. Para builds no PC, acrescenta ao `local.properties` (que não vai para o git) a linha `GOOGLE_WEB_CLIENT_ID=o-teu-client-id`. Sem ele o botão do Google não aparece.
+   - Nota: a Google apaga sozinha qualquer cliente OAuth que passe 6 meses sem uso e avisa-te por email 30 dias antes. O de testes é o que corre mais risco. Se receberes esse aviso, abre o cliente na consola e muda-lhe qualquer coisa (o nome, por exemplo), que isso já conta como uso. Se já tiver sido apagado, recupera-o na página das credenciais eliminadas (dá até 30 dias) ou cria-o outra vez com o mesmo pacote e a mesma SHA-1.
+5. Para builds no PC, cria (ou abre, se já existir) o ficheiro `local.properties` na pasta `codigo`, ao lado do `settings.gradle.kts` (não na `worker/`; não vai para o git), e escreve lá a linha `GOOGLE_WEB_CLIENT_ID=o-teu-client-id`. Depois compila a app outra vez. Sem ele o botão do Google não aparece.
+6. **Verificar a marca (opcional, só depois do passo 6, com a `/privacidade` no ar e o Audience em "In production").** Sem isto, quem entra com o Google vê só `pixellusitano.com` e não «Paragem Certa». Em Branding, no campo da página inicial («Application home page»), põe uma página tua em pixellusitano.com que explique o que a app faz (não pode ser só uma página de entrada) e tenha uma ligação para `https://paragemcerta.pixellusitano.com/privacidade`. Na Google Search Console, verifica o domínio `pixellusitano.com` com a mesma conta Google que é dona (Owner) ou editora (Editor) do projeto. Depois carrega em **Verify Branding**. Quando passar, carrega em **Publish branding**, senão o nome não aparece.
 
 ## 5. Segredos do Worker
 
@@ -86,7 +89,7 @@ npx wrangler d1 migrations apply DB --remote
 npx wrangler deploy --domain paragemcerta.pixellusitano.com
 ```
 
-- O primeiro cria as tabelas na base da UE (pede confirmação e faz uma cópia antes).
+- O primeiro cria as tabelas na base da UE (pede confirmação; responde `y`). Não faz cópia à parte: se algo correr mal, a D1 guarda sozinha os últimos 7 dias (Time Travel, `npx wrangler d1 time-travel`).
 - O segundo publica o Worker e os ficheiros de `public/`, liga o domínio próprio `paragemcerta.pixellusitano.com` (a Cloudflare cria o registo DNS e o certificado) e marca o Cron diário das 03:00 UTC (que apaga o que passou os prazos). O endereço `workers.dev` fica desligado.
 - O domínio só se liga nesta primeira vez: as publicações seguintes (a mão ou pelo GitHub) não lhe mexem.
 
@@ -105,12 +108,12 @@ Confirma, quando o certificado estiver pronto (pode demorar uns minutos):
    - `RESEND_API_KEY`, `RESPONSAVEL` e `GOOGLE_WEB_CLIENT_ID`: os mesmos valores do passo 5.
 
    Os cinco da etapa da comunidade juntam-se no passo 15.
-3. Para publicar: **Actions → Servidor → Run workflow**, no ramo `main`. O trabalho `publicar` espera pelos testes e pelos tipos, aplica as migrações na base remota, faz o deploy do Worker principal e a seguir o do `pc-admin`, enviando outra vez os segredos de cada um. Só corre assim, à mão e no `main`: um commit ou um pedido de alterações nunca publica nada.
+3. Para publicar: **Actions → Servidor → Run workflow**, no ramo `main`. Da primeira vez, só no ponto 5 de «Publicar a 0.4.0», depois do passo 15: antes disso faltam segredos e o `publicar` pára a meio. O trabalho `publicar` (no GitHub aparece como «Publish to Cloudflare») espera pelo trabalho dos testes e dos tipos («Tests and types»), aplica as migrações na base remota, faz o deploy do Worker principal e a seguir o do `pc-admin`, enviando outra vez os segredos de cada um. Só corre assim, à mão e no `main`: um commit ou um pedido de alterações nunca publica nada.
 4. O segredo `GOOGLE_WEB_CLIENT_ID` também serve ao `android.yml`: a Release assinada leva o id no APK. Sem ele, o botão do Google não aparece.
 
 ## 8. Regra grátis contra abusos em `/api/auth/*`
 
-Na Cloudflare, na zona `pixellusitano.com`: Security → WAF → Rate limiting rules → Create rule. O plano grátis só deixa uma regra, por IP, com janelas de 10 s.
+Na Cloudflare, na zona `pixellusitano.com`, vai a **Security → Security rules**, carrega em **Create rule** e escolhe **Rate limiting rules**. (Se ainda te aparecer o painel antigo, o caminho é Security → WAF → Rate limiting rules → Create rule.) O plano grátis só deixa uma regra, por IP, com janelas de 10 s.
 
 - Nome: `auth`.
 - Quando: **URI Path** começa por `/api/auth/` (em texto: `starts_with(http.request.uri.path, "/api/auth/")`). O plano grátis só aceita o caminho (sem o Hostname); o site principal não tem este caminho, por isso a regra só apanha o servidor.
@@ -123,9 +126,9 @@ Os limites de email por endereço (3 por hora) e por dia (70) são contados no s
 
 A entrada "Conta" do Menu só aparece com o interruptor ligado.
 
-1. Em `worker/public/dados/config.json`, muda `"conta": false` para `"conta": true`, faz commit no `main` e corre o **Servidor → Run workflow** do passo 7.
-2. Confirma em `https://paragemcerta.pixellusitano.com/dados/config.json`. A app vai buscá-lo de cada vez que abre; depois de a abrires (uma vez, com rede) aparece Menu → Conta.
-3. No dia de publicar a app, liga também `"conta"` em `app/src/main/assets/config.json`: é a cópia de reserva que a app usa na primeira abertura sem rede.
+1. Em `worker/public/dados/config.json`, muda `"conta": false` para `"conta": true`. Antes do commit, ajusta também os testes do servidor: hoje contam com todos os interruptores desligados e falham se ligares algum. Neste caso são `worker/test/base.test.ts` e `worker/test/portao.test.ts`. Muda-os no mesmo commit e confirma com `npm test` na pasta `worker/`. Se os testes falharem, o trabalho `publicar` não corre e nada vai para o ar. Faz commit no `main` e `git push origin main`, espera que a corrida do Servidor aberta por esse push acabe e só então corre o **Servidor → Run workflow** do passo 7.
+2. Confirma em `https://paragemcerta.pixellusitano.com/dados/config.json`. A 0.3.2 que está nos telemóveis não tem Conta: experimenta numa build 0.4.0 feita no PC. A app vai buscá-lo de cada vez que abre; abre-a uma vez com rede e aparece Menu → Conta. Para entrares com o Google nessa build, precisas do passo 4 (cliente Android de testes e `local.properties`). O APK de debug não se instala por cima da 0.3.2 (a chave é outra): desinstala-a primeiro ou usa outro telemóvel, e faz o mesmo no segundo telemóvel para veres os favoritos.
+3. No dia de publicar a app, liga também `"conta"` em `app/src/main/assets/config.json`: é a cópia de reserva que a app usa na primeira abertura sem rede. Antes do commit, ajusta também os testes da app que contam com essa cópia desligada (`ConfiguracoesTest.kt`, `RelatarTest.kt`, `CamadaRelatosTest.kt` e `ComunidadeTest.kt`) no mesmo commit. Faz commit e `git push origin main` e espera que o workflow **Android** fique verde no `main` antes de criares a tag: se falhar, a `v0.4.0` não gera o APK assinado nem a Release.
 
 Experimenta de ponta a ponta antes de anunciar: entrar com um código por email, entrar com o Google, ver os favoritos aparecerem num segundo telemóvel e apagar a conta.
 
@@ -149,19 +152,20 @@ npx wrangler r2 bucket create pc-fotos --jurisdiction eu
 - `pc-fotos-pendentes` é privado: as fotos novas entram aqui e só os dois Workers as leem. O `pc-fotos` serve as fotos aprovadas (passo 12).
 - A jurisdição só se escolhe agora, na criação, e não muda depois (como a da base, no passo 2). Se te enganares, cria outro bucket.
 - Os nomes têm de ser estes, tal e qual: estão no `wrangler.jsonc` e no `wrangler.admin.jsonc`.
+- Depois de criar cada bucket, a wrangler pergunta "Would you like Wrangler to add it on your behalf?": responde **não** (`n`). Os dois já estão no `wrangler.jsonc` e no `wrangler.admin.jsonc`, com a jurisdição `eu`. Se disseres que sim, ela junta lá outra ligação sem jurisdição.
 
 ## 12. O endereço das fotos: `fotos.pixellusitano.com`
 
-1. No painel: R2 Object Storage → `pc-fotos` → Settings → **Custom Domains** → Add → `fotos.pixellusitano.com`. A Cloudflare cria o registo DNS e o certificado.
+1. No painel: R2 Object Storage → `pc-fotos` → Settings → **Custom Domains** → Add → escreve `fotos.pixellusitano.com` → **Continue** → vê o registo DNS que vai ser criado → **Connect Domain**. A Cloudflare cria o registo DNS e o certificado. Espera uns minutos até o estado passar de Initializing a **Active** (atualiza a página). Só depois fazes o ponto 3. Se ficar parado em Initializing, usa **Retry connection** no menu ao lado do domínio.
 2. Nos **dois** buckets, em Settings → **Public Development URL** (o endereço `r2.dev`), deixa desligado. O `pc-fotos-pendentes` não pode ter nenhum endereço público.
-3. Confirma que o endereço próprio funciona com um bucket da UE (por verificar: é a única coisa desta etapa que ainda ninguém experimentou). Põe lá uma foto de teste, qualquer JPEG pequeno sem pessoas, e pede-a:
+3. Confirma que o endereço próprio funciona com um bucket da UE (por verificar: é a única coisa desta etapa que ainda ninguém experimentou). Põe lá uma foto de teste, qualquer JPEG pequeno sem pessoas, guardada como `teste.jpg` na pasta `worker/` (fora de `public/`), e pede-a:
 
    ```
    npx wrangler r2 object put pc-fotos/teste.jpg --file teste.jpg --content-type image/jpeg --cache-control "public, max-age=86400" --jurisdiction eu --remote
-   curl -I https://fotos.pixellusitano.com/teste.jpg
+   curl.exe -I https://fotos.pixellusitano.com/teste.jpg
    ```
 
-   A resposta tem de ser `200` e trazer `cache-control: public, max-age=86400`. Depois apaga a foto de teste: `npx wrangler r2 object delete pc-fotos/teste.jpg --jurisdiction eu --remote`.
+   A resposta tem de ser `200` e trazer `cache-control: public, max-age=86400`. Depois apaga a foto de teste: `npx wrangler r2 object delete pc-fotos/teste.jpg --jurisdiction eu --remote`. Apaga também o ficheiro do PC; nunca faças commit dele.
 4. Se não funcionar, não ligues o interruptor `fotos` no passo 16 (a comunidade e as correções não dependem das fotos) até perceberes porquê.
 
 ## 13. Token de limpeza da cache e segredos novos
@@ -205,12 +209,12 @@ A página de revisão é um Worker à parte, o `pc-admin` (`worker/wrangler.admi
    - `RESEND_API_KEY`: a mesma chave do passo 3.
    - `ACCESS_EQUIPA`: o endereço da tua equipa do Zero Trust, `https://<equipa>.cloudflareaccess.com`, com o nome do passo 10.
    - `ACCESS_AUD`: ainda não existe (só nasce no ponto 4). Escreve `por-preencher`: com este valor o `pc-admin` recusa toda a gente.
-2. A primeira publicação, à mão: `npx wrangler deploy -c wrangler.admin.jsonc`. Mostra o endereço `https://pc-admin.<subdomínio>.workers.dev`. As pré-visualizações já vêm desligadas na configuração.
+2. A primeira publicação, à mão: `npx wrangler deploy -c wrangler.admin.jsonc`. Se a conta ainda não tiver endereço `workers.dev`, a wrangler pergunta "Would you like to register a workers.dev subdomain now?": responde **sim**, escreve um nome neutro (só minúsculas, números e hífenes; fica à vista de todos no endereço, por isso nada do teu nome nem do email) e, em "Ok to proceed?", responde outra vez **sim**. Se disseres que não, a publicação para e tens de repetir o comando. No fim mostra o endereço `https://pc-admin.<subdomínio>.workers.dev`. As pré-visualizações já vêm desligadas na configuração.
 3. **One-time PIN:** Zero Trust → Integrations → Identity providers → junta **One-time PIN** (o código chega por email).
-4. **Proteger o Worker:** Workers & Pages → `pc-admin` → Access → Protect this Worker behind Access → **All traffic**. Na política, **Include → Emails → o teu email** (o `EMAIL_AUTOR`). Nunca uma política só com "Login Methods": deixava entrar qualquer pessoa que consiga um PIN.
+4. **Proteger o Worker:** primeiro cria a política: Zero Trust → Access controls → Policies → Add a policy, nome `só o autor`, Action **Allow**, Include → **Emails** → o teu email (o `EMAIL_AUTOR`), e guarda. Depois vai a Workers & Pages → `pc-admin` → separador **Access** → **Protect this Worker behind Access** → **All traffic**. Em Authentication policy escolhe `só o autor` e carrega em **Apply Access**. Nunca escolhas "Email domain" (deixava entrar qualquer pessoa com email desse domínio) nem uma política só com "Login Methods" (deixava entrar qualquer pessoa que consiga um PIN).
    - Se o plano grátis não tiver o Access no Worker, cria no Zero Trust (Access → Applications) uma aplicação **Self-hosted** para o hostname `pc-admin.<subdomínio>.workers.dev`, com a mesma política.
-5. **A AUD:** copia a etiqueta de audiência da aplicação (Application Audience (AUD) Tag, na página da aplicação) e substitui o `por-preencher`: `npx wrangler secret put ACCESS_AUD -c wrangler.admin.jsonc`.
-6. **Prova:** numa janela privada do browser, o endereço do `pc-admin` mostra a página do PIN da Cloudflare, nunca a página de revisão. Escreve o teu email, mete o código que chega e aparece a página. E `curl -i https://pc-admin.<subdomínio>.workers.dev/` nunca devolve a página de revisão (só um redirecionamento ou um 403).
+5. **A AUD:** vai a Zero Trust → Access controls → Applications → a aplicação do `pc-admin` → Edit → **Additional settings** e copia a **Application Audience (AUD) Tag**. Depois substitui o `por-preencher`: `npx wrangler secret put ACCESS_AUD -c wrangler.admin.jsonc`. Se apagares e voltares a criar a aplicação, a AUD muda e tens de a pôr outra vez (aqui e no GitHub).
+6. **Prova:** numa janela privada do browser, o endereço do `pc-admin` mostra a página de entrada do Cloudflare Access, nunca a página de revisão. Se aparecerem duas maneiras de entrar (Cloudflare e One-time PIN), usa a do **One-time PIN**: escreve o teu email, carrega em **Send login code**, mete o código que chega e aparece a página de revisão. E `curl.exe -i https://pc-admin.<subdomínio>.workers.dev/` nunca devolve a página de revisão (só um redirecionamento ou um 403).
 
 Numa denúncia, se quiseres bloquear a conta, bloqueia antes de carregares em Decidir: depois de decidires, a denúncia sai da lista e o botão vai com ela.
 
@@ -222,9 +226,9 @@ Para o trabalho `publicar` (passo 7) enviar os segredos aos dois Workers, junta 
 
 Só no fim, depois do parecer do advogado sobre o DSA e as fotos.
 
-1. Em `worker/public/dados/config.json`, em `interruptores`, muda para `true` os que queres ligar: `"comunidade"`, `"fotos"` e `"correcoes"`. Faz commit no `main` e corre o **Servidor → Run workflow** (passo 7). Confirma em `https://paragemcerta.pixellusitano.com/dados/config.json`.
-2. No dia de publicar a app, liga os mesmos em `app/src/main/assets/config.json` (a cópia de reserva da primeira abertura sem rede). Primeiro o servidor e só depois a app: nunca um interruptor ligado na app e desligado no servidor.
-3. Se o parecer o pedir, deixa `"fotos"` em `false`: as outras duas funcionam sem fotos.
+1. Em `worker/public/dados/config.json`, em `interruptores`, muda para `true` os que queres ligar: `"comunidade"`, `"fotos"` e `"correcoes"`. O `fotos` e o `correcoes` precisam do `comunidade` também ligado: sem ele, a app não mostra o botão "Corrigir dados", nem o "Enviar foto", nem as fotos da comunidade (só as fotos de rua). Antes do commit, ajusta também os testes do servidor: hoje contam com todos os interruptores desligados e falham se ligares algum. São `worker/test/base.test.ts` e `worker/test/portao.test.ts`, mais `relatos.test.ts` e `denuncias.test.ts` (`comunidade`), `fotos.test.ts` (`fotos`) e `correcoes.test.ts` (`correcoes`), todos em `worker/test/`. Muda-os no mesmo commit e confirma com `npm test` na pasta `worker/`. Se os testes falharem, o trabalho `publicar` não corre e nada vai para o ar. Faz commit no `main` e `git push origin main`, espera que a corrida do Servidor aberta por esse push acabe e só então corre o **Servidor → Run workflow** (passo 7). Confirma em `https://paragemcerta.pixellusitano.com/dados/config.json`.
+2. No dia de publicar a app, liga os mesmos em `app/src/main/assets/config.json` (a cópia de reserva da primeira abertura sem rede). Primeiro o servidor e só depois a app: nunca um interruptor ligado na app e desligado no servidor. Antes do commit, ajusta também os testes da app que contam com a cópia desligada (`ConfiguracoesTest.kt`, `RelatarTest.kt`, `CamadaRelatosTest.kt` e `ComunidadeTest.kt`). Faz commit e `git push origin main` e espera que o workflow **Android** fique verde no `main` antes de criares a tag: se falhar, a `v0.4.0` não gera o APK assinado nem a Release.
+3. Se o parecer o pedir, deixa `"fotos"` em `false`: as outras duas funcionam sem fotos. Atenção: com ele desligado, a app também esconde as fotos de rua do Panoramax. Tira do `## 0.4.0` do `PATCHNOTES.md` a linha inteira "Fotos das paragens".
 4. **Desligar `fotos` só as esconde na app.** As fotos aprovadas continuam na internet em `fotos.pixellusitano.com`. Para as tirar de lá: tira o domínio `fotos.pixellusitano.com` do `pc-fotos` (R2 → `pc-fotos` → Settings → Custom Domains) ou esvazia o bucket, e limpa a cache (zona `pixellusitano.com` → Caching → Configuration → Purge Cache → Custom Purge, pelo hostname `fotos.pixellusitano.com`).
 
 ## 17. Pedidos de "Apagar conta" por email
@@ -239,19 +243,19 @@ Nunca apagues pelo `wrangler d1 execute … DELETE`: deixava as fotos aprovadas 
 
 ## 18. Se alguém gastar a quota de propósito
 
-As leituras da comunidade não têm limite por IP (nas redes móveis muita gente partilha o mesmo IP), por isso alguém pode gastar de propósito os 100 000 pedidos por dia e parar tudo no servidor até à meia-noite UTC. Se vires muitos pedidos de um só IP nas estatísticas do Worker, na zona `pixellusitano.com`: Security → WAF → Custom rules → cria uma regra que bloqueia esse IP e tira-a no dia seguinte (nas redes móveis o IP é partilhado por muita gente, por isso um bloqueio comprido apanha inocentes). Os nomes dos menus mudam de vez em quando; segue o que a Cloudflare mostrar.
+As leituras da comunidade não têm limite por IP (nas redes móveis muita gente partilha o mesmo IP), por isso alguém pode gastar de propósito os 100 000 pedidos por dia e parar tudo no servidor até à meia-noite UTC. Se desconfiares de pedidos a mais, as estatísticas do Worker não te ajudam: não mostram IPs. Vê de onde vêm na zona `pixellusitano.com`: **Security → Analytics**. Filtra pelo hostname `paragemcerta.pixellusitano.com` e procura o IP que se repete nas estatísticas de topo (Source IP) ou nos registos de amostra (**Sampled logs**). Para o bloquear: com o filtro **Source IP** igual a esse IP, carrega em **Create custom security rule**. Ou vai a **Security → Security rules → Create rule → Custom rules** (no painel antigo: **Security → WAF → Custom rules**), campo **IP Source Address**, **equals**, esse IP, ação **Block** e **Deploy**. Tira a regra no dia seguinte: nas redes móveis o IP é partilhado por muita gente e um bloqueio comprido apanha inocentes. Os nomes dos menus mudam de vez em quando; segue o que a Cloudflare mostrar.
 
 ## 19. Carris ao vivo
 
-O `/api/rt/carris` lê o feed oficial das posições da Carris (GTFS-RT), tira as posições com mais de 5 minutos, as do futuro e as que não dizem a que paragem vão, e guarda o resultado 30 segundos na cache da Cloudflare, que é de cada centro de dados. A Carris recebe no máximo um pedido por 30 segundos de cada centro de dados (em Portugal, quase sempre só o de Lisboa), por muita gente que tenha a app aberta; ninguém lhe pede nada diretamente do telemóvel. A app mostra os autocarros no mapa e no ecrã de uma linha, e "ao vivo, a N paragens" nas chegadas. Não leva nenhum segredo: não há nada para pôr na Cloudflare nem no GitHub.
+O `/api/rt/carris` lê o feed oficial das posições da Carris (GTFS-RT), tira as posições com mais de 5 minutos, as com hora mais de 1 minuto no futuro e as que não têm nem paragem nem número de paragem, e guarda o resultado 30 segundos na cache da Cloudflare, que é de cada centro de dados. A Carris recebe no máximo um pedido por 30 segundos de cada centro de dados (em Portugal, quase sempre só o de Lisboa), por muita gente que tenha a app aberta; ninguém lhe pede nada diretamente do telemóvel. A app mostra os autocarros no mapa e no ecrã de uma linha, e "ao vivo, a N paragens" nas chegadas. Não leva nenhum segredo: não há nada para pôr na Cloudflare nem no GitHub.
 
 O interruptor `carrisAoVivo` fica `false` até a Carris responder **por escrito** ao email do rascunho `rascunhos/email-carris.md` (fora do repositório; envias do teu email). Com ele desligado, o `/api/rt/carris` dá 403 `desligado` e a app não mostra nem pede nada disto. Se a Carris pedir um crédito, junta-o ao ecrã Sobre antes de ligar.
 
 Com o OK da Carris (e a 0.4.0 já publicada):
 
-1. Em `worker/public/dados/config.json`, em `interruptores`, muda `"carrisAoVivo"` para `true`, faz commit no `main` e corre o **Servidor → Run workflow** (passo 7).
-2. Confirma: `https://paragemcerta.pixellusitano.com/dados/config.json` mostra `true` e `curl https://paragemcerta.pixellusitano.com/api/rt/carris` devolve `{"atualizado":…,"veiculos":[…]}` com autocarros.
-3. No dia de publicar a app, liga o mesmo em `app/src/main/assets/config.json`. Primeiro o servidor e só depois a app (como no passo 16).
+1. Em `worker/public/dados/config.json`, em `interruptores`, muda `"carrisAoVivo"` para `true`. Antes do commit, ajusta também os testes do servidor: hoje contam com todos os interruptores desligados (`worker/test/base.test.ts`, `worker/test/portao.test.ts` e `worker/test/carris.test.ts`). Muda-os no mesmo commit e confirma com `npm test` na pasta `worker/`. Faz commit no `main` e `git push origin main`, espera que a corrida do Servidor aberta por esse push acabe e só então corre o **Servidor → Run workflow** (passo 7).
+2. Confirma: `https://paragemcerta.pixellusitano.com/dados/config.json` mostra `true` e `curl.exe https://paragemcerta.pixellusitano.com/api/rt/carris` devolve `{"atualizado":…,"veiculos":[…]}` com autocarros.
+3. No dia de publicar a app, liga o mesmo em `app/src/main/assets/config.json`. Primeiro o servidor e só depois a app (como no passo 16). Se algum teste da app contar com ele desligado, ajusta-o no mesmo commit; faz commit e `git push origin main` e espera que o workflow **Android** fique verde no `main`.
 4. Para desligar, `false` nos mesmos sítios e outra publicação; a app deixa de mostrar os autocarros na abertura seguinte, com rede.
 
 **O Metro de Lisboa fica fora da 0.4.** O servidor da API do Metro, na porta 8243, só manda o certificado do site e não o intermédio, e a Cloudflare recusa essas ligações (erro 526, testado a 03/11/2026). Por isso não há chave nem segredo do Metro para pôr, e o interruptor `metro` fica `false`. Quando o Metro mandar a cadeia completa (o rascunho `rascunhos/email-metro.md` pede-o), os tempos de espera e o estado das linhas entram numa versão seguinte. As linhas e o horário do Metro continuam a vir do catálogo e do Transitous.
@@ -267,7 +271,7 @@ Quem o gera:
 
 Ao publicar a 0.4.0 (ponto 5 de "Publicar a 0.4.0"):
 
-1. No GitHub, no repositório: Settings → Secrets and variables → Actions → separador **Variables** → New repository variable, nome `SERVIDOR_PUBLICADO`, valor `sim`. É uma variável, não um segredo. Sem ela o `Dados` não faz nada (por isso antes da 0.4.0 não corre nada).
+1. Só depois de o **Servidor → Run workflow** do ponto 5 acabar bem (verde): no GitHub, no repositório, Settings → Secrets and variables → Actions → separador **Variables** → New repository variable, nome `SERVIDOR_PUBLICADO`, valor `sim`. É uma variável, não um segredo. Sem ela o `Dados` não faz nada (por isso antes da 0.4.0 não corre nada). Se a criares antes, a corrida de segunda-feira pode apanhar o Servidor a meio e falhar.
 2. A primeira publicação à mão do passo 6 não leva o `linhas.json` (não está no repositório). Se a fizeste, corre logo a seguir o **Servidor → Run workflow** (passo 7), que o gera e o põe no ar.
 3. Para atualizar já, sem esperar pela segunda-feira: **Actions → Dados → Run workflow**, no `main`.
 
@@ -285,7 +289,7 @@ Quando se gera:
 
 **Para gerar já:** **Actions → Dados → Run workflow**, no `main`. À mão, gera sempre.
 
-**Para esconder uma foto má:** o id é o que vem depois de `pic=` na página da foto (a ligação do crédito na app). Junta-o à lista de `worker/ferramentas/fotos-excluidas.json`, por exemplo `["94c6834a-70ea-4038-9517-5a4a59570efb"]`, e faz commit. O `Dados` só usa código já publicado, por isso corre primeiro o **Servidor → Run workflow** e depois o **Dados → Run workflow**.
+**Para esconder uma foto má:** o id é o que vem depois de `pic=` na página da foto (a ligação do crédito na app). Junta-o à lista de `worker/ferramentas/fotos-excluidas.json`, por exemplo `["94c6834a-70ea-4038-9517-5a4a59570efb"]`, faz commit no `main` e envia-o para o GitHub (`git push origin main`). O `Dados` só usa código já publicado: corre primeiro o **Servidor → Run workflow**, no `main`, espera que acabe com o visto verde e só depois corre o **Dados → Run workflow**, no `main`. Se correres o `Dados` enquanto o Servidor ainda está a correr, ele pára com um erro: espera e corre-o outra vez.
 
 ## Custos e limites
 
