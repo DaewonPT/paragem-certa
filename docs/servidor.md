@@ -113,10 +113,10 @@ Confirma, quando o certificado estiver pronto (pode demorar uns minutos):
 
 ## 8. Limite contra abusos em `/api/auth/*` (já está no servidor)
 
-Não há nada para fazer neste passo. O limite das entradas está no próprio Worker: no máximo 5 pedidos para `/api/auth/` em 10 segundos por IP (o limitador `LIMITE_AUTH` do `wrangler.jsonc`); o sexto recebe `429`. Não se usa uma regra de limite de pedidos da Cloudflare porque o plano grátis só deixa uma por zona e a da zona `pixellusitano.com` é a do site (`/api/feedback`).
+Não há nada para fazer neste passo. Não se usa uma regra de limite de pedidos da Cloudflare porque o plano grátis só deixa uma por zona e a da zona `pixellusitano.com` é a do site (`/api/feedback`). Em vez dela, o Worker tem o limitador `LIMITE_AUTH` (5 pedidos para `/api/auth/` em 10 segundos por IP, responde `429`), mas é aproximado: a Cloudflare conta-o em cada instância e junta as contas em segundo plano, por isso rajadas passam quase todas (testado a 08/11/2026: 2 recusas em 60 pedidos a uns 3 por segundo). Não conta com ele como travão.
 
 - Uma entrada normal faz 2 ou 3 pedidos. Sem limite, um só IP podia gastar sozinho as 100 000 escritas por dia da base grátis (cada pedido de `/api/auth/google/nonce` escreve uma linha) e parar as entradas e a sincronização de toda a gente até à meia-noite UTC. Quem partilhar o IP e passar o limite espera 10 segundos.
-- O limitador do Worker é contado em cada centro de dados da Cloudflare e não é exato ao pedido; chega para isto. Os pedidos recusados continuam a contar para os 100 000 pedidos por dia do Worker (passo 18).
+- Na prática, quem fizer isto gasta ao mesmo ritmo os 100 000 pedidos por dia do Worker, como com as leituras, que não têm limite por IP. A defesa é a do passo 18: ver o IP e bloqueá-lo com uma Custom rule (o plano grátis tem 5).
 
 Os limites de email por endereço (3 por hora) e por dia (70) são contados no servidor e não dependem deste.
 
