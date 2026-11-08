@@ -17,8 +17,8 @@
     {
       "binding": "DB",
       "database_name": "paragem-certa",
-      // texto de exemplo; o id verdadeiro é criado pelo autor com `wrangler d1 create paragem-certa --jurisdiction=eu`
-      "database_id": "ID-DA-BASE-DE-DADOS-CRIADA-PELO-AUTOR",
+      // A base na UE, criada com `wrangler d1 create paragem-certa --jurisdiction=eu`. O id não é segredo.
+      "database_id": "e14c6603-de3c-42e8-9a04-3b4bb12ece8d",
       "migrations_dir": "migrations"
     }
   ],

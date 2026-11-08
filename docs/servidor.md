@@ -32,7 +32,7 @@ Antes de passar de 720 `/plan` por dia, fala com a equipa do Transitous no Matri
 
 1. `npx wrangler d1 create paragem-certa --jurisdiction=eu`
    - A jurisdição só se escolhe agora, na criação. Se te enganares, tens de criar outra base.
-   - Quando perguntar "Would you like Wrangler to add it on your behalf?", responde **não**.
+   - Quando perguntar "Would you like Wrangler to add it on your behalf?", responde **não**. Se disseres que sim por engano, a wrangler reescreve o `wrangler.jsonc` com uma segunda ligação à base: desfaz com `git checkout -- worker/wrangler.jsonc` (na pasta `codigo`) e copia só o id, como no ponto 2.
 2. Copia o `database_id` que o comando mostra para `worker/wrangler.jsonc` **e** para `worker/wrangler.admin.jsonc` (troca o texto `ID-DA-BASE-DE-DADOS-CRIADA-PELO-AUTOR` nos dois). O id não é um segredo: faz commit dele no `main` e envia-o para o GitHub com `git push origin main`. O **Run workflow** usa o que está no GitHub, não o que tens no PC.
 3. `npx wrangler d1 info paragem-certa` mostra a base, para confirmares.
 

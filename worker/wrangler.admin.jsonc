@@ -13,8 +13,8 @@
     {
       "binding": "DB",
       "database_name": "paragem-certa",
-      // texto de exemplo; o id verdadeiro é o mesmo da wrangler.jsonc
-      "database_id": "ID-DA-BASE-DE-DADOS-CRIADA-PELO-AUTOR"
+      // A mesma base da wrangler.jsonc.
+      "database_id": "e14c6603-de3c-42e8-9a04-3b4bb12ece8d"
     }
   ],
   "r2_buckets": [
