@@ -18,6 +18,7 @@ import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertWidthIsAtLeast
@@ -27,6 +28,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -53,6 +55,11 @@ class PecasAzulejoTest {
         regra.setContent { TemaParagemCerta(ModoTema.CLARO) { CabecalhoAzulejo("Menu", aoVoltar = null) } }
         regra.onNodeWithContentDescription("Voltar").assertDoesNotExist()
         regra.onNodeWithText("Menu").assert(ehTitulo)
+    }
+
+    @Test fun cabecalhoSemTituloNaoEUmTitulo() {
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { CabecalhoAzulejo("", aoVoltar = {}) } }
+        regra.onAllNodes(ehTitulo).assertCountEquals(0)
     }
 
     @Test fun cabecalhoSemVoltarTemAAlturaDoComVoltar() {
@@ -104,6 +111,16 @@ class PecasAzulejoTest {
         nos.forEach { it.config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(resultados) }
         assertTrue("o campo não expõe o layout do texto", resultados.isNotEmpty())
         assertEquals(Azulejo.Tinta, resultados.first().layoutInput.style.color)
+    }
+
+    @Test fun sugestaoDoCampoNoEscuroUsaCinza() {
+        regra.setContent { TemaParagemCerta(ModoTema.ESCURO) { CampoAzulejo("", {}, "Pesquisar", dica = "Sítio ou paragem") } }
+        regra.onNode(hasSetTextAction()).performClick()
+        val resultados = mutableListOf<TextLayoutResult>()
+        regra.onNodeWithText("Sítio ou paragem", useUnmergedTree = true).fetchSemanticsNode()
+            .config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(resultados)
+        assertTrue("a sugestão não expõe o layout do texto", resultados.isNotEmpty())
+        assertEquals(Azulejo.Cinza, resultados.first().layoutInput.style.color)
     }
 
     @Test fun rotuloDoCampoFicaComTexto() {

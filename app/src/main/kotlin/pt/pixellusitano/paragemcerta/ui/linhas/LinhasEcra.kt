@@ -6,6 +6,7 @@ import pt.pixellusitano.paragemcerta.ui.tema.iconeModo
 import androidx.compose.material3.Icon
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -28,6 +29,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -168,7 +170,7 @@ fun LinhasConteudo(
                                 modifier = Modifier.padding(start = 16.dp, top = 12.dp, end = 16.dp),
                             )
                             ItemLista(onClick = { aoAbrirLinha(l.ref) }) {
-                                if (longo != null) SeloLinha(l.nome, cor, l.corTexto?.let { corDaLinha(it, l.modo) }) else SeloModo(l.modo, cor)
+                                if (longo != null) SeloLinha(l.nome, cor, l.corTexto?.let { corDaLinha(it, l.modo) }) else Box(Modifier.clearAndSetSemantics {}) { SeloModo(l.modo, cor) }
                                 Text(longo ?: l.nome, color = MaterialTheme.colorScheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
                             }
                         }

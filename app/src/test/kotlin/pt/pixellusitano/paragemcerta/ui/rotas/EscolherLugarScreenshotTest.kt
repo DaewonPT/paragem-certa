@@ -8,7 +8,10 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
+import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.performClick
 import pt.pixellusitano.paragemcerta.core.modelo.Lugar
 import pt.pixellusitano.paragemcerta.core.modelo.TipoLugar
 import pt.pixellusitano.paragemcerta.dados.LocalGuardado
@@ -40,5 +43,10 @@ class EscolherLugarScreenshotTest {
 
     @Test fun escolher_lugar_claro() = captureRoboImage("src/test/screenshots/escolher_lugar_claro.png") { Ecra(ModoTema.CLARO) }
 
-    @Test fun escolher_lugar_escuro() = captureRoboImage("src/test/screenshots/escolher_lugar_escuro.png") { Ecra(ModoTema.ESCURO) }
+    // Com o campo focado, como ao abrir no telemóvel: vê-se a sugestão sobre o branco do campo.
+    @Test fun escolher_lugar_escuro() {
+        regra.setContent { Ecra(ModoTema.ESCURO) }
+        regra.onNode(hasSetTextAction()).performClick()
+        regra.onRoot().captureRoboImage("src/test/screenshots/escolher_lugar_escuro.png")
+    }
 }

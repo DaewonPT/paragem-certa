@@ -36,6 +36,7 @@ fun CampoAzulejo(
             focusedContainerColor = Color.White, unfocusedContainerColor = Color.White, disabledContainerColor = Color.White,
             focusedTextColor = Azulejo.Tinta, unfocusedTextColor = Azulejo.Tinta,
             focusedLabelColor = Azulejo.Cobalto, unfocusedLabelColor = Azulejo.Cinza,
+            focusedPlaceholderColor = Azulejo.Cinza, unfocusedPlaceholderColor = Azulejo.Cinza,
             cursorColor = Azulejo.Cobalto,
             // A seleção também é fixa: no escuro o esquema daria um azul-claro sobre o branco.
             selectionColors = TextSelectionColors(handleColor = Azulejo.Cobalto, backgroundColor = Azulejo.Cobalto.copy(alpha = 0.25f)),

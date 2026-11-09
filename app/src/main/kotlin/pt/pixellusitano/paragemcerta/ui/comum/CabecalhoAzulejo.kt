@@ -50,7 +50,7 @@ fun CabecalhoAzulejo(
             Row(Modifier.padding(horizontal = 4.dp, vertical = 8.dp).heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (aoVoltar != null) voltar()
                 Text(
-                    titulo, Modifier.padding(start = if (aoVoltar == null) 16.dp else 0.dp).semantics { heading() },
+                    titulo, Modifier.padding(start = if (aoVoltar == null) 16.dp else 0.dp).semantics { if (titulo.isNotEmpty()) heading() },
                     style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = Color.White,
                 )
             }
@@ -69,10 +69,10 @@ fun CabecalhoAzulejo(
                 antesDoTitulo?.invoke()
                 Column(Modifier.weight(1f)) {
                     Text(
-                        titulo, Modifier.semantics { heading() },
+                        titulo, Modifier.semantics { if (titulo.isNotEmpty()) heading() },
                         style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = Color.White,
                     )
-                    if (subtitulo != null) Text(subtitulo, style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.85f))
+                    if (subtitulo != null) Text(subtitulo, style = MaterialTheme.typography.bodyMedium, color = Color.White.copy(alpha = 0.92f))
                 }
             }
         }

@@ -274,9 +274,10 @@ class LinhasEcraTest {
         regra.onNode(hasText("Perturbações (2)") and hasClickAction()).assertIsDisplayed()
     }
 
-    @Test fun linhasSemNomeCurtoLevamOSeloDoModo() {
+    @Test fun oSeloDoModoNaoERepetidoPeloTalkBack() {
         regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Ecra(agruparLinhas(cm, catalogo, "", Modo.COMBOIO)) } }
-        regra.onNodeWithContentDescription("Comboio", useUnmergedTree = true).assertExists()
+        // O meio já se lê no título da secção; o selo de cada linha só se vê (capturas linhas_*).
+        regra.onNodeWithContentDescription("Comboio").assertDoesNotExist()
     }
 
     @Test fun linhas_com_perturbacoes() = captureRoboImage("src/test/screenshots/linhas_com_perturbacoes.png") {
