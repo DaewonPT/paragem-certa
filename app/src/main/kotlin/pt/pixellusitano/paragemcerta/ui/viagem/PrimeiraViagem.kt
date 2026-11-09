@@ -47,7 +47,7 @@ import pt.pixellusitano.paragemcerta.viagem.ServicoViagem
 import java.io.IOException
 import java.time.Instant
 
-/** Os passos antes de começar uma viagem, pela ordem em que a pessoa os vê (spec 7.2). */
+/** Os passos antes de começar uma viagem, pela ordem em que a pessoa os vê. */
 enum class Passo { LOCALIZACAO, LOCALIZACAO_SERVICO, LOCALIZACAO_DESLIGADA, NOTIFICACOES, BATERIA, VOLUME }
 
 /** O que o telemóvel tem agora. volumeAlarme 0 = mudo. servicoPode: o Android deixa o serviço da viagem arrancar (ver servicoPodeArrancar). */

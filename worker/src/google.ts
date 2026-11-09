@@ -55,7 +55,7 @@ export async function verificarTokenGoogle(idToken: string, env: Env): Promise<{
   return { sub, email: email.trim().toLowerCase(), ...(typeof hd === "string" && hd ? { hd } : {}) };
 }
 
-/** Gmail ou Google Workspace (`hd`): é a Google que responde pelo endereço (spec principal, secção 8). */
+/** Gmail ou Google Workspace (`hd`): é a Google que responde pelo endereço. */
 function googleRespondePeloEmail({ email, hd }: { email: string; hd?: string }): boolean {
   return email.endsWith("@gmail.com") || email.endsWith("@googlemail.com") || hd !== undefined;
 }

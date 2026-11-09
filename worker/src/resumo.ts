@@ -13,7 +13,7 @@ function quantos(n: number, singular: string, plural: string): string {
 }
 
 /**
- * O email diário ao autor (spec 5.1), pelo Cron: quantas fotos, correções e denúncias há por rever e quantos emails
+ * O email diário ao autor, pelo Cron: quantas fotos, correções e denúncias há por rever e quantos emails
  * ficaram por enviar. Nada se nada houver ou sem EMAIL_AUTOR. Só números: nada de quem enviou ou denunciou.
  * Conta para o teto dos 30 emails do dia (se não couber, fica em Emails por enviar, como os outros).
  */

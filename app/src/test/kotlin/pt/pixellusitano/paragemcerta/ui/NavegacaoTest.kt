@@ -56,7 +56,7 @@ class NavegacaoTest {
     private fun nasRotas() = nav.currentDestination!!.hasRoute(Rotas::class)
 
     @Test fun inicioVoltaDepoisDeUmaRotaDaPesquisa() {
-        // O caminho do autor: "Para onde vais?" → destino → "Começar viagem" → "Voltar" → tocar em "Início".
+        // O caminho que dava o erro: "Para onde vais?" → destino → "Começar viagem" → "Voltar" → tocar em "Início".
         regra.runOnIdle {
             nav.navigate(Pesquisa)
             nav.navigate(Rotas(destino = "Fundação Champalimaud|38.6935|-9.2238")) { popUpTo<Inicio>() }

@@ -61,8 +61,8 @@ jobs:
             :app:lintPessoalDebug \
             :app:assemblePessoalDebug
 
-      # Spec 11: os serviços (viagem e avisos de chegada) e as permissões do manifesto fundido não podem mudar sem ninguém ver.
-      # Spec 15 e 20: o widget é um só receiver e a app não pede alarmes exatos (nada corre com a app fechada).
+      # Os serviços (viagem e avisos de chegada) e as permissões do manifesto fundido não podem mudar sem ninguém ver.
+      # O widget é um só receiver e a app não pede alarmes exatos (nada corre com a app fechada).
       - name: Check merged manifest (trip and arrival-alert services, widget receiver, permissions)
         run: |
           MANIFESTO=$(find app/build/intermediates/merged_manifests/pessoalDebug -name AndroidManifest.xml)

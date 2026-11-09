@@ -64,7 +64,7 @@ export default {
     } catch (falha) {
       // Uma fonte externa em baixo nunca é uma pausa: a app volta ao horário de sempre.
       if (falha instanceof FonteFalhou) return erro("fonte_falhou", 502);
-      // O D1 grátis passou o limite do dia: a app para de pedir até à meia-noite UTC (spec 5.4). Os outros erros sobem como antes.
+      // O D1 grátis passou o limite do dia: a app para de pedir até à meia-noite UTC. Os outros erros sobem como antes.
       if (String(falha).includes("exceeded D1's free tier daily")) return erro("em_pausa", 503);
       throw falha;
     }

@@ -93,7 +93,7 @@ fun DialogoEntrar(aoEntrar: () -> Unit, aoFechar: () -> Unit, @StringRes texto: 
     )
 }
 
-/** Os termos e as regras da comunidade, aceites antes da primeira publicação (spec 4.7); a ligação abre a página do servidor. */
+/** Os termos e as regras da comunidade, aceites antes da primeira publicação; a ligação abre a página do servidor. */
 @Composable
 fun DialogoTermos(aoAceitar: () -> Unit, aoFechar: () -> Unit) {
     val contexto = LocalContext.current

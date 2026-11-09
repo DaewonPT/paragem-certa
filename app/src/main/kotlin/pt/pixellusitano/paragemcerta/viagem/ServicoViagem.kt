@@ -174,7 +174,7 @@ class ServicoViagem : Service() {
             return
         }
         corrida = Corrida(plano, viagem, estado)
-        // shortcut: wake lock durante a viagem toda, passar a alarmes exatos se a bateria se queixar.
+        // Limite: wake lock durante a viagem toda, passar a alarmes exatos se a bateria se queixar.
         // O limite é só um teto: a viagem atrasada passa da chegada prevista e o motor é que diz quando acaba.
         val limite = Duration.between(agora(), plano.itinerario.chegada).plus(BLOQUEIO_MAX).toMillis().coerceAtLeast(60_000L)
         bloqueio = getSystemService(PowerManager::class.java).newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "ParagemCerta:viagem").apply {

@@ -80,7 +80,7 @@ private val LINHAS = listOf(
     IdsLinha(R.id.widget_linha_3, R.id.widget_linha_3_nome, R.id.widget_linha_3_destino, R.id.widget_linha_3_hora),
 )
 
-// shortcut: o widget fica no modo (claro ou escuro) de quando se desenhou até ao redesenho seguinte, mas sempre legível; quando o minSdk for 31, setColorStateList deixa-o acompanhar o modo.
+// Limite: o widget fica no modo (claro ou escuro) de quando se desenhou até ao redesenho seguinte, mas sempre legível; quando o minSdk for 31, setColorStateList deixa-o acompanhar o modo.
 fun vistas(contexto: Context, id: Int, conteudo: ConteudoWidget): RemoteViews {
     val v = RemoteViews(contexto.packageName, R.layout.widget_chegadas)
     if (conteudo.paragem == null) {

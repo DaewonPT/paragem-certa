@@ -69,7 +69,7 @@ fun ecraDaViagem(plano: PlanoViagem, estado: EstadoViagem, viagem: Viagem): Ecra
     return EcraViagem(
         cartoes = cartoes, atual = atual, estado = estado,
         horario = estado.origem == Origem.HORARIO && !estado.terminada,
-        // shortcut: o atraso da etapa atual passa por inteiro para a chegada (um transbordo com folga absorveria parte); só soma, nunca adianta.
+        // Limite: o atraso da etapa atual passa por inteiro para a chegada (um transbordo com folga absorveria parte); só soma, nunca adianta.
         chegada = itinerario.chegada.plusSeconds(maxOf(0L, estado.atrasoS)),
         de = etapas.first().de.nome, para = etapas.last().para.nome, itinerario = itinerario,
     )

@@ -37,7 +37,7 @@ class Comunidade(
 ) {
     private class Guardado<T>(val em: Instant, val dados: T)
 
-    // shortcut: nunca se limpam (ocupam pouco e a app vive pouco); limpar se a camada passar a cobrir o país inteiro.
+    // Limite: nunca se limpam (ocupam pouco e a app vive pouco); limpar se a camada passar a cobrir o país inteiro.
     // Uma leitura que falha deixa a entrada como estava: é o que se mostra até haver rede.
     private val paragens = ConcurrentHashMap<String, Guardado<DadosComunidade>>()
     private val linhas = ConcurrentHashMap<String, Guardado<List<RelatoRemoto>>>()

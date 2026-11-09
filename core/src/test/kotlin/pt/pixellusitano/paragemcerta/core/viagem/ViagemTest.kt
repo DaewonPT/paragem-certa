@@ -700,7 +700,7 @@ class ViagemTest {
     }
 
     @Test fun planoEEstadoAntigosLeem() {
-        // Os da etapa 3 da 0.4: com os avisos da comunidade e os relatos avisados, sem os relatos do servidor, as vistas e as perturbações avisadas.
+        // Os da comunidade (0.4): com os avisos da comunidade e os relatos avisados, sem os relatos do servidor, as vistas e as perturbações avisadas.
         val i = itinerario(autocarro())
         val antigo = """{"itinerario":${Json.encodeToString(i)},"som":true,"vibrar":false,"avisosComunidade":true,"ocultos":["relato:r1"]}"""
         val plano = Json.decodeFromString<PlanoViagem>(antigo)
@@ -730,7 +730,7 @@ class ViagemTest {
     }
 
     /**
-     * O que a spec pede em cada etapa em veículo a que a viagem chegou: Prepara-te e depois Sai agora, uma vez cada;
+     * O que se espera em cada etapa em veículo a que a viagem chegou: Prepara-te e depois Sai agora, uma vez cada;
      * Prepara-te antes da primeira posição a 30 m da penúltima paragem e Sai agora antes da primeira a 20 m do
      * destino (contando só as posições depois do embarque).
      */

@@ -274,7 +274,7 @@ describe("relatos e votos", () => {
     const { id } = await relatado(ana);
     await votado(rui, id, "ainda_esta");
 
-    // Sem `comunidade` já não há 403: os relatos vêm vazios (e as perturbações do Metro, que só a Task 2 liga).
+    // Sem `comunidade` já não há 403: os relatos vêm vazios (e as perturbações do Metro, que ainda não estão ligadas).
     const semComunidade = await lerAvisos(["736"], {});
     expect(semComunidade.status).toBe(200);
     expect(await semComunidade.json()).toEqual({ relatos: [], perturbacoes: [] });

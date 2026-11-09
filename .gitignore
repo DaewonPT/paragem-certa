@@ -13,3 +13,4 @@ worker/worker-configuration.d.ts
 # Gerados no GitHub Actions (worker/ferramentas/gerar-linhas.mjs e gerar-fotos-rua.mjs) antes de cada publicação.
 worker/public/dados/linhas.json
 worker/public/dados/fotos-de-rua.json
+.kotlin/

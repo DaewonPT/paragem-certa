@@ -46,7 +46,7 @@ export function carteiroDe(env: Env, remetente = REMETENTE_CODIGO): Carteiro {
 /**
  * Envia um email que não é um código de entrada se couber no teto do dia (`emails.outrosPorDia`, à parte dos códigos).
  * `false` se o teto está cheio ou o Resend falhou. Também o "Enviar agora" do pc-admin passa por aqui.
- * shortcut: um envio que falha gasta o seu lugar do dia; devolvê-lo se o Resend cair muitas vezes.
+ * Limite: um envio que falha gasta o seu lugar do dia; devolvê-lo se o Resend cair muitas vezes.
  */
 export async function enviarNoTeto(env: Env, para: string, assunto: string, texto: string, agora = Date.now()): Promise<boolean> {
   const dia = new Date(agora).toISOString().slice(0, 10);

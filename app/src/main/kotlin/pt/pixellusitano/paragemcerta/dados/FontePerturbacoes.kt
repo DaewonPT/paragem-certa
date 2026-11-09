@@ -21,7 +21,7 @@ private val GUARDAR = Duration.ofMinutes(1)
 class FontePerturbacoes(private val cm: CarrisMetropolitana) {
     private var guardadas: Pair<Instant, List<Perturbacao>>? = null
 
-    // shortcut: só as da CM; as do Metro viriam das perturbacoes do /api/avisos, mas o Metro está fora da 0.4 (a porta 8243
+    // Limite: só as da CM; as do Metro viriam das perturbacoes do /api/avisos, mas o Metro está fora da 0.4 (a porta 8243
     // dá 526, sem o certificado intermédio): juntá-las quando o Metro mandar a cadeia completa.
     suspend fun todas(agora: Instant): List<Perturbacao>? {
         guardadas?.takeIf { Duration.between(it.first, agora) < GUARDAR }?.let { return it.second }

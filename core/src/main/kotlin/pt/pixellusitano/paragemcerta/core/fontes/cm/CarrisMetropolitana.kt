@@ -70,7 +70,7 @@ object CmParser {
             Linha(Fonte.CM, it.id, it.nomeCurto ?: it.id, it.nomeLongo, it.color, it.corTexto, Modo.AUTOCARRO)
         }
 
-    /** Ids dos percursos (patterns) de cada linha, para pedir as paragens de uma linha (Task 13). */
+    /** Ids dos percursos (patterns) de cada linha, para pedir as paragens de uma linha. */
     fun padroesDasLinhas(json: String): Map<String, List<String>> =
         JSON.decodeFromString<List<CmLinhaJson>>(json).associate { it.id to it.padroes }
 
@@ -90,7 +90,7 @@ object CmParser {
             paragens = p.path.sortedBy { it.ordem }.map { cmIdLimpo(it.paragem) },
             formaId = p.forma,
             horarios = p.trips.map { g ->
-                // shortcut: uma paragem que o percurso repete (circulares) fica com a 1.ª hora; separar partida e chegada quando houver queixa.
+                // Limite: uma paragem que o percurso repete (circulares) fica com a 1.ª hora; separar partida e chegada quando houver queixa.
                 val horas = g.schedule.asReversed().associate { cmIdLimpo(it.paragem) to horaCm(it.hora) }
                 HorarioCm(g.dias.toSet(), horas.mapValues { it.value.first }, horas.filterValues { it.second }.keys)
             },

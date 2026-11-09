@@ -183,7 +183,7 @@ class ServicoAvisoChegada : Service() {
         val p = v.pedido
         val intervalo = if (p.ref.fonte == Fonte.CM) CM_INTERVALO else TRANSITOUS_INTERVALO
         var falhas = 0
-        // shortcut: os 90 min só se medem entre consultas, por isso acaba até um intervalo (ou o recuo de uma falha) depois.
+        // Limite: os 90 min só se medem entre consultas, por isso acaba até um intervalo (ou o recuo de uma falha) depois.
         while (!vigiaAcabou(p, v.avisadas, agora())) {
             val hora = agora()
             val espera = when (val r = consultar(p.ref, hora)) {

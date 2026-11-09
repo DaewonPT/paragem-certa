@@ -300,7 +300,7 @@ private tailrec fun Context.atividade(): Activity? = when (this) {
     else -> null
 }
 
-// Em todas: em_pausa = o servidor passou a quota grátis do dia (spec 5.4), seja qual for o código.
+// Em todas: em_pausa = o servidor passou a quota grátis do dia, seja qual for o código.
 // 400 = email que o servidor não aceita, 429 = mais de 3 códigos por hora, o resto (502 da Resend…) = não saiu.
 @StringRes private fun erroDoPedido(f: Resultado.Falha) = if (f.emPausa) R.string.servidor_em_pausa else when (f.codigo) {
     null -> R.string.conta_erro_sem_ligacao

@@ -1,4 +1,4 @@
--- Comunidade (0.4, etapa 3): relatos e confirmações, fotos, correções, denúncias com as decisões, bloqueios,
+-- Comunidade (0.4): relatos e confirmações, fotos, correções, denúncias com as decisões, bloqueios,
 -- emails por enviar e contadores diários. Só acrescenta; não mexe no que a 0001 criou.
 -- Tempos em milissegundos desde 1970 (Date.now()); `dia` é a data em UTC ("2026-11-03"); os ids são crypto.randomUUID().
 -- Chave da paragem = "CM:060419" ou "TRANSITOUS:<id>"; chave da linha = o nome visível ("736"), em maiúsculas.

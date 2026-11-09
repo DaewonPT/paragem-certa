@@ -152,7 +152,7 @@ describe("portão das escritas da comunidade", () => {
   });
 
   it("quemEscreveNaoPedeInterruptorNemTermos", async () => {
-    // As denúncias (Task 6) usam só `quemEscreve`: uma conta bloqueada, sem os termos novos, pode denunciar.
+    // As denúncias usam só `quemEscreve`: uma conta bloqueada, sem os termos novos, pode denunciar.
     const token = await criarConta("ana", "Ana+x@exemplo.pt", { termos: "0" });
     await bloquear(await sha256("ana@exemplo.pt"));
     const semInterruptores = ligado({ TESTE_INTERRUPTORES: undefined });

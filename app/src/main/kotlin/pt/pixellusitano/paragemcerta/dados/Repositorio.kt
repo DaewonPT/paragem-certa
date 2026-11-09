@@ -264,7 +264,7 @@ class Repositorio(
                         lidas++
                         (transitous.paragensDaViagem(idViagem) as? Resultado.Ok)?.valor?.also { paragensDasViagens[idViagem] = it }
                     } ?: continue
-                    // shortcut: uma paragem que a viagem repete (circulares) conta pela primeira vez, e um autocarro já a meio do percurso fica sem etiqueta nela; contar a primeira depois do seq se pesar.
+                    // Limite: uma paragem que a viagem repete (circulares) conta pela primeira vez, e um autocarro já a meio do percurso fica sem etiqueta nela; contar a primeira depois do seq se pesar.
                     val posicao = paragens.indexOf(paragemId) + 1
                     if (posicao > 0) paragensEmFalta(posicao, veiculo.seq)?.let { vivos[idViagem] = AoVivo(idViagem, it) }
                 }

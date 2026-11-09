@@ -73,7 +73,7 @@ export async function sincronizar(pedido: Request, env: Env): Promise<Response> 
   if (alteracoes.length > 0) passos.push(env.DB.prepare("UPDATE contas SET revisao = revisao + ? WHERE id = ?").bind(alteracoes.length, sessao.contaId));
   passos.push(
     env.DB.prepare("SELECT revisao FROM contas WHERE id = ?").bind(sessao.contaId),
-    // shortcut: sem LIMIT (cortar a lista perdia favoritos em silêncio), só o índice (conta_id, revisao); passar a paginar se uma conta puder ter milhares de favoritos.
+    // Limite: sem LIMIT (cortar a lista perdia favoritos em silêncio), só o índice (conta_id, revisao); passar a paginar se uma conta puder ter milhares de favoritos.
     env.DB.prepare("SELECT chave, tipo, nome, lat, lon, ordem, apagado, revisao FROM favoritos WHERE conta_id = ? AND revisao > ? ORDER BY revisao, chave").bind(
       sessao.contaId,
       desde,

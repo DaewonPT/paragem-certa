@@ -56,7 +56,7 @@ class ServidorTest {
     }
 
     @Test fun configAntigaSemCamposNovosLe() = runTest {
-        // A fixture é de antes da etapa 4: sem `mapasOficiais` nem os interruptores `carrisAoVivo` e `metro`.
+        // A fixture é de um servidor mais antigo: sem `mapasOficiais` nem os interruptores `carrisAoVivo` e `metro`.
         val c = (servidor(HttpFalso({ Resposta(200, fixture("servidor-config.json")) })).config() as Resultado.Ok).valor
         assertEquals(emptyList<MapaOficial>(), c.mapasOficiais)
         assertFalse(c.interruptores.carrisAoVivo)

@@ -152,7 +152,7 @@
     <string name="eu_atualizar_sozinha">Atualizar sozinha</string>
     <string name="eu_atualizar_dados_moveis">Também com dados móveis</string>
 
-    <!-- Correções da revisão final -->
+    <!-- Carregamento e falhas -->
     <string name="a_carregar">A carregar…</string>
     <string name="tempo_real_indisponivel_ha">Tempo real indisponível — atualizado há %1$d min</string>
     <string name="linha_falhou">Não foi possível carregar a linha. Tenta outra vez mais tarde.</string>

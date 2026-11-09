@@ -403,7 +403,7 @@ val MIGRACAO_2_3 = object : Migration(2, 3) {
     }
 }
 
-/** 0.4, etapa 4: as linhas favoritas e as linhas de cada paragem da CM. As paragens ficam sem linhas até a rede vir outra vez,
+/** 0.4: as linhas favoritas e as linhas de cada paragem da CM. As paragens ficam sem linhas até a rede vir outra vez,
  *  o que acontece logo nessa abertura (o [Repositorio.redeEmFalta] dá verdadeiro). O SQL é o do 4.json, tal e qual. */
 val MIGRACAO_3_4 = object : Migration(3, 4) {
     override fun migrate(db: SupportSQLiteDatabase) {

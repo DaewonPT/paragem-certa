@@ -352,7 +352,7 @@ class Transitous(private val http: Http, private val base: String = "https://api
 
     /**
      * As próximas chegadas da paragem que são da linha ([rotas]) no sentido [s]; o mesmo pedido da paragem.
-     * shortcut: filtra as 30 partidas da paragem; numa paragem cheia uma linha rara pode ficar sem nenhuma, subir o n se acontecer.
+     * Limite: filtra as 30 partidas da paragem; numa paragem cheia uma linha rara pode ficar sem nenhuma, subir o n se acontecer.
      */
     suspend fun chegadasDaLinha(paragemId: String, rotas: Set<String>, s: SentidoCatalogo, agora: Instant): Resultado<List<Chegada>> =
         http.pedir(urlChegadas(paragemId)) { TransitousParser.chegadas(it, paragemId, agora).filter { c -> daLinhaNoSentido(c, rotas, s) } }

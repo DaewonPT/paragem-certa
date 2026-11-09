@@ -103,7 +103,7 @@ fun LinhasEcra(
 
 /**
  * A lista. [estado] diz o que falta do catálogo: a carregar, falhou (só se vê a CM e a frase a explicar) ou pronto. [perturbacoes]
- * é o espaço da linha "Perturbações" (etapa 4, tarefa 14).
+ * é o espaço da linha "Perturbações".
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable

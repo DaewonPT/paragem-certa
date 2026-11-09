@@ -6,7 +6,7 @@ import org.junit.Test
 
 class CmIdsTest {
     @Test fun paragemDoTransitousParaACm() {
-        // As três paragens que a spec 6.2 manda verificar: o 3 inicial passa a 0, os outros dígitos ficam.
+        // Três paragens conferidas à mão: o 3 inicial passa a 0, os outros dígitos ficam.
         assertEquals("020047", cmParagemDeTransitous("pt-Carris-Metropolitana_320047"))
         assertEquals("060155", cmParagemDeTransitous("pt-Carris-Metropolitana_360155"))
         assertEquals("160099", cmParagemDeTransitous("pt-Carris-Metropolitana_160099"))

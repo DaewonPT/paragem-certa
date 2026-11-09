@@ -18,7 +18,7 @@ fun sentidoDoPadraoCm(padrao: String): Int? = when (cmIdLimpo(padrao).substringA
     else -> null
 }
 
-/** Paragem do Transitous → id da API da Carris Metropolitana (spec 6.2): "pt-Carris-Metropolitana_320047" → "020047"; outro operador → null. */
+/** Paragem do Transitous → id da API da Carris Metropolitana: "pt-Carris-Metropolitana_320047" → "020047"; outro operador → null. */
 fun cmParagemDeTransitous(id: String): String? {
     val t = id.removePrefix(PREFIXO_CM_TRANSITOUS).takeIf { it != id && it.isNotEmpty() } ?: return null
     return if (t[0] == '3') "0" + t.substring(1) else t

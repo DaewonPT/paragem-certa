@@ -18,7 +18,7 @@ class PerturbacoesTest {
     private fun metro(linha: String) = doMetro(PerturbacaoRemota("metro:$linha:3f2a9c1e", linha, "Circulação interrompida."))
 
     @Test fun daCmUsaOAlertaDaApp() {
-        // Um alerta real da CM (a fixture da etapa 1): o id é o que a app já usa para não o notificar duas vezes.
+        // Um alerta real da CM: o id é o que a app já usa para não o notificar duas vezes.
         val alerta = CmParser.alertas(fixture("cm-alerts.json"), Instant.parse("2026-10-27T12:00:00Z")).first { "1625" in it.linhaIds }
         val p = daCm(alerta)
         assertEquals("cm:" + alerta.id, p.id)

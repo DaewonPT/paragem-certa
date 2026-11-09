@@ -37,7 +37,7 @@ private const val VEICULO_SAIU_M = SAIU_M + 1
 private const val VEICULO_PERTO_M = 150.0
 
 // Avisos
-/** "Prepara-te" ao sair da paragem duas antes do destino (a antepenúltima); decisão do autor de 01/11/2026. */
+/** "Prepara-te" ao sair da paragem duas antes do destino (a antepenúltima). */
 const val PREPARA_ANTES = 2
 private val PREPARA_TEMPO = Duration.ofMinutes(2)
 private const val SAI_M = 150.0

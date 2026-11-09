@@ -6,7 +6,7 @@ Precisas de: a conta da Cloudflare (com a zona `pixellusitano.com`), uma conta n
 
 **Regra de ouro:** nenhuma chave, token, nome ou id do cliente da Google vai para o repositório. Colas cada valor no sítio indicado.
 
-**Quando:** só com a 0.4.0, no fim da etapa 5. A política de privacidade já descreve a comunidade, as fotos e os dados ao vivo da Carris, que só existem nessa altura. Antes de publicar, relê-a contra o que a app faz mesmo.
+**Quando:** só com a 0.4.0 ou mais recente. A política de privacidade já descreve a comunidade, as fotos e os dados ao vivo da Carris, que só existem nessa altura. Antes de publicar, relê-a contra o que a app faz mesmo.
 
 `AMBIENTE`, `TESTE_GOOGLE_JWKS`, `TESTE_ACCESS_JWKS` e `TESTE_INTERRUPTORES` são só para os testes: nunca os ponhas como variáveis nem segredos de nenhum dos dois Workers publicados (`paragem-certa` e `pc-admin`).
 

@@ -31,7 +31,7 @@ async function apagarFotosPorRever(env: Env, antesDe: number): Promise<number> {
 }
 
 /**
- * O Cron diário: apaga o que passou os prazos da spec (secção 4.7). `agora` vem do controlador do Cron.
+ * O Cron diário: apaga o que passou do prazo (os prazos estão nos termos e na política de privacidade). `agora` vem do controlador do Cron.
  * Cada prazo é independente: se um falhar (o R2 em baixo, por exemplo), os outros fazem-se na mesma e o erro sobe no fim.
  */
 export async function aplicarPrazos(env: Env, agora = Date.now()): Promise<void> {

@@ -35,7 +35,7 @@ class Percurso(desenho: List<Pair<Double, Double>>, private val paragens: List<P
     /**
      * Metros ao longo da linha de cada paragem. Cada uma projeta-se a partir da anterior para a frente,
      * por isso um laço ou uma ida e volta pela mesma rua não a puxa para o sítio errado.
-     * shortcut: se uma paragem ficar mais perto de uma passagem muito posterior da linha, as seguintes colam-se a ela; passar a emparelhar todas de uma vez se aparecer numa viagem real.
+     * Limite: se uma paragem ficar mais perto de uma passagem muito posterior da linha, as seguintes colam-se a ela; passar a emparelhar todas de uma vez se aparecer numa viagem real.
      */
     val noPercurso: DoubleArray = DoubleArray(paragens.size).also { m ->
         var de = 0.0

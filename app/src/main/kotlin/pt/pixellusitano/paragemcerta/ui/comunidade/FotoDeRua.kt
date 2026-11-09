@@ -39,7 +39,7 @@ internal sealed interface FotoEscolhida {
     data class DaComunidade(val foto: FotoRemota) : FotoEscolhida
 }
 
-/** A mais recente das duas (spec 4.4); em empate, ou sem data da comunidade, a da comunidade ([ruaGanha]). null sem nenhuma. */
+/** A mais recente das duas; em empate, ou sem data da comunidade, a da comunidade ([ruaGanha]). null sem nenhuma. */
 internal fun escolherFoto(rua: FotoDeRua?, comunidade: FotoRemota?): FotoEscolhida? = when {
     rua != null && (comunidade == null || ruaGanha(rua, comunidade.data)) -> FotoEscolhida.DaRua(rua)
     comunidade != null -> FotoEscolhida.DaComunidade(comunidade)

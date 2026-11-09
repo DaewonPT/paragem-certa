@@ -42,7 +42,7 @@ async function* ler(pasta, nome, obrigatorio = true) {
     return;
   }
   let cabecalho;
-  // shortcut: uma quebra de linha dentro de aspas parte o registo; nenhum dos feeds a tem, ler aos bocados se aparecer.
+  // Limite: uma quebra de linha dentro de aspas parte o registo; nenhum dos feeds a tem, ler aos bocados se aparecer.
   for await (const linha of readline.createInterface({ input: fs.createReadStream(ficheiro, "utf8"), crlfDelay: Infinity })) {
     if (!linha.trim()) continue;
     const campos = (linha.includes('"') ? partir(linha) : linha.split(",")).map((c) => c.trim());

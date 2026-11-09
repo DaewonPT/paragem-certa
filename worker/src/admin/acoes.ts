@@ -179,7 +179,7 @@ async function decidirDenuncia(env: Env, id: string, campos: URLSearchParams, ag
 
 /**
  * Pela marca do email normalizado: apanha as variantes do mesmo endereço e sobrevive a apagar a conta. Dura 12 meses (Cron).
- * Só depois de uma denúncia, como prometem os termos e a spec 4.7.
+ * Só depois de uma denúncia, como prometem os termos.
  */
 async function bloquear(env: Env, contaId: string, campos: URLSearchParams, agora: number): Promise<Desfecho> {
   const denunciaId = campos.get("denuncia") || null;

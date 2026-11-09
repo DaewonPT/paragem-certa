@@ -136,7 +136,7 @@ export async function votar(pedido: Request, env: Env): Promise<Response> {
 
 /**
  * Os relatos ativos das `chaves` (paragens ou linhas), os mais recentes primeiro, no máximo 100. Nada da conta sai.
- * shortcut: as contagens dos votos não têm LIMIT (uma linha por conta e relato); limitar se um relato puder juntar milhares de votos.
+ * Limite: as contagens dos votos não têm LIMIT (uma linha por conta e relato); limitar se um relato puder juntar milhares de votos.
  */
 export async function relatosPublicos(env: Env, por: "paragem" | "linha", chaves: string[], soConfirmados: boolean): Promise<RelatoPublico[]> {
   const agora = Date.now();

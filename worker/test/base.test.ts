@@ -261,7 +261,7 @@ describe("política de privacidade, termos e guia do autor", () => {
   }
 
   it("privacidadeDizQueORelatoRegistaAConta", async () => {
-    // Guarda de regressão da secção 18 da spec: o que diz aqui tem de continuar a ser verdade.
+    // Guarda de regressão: o que diz aqui tem de continuar a ser verdade.
     const { pt, en } = await politica();
     expect(pt).toContain("um relato regista que a tua conta estava junto dessa paragem a essa hora");
     expect(pt).toContain("30 dias");
@@ -343,7 +343,7 @@ describe("política de privacidade, termos e guia do autor", () => {
   });
 
   it("termosTemAIdadeEOsMecanismos", () => {
-    // Guarda de regressão: o que a spec (4.7) manda explicar nos termos.
+    // Guarda de regressão: o que os termos têm de explicar.
     const { pt, en } = emDuasLinguas(termosHtml);
     for (const frase of ["13 anos", "Confirmado", "Já não está", "expira"]) expect(pt, frase).toContain(frase);
     for (const frase of ["at least 13", "Confirmed", "No longer there", "expires"]) expect(en, frase).toContain(frase);
@@ -384,14 +384,14 @@ describe("política de privacidade, termos e guia do autor", () => {
 
   it("guiaNomeiaOsSegredosDosDoisWorkers", () => {
     const guia = env.TEST_GUIA;
-    // Os passos da etapa 3 vêm a seguir à secção 9; os segredos do pc-admin só se põem lá.
-    const inicioDaEtapa3 = guia.indexOf("\n## 10. ");
-    expect(inicioDaEtapa3, "o guia tem de ter a secção 10").toBeGreaterThan(0);
-    const etapa3 = guia.slice(inicioDaEtapa3);
+    // Os passos do pc-admin vêm a seguir à secção 9; os segredos do pc-admin só se põem lá.
+    const inicioDoAdmin = guia.indexOf("\n## 10. ");
+    expect(inicioDoAdmin, "o guia tem de ter a secção 10").toBeGreaterThan(0);
+    const admin = guia.slice(inicioDoAdmin);
     for (const nome of lerJsonc(env.TEST_CONFIG).secrets.required) expect(guia, `paragem-certa: ${nome}`).toContain(nome);
-    for (const nome of lerJsonc(env.TEST_ADMIN_CONFIG).secrets.required) expect(etapa3, `pc-admin: ${nome}`).toContain(nome);
-    expect(etapa3).toContain("secret put");
-    expect(etapa3).toContain("-c wrangler.admin.jsonc");
+    for (const nome of lerJsonc(env.TEST_ADMIN_CONFIG).secrets.required) expect(admin, `pc-admin: ${nome}`).toContain(nome);
+    expect(admin).toContain("secret put");
+    expect(admin).toContain("-c wrangler.admin.jsonc");
     expect(guia).not.toContain("ficam para o guia da etapa 3");
   });
 });

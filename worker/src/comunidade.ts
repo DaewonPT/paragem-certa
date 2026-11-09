@@ -23,7 +23,7 @@ export interface PerturbacaoPublica {
 
 /**
  * GET /api/comunidade?paragens=K1,K2 (1–100): o ecrã da paragem e o mapa. Sem sessão, sem cache no servidor e sem
- * limite por IP (spec 5.3). Cada parte desligada vem vazia; com as três desligadas, 403.
+ * limite por IP. Cada parte desligada vem vazia; com as três desligadas, 403.
  * Com `linhas=L1,L2` (1–20) em vez de `paragens`: os relatos ativos dessas linhas, confirmados e por confirmar (o ecrã da
  * linha); só a `comunidade` o liga, 403 sem ela.
  */
@@ -54,7 +54,7 @@ export async function lerAvisos(pedido: Request, env: Env): Promise<Response> {
   const linhas = lista(new URL(pedido.url).searchParams.get("linhas")?.toUpperCase() ?? null, MAX_LINHAS, FORMATO_LINHA);
   if (!linhas) return erro("pedido_invalido", 400);
   const relatos = interruptores(env).comunidade ? await relatosPublicos(env, "linha", linhas, true) : [];
-  // shortcut: sem perturbações do Metro, o Metro está fora da 0.4 (a porta 8243 dá 526); voltam quando o Metro mandar a cadeia completa.
+  // Limite: sem perturbações do Metro, o Metro está fora da 0.4 (a porta 8243 dá 526); voltam quando o Metro mandar a cadeia completa.
   const perturbacoes: PerturbacaoPublica[] = [];
   return json({ relatos, perturbacoes });
 }

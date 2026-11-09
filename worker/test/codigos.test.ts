@@ -80,7 +80,7 @@ describe("entrar com código por email", () => {
   });
 
   it("codigoNaoEntraNumaContaGoogleDeOutroDominio", async () => {
-    // O endereço pode ter mudado de dono desde que a conta do Google foi criada (spec principal, secção 8).
+    // O endereço pode ter mudado de dono desde que a conta do Google foi criada.
     await env.DB.prepare("INSERT INTO contas (id, email, google_sub, criada_em) VALUES ('g1', ?, 'sub-1', 1)").bind(EMAIL).run();
     await pedirCodigo();
     const { token } = (await (await confirmar(ultimoCodigo())).json()) as { token: string };
