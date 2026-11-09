@@ -236,10 +236,10 @@ class LinhaEcraTest {
         )
         mostrar(estado)
         regra.onNodeWithText("Relatos desta linha").assertIsDisplayed()
-        // Confirmado (⚠) e por confirmar (ⓘ), com quem os confirmou.
-        regra.onNodeWithText("⚠ Desvio").assertIsDisplayed()
+        // Confirmado e por confirmar, com quem os confirmou.
+        regra.onNodeWithText("Desvio").assertIsDisplayed()
         regra.onNodeWithText("Confirmado por 3 passageiros · há 10 min", substring = true).assertIsDisplayed()
-        regra.onNodeWithText("ⓘ Acidente").assertIsDisplayed()
+        regra.onNodeWithText("Acidente").assertIsDisplayed()
         regra.onNodeWithText("Relatado por 1 passageiro · por confirmar · há 10 min", substring = true).assertIsDisplayed()
     }
 

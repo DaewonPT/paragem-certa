@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.BasicAlertDialog
@@ -28,6 +27,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
@@ -67,6 +68,7 @@ import pt.pixellusitano.paragemcerta.core.fotos.FotoDeRua
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import pt.pixellusitano.paragemcerta.dados.Comunidade
 import pt.pixellusitano.paragemcerta.dados.Configuracoes
+import pt.pixellusitano.paragemcerta.ui.tema.Icones
 import java.io.File
 import java.io.FileNotFoundException
 import java.io.InputStream
@@ -358,7 +360,7 @@ fun FotoDaParagem(foto: FotoRemota, carregar: suspend (String) -> ByteArray?, ao
 @Composable
 internal fun FotoDaParagemConteudo(imagem: ImageBitmap?, falhou: Boolean, aoOcultar: (() -> Unit)?, aoDenunciar: (() -> Unit)?) {
     Column(Modifier.padding(top = 16.dp).fillMaxWidth()) {
-        ImagemDaFoto(imagem, falhou, stringResource(R.string.foto_da_paragem), Modifier.clip(RoundedCornerShape(10.dp)))
+        ImagemDaFoto(imagem, falhou, stringResource(R.string.foto_da_paragem), Modifier.clip(MaterialTheme.shapes.large))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 stringResource(R.string.foto_credito), style = MaterialTheme.typography.bodySmall,
@@ -389,7 +391,7 @@ internal fun MenuDaFoto(aoOcultar: (() -> Unit)?, aoDenunciar: (() -> Unit)?) {
     val opcoes = stringResource(R.string.foto_mais_opcoes)
     if (aoOcultar == null && aoDenunciar == null) return
     Box {
-        TextButton(onClick = { menu = true }, modifier = Modifier.semantics { contentDescription = opcoes }) { Text("⋯") }
+        IconButton(onClick = { menu = true }, Modifier.semantics { contentDescription = opcoes }) { Icon(Icones.Mais, null) }
         DropdownMenu(menu, onDismissRequest = { menu = false }) {
             aoOcultar?.let { ocultar -> DropdownMenuItem(text = { Text(stringResource(R.string.foto_ocultar)) }, onClick = { menu = false; ocultar() }) }
             aoDenunciar?.let { denunciar -> DropdownMenuItem(text = { Text(stringResource(R.string.relato_denunciar)) }, onClick = { menu = false; denunciar() }) }

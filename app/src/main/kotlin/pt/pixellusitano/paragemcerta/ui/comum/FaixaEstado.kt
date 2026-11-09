@@ -3,7 +3,6 @@ package pt.pixellusitano.paragemcerta.ui.comum
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,7 +30,7 @@ fun FaixaEstado(e: EstadoChegadas, agora: Instant, modifier: Modifier = Modifier
         texto,
         color = MaterialTheme.colorScheme.onSecondary,
         style = MaterialTheme.typography.labelMedium,
-        modifier = modifier.fillMaxWidth().background(MaterialTheme.colorScheme.secondary, RoundedCornerShape(8.dp))
+        modifier = modifier.fillMaxWidth().background(MaterialTheme.colorScheme.secondary, MaterialTheme.shapes.small)
             .padding(horizontal = 10.dp, vertical = 6.dp),
     )
 }

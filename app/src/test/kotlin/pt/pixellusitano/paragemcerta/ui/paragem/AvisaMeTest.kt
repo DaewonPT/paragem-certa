@@ -122,6 +122,12 @@ class AvisaMeTest {
         }
     }
 
+    @Test fun avisa_me_escuro() = captureRoboImage("src/test/screenshots/avisa_me_escuro.png") {
+        TemaParagemCerta(ModoTema.ESCURO) {
+            AvisaMeConteudo(linhas, aoAvisar = { _, _ -> }, aoCancelar = {}, modifier = Modifier.width(312.dp))
+        }
+    }
+
     // ---- o botão no ecrã da paragem ----
 
     @Composable

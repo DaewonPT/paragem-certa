@@ -1,6 +1,5 @@
 package pt.pixellusitano.paragemcerta.ui.comunidade
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -9,10 +8,12 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -21,6 +22,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -31,8 +33,11 @@ import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.core.comunidade.TipoRelato
 import pt.pixellusitano.paragemcerta.core.fontes.servidor.RelatoRemoto
 import pt.pixellusitano.paragemcerta.core.modelo.Gravidade
+import pt.pixellusitano.paragemcerta.ui.comum.CartaoAzulejo
 import pt.pixellusitano.paragemcerta.ui.paragem.estiloDaGravidade
+import pt.pixellusitano.paragemcerta.ui.tema.Icones
 import pt.pixellusitano.paragemcerta.ui.tema.LocalEscuro
+import pt.pixellusitano.paragemcerta.ui.tema.iconeRelato
 import java.time.Duration
 import java.time.Instant
 
@@ -67,30 +72,35 @@ fun CartaoRelato(
     val jaNao = stringResource(R.string.relato_ja_nao_esta_de, titulo)
     val denunciar = stringResource(R.string.relato_denunciar_de, titulo)
 
-    Column(Modifier.padding(vertical = 6.dp).fillMaxWidth().background(estilo.fundo, RoundedCornerShape(10.dp)).padding(10.dp)) {
-        Row {
-            // Título e detalhe lêem-se juntos; com letra grande quebram em vez de empurrar o menu para fora.
-            Column(Modifier.weight(1f).semantics(mergeDescendants = true) {}) {
-                Text("${estilo.icone} $titulo", color = estilo.texto, style = MaterialTheme.typography.labelLarge)
-                Text(detalhe, color = estilo.texto, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp))
-            }
-            Box {
-                TextButton(onClick = { menu = true }, colors = botao, modifier = Modifier.semantics { contentDescription = opcoes }) { Text("⋯") }
-                DropdownMenu(menu, onDismissRequest = { menu = false }) {
-                    DropdownMenuItem(text = { Text(stringResource(R.string.relato_ocultar)) }, onClick = { menu = false; aoOcultar() })
+    CartaoAzulejo(Modifier.padding(vertical = 6.dp).fillMaxWidth(), cor = estilo.fundo, contorno = estilo.texto.copy(alpha = 0.4f)) {
+        Column(Modifier.padding(10.dp)) {
+            Row {
+                // Título e detalhe lêem-se juntos; com letra grande quebram em vez de empurrar o menu para fora.
+                Column(Modifier.weight(1f).semantics(mergeDescendants = true) {}) {
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Icon(iconeRelato(tipo), null, Modifier.size(18.dp), tint = estilo.texto)
+                        Text(titulo, color = estilo.texto, style = MaterialTheme.typography.labelLarge)
+                    }
+                    Text(detalhe, color = estilo.texto, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp))
+                }
+                Box {
+                    IconButton(onClick = { menu = true }, Modifier.semantics { contentDescription = opcoes }) { Icon(Icones.Mais, null, tint = estilo.texto) }
+                    DropdownMenu(menu, onDismissRequest = { menu = false }) {
+                        DropdownMenuItem(text = { Text(stringResource(R.string.relato_ocultar)) }, onClick = { menu = false; aoOcultar() })
+                    }
                 }
             }
-        }
-        // Três botões não cabem numa linha com letra a 200%: quebram para a linha de baixo.
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            TextButton(onClick = { aoVotar(true) }, colors = botao, modifier = Modifier.semantics { contentDescription = ainda }) {
-                Text(stringResource(R.string.relato_ainda_esta))
-            }
-            TextButton(onClick = { aoVotar(false) }, colors = botao, modifier = Modifier.semantics { contentDescription = jaNao }) {
-                Text(stringResource(R.string.relato_ja_nao_esta))
-            }
-            TextButton(onClick = aoDenunciar, colors = botao, modifier = Modifier.semantics { contentDescription = denunciar }) {
-                Text(stringResource(R.string.relato_denunciar))
+            // Três botões não cabem numa linha com letra a 200%: quebram para a linha de baixo.
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                TextButton(onClick = { aoVotar(true) }, colors = botao, modifier = Modifier.semantics { contentDescription = ainda }) {
+                    Text(stringResource(R.string.relato_ainda_esta))
+                }
+                TextButton(onClick = { aoVotar(false) }, colors = botao, modifier = Modifier.semantics { contentDescription = jaNao }) {
+                    Text(stringResource(R.string.relato_ja_nao_esta))
+                }
+                TextButton(onClick = aoDenunciar, colors = botao, modifier = Modifier.semantics { contentDescription = denunciar }) {
+                    Text(stringResource(R.string.relato_denunciar))
+                }
             }
         }
     }

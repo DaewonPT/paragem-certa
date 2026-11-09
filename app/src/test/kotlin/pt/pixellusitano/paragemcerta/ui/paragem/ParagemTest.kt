@@ -8,6 +8,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.assertWidthIsAtLeast
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onRoot
 import com.github.takahirom.roborazzi.captureRoboImage
 import kotlinx.coroutines.flow.flowOf
 import androidx.compose.ui.test.onNodeWithText
@@ -155,6 +167,59 @@ class ParagemTest {
     @Test fun semAParagemCarregadaNaoHaBussola() {
         regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Ecra(estado) } }
         regra.onNodeWithText("Encontrar a paragem").assertDoesNotExist()
+    }
+
+    @Test fun voltarEUmBotaoDe48dpComADescricaoVoltar() {
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Ecra(estado) } }
+        regra.onNodeWithContentDescription("Voltar").assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp).assertHasClickAction()
+    }
+
+    @Test fun estrelaEUmBotaoDe48dpQueMudaAoTocar() {
+        regra.setContent {
+            TemaParagemCerta(ModoTema.CLARO) {
+                var favorita by remember { mutableStateOf(false) }
+                ParagemConteudo(
+                    nome = "Cais do Sodré", codigo = "060419", acessivel = null, favorita = favorita, vigiada = false, estado = estado, filtro = null,
+                    linhasPresentes = emptyList(), alertas = emptyList(), linhas = emptyMap(), agora = agora,
+                    aoFiltrar = {}, aoFavoritar = { favorita = !favorita }, aoAvisaMe = {}, aoReportar = {}, aoVoltar = {},
+                )
+            }
+        }
+        regra.onNodeWithContentDescription("Tirar das favoritas").assertDoesNotExist()
+        regra.onNodeWithContentDescription("Juntar às favoritas").assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp).performClick()
+        regra.onNodeWithContentDescription("Juntar às favoritas").assertDoesNotExist()
+        regra.onNodeWithContentDescription("Tirar das favoritas").assertHeightIsAtLeast(48.dp).assertHasClickAction()
+    }
+
+    @Test fun comLetraA200NomeCompridoNaoCortaVoltarNemEstrela() {
+        val nome = "Avenida Infante Dom Henrique, junto ao Terminal Fluvial do Cais do Sodré"
+        regra.setContent {
+            val d = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(d.density, fontScale = 2f)) {
+                TemaParagemCerta(ModoTema.CLARO) {
+                    ParagemConteudo(
+                        nome = nome, codigo = "060419", acessivel = true, favorita = true, vigiada = false, estado = estado, filtro = null,
+                        linhasPresentes = emptyList(), alertas = emptyList(), linhas = emptyMap(), agora = agora,
+                        aoFiltrar = {}, aoFavoritar = {}, aoAvisaMe = {}, aoReportar = {}, aoVoltar = {}, modifier = Modifier.width(360.dp),
+                    )
+                }
+            }
+        }
+        regra.onNodeWithContentDescription("Voltar").assertIsDisplayed().assertHeightIsAtLeast(48.dp)
+        regra.onNodeWithContentDescription("Tirar das favoritas").assertIsDisplayed().assertHeightIsAtLeast(48.dp)
+        regra.onNodeWithText(nome).assertIsDisplayed()
+        val voltar = regra.onNodeWithContentDescription("Voltar").fetchSemanticsNode().boundsInRoot
+        val estrela = regra.onNodeWithContentDescription("Tirar das favoritas").fetchSemanticsNode().boundsInRoot
+        val titulo = regra.onNodeWithText(nome).fetchSemanticsNode().boundsInRoot
+        assertTrue(voltar.left >= 0f && estrela.right <= regra.onRoot().fetchSemanticsNode().boundsInRoot.right)
+        assertTrue(titulo.top >= maxOf(voltar.bottom, estrela.bottom)) // o título vem por baixo, sem se sobrepor
+    }
+
+    @Test fun soOFiltroEscolhidoFicaSelecionado() {
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Ecra(estado) } }
+        regra.onNodeWithText("Todas").assertIsSelected()
+        regra.onNodeWithText("1001").assertIsNotSelected()
+        regra.onNodeWithText("3708").assertIsNotSelected()
     }
 
     @Composable

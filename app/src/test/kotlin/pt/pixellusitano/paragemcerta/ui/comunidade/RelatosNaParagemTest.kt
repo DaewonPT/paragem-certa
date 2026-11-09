@@ -194,7 +194,7 @@ class RelatosNaParagemTest {
         http.relatos = listOf(relato(confirmacoes = 1))
         abrir()
         esperarPor("Desvio na 736")
-        regra.onNodeWithText("ⓘ Desvio na 736").assertExists()
+        regra.onNodeWithText("Desvio na 736").assertExists()
         regra.onNodeWithText("Relatado por 1 passageiro · por confirmar · há 4 min").assertExists()
         regra.onNodeWithText("Confirmado", substring = true).assertDoesNotExist()
     }
@@ -204,7 +204,7 @@ class RelatosNaParagemTest {
         http.relatos = listOf(relato(confirmacoes = 2))
         abrir()
         esperarPor("Desvio na 736")
-        regra.onNodeWithText("⚠ Desvio na 736").assertExists()
+        regra.onNodeWithText("Desvio na 736").assertExists()
         regra.onNodeWithText("Confirmado por 2 passageiros · há 4 min").assertExists()
         regra.onNodeWithText("por confirmar", substring = true).assertDoesNotExist()
     }
@@ -236,7 +236,7 @@ class RelatosNaParagemTest {
         http.relatos = listOf(relato(tipo = "elevador", linha = ""))
         abrir()
         esperarPor("Elevador ou escada avariados")
-        regra.onNodeWithText("ⓘ Elevador ou escada avariados").assertExists()
+        regra.onNodeWithText("Elevador ou escada avariados").assertExists()
     }
 
     @Test fun relatoDeUmTipoQueAAppNaoConheceNaoApareceNemRebenta() {

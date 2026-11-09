@@ -19,10 +19,10 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -72,6 +72,7 @@ import pt.pixellusitano.paragemcerta.dados.LinhaFavorita
 import pt.pixellusitano.paragemcerta.dados.Preferencias
 import pt.pixellusitano.paragemcerta.dados.Repositorio
 import pt.pixellusitano.paragemcerta.dados.SentidoLinha
+import pt.pixellusitano.paragemcerta.ui.comum.CartaoAzulejo
 import pt.pixellusitano.paragemcerta.ui.comum.FaixaEstado
 import pt.pixellusitano.paragemcerta.ui.comum.LinhaChegada
 import pt.pixellusitano.paragemcerta.ui.comum.SeloLinha
@@ -90,6 +91,7 @@ import pt.pixellusitano.paragemcerta.ui.paragem.rememberAoVivoCarris
 import pt.pixellusitano.paragemcerta.ui.rotas.hex
 import pt.pixellusitano.paragemcerta.ui.tema.FrisoAzulejo
 import pt.pixellusitano.paragemcerta.ui.tema.LocalEscuro
+import pt.pixellusitano.paragemcerta.ui.tema.iconeRelato
 import java.time.Instant
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
@@ -413,11 +415,16 @@ private fun RelatoDaLinha(r: RelatoRemoto, agora: Instant) {
     val passageiros = maxOf(r.confirmacoes, 1)
     val quando = haQuanto(Instant.ofEpochMilli(r.criadoEm), agora)
     val detalhe = pluralStringResource(if (r.confirmado) R.plurals.relato_confirmado else R.plurals.relato_por_confirmar, passageiros, passageiros, quando)
-    Column(
-        Modifier.padding(horizontal = 16.dp, vertical = 4.dp).fillMaxWidth().background(estilo.fundo, RoundedCornerShape(10.dp)).padding(10.dp)
-            .semantics(mergeDescendants = true) {},
+    CartaoAzulejo(
+        Modifier.padding(horizontal = 16.dp, vertical = 4.dp).fillMaxWidth().semantics(mergeDescendants = true) {},
+        cor = estilo.fundo, contorno = estilo.texto.copy(alpha = 0.4f),
     ) {
-        Text("${estilo.icone} ${stringResource(nomeDoTipo(tipo))}", color = estilo.texto, style = MaterialTheme.typography.labelLarge)
-        Text(detalhe, color = estilo.texto, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp))
+        Column(Modifier.padding(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(iconeRelato(tipo), null, Modifier.size(18.dp), tint = estilo.texto)
+                Text(stringResource(nomeDoTipo(tipo)), color = estilo.texto, style = MaterialTheme.typography.labelLarge)
+            }
+            Text(detalhe, color = estilo.texto, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp))
+        }
     }
 }

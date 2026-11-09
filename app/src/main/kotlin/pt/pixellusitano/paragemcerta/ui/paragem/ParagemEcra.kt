@@ -1,25 +1,23 @@
 package pt.pixellusitano.paragemcerta.ui.paragem
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -31,11 +29,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -64,8 +60,13 @@ import pt.pixellusitano.paragemcerta.dados.Configuracoes
 import pt.pixellusitano.paragemcerta.dados.EstadoChegadas
 import pt.pixellusitano.paragemcerta.dados.Preferencias
 import pt.pixellusitano.paragemcerta.dados.Repositorio
+import pt.pixellusitano.paragemcerta.ui.comum.BotaoPrincipal
+import pt.pixellusitano.paragemcerta.ui.comum.BotaoSecundario
+import pt.pixellusitano.paragemcerta.ui.comum.CabecalhoAzulejo
+import pt.pixellusitano.paragemcerta.ui.comum.CartaoAzulejo
 import pt.pixellusitano.paragemcerta.ui.comum.FaixaEstado
 import pt.pixellusitano.paragemcerta.ui.comum.LinhaChegada
+import pt.pixellusitano.paragemcerta.ui.comum.bordaDoFiltro
 import pt.pixellusitano.paragemcerta.ui.comunidade.CartaoRelato
 import pt.pixellusitano.paragemcerta.ui.comunidade.CorrigirNaParagem
 import pt.pixellusitano.paragemcerta.ui.comunidade.FotosDaParagem
@@ -73,8 +74,9 @@ import pt.pixellusitano.paragemcerta.ui.comunidade.RelatarNaParagem
 import pt.pixellusitano.paragemcerta.ui.comunidade.aplicarCorrecoes
 import pt.pixellusitano.paragemcerta.ui.comunidade.fotoDeRuaVisivel
 import pt.pixellusitano.paragemcerta.ui.comunidade.rememberRelatosDaParagem
+import pt.pixellusitano.paragemcerta.ui.tema.Azulejo
 import pt.pixellusitano.paragemcerta.ui.tema.CoresGravidade
-import pt.pixellusitano.paragemcerta.ui.tema.FrisoAzulejo
+import pt.pixellusitano.paragemcerta.ui.tema.Icones
 import pt.pixellusitano.paragemcerta.ui.tema.LocalEscuro
 import java.time.Instant
 
@@ -217,39 +219,27 @@ fun ParagemConteudo(
     aoVivo: Map<String, AoVivo> = emptyMap(),
 ) {
     Column(modifier.background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState())) {
-        Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.primary).statusBarsPadding().padding(start = 4.dp, end = 4.dp, bottom = 12.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                TextButton(onClick = aoVoltar) { Text("← " + stringResource(R.string.voltar), color = MaterialTheme.colorScheme.onPrimary) }
-                Row(Modifier.weight(1f), horizontalArrangement = Arrangement.End) {
-                    val descricao = stringResource(if (favorita) R.string.paragem_favorita else R.string.paragem_nao_favorita)
-                    Text(
-                        if (favorita) "★" else "☆",
-                        style = MaterialTheme.typography.headlineSmall,
-                        color = MaterialTheme.colorScheme.secondary,
-                        modifier = Modifier.padding(end = 8.dp).heightIn(min = 48.dp)
-                            .clickable(role = Role.Button, onClick = aoFavoritar)
-                            .semantics { contentDescription = descricao }
-                            .padding(10.dp),
-                    )
+        val descricao = stringResource(if (favorita) R.string.paragem_favorita else R.string.paragem_nao_favorita)
+        CabecalhoAzulejo(
+            nome, aoVoltar,
+            subtitulo = stringResource(R.string.paragem_codigo, codigo) + if (acessivel == true) "  ·  ♿ " + stringResource(R.string.acessivel) else "",
+            acao = {
+                IconButton(onClick = aoFavoritar, Modifier.size(48.dp)) {
+                    Icon(if (favorita) Icones.EstrelaCheia else Icones.Estrela, descricao, tint = Azulejo.Eletrico)
                 }
-            }
-            Text(nome, style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onPrimary,
-                modifier = Modifier.padding(horizontal = 12.dp))
-            Text(
-                stringResource(R.string.paragem_codigo, codigo) + if (acessivel == true) "  ·  ♿ " + stringResource(R.string.acessivel) else "",
-                color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f),
-                modifier = Modifier.padding(horizontal = 12.dp),
-            )
-        }
-        FrisoAzulejo(Modifier.fillMaxWidth())
+            },
+        )
         Column(Modifier.padding(16.dp)) {
             if (jaNaoExiste) AvisoJaNaoExiste()
             estado?.let { FaixaEstado(it, agora, Modifier.padding(bottom = 8.dp)) }
             if (linhasPresentes.size > 1) {
                 Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(selected = filtro == null, onClick = { aoFiltrar(null) }, label = { Text(stringResource(R.string.paragem_todas)) })
+                    FilterChip(
+                        selected = filtro == null, onClick = { aoFiltrar(null) }, label = { Text(stringResource(R.string.paragem_todas)) },
+                        border = bordaDoFiltro(filtro == null),
+                    )
                     linhasPresentes.forEach { (_, nome) ->
-                        FilterChip(selected = filtro == nome, onClick = { aoFiltrar(nome) }, label = { Text(nome) })
+                        FilterChip(selected = filtro == nome, onClick = { aoFiltrar(nome) }, label = { Text(nome) }, border = bordaDoFiltro(filtro == nome))
                     }
                 }
             }
@@ -262,30 +252,35 @@ fun ParagemConteudo(
             }
             // Filtra outra vez com o relógio do ecrã: sem rede, a próxima resposta pode demorar minutos.
             val visiveis = estado?.chegadas?.filter { aindaPorChegar(it, agora) }
-            when {
-                estado == null -> Text(stringResource(R.string.a_carregar), color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    modifier = Modifier.padding(vertical = 16.dp))
-                visiveis.isNullOrEmpty() && !estado.semLigacao && !estado.tempoRealIndisponivel ->
-                    Text(stringResource(R.string.sem_chegadas), color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.padding(vertical = 16.dp))
-                else -> visiveis.orEmpty().forEach { LinhaChegada(it, linhas[it.linhaId], agora, aoVivo = aoVivo[it.idViagem]) }
+            val semNada = estado != null && visiveis.isNullOrEmpty() && (estado.semLigacao || estado.tempoRealIndisponivel)
+            if (!semNada) {
+                CartaoAzulejo(Modifier.padding(top = 8.dp).fillMaxWidth()) {
+                    Column(Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
+                        when {
+                            estado == null -> Text(stringResource(R.string.a_carregar), color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(vertical = 10.dp))
+                            visiveis.isNullOrEmpty() ->
+                                Text(stringResource(R.string.sem_chegadas), color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(vertical = 10.dp))
+                            else -> visiveis.forEach { LinhaChegada(it, linhas[it.linhaId], agora, aoVivo = aoVivo[it.idViagem]) }
+                        }
+                    }
+                }
             }
             // Sem linhas à vista não há o que escolher; se a paragem já está vigiada, "Parar" serve sempre.
-            Button(onClick = aoAvisaMe, enabled = vigiada || linhasPresentes.isNotEmpty(), modifier = Modifier.padding(top = 16.dp).fillMaxWidth()) {
+            BotaoPrincipal(aoAvisaMe, Modifier.padding(top = 16.dp).fillMaxWidth(), ativo = vigiada || linhasPresentes.isNotEmpty()) {
+                Icon(Icones.Avisar, null, Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
                 Text(stringResource(if (vigiada) R.string.avisame_vigiar_parar else R.string.avisame))
             }
             relatar()
             fotos()
             // Precisa das coordenadas da paragem: enquanto ela não carrega, não há bússola.
             aoEncontrar?.let {
-                OutlinedButton(onClick = it, modifier = Modifier.padding(top = 16.dp).fillMaxWidth()) {
-                    Text(stringResource(R.string.bussola_encontrar))
-                }
+                BotaoSecundario(it, Modifier.padding(top = 16.dp).fillMaxWidth()) { Text(stringResource(R.string.bussola_encontrar)) }
             }
             corrigir()
-            OutlinedButton(onClick = aoReportar, modifier = Modifier.padding(top = 16.dp).fillMaxWidth()) {
-                Text(stringResource(R.string.paragem_reportar))
-            }
+            BotaoSecundario(aoReportar, Modifier.padding(top = 16.dp).fillMaxWidth()) { Text(stringResource(R.string.paragem_reportar)) }
         }
     }
 }
@@ -294,34 +289,35 @@ fun ParagemConteudo(
 @Composable
 private fun AvisoJaNaoExiste() {
     val estilo = estiloDaGravidade(Gravidade.AVISO, LocalEscuro.current)
-    Text(
-        stringResource(R.string.paragem_ja_nao_existe), color = estilo.texto, style = MaterialTheme.typography.labelLarge,
-        modifier = Modifier.padding(bottom = 8.dp).fillMaxWidth().background(estilo.fundo, RoundedCornerShape(10.dp)).padding(10.dp),
-    )
+    CartaoAzulejo(Modifier.padding(bottom = 8.dp).fillMaxWidth(), cor = estilo.fundo, contorno = estilo.texto.copy(alpha = 0.4f)) {
+        Text(stringResource(R.string.paragem_ja_nao_existe), color = estilo.texto, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(10.dp))
+    }
 }
 
 @Composable
 private fun CartaoAlerta(a: Alerta) {
     var aberto by rememberSaveable(a.id) { mutableStateOf(false) }
     val (fundo, texto, rotulo, icone) = estiloDaGravidade(a.gravidade, LocalEscuro.current)
-    Column(
-        Modifier.padding(vertical = 6.dp).fillMaxWidth().background(fundo, RoundedCornerShape(10.dp))
-            .clickable(role = Role.Button) { aberto = !aberto }.padding(10.dp),
-    ) {
-        Text("$icone ${stringResource(rotulo)} · ${a.titulo}", color = texto, style = MaterialTheme.typography.labelLarge)
-        if (aberto) Text(a.texto, color = texto, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp))
-        else Text(stringResource(R.string.mostrar_mais), color = texto, style = MaterialTheme.typography.labelSmall)
+    CartaoAzulejo(Modifier.padding(vertical = 6.dp).fillMaxWidth(), aoTocar = { aberto = !aberto }, cor = fundo, contorno = texto.copy(alpha = 0.4f)) {
+        Column(Modifier.padding(10.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(icone, null, Modifier.size(18.dp), tint = texto)
+                Text("${stringResource(rotulo)} · ${a.titulo}", color = texto, style = MaterialTheme.typography.labelLarge)
+            }
+            if (aberto) Text(a.texto, color = texto, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp))
+            else Text(stringResource(R.string.mostrar_mais), color = texto, style = MaterialTheme.typography.labelSmall)
+        }
     }
 }
 
 /** As cores e o ícone de cada gravidade; os cartões dos relatos usam os mesmos (por confirmar = INFO, confirmado = AVISO). */
 internal fun estiloDaGravidade(g: Gravidade, escuro: Boolean): EstiloAlerta {
     val (rotulo, icone) = when (g) {
-        Gravidade.GRAVE -> R.string.gravidade_grave to "⛔"
-        Gravidade.AVISO -> R.string.gravidade_aviso to "⚠"
-        Gravidade.INFO -> R.string.gravidade_info to "ⓘ"
+        Gravidade.GRAVE -> R.string.gravidade_grave to Icones.Grave
+        Gravidade.AVISO -> R.string.gravidade_aviso to Icones.Aviso
+        Gravidade.INFO -> R.string.gravidade_info to Icones.Info
     }
     return EstiloAlerta(CoresGravidade.fundo(g, escuro), CoresGravidade.texto(g, escuro), rotulo, icone)
 }
 
-internal data class EstiloAlerta(val fundo: Color, val texto: Color, val rotulo: Int, val icone: String)
+internal data class EstiloAlerta(val fundo: Color, val texto: Color, val rotulo: Int, val icone: ImageVector)

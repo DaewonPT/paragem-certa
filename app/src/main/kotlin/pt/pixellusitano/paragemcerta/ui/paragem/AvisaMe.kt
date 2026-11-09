@@ -44,6 +44,7 @@ import androidx.core.content.ContextCompat
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.aviso.ServicoAvisoChegada
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
+import pt.pixellusitano.paragemcerta.ui.comum.bordaDoFiltro
 
 /** Quantos minutos antes se pode pedir o aviso, e o que vem marcado. */
 private val MINUTOS = listOf(2, 5, 10, 15)
@@ -123,7 +124,10 @@ fun AvisaMeConteudo(linhas: List<String>, aoAvisar: (Set<String>, Int) -> Unit, 
                 // Em ecrãs estreitos ou com letra grande os minutos passam à linha seguinte, em vez de ficarem escondidos de lado.
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     MINUTOS.forEach { m ->
-                        FilterChip(selected = m == minutos, onClick = { minutos = m }, label = { Text(stringResource(R.string.avisame_minutos, m)) })
+                        FilterChip(
+                            selected = m == minutos, onClick = { minutos = m }, label = { Text(stringResource(R.string.avisame_minutos, m)) },
+                            border = bordaDoFiltro(m == minutos),
+                        )
                     }
                 }
             }

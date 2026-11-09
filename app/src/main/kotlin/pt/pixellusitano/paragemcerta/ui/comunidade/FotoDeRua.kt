@@ -92,7 +92,7 @@ internal fun FotoDeRuaConteudo(foto: FotoDeRua, imagem: ImageBitmap?, falhou: Bo
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
                 stringResource(R.string.foto_rua_credito, foto.autor, foto.licenca, anoDaFoto(foto)),
-                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary,
                 textDecoration = TextDecoration.Underline,
                 modifier = Modifier.weight(1f).clickable(role = Role.Button, onClick = aoAbrirPagina)
                     .heightIn(min = 48.dp).wrapContentHeight(Alignment.CenterVertically),
