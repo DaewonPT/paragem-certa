@@ -17,6 +17,7 @@ val Nunito = FontFamily(
     nunito(FontWeight.SemiBold),
     nunito(FontWeight.Bold),
     nunito(FontWeight.ExtraBold),
+    nunito(FontWeight.Black),
 )
 
 private val base = Typography()

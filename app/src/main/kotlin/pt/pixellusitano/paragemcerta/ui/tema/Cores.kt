@@ -10,7 +10,8 @@ object Azulejo {
     val Tinta = Color(0xFF132A4F)
     val Branco = Color(0xFFFFFFFF)
     val Cinza = Color(0xFF627189) // 4,95:1 sobre branco (o 6B7A90 ficava em 4,36:1)
-    val LinhaClara = Color(0xFFE5EAF3)
+    val Marfim = Color(0xFFF4F7FC)
+    val Contorno = Color(0xFFDCE4F2)
 
     val Noite = Color(0xFF0B1222)
     val NoiteSuperficie = Color(0xFF121B30)
@@ -18,6 +19,7 @@ object Azulejo {
     val TextoNoite = Color(0xFFEAF0FB)
     val CinzaNoite = Color(0xFF8D9AB3)
     val LinhaEscura = Color(0xFF223052)
+    val ContornoNoite = Color(0xFF26355A)
     val FrisoNoite = Color(0xFF2A4F96)
 }
 

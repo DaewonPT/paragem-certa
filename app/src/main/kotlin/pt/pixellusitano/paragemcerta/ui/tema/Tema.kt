@@ -3,7 +3,9 @@ package pt.pixellusitano.paragemcerta.ui.tema
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
@@ -25,12 +27,20 @@ private val Claro = lightColorScheme(
     onSecondary = Azulejo.Tinta,
     secondaryContainer = androidx.compose.ui.graphics.Color(0xFFDCE6F7),
     onSecondaryContainer = Azulejo.Tinta,
-    background = Azulejo.Branco,
+    background = Azulejo.Marfim,
     onBackground = Azulejo.Tinta,
     surface = Azulejo.Branco,
     onSurface = Azulejo.Tinta,
     onSurfaceVariant = Azulejo.Cinza,
-    outlineVariant = Azulejo.LinhaClara,
+    outlineVariant = Azulejo.Contorno,
+    surfaceVariant = Azulejo.Branco,
+    surfaceContainerLowest = Azulejo.Branco,
+    surfaceContainerLow = Azulejo.Branco,
+    surfaceContainer = Azulejo.Branco,
+    surfaceContainerHigh = Azulejo.Branco,
+    surfaceContainerHighest = Azulejo.Branco,
+    surfaceBright = Azulejo.Branco,
+    surfaceDim = Azulejo.Branco,
 )
 
 private val Escuro = darkColorScheme(
@@ -45,7 +55,22 @@ private val Escuro = darkColorScheme(
     surface = Azulejo.NoiteSuperficie,
     onSurface = Azulejo.TextoNoite,
     onSurfaceVariant = Azulejo.CinzaNoite,
-    outlineVariant = Azulejo.LinhaEscura,
+    outlineVariant = Azulejo.ContornoNoite,
+    surfaceVariant = Azulejo.NoiteSuperficie,
+    surfaceContainerLowest = Azulejo.NoiteSuperficie,
+    surfaceContainerLow = Azulejo.NoiteSuperficie,
+    surfaceContainer = Azulejo.NoiteSuperficie,
+    surfaceContainerHigh = Azulejo.NoiteSuperficie,
+    surfaceContainerHighest = Azulejo.NoiteSuperficie,
+    surfaceBright = Azulejo.NoiteSuperficie,
+    surfaceDim = Azulejo.NoiteSuperficie,
+)
+
+val FormasParagemCerta = Shapes(
+    small = RoundedCornerShape(8.dp),
+    medium = RoundedCornerShape(14.dp),
+    large = RoundedCornerShape(20.dp),
+    extraLarge = RoundedCornerShape(28.dp),
 )
 
 @Composable
@@ -56,7 +81,7 @@ fun TemaParagemCerta(modo: ModoTema = ModoTema.SISTEMA, content: @Composable () 
         ModoTema.ESCURO -> true
     }
     androidx.compose.runtime.CompositionLocalProvider(LocalEscuro provides escuro) {
-        MaterialTheme(colorScheme = if (escuro) Escuro else Claro, typography = LetraParagemCerta, content = content)
+        MaterialTheme(colorScheme = if (escuro) Escuro else Claro, typography = LetraParagemCerta, shapes = FormasParagemCerta, content = content)
     }
 }
 
@@ -65,9 +90,7 @@ fun TemaParagemCerta(modo: ModoTema = ModoTema.SISTEMA, content: @Composable () 
 fun FrisoAzulejo(modifier: Modifier = Modifier) {
     val escuro = LocalEscuro.current
     val risca = if (escuro) Azulejo.FrisoNoite else Azulejo.Cobalto
-    val fundo = MaterialTheme.colorScheme.surface
     Canvas(modifier.height(6.dp)) {
-        drawRect(fundo)
         val passo = 6.dp.toPx()
         clipRect {
             var x = -size.height
