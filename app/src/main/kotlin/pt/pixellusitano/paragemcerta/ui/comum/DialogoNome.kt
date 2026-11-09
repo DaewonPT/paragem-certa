@@ -21,7 +21,7 @@ fun DialogoNome(titulo: String, inicial: String, aoConfirmar: (String) -> Unit, 
         onDismissRequest = aoCancelar,
         title = { Text(titulo) },
         text = {
-            OutlinedTextField(nome, { nome = it }, shape = MaterialTheme.shapes.medium, singleLine = true, label = { Text(stringResource(R.string.dialogo_nome)) })
+            OutlinedTextField(nome, { nome = it.take(500) }, shape = MaterialTheme.shapes.medium, singleLine = true, label = { Text(stringResource(R.string.dialogo_nome)) })
         },
         confirmButton = {
             TextButton(onClick = { aoConfirmar(nome.trim()) }, enabled = nome.isNotBlank()) { Text(stringResource(R.string.guardar)) }
