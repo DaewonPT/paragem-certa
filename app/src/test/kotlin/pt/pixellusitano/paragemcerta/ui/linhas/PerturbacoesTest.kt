@@ -1,6 +1,10 @@
 package pt.pixellusitano.paragemcerta.ui.linhas
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -8,6 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
@@ -26,6 +31,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -229,6 +235,35 @@ class PerturbacoesTest {
         regra.onNodeWithText("×").assertDoesNotExist()
     }
 
+    @Test fun faixaCabeNumaLinhaA360dp() {
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { FaixaPerturbacoes(2, aoAbrir = {}, aoFechar = {}) } }
+        val caixa = regra.onNodeWithText("2 perturbações novas nas tuas linhas", useUnmergedTree = true).getUnclippedBoundsInRoot()
+        assertTrue("altura ${caixa.bottom - caixa.top}", caixa.bottom - caixa.top < 24.dp)
+    }
+
+    @Test fun osItensDeUmaSeccaoFormamUmSoCartaoComOTextoCentrado() {
+        regra.setContent {
+            TemaParagemCerta(ModoTema.CLARO) {
+                PerturbacoesConteudo(
+                    minhas = emptyList(),
+                    outras = listOf(perturbacao("Odivelas | 1604: Paragem desativada", setOf("1604")), perturbacao("Setúbal | 4725: Obras na Avenida", setOf("4725"))),
+                    filtro = null, aoFiltrar = {}, aoVoltar = {}, modifier = Modifier.width(360.dp),
+                )
+            }
+        }
+        val primeiro = regra.onNodeWithText("Odivelas | 1604: Paragem desativada").getUnclippedBoundsInRoot()
+        val segundo = regra.onNodeWithText("Setúbal | 4725: Obras na Avenida").getUnclippedBoundsInRoot()
+        // Só a divisória de 1 dp separa os dois: sem espaço entre cartões.
+        assertTrue("entre os itens: ${segundo.top - primeiro.bottom}", segundo.top - primeiro.bottom < 2.dp)
+        val texto = regra.onNodeWithText("Odivelas | 1604: Paragem desativada", useUnmergedTree = true).getUnclippedBoundsInRoot()
+        assertEquals((primeiro.top + primeiro.bottom).value / 2, (texto.top + texto.bottom).value / 2, 1f)
+    }
+
+    @Test fun cartaoDasPerturbacoesDasLinhasEUmBotao() {
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { CartaoPerturbacoes(3, aoAbrir = {}) } }
+        regra.onNodeWithText("Perturbações (3)").assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+    }
+
     @Test fun titulosDasSeccoesSaoCabecalhos() {
         regra.setContent {
             TemaParagemCerta(ModoTema.CLARO) {
@@ -265,7 +300,10 @@ class PerturbacoesTest {
     @Test fun perturbacoes_letra200() = captureRoboImage("src/test/screenshots/perturbacoes_letra200.png") { Lista(ModoTema.CLARO, letra = 2f) }
 
     @Test fun faixa_perturbacoes_escuro() = captureRoboImage("src/test/screenshots/faixa_perturbacoes_escuro.png") {
-        TemaParagemCerta(ModoTema.ESCURO) { FaixaPerturbacoes(2, aoAbrir = {}, aoFechar = {}) }
+        TemaParagemCerta(ModoTema.ESCURO) {
+            // Como no app: a faixa flutua sobre o fundo do tema, que no escuro é onde a sombra não se vê.
+            Box(Modifier.background(MaterialTheme.colorScheme.background).padding(vertical = 8.dp)) { FaixaPerturbacoes(2, aoAbrir = {}, aoFechar = {}) }
+        }
     }
 
     @Test fun faixa_perturbacoes_claro()= captureRoboImage("src/test/screenshots/faixa_perturbacoes_claro.png") {

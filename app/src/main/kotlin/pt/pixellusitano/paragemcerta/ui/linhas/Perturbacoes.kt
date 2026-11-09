@@ -18,7 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -51,7 +51,7 @@ import pt.pixellusitano.paragemcerta.core.perturbacoes.novas
 import pt.pixellusitano.paragemcerta.dados.FontePerturbacoes
 import pt.pixellusitano.paragemcerta.dados.Preferencias
 import pt.pixellusitano.paragemcerta.dados.Repositorio
-import pt.pixellusitano.paragemcerta.ui.comum.CartaoAzulejo
+import pt.pixellusitano.paragemcerta.ui.comum.FatiaAzulejo
 import pt.pixellusitano.paragemcerta.ui.comum.TituloSecao
 import pt.pixellusitano.paragemcerta.ui.comum.bordaDoFiltro
 import pt.pixellusitano.paragemcerta.ui.tema.Icones
@@ -86,9 +86,8 @@ fun FaixaPerturbacoes(n: Int, aoAbrir: () -> Unit, aoFechar: () -> Unit, modifie
         Row(verticalAlignment = Alignment.CenterVertically) {
             Row(
                 Modifier.weight(1f).heightIn(min = 48.dp).clickable(role = Role.Button, onClick = aoAbrir).padding(start = 16.dp, top = 12.dp, bottom = 12.dp),
-                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Icon(Icones.Avisar, null, Modifier.size(20.dp))
                 Text(pluralStringResource(R.plurals.faixa_perturbacoes, n, n), style = MaterialTheme.typography.titleSmall)
             }
             IconButton(onClick = aoFechar, Modifier.size(48.dp)) { Icon(Icones.Fechar, stringResource(R.string.fechar)) }
@@ -170,10 +169,15 @@ fun PerturbacoesConteudo(
     val porOperador = doMeio(outras).groupBy(::operadorDe).toList().sortedBy { it.first }
     var abertas by rememberSaveable { mutableStateOf(listOf<String>()) }
     @Composable
-    fun Item(p: Perturbacao) {
+    fun Item(p: Perturbacao, indice: Int, total: Int) {
         val aberta = p.id in abertas
-        CartaoAzulejo(Modifier.padding(horizontal = 16.dp, vertical = 4.dp).fillMaxWidth(), aoTocar = { abertas = if (aberta) abertas - p.id else abertas + p.id }) {
-            Column(Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 16.dp, vertical = 12.dp)) {
+        FatiaAzulejo(indice, total) {
+            Column(
+                Modifier.fillMaxWidth().heightIn(min = 56.dp)
+                    .clickable(role = Role.Button) { abertas = if (aberta) abertas - p.id else abertas + p.id }
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.Center,
+            ) {
                 Text(p.titulo, color = MaterialTheme.colorScheme.onSurface)
                 p.fim?.let {
                     Text(
@@ -199,11 +203,11 @@ fun PerturbacoesConteudo(
             if (minhasDoMeio.isNotEmpty()) {
                 item(key = "minhas") { Titulo(stringResource(R.string.perturbacoes_minhas)) }
                 // Sem chave: dois avisos da CM com o mesmo título e o mesmo início têm o mesmo id.
-                items(minhasDoMeio) { Item(it) }
+                itemsIndexed(minhasDoMeio) { i, p -> Item(p, i, minhasDoMeio.size) }
             }
             porOperador.forEach { (operador, lista) ->
                 item(key = "operador-$operador") { Titulo(operador) }
-                items(lista) { Item(it) }
+                itemsIndexed(lista) { i, p -> Item(p, i, lista.size) }
             }
             if (minhasDoMeio.isEmpty() && porOperador.isEmpty()) {
                 item(key = "sem-lista") {
@@ -230,9 +234,10 @@ private fun Titulo(texto: String) {
 
 @Composable
 internal fun CartaoPerturbacoes(total: Int, aoAbrir: () -> Unit) {
-    CartaoAzulejo(Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth(), aoTocar = aoAbrir) {
+    FatiaAzulejo(0, 1, Modifier.padding(vertical = 8.dp)) {
         Row(
-            Modifier.heightIn(min = 56.dp).padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically,
+            Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button, onClick = aoAbrir).padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Icon(Icones.Avisar, null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
