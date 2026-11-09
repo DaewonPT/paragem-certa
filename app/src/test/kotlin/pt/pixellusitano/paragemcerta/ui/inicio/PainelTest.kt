@@ -124,6 +124,12 @@ class PainelTest {
         }
     }
 
+    @Test fun titulosDasSecoesSaoCabecalhos() {
+        painel(emptyList())
+        regra.onNodeWithText("Favoritos").assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+        regra.onNodeWithText("Perto de ti").assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+    }
+
     @Test fun blocoDaLinhaFavoritaComDuasChegadas() {
         val b = blocoDaLinha(f3708, noTerminal, existe = true, nomeParagem = "Cais do Sodré (Terminal)")
         assertEquals(f3708, b.favorita)

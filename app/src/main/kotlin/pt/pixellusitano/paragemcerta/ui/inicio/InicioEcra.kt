@@ -69,6 +69,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.rememberScrollState
@@ -576,7 +577,8 @@ private fun FaixaInicio(aoPesquisar: () -> Unit, aoAbrirConta: (() -> Unit)?, mo
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Surface(
-                Modifier.weight(1f).heightIn(min = 48.dp).clickable(role = Role.Button, onClick = aoPesquisar),
+                onClick = aoPesquisar,
+                modifier = Modifier.weight(1f).heightIn(min = 48.dp).semantics { role = Role.Button },
                 shape = MaterialTheme.shapes.medium, color = Color.White,
             ) {
                 Row(Modifier.padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -623,6 +625,7 @@ private fun BotaoPosicao(modo: ModoPosicao, temBussola: Boolean, aoTocar: () -> 
         onClick = aoTocar,
         modifier = modifier.size(52.dp).semantics {
             contentDescription = descricao
+            role = Role.Button
             if (estado != null) stateDescription = estado
         },
         shape = CircleShape, color = if (bussola) cores.primary else cores.surface, shadowElevation = 6.dp,
@@ -641,7 +644,7 @@ private fun BotaoPosicao(modo: ModoPosicao, temBussola: Boolean, aoTocar: () -> 
 /** A bússola pequena do modo bússola: aponta para o norte do mapa ([rumo] lido só ao desenhar) e tocá-la sai do modo. */
 @Composable
 private fun BussolaPequena(rumo: () -> Float, aoTocar: () -> Unit, modifier: Modifier = Modifier) {
-    Surface(onClick = aoTocar, modifier = modifier.size(48.dp), shape = CircleShape, color = Color.White, shadowElevation = 6.dp) {
+    Surface(onClick = aoTocar, modifier = modifier.size(48.dp).semantics { role = Role.Button }, shape = CircleShape, color = Color.White, shadowElevation = 6.dp) {
         Box(contentAlignment = Alignment.Center) {
             Icon(Icones.Bussola, stringResource(R.string.voltar_ao_norte), Modifier.graphicsLayer { rotationZ = -rumo() }, tint = Azulejo.Cobalto)
         }

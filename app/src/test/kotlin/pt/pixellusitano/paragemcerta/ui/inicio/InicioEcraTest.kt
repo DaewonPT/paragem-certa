@@ -20,6 +20,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.test.DeviceConfigurationOverride
 import androidx.compose.ui.test.FontScale
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
@@ -304,6 +305,14 @@ class InicioEcraTest {
         entrarNaBussola()
         regra.onNodeWithText(dica).assertIsDisplayed()
         regra.onRoot().captureRoboImage("src/test/screenshots/inicio_bussola.png")
+    }
+
+    @Test fun controlosDaPosicaoSaoBotoes() {
+        abrir(comBussola = true)
+        val botao = SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button)
+        regra.onNodeWithContentDescription(centrar).assert(botao)
+        entrarNaBussola()
+        regra.onNodeWithContentDescription("Voltar ao norte").assert(botao)
     }
 
     @Test fun pesquisaAbreAPesquisa() {

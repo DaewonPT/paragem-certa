@@ -75,9 +75,12 @@ class LinhaViewModelTest {
         // Cancelar não pára o que já corre noutra thread: espera que acabe antes de trocar o Main e fechar a base de dados.
         val trabalhos = criados.map { it.viewModelScope.coroutineContext.job } // antes do clear: depois dele o viewModelScope seria outro
         loja.clear()
-        runBlocking { withTimeout(10_000) { trabalhos.joinAll() } }
-        Dispatchers.resetMain()
-        bd.close()
+        try {
+            runBlocking { withTimeout(10_000) { trabalhos.joinAll() } }
+        } finally {
+            Dispatchers.resetMain()
+            bd.close()
+        }
     }
 
     private val cm3708 = RefLinha(Fonte.CM, "3708")

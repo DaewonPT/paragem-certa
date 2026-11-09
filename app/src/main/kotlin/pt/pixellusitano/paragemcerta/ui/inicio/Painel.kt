@@ -35,6 +35,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.SpanStyle
 import androidx.compose.ui.text.buildAnnotatedString
 import androidx.compose.ui.text.font.FontWeight
@@ -307,7 +309,7 @@ fun PainelConteudo(
             }
         }
         Text(stringResource(R.string.painel_favoritos), style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
+            fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp).semantics { heading() })
         // Casa e Trabalho estão sempre cá: as guardadas com o cartão de sempre e as que ainda não têm morada lado a lado numa fila baixa,
         // para não empurrarem as paragens para fora do painel fechado. Só depois de lidos os locais: antes, um toque substituiria a guardada.
         val tipos = listOf("CASA" to R.string.locais_casa, "TRABALHO" to R.string.locais_trabalho)
@@ -337,7 +339,7 @@ fun PainelConteudo(
         CartoesLocais(outros, aoTocarLocal, aoVerMaisLocal)
 
         Text(stringResource(R.string.painel_perto), style = MaterialTheme.typography.titleMedium,
-            fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
+            fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp).semantics { heading() })
         if (pertoDeTi == null) {
             Text(
                 stringResource(R.string.painel_procura),
