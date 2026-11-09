@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -403,7 +404,7 @@ private fun LinhaParagem(p: ParagemVista) {
         if (p.sai) stringResource(R.string.viagem_sais_aqui) else null,
     )
     Row(
-        Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(horizontal = 16.dp, vertical = 12.dp).semantics(mergeDescendants = true) {},
+        Modifier.fillMaxWidth().heightIn(min = 48.dp).wrapContentHeight().padding(horizontal = 16.dp, vertical = 6.dp).semantics(mergeDescendants = true) {},
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         // A hora e o nome alinham pela primeira linha de base e o marcador assenta nela: com o nome em duas linhas, ficam ao lado da primeira.

@@ -90,6 +90,17 @@ class ViagemEcraTest {
         regra.onNodeWithContentDescription("Voltar").assertIsDisplayed().assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp)
     }
 
+    @Test fun asFilasDasParagensTemMargemDe6dpEPeloMenos48dp() {
+        mostrar()
+        val dp = regra.density.density
+        fun topo(t: String) = texto(t).fetchSemanticsNode().boundsInRoot.top / dp
+        // Da fila "Estás aqui" (nome e etiqueta, cerca de 46 dp) até à seguinte: 6 + 6 dp de margem, e não 12 + 12.
+        val passo = topo("Belém") - topo("Estás aqui")
+        assertTrue("passo de $passo dp", passo in 48f..62f)
+        // Uma fila de uma linha não fica abaixo dos 48 dp.
+        assertTrue("passo de ${topo("Santos") - topo("Cais do Sodré")} dp", topo("Santos") - topo("Cais do Sodré") >= 48f)
+    }
+
     @Test fun oMapaComecaASeguirAPessoaEArrastarOMapaMostraSeguirMe() {
         mostrar()
         assertEquals(true, seguir)
