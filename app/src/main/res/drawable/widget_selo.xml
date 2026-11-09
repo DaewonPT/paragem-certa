@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Branco para o tom da linha lhe mudar a cor (no Android 12 ou mais); antes disso o fundo é trocado por um retângulo da cor. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#FFFFFFFF" />
+    <corners android:radius="8dp" />
+</shape>

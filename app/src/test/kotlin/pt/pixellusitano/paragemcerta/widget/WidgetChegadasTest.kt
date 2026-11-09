@@ -14,6 +14,8 @@ import android.view.View
 import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.TextView
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.core.graphics.ColorUtils
 import kotlinx.coroutines.CompletableDeferred
 import org.junit.Assert.assertEquals
@@ -33,7 +35,12 @@ import org.robolectric.util.ReflectionHelpers.ClassParameter
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
+import pt.pixellusitano.paragemcerta.ui.comum.corDoTextoSobre
+import pt.pixellusitano.paragemcerta.ui.tema.Azulejo
 import java.time.Instant
+
+private val COBALTO = Azulejo.Cobalto.toArgb()
+private val ELETRICO = Azulejo.Eletrico.toArgb()
 
 private const val ANDROID = "http://schemas.android.com/apk/res/android"
 
@@ -50,7 +57,7 @@ class WidgetChegadasTest {
     private var pedidos = 0
 
     private fun atualizador(ler: suspend () -> Pair<List<Chegada>, Instant>? = { null }) =
-        AtualizadorWidgets(dados, { _, _ -> ler() }, { _, _ -> pedidos++; Resultado.Ok(emptyList()) }, { _, _ -> }, { emptyList() }, { agora })
+        AtualizadorWidgets(dados, { _, _ -> ler() }, { emptyMap() }, { _, _ -> pedidos++; Resultado.Ok(emptyList()) }, { _, _ -> }, { emptyList() }, { agora })
 
     /** O onReceive como o Android o chama, com um PendingResult que sabe se levou com o finish(). */
     private fun entregar(receiver: BroadcastReceiver, intent: Intent): BroadcastReceiver.PendingResult {
@@ -96,15 +103,15 @@ class WidgetChegadasTest {
 
     private val comChegadas = ConteudoWidget(
         "Cais",
-        listOf(LinhaWidget("728", "Restelo", "14:32", aoVivo = true), LinhaWidget("15E", "Algés", "14:40", aoVivo = false)),
+        listOf(LinhaWidget("728", "Restelo", "14:32", aoVivo = true, cor = COBALTO), LinhaWidget("15E", "Algés", "14:40", aoVivo = false, cor = ELETRICO)),
         "14:00", cinzento = false, EstadoWidget.Normal,
     )
 
     @Test fun oTextoLeSeDepoisDeMudarDeModo() {
         val textos = listOf(
-            R.id.widget_paragem, R.id.widget_aviso, R.id.widget_rodape,
-            R.id.widget_linha_1_nome, R.id.widget_linha_1_destino, R.id.widget_linha_1_hora,
-            R.id.widget_linha_2_nome, R.id.widget_linha_2_destino, R.id.widget_linha_2_hora,
+            R.id.widget_aviso, R.id.widget_rodape,
+            R.id.widget_linha_1_destino, R.id.widget_linha_1_hora,
+            R.id.widget_linha_2_destino, R.id.widget_linha_2_hora,
         )
         val casos = listOf(
             comChegadas,
@@ -123,9 +130,9 @@ class WidgetChegadasTest {
         }
     }
 
-    // A pixeis: o que conta é a cor que se vê, e no ícone há um android:tint a competir com a cor posta no desenho.
+    // A pixeis: o que conta é a cor que se vê, e o ícone não pode ter um android:tint a pintá-lo de outra.
     @GraphicsMode(GraphicsMode.Mode.NATIVE)
-    @Test fun oAtualizarFicaNaCorDoDesenho() {
+    @Test fun oAtualizarFicaBrancoNosDoisModos() {
         for (escuro in listOf(false, true)) {
             val botao = aplicadoNoOutroModo(escuro, comChegadas).findViewById<ImageButton>(R.id.widget_atualizar)
             val lado = View.MeasureSpec.makeMeasureSpec(48, View.MeasureSpec.EXACTLY)
@@ -133,8 +140,39 @@ class WidgetChegadasTest {
             botao.layout(0, 0, 48, 48)
             val imagem = Bitmap.createBitmap(48, 48, Bitmap.Config.ARGB_8888).also { botao.draw(Canvas(it)) }
             val pixeis = IntArray(48 * 48).also { imagem.getPixels(it, 0, 48, 0, 0, 48, 48) }
-            assertTrue("desenhado escuro=$escuro", noModo(escuro).getColor(R.color.widget_texto) in pixeis)
-            assertFalse("desenhado escuro=$escuro", noModo(!escuro).getColor(R.color.widget_texto) in pixeis)
+            assertTrue("desenhado escuro=$escuro", Color.White.toArgb() in pixeis)
+            assertFalse("desenhado escuro=$escuro", noModo(escuro).getColor(R.color.widget_texto) in pixeis)
+        }
+    }
+
+    @Test fun oNomeLeSeSobreOCobaltoEFicaBrancoTambemNoEstadoAntigo() {
+        for (escuro in listOf(false, true)) for (conteudo in listOf(comChegadas, comChegadas.copy(cinzento = true))) {
+            val nome = aplicadoNoOutroModo(escuro, conteudo).findViewById<TextView>(R.id.widget_paragem)
+            assertEquals(Color.White.toArgb(), nome.currentTextColor)
+            assertTrue(ColorUtils.calculateContrast(nome.currentTextColor, Azulejo.Cobalto.toArgb()) >= 4.5)
+        }
+    }
+
+    @Test fun oNumeroDeCadaLinhaLeSeNoSeuSelo() {
+        val cores = listOf(Azulejo.Cobalto, Azulejo.Eletrico, Azulejo.Vermelho)
+        val linhas = cores.mapIndexed { i, c -> LinhaWidget("${i + 1}", "Restelo", "14:32", aoVivo = false, cor = c.toArgb()) }
+        val v = desenhado(comChegadas.copy(linhas = linhas))
+        listOf(R.id.widget_linha_1_nome, R.id.widget_linha_2_nome, R.id.widget_linha_3_nome).zip(cores).forEach { (id, cor) ->
+            val selo = v.findViewById<TextView>(id)
+            assertEquals(cor.toArgb(), selo.backgroundTintList!!.defaultColor)
+            assertEquals(corDoTextoSobre(cor).toArgb(), selo.currentTextColor)
+            assertTrue(ColorUtils.calculateContrast(selo.currentTextColor, cor.toArgb()) >= 4.5)
+        }
+    }
+
+    @Test fun noEstadoAntigoOSeloCinzentoEscolheOTextoPeloContraste() {
+        for (escuro in listOf(false, true)) {
+            val v = aplicadoNoOutroModo(escuro, comChegadas.copy(cinzento = true))
+            val cinzento = noModo(escuro).getColor(R.color.widget_cinzento)
+            val selo = v.findViewById<TextView>(R.id.widget_linha_1_nome)
+            assertEquals(cinzento, selo.backgroundTintList!!.defaultColor)
+            assertEquals(corDoTextoSobre(Color(cinzento)).toArgb(), selo.currentTextColor)
+            assertTrue(ColorUtils.calculateContrast(selo.currentTextColor, cinzento) >= 4.5)
         }
     }
 
@@ -151,7 +189,7 @@ class WidgetChegadasTest {
         val v = desenhado(
             ConteudoWidget(
                 "Cais do Sodré",
-                listOf(LinhaWidget("728", "Restelo", "14:32", aoVivo = true), LinhaWidget("15E", "Algés", "14:40", aoVivo = false)),
+                listOf(LinhaWidget("728", "Restelo", "14:32", aoVivo = true, cor = COBALTO), LinhaWidget("15E", "Algés", "14:40", aoVivo = false, cor = ELETRICO)),
                 "14:00", cinzento = false, EstadoWidget.Normal,
             ),
         )
@@ -175,9 +213,9 @@ class WidgetChegadasTest {
     }
 
     @Test fun vistasCinzentasPerdemAsCores() {
-        val v = desenhado(ConteudoWidget("Cais", listOf(LinhaWidget("728", "Restelo", "14:32", aoVivo = true)), "14:00", cinzento = true, EstadoWidget.Normal))
+        val v = desenhado(ConteudoWidget("Cais", listOf(LinhaWidget("728", "Restelo", "14:32", aoVivo = true, cor = COBALTO)), "14:00", cinzento = true, EstadoWidget.Normal))
         val cinzento = contexto.getColor(R.color.widget_cinzento)
-        listOf(R.id.widget_paragem, R.id.widget_linha_1_nome, R.id.widget_linha_1_destino, R.id.widget_linha_1_hora, R.id.widget_rodape).forEach {
+        listOf(R.id.widget_linha_1_destino, R.id.widget_linha_1_hora, R.id.widget_rodape).forEach {
             assertEquals(cinzento, v.findViewById<TextView>(it).currentTextColor)
         }
     }

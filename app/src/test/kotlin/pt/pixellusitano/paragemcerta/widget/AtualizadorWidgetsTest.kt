@@ -36,6 +36,7 @@ class AtualizadorWidgetsTest {
     private val dados = DadosWidget(RuntimeEnvironment.getApplication())
     private val inicio = Instant.parse("2026-11-04T14:00:00Z")
     private val cais = RefParagem(Fonte.CM, "060419")
+    private var coresCm = emptyMap<String, String>()
     private val desenhos = mutableListOf<Pair<Int, ConteudoWidget>>()
     private val guardadas = mutableMapOf<RefParagem, Pair<List<Chegada>, Instant>>()
     private var pedidos = 0
@@ -48,6 +49,7 @@ class AtualizadorWidgetsTest {
     ) = AtualizadorWidgets(
         dados,
         lerGuardadas,
+        { coresCm },
         { ref, em -> pedidos++; pedir(ref, em) },
         { id, c -> desenhos += id to c },
         { widgets },
@@ -66,6 +68,14 @@ class AtualizadorWidgetsTest {
         assertEquals(listOf("728"), desenhos[0].second.linhas.map { it.linha })
         assertEquals(EstadoWidget.Normal, desenhos[0].second.estado)
         assertNull(desenhos[1].second.paragem)
+    }
+
+    @Test fun osSelosLevamAsCoresDaCm() = runTest {
+        dados.escolher(1, cais.chave, "Cais")
+        coresCm = mapOf("728" to "#E2001A")
+        guardadas[cais] = listOf(chegada("728", inicio.plusSeconds(600))) to inicio
+        atualizador().redesenhar(listOf(1))
+        assertEquals(0xFFE2001A.toInt(), desenhos.single().second.linhas.single().cor)
     }
 
     @Test fun tocarPedeEGuarda() = runTest {

@@ -81,7 +81,7 @@ private fun EscolherParagem(favoritas: List<Favorita>?, aoEscolher: (Favorita) -
         )
         if (favoritas?.isEmpty() == true) {
             Text(stringResource(R.string.widget_sem_favoritas), color = MaterialTheme.colorScheme.onBackground)
-            Button(aoAbrirApp, Modifier.padding(top = 16.dp)) { Text(stringResource(R.string.widget_abrir_app)) }
+            Button(aoAbrirApp, Modifier.padding(top = 16.dp), shape = MaterialTheme.shapes.medium) { Text(stringResource(R.string.widget_abrir_app)) }
         }
         LazyColumn {
             items(favoritas.orEmpty(), key = { it.ref.chave }) { f ->

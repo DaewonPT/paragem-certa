@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Antes do Android 12 nada recorta os filhos da raiz: a faixa leva ela os cantos de cima, e sem padrão. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/widget_cobalto" />
+    <corners android:topLeftRadius="20dp" android:topRightRadius="20dp" />
+</shape>

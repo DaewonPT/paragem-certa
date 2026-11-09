@@ -19,10 +19,11 @@ import org.robolectric.shadows.ShadowLooper
 @Config(sdk = [36], qualifiers = "w360dp-h640dp-mdpi")
 class WidgetScreenshotTest {
     private val contexto: Context = RuntimeEnvironment.getApplication()
+    private val cobalto = 0xFF1F4FA3.toInt()
     private val linhas = listOf(
-        LinhaWidget("728", "Restelo (Estação)", "14:32", aoVivo = true),
-        LinhaWidget("15E", "Algés", "14:40", aoVivo = false),
-        LinhaWidget("3708", "Um destino com um nome muito comprido que não cabe todo", "14:52", aoVivo = true),
+        LinhaWidget("728", "Restelo (Estação)", "14:32", aoVivo = true, cor = cobalto),
+        LinhaWidget("15E", "Algés", "14:40", aoVivo = false, cor = cobalto),
+        LinhaWidget("3708", "Um destino com um nome muito comprido que não cabe todo", "14:52", aoVivo = true, cor = cobalto),
     )
 
     private fun capturar(conteudo: ConteudoWidget, nome: String) {

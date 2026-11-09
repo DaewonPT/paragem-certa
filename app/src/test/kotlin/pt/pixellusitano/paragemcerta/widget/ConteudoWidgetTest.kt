@@ -5,15 +5,20 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.RobolectricTestRunner
 import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.Modo
 import java.time.Duration
 import java.time.Instant
 
-internal fun chegada(linha: String, programada: Instant, prevista: Instant? = null) =
-    Chegada(Fonte.CM, linha, linha, "Restelo", programada, prevista, null, null, Modo.AUTOCARRO, null, null)
+internal fun chegada(linha: String, programada: Instant, prevista: Instant? = null, cor: String? = null) =
+    Chegada(Fonte.CM, linha, linha, "Restelo", programada, prevista, null, null, Modo.AUTOCARRO, cor, null)
 
+private const val COBALTO = 0xFF1F4FA3.toInt()
+
+@RunWith(RobolectricTestRunner::class)
 class ConteudoWidgetTest {
     private val agora = Instant.parse("2026-11-04T14:00:00Z")
 
@@ -47,8 +52,8 @@ class ConteudoWidgetTest {
             chegada("sem", Instant.parse("2026-11-04T14:40:00Z")),
         )
         val c = conteudoDoWidget("Cais", lista to agora, agora, EstadoWidget.Normal)
-        assertEquals(LinhaWidget("com", "Restelo", "14:32", aoVivo = true), c.linhas[0])
-        assertEquals(LinhaWidget("sem", "Restelo", "14:40", aoVivo = false), c.linhas[1])
+        assertEquals(LinhaWidget("com", "Restelo", "14:32", aoVivo = true, cor = COBALTO), c.linhas[0])
+        assertEquals(LinhaWidget("sem", "Restelo", "14:40", aoVivo = false, cor = COBALTO), c.linhas[1])
     }
 
     @Test fun horasEmHoraDeLisboa() {
@@ -61,6 +66,21 @@ class ConteudoWidgetTest {
     @Test fun semNadaGuardadoDizParaTocar() {
         val c = conteudoDoWidget("Cais", null, agora, EstadoWidget.Normal)
         assertEquals(ConteudoWidget("Cais", emptyList(), null, cinzento = false, EstadoWidget.Normal), c)
+    }
+
+    @Test fun chegadaSemCorRecebeAdoMapa() {
+        val c = conteudoDoWidget("Cais", listOf(chegada("1", agora.plusSeconds(60))) to agora, agora, EstadoWidget.Normal, mapOf("1" to "#E2001A"))
+        assertEquals(0xFFE2001A.toInt(), c.linhas.single().cor)
+    }
+
+    @Test fun semEntradaNoMapaFicaACorNeutraDoModo() {
+        val c = conteudoDoWidget("Cais", listOf(chegada("1", agora.plusSeconds(60))) to agora, agora, EstadoWidget.Normal, mapOf("2" to "#E2001A"))
+        assertEquals(COBALTO, c.linhas.single().cor)
+    }
+
+    @Test fun mapaGanhaACorDaChegada() {
+        val c = conteudoDoWidget("Cais", listOf(chegada("1", agora.plusSeconds(60), cor = "#00FF00")) to agora, agora, EstadoWidget.Normal, mapOf("1" to "#E2001A"))
+        assertEquals(0xFFE2001A.toInt(), c.linhas.single().cor)
     }
 
     @Test fun semParagemFicaSemNome() = assertNull(conteudoDoWidget(null, null, agora, EstadoWidget.Normal).paragem)

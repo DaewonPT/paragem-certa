@@ -6,9 +6,13 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.content.res.ColorStateList
 import android.content.res.Configuration
+import android.os.Build
 import android.view.View
 import android.widget.RemoteViews
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -16,6 +20,7 @@ import pt.pixellusitano.paragemcerta.MainActivity
 import pt.pixellusitano.paragemcerta.ParagemCertaApp
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.dados.Repositorio
+import pt.pixellusitano.paragemcerta.ui.comum.corDoTextoSobre
 
 /** Só desenha quando o Android o acorda; a única ida à rede daqui é o toque em ↻. */
 open class WidgetChegadas : AppWidgetProvider() {
@@ -66,7 +71,7 @@ internal fun criarAtualizadorWidgets(app: Context, repositorio: Repositorio): At
     val gestor = AppWidgetManager.getInstance(app)
     val provider = ComponentName(app, WidgetChegadas::class.java)
     return AtualizadorWidgets(
-        DadosWidget(app), repositorio::chegadasGuardadas, repositorio::atualizarGuardadas,
+        DadosWidget(app), repositorio::chegadasGuardadas, repositorio::coresDasLinhasCm, repositorio::atualizarGuardadas,
         desenhar = { id, conteudo -> gestor.updateAppWidget(id, vistas(app, id, conteudo)) },
         todos = { gestor.getAppWidgetIds(provider).toList() },
     )
@@ -86,7 +91,7 @@ fun vistas(contexto: Context, id: Int, conteudo: ConteudoWidget): RemoteViews {
     if (conteudo.paragem == null) {
         v.setTextViewText(R.id.widget_aviso, contexto.getString(R.string.widget_escolher))
         v.setViewVisibility(R.id.widget_atualizar, View.GONE)
-        v.setOnClickPendingIntent(R.id.widget_raiz, abrirEscolha(contexto, id))
+        v.setOnClickPendingIntent(android.R.id.background, abrirEscolha(contexto, id))
         return v
     }
     val cinzento = contexto.getColor(R.color.widget_cinzento)
@@ -94,19 +99,19 @@ fun vistas(contexto: Context, id: Int, conteudo: ConteudoWidget): RemoteViews {
 
     // O launcher volta a aplicar isto quando o telemóvel muda de modo: o que seguisse o modo novo deixava de se ler contra o que ficou fixo.
     val escuro = contexto.resources.configuration.uiMode and Configuration.UI_MODE_NIGHT_MASK == Configuration.UI_MODE_NIGHT_YES
-    v.setInt(R.id.widget_raiz, "setBackgroundResource", if (escuro) R.drawable.widget_fundo_escuro else R.drawable.widget_fundo_claro)
-    v.setInt(R.id.widget_atualizar, "setColorFilter", contexto.getColor(R.color.widget_texto))
+    v.setInt(android.R.id.background, "setBackgroundResource", if (escuro) R.drawable.widget_fundo_escuro else R.drawable.widget_fundo_claro)
     v.setTextColor(R.id.widget_aviso, cor(R.color.widget_texto))
     v.setTextColor(R.id.widget_rodape, cinzento)
 
     v.setTextViewText(R.id.widget_paragem, conteudo.paragem)
-    v.setTextColor(R.id.widget_paragem, cor(R.color.widget_texto))
     LINHAS.zip(conteudo.linhas).forEach { (ids, l) ->
         v.setViewVisibility(ids.linha, View.VISIBLE)
         v.setTextViewText(ids.nome, l.linha)
         v.setTextViewText(ids.destino, l.destino)
         v.setTextViewText(ids.hora, l.hora)
-        v.setTextColor(ids.nome, cor(R.color.widget_texto))
+        val selo = if (conteudo.cinzento) cinzento else l.cor
+        pintarSelo(v, ids.nome, selo)
+        v.setTextColor(ids.nome, corDoTextoSobre(Color(selo)).toArgb())
         v.setTextColor(ids.destino, cor(R.color.widget_texto))
         v.setTextColor(ids.hora, cor(if (l.aoVivo) R.color.widget_verde else R.color.widget_texto))
         val descricao = if (l.aoVivo) R.string.widget_linha_descricao_tempo_real else R.string.widget_linha_descricao
@@ -115,9 +120,15 @@ fun vistas(contexto: Context, id: Int, conteudo: ConteudoWidget): RemoteViews {
     if (conteudo.linhas.isEmpty()) v.setTextViewText(R.id.widget_aviso, contexto.getString(R.string.widget_sem_dados))
     else v.setViewVisibility(R.id.widget_aviso, View.GONE)
     v.setTextViewText(R.id.widget_rodape, rodape(contexto, conteudo))
-    v.setOnClickPendingIntent(R.id.widget_raiz, abrirParagem(contexto, id))
+    v.setOnClickPendingIntent(android.R.id.background, abrirParagem(contexto, id))
     v.setOnClickPendingIntent(R.id.widget_atualizar, tocarAtualizar(contexto, id))
     return v
+}
+
+/** O único sítio onde o selo depende da versão: o tint mantém-lhe os cantos redondos (Android 12 ou mais); antes, é um retângulo da cor. */
+private fun pintarSelo(v: RemoteViews, id: Int, cor: Int) {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) v.setColorStateList(id, "setBackgroundTintList", ColorStateList.valueOf(cor))
+    else v.setInt(id, "setBackgroundColor", cor)
 }
 
 private fun rodape(contexto: Context, c: ConteudoWidget): String = when (c.estado) {

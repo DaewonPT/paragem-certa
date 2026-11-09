@@ -582,7 +582,7 @@
     <string name="linhas_perturbacoes">Perturbações (%1$d)</string>
     <string name="perturbacao_na">⚠ Perturbação na %1$s</string>
     <!-- Widget -->
-    <string name="widget_nome">Próximas chegadas</string>
+    <string name="widget_nome">Chegadas na paragem</string>
     <string name="widget_descricao">As próximas chegadas de uma paragem favorita.</string>
     <string name="widget_atualizar">Atualizar</string>
     <string name="widget_atualizado">atualizado às %1$s</string>

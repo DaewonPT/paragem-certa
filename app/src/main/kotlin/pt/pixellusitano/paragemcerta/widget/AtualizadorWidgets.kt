@@ -23,6 +23,7 @@ private const val MAX_PEDIDO_MS = 8_000L
 class AtualizadorWidgets(
     private val dados: DadosWidget,
     private val lerGuardadas: suspend (RefParagem, Instant) -> Pair<List<Chegada>, Instant>?,
+    private val lerCores: suspend () -> Map<String, String>,
     private val pedir: suspend (RefParagem, Instant) -> Resultado<List<Chegada>>,
     private val desenhar: (Int, ConteudoWidget) -> Unit,
     private val todos: () -> Collection<Int>,
@@ -83,14 +84,14 @@ class AtualizadorWidgets(
         } finally {
             pedido.cancel()
         }
-        if (resposta is Resultado.Ok) desenhar(id, conteudoDoWidget(nome, resposta.valor to agora, relogio(), EstadoWidget.Normal))
+        if (resposta is Resultado.Ok) desenhar(id, conteudoDoWidget(nome, resposta.valor to agora, relogio(), EstadoWidget.Normal, lerCores()))
         else desenharGuardadas(id, EstadoWidget.SemLigacao)
     }
 
     private suspend fun desenharGuardadas(id: Int, estado: EstadoWidget) {
         val agora = relogio()
         val paragem = paragemDe(id)
-        desenhar(id, conteudoDoWidget(paragem?.second, paragem?.let { lerGuardadas(it.first, agora) }, agora, estado))
+        desenhar(id, conteudoDoWidget(paragem?.second, paragem?.let { lerGuardadas(it.first, agora) }, agora, estado, lerCores()))
     }
 
     /** Uma chave que não se lê conta como não haver paragem: o widget pede outra em vez de ficar parado. */

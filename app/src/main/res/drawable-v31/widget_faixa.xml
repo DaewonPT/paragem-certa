@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Sem raio: no Android 12 ou mais o clipToOutline da raiz recorta-a. O padrão não estica: fica no canto de cima. -->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <item android:drawable="@color/widget_cobalto" />
+    <item android:drawable="@drawable/widget_padrao" android:gravity="top|start" />
+</layer-list>
