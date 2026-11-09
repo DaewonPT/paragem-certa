@@ -2,6 +2,9 @@ package pt.pixellusitano.paragemcerta.ui.inicio
 
 import android.Manifest
 import android.app.Application
+import android.content.Context
+import android.hardware.Sensor
+import android.hardware.SensorManager
 import android.location.Location
 import android.location.LocationManager
 import androidx.compose.ui.test.DeviceConfigurationOverride
@@ -21,6 +24,7 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowLooper
+import org.robolectric.shadows.ShadowSensor
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.ui.tema.ModoTema
 import pt.pixellusitano.paragemcerta.ui.tema.TemaParagemCerta
@@ -95,5 +99,28 @@ class LocalizacaoTest {
 
     @Test fun naHoraIgualFicaAPrimeira() {
         assertEquals(lisboa, maisRecente(lisboa, porto.copy(hora = lisboa.hora)))
+    }
+
+    private fun comSensores(vararg tipos: Int): Context {
+        val app = RuntimeEnvironment.getApplication()
+        val sensores = app.getSystemService(SensorManager::class.java)
+        tipos.forEach { shadowOf(sensores).addSensor(ShadowSensor.newInstance(it)) }
+        return app
+    }
+
+    @Test fun semSensoresNaoTemBussola() {
+        assertFalse(temBussola(comSensores()))
+    }
+
+    @Test fun comVetorDeRotacaoTemBussola() {
+        assertTrue(temBussola(comSensores(Sensor.TYPE_ROTATION_VECTOR)))
+    }
+
+    @Test fun soComMagnetometroNaoTemBussola() {
+        assertFalse(temBussola(comSensores(Sensor.TYPE_MAGNETIC_FIELD)))
+    }
+
+    @Test fun acelerometroEMagnetometroTemBussola() {
+        assertTrue(temBussola(comSensores(Sensor.TYPE_ACCELEROMETER, Sensor.TYPE_MAGNETIC_FIELD)))
     }
 }
