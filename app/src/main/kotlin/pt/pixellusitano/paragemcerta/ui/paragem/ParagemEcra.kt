@@ -26,7 +26,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -229,20 +228,23 @@ fun ParagemConteudo(
                 }
             },
         )
-        Column(Modifier.padding(16.dp)) {
+        Column(Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp)) {
             if (jaNaoExiste) AvisoJaNaoExiste()
             estado?.let { FaixaEstado(it, agora, Modifier.padding(bottom = 8.dp)) }
-            if (linhasPresentes.size > 1) {
-                Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(
-                        selected = filtro == null, onClick = { aoFiltrar(null) }, label = { Text(stringResource(R.string.paragem_todas)) },
-                        border = bordaDoFiltro(filtro == null),
-                    )
-                    linhasPresentes.forEach { (_, nome) ->
-                        FilterChip(selected = filtro == nome, onClick = { aoFiltrar(nome) }, label = { Text(nome) }, border = bordaDoFiltro(filtro == nome))
-                    }
+        }
+        // A fila de filtros rola até à borda do ecrã, não até à margem.
+        if (linhasPresentes.size > 1) {
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = filtro == null, onClick = { aoFiltrar(null) }, label = { Text(stringResource(R.string.paragem_todas)) },
+                    border = bordaDoFiltro(filtro == null),
+                )
+                linhasPresentes.forEach { (_, nome) ->
+                    FilterChip(selected = filtro == nome, onClick = { aoFiltrar(nome) }, label = { Text(nome) }, border = bordaDoFiltro(filtro == nome))
                 }
             }
+        }
+        Column(Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp)) {
             alertas.forEach { CartaoAlerta(it) }
             // Com o relógio do ecrã: um relato que acabou desde a última leitura sai já, sem esperar por outro pedido.
             relatos.filter { it.expiraEm > agora.toEpochMilli() }.forEach { r ->
@@ -300,8 +302,9 @@ private fun CartaoAlerta(a: Alerta) {
     val (fundo, texto, rotulo, icone) = estiloDaGravidade(a.gravidade, LocalEscuro.current)
     CartaoAzulejo(Modifier.padding(vertical = 6.dp).fillMaxWidth(), aoTocar = { aberto = !aberto }, cor = fundo, contorno = texto.copy(alpha = 0.4f)) {
         Column(Modifier.padding(10.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Icon(icone, null, Modifier.size(18.dp), tint = texto)
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                // Ao lado da primeira linha do título, não a meio dele quando parte.
+                Icon(icone, null, Modifier.padding(top = 1.dp).size(18.dp), tint = texto)
                 Text("${stringResource(rotulo)} · ${a.titulo}", color = texto, style = MaterialTheme.typography.labelLarge)
             }
             if (aberto) Text(a.texto, color = texto, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp))

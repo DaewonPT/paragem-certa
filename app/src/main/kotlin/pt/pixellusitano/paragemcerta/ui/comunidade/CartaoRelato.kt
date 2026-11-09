@@ -22,7 +22,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -77,8 +76,9 @@ fun CartaoRelato(
             Row {
                 // Título e detalhe lêem-se juntos; com letra grande quebram em vez de empurrar o menu para fora.
                 Column(Modifier.weight(1f).semantics(mergeDescendants = true) {}) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Icon(iconeRelato(tipo), null, Modifier.size(18.dp), tint = estilo.texto)
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        // Ao lado da primeira linha do título, não a meio dele quando parte.
+                        Icon(iconeRelato(tipo), null, Modifier.padding(top = 1.dp).size(18.dp), tint = estilo.texto)
                         Text(titulo, color = estilo.texto, style = MaterialTheme.typography.labelLarge)
                     }
                     Text(detalhe, color = estilo.texto, style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 2.dp))

@@ -12,6 +12,8 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
@@ -30,6 +32,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import pt.pixellusitano.paragemcerta.core.modelo.Alerta
 import pt.pixellusitano.paragemcerta.core.modelo.Chegada
@@ -220,6 +223,17 @@ class ParagemTest {
         regra.onNodeWithText("Todas").assertIsSelected()
         regra.onNodeWithText("1001").assertIsNotSelected()
         regra.onNodeWithText("3708").assertIsNotSelected()
+    }
+
+    @Config(qualifiers = "w360dp")
+    @Test fun aFilaDeFiltrosRolaAteABordaDoEcra() {
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Ecra(estado) } }
+        val fila = regra.onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.HorizontalScrollAxisRange)).fetchSemanticsNode().boundsInRoot
+        val ecra = regra.onRoot().fetchSemanticsNode().boundsInRoot
+        assertEquals(ecra.left, fila.left, 0.5f)
+        assertEquals(ecra.right, fila.right, 0.5f)
+        // O primeiro filtro continua afastado da borda.
+        assertTrue(regra.onNodeWithText("Todas").fetchSemanticsNode().boundsInRoot.left > 0f)
     }
 
     @Composable
