@@ -1,7 +1,0 @@
-{
-  "name": "Paragem Certa",
-  "avoid": ["Moovit", "Tranzmate"],
-  "domains": ["moovit.com", "moovitapp.com"],
-  "colors": [],
-  "notes": "Cores da Moovit não determinadas: o site não as declara nas meta-tags (verificado a 2026-11-01). A paleta da Paragem Certa é azul-cobalto e amarelo, longe do laranja deles."
-}
