@@ -350,7 +350,7 @@ class AoVivoNaParagemTest {
                 Box(Modifier.height(380.dp)) { ProximasDaLinha() }
             }
         }
-        esperarPelaChegada()
+        esperarPor { vezes("Restelo") == 2 }
         passar(60_000)
         assertEquals(emptyList<String>(), rede.a("/api/rt/carris"))
         assertEquals(emptyList<String>(), viagensPedidas())

@@ -343,6 +343,8 @@ class ContaTest {
         entrar(c)
         backgroundScope.launch { c.aoAbrir() }
         runCurrent()
+        // A resposta converte-se em Dispatchers.Default, fora do tempo virtual: espera que a sincronização de abrir largue a vez.
+        c.comSessao { Resultado.Ok(it) }
         assertEquals(2, servidor.sincronizacoes.size) // a de entrar e a de abrir
         repo.alternarFavorita(cais)
         advanceTimeBy(1_500)

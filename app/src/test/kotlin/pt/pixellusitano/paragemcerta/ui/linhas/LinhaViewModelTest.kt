@@ -3,11 +3,14 @@ package pt.pixellusitano.paragemcerta.ui.linhas
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.ViewModelStore
+import androidx.lifecycle.viewModelScope
 import androidx.room.Room
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.joinAll
+import kotlinx.coroutines.job
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.setMain
@@ -64,11 +67,15 @@ class LinhaViewModelTest {
 
     // Os ecrãs deste teste vivem numa loja que se limpa no fim: o que cada um ainda estava a pedir pára com o teste, e não rebenta noutro.
     private val loja = ViewModelStore()
+    private val criados = mutableListOf<LinhaViewModel>()
 
     @Before fun antes() = Dispatchers.setMain(Dispatchers.Unconfined)
 
     @After fun depois() {
+        // Cancelar não pára o que já corre noutra thread: espera que acabe antes de trocar o Main e fechar a base de dados.
+        val trabalhos = criados.map { it.viewModelScope.coroutineContext.job } // antes do clear: depois dele o viewModelScope seria outro
         loja.clear()
+        runBlocking { withTimeout(10_000) { trabalhos.joinAll() } }
         Dispatchers.resetMain()
         bd.close()
     }
@@ -128,7 +135,7 @@ class LinhaViewModelTest {
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =
                     LinhaViewModel(ref, detalhes, repositorio, relatos, sentido, paragem, posicao, relogio = { hoje }) as T
             },
-        )[ref.chave, LinhaViewModel::class.java]
+        )[ref.chave, LinhaViewModel::class.java].also { if (it !in criados) criados += it }
 
         fun paragensComChegadasPedidas() = http.pedidos.filter { "arrivals/by_stop/" in it }.map { it.substringAfterLast('/') }
         fun pedidosDeHorario() = http.pedidos.count { "window=86400" in it }
