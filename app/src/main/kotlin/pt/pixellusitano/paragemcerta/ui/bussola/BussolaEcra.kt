@@ -20,13 +20,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -57,9 +54,11 @@ import pt.pixellusitano.paragemcerta.core.regras.distanciaMetros
 import pt.pixellusitano.paragemcerta.core.viagem.anguloDaSeta
 import pt.pixellusitano.paragemcerta.core.viagem.rumo
 import pt.pixellusitano.paragemcerta.core.viagem.setor
+import pt.pixellusitano.paragemcerta.ui.comum.BotaoPrincipal
+import pt.pixellusitano.paragemcerta.ui.comum.CabecalhoAzulejo
 import pt.pixellusitano.paragemcerta.ui.inicio.temLocalizacao
 import pt.pixellusitano.paragemcerta.ui.rotas.textoDistancia
-import pt.pixellusitano.paragemcerta.ui.tema.FrisoAzulejo
+import pt.pixellusitano.paragemcerta.ui.tema.Azulejo
 
 /**
  * O que o ecrã tem para mostrar. Ativa: a distância e o rumo (norte 0) até à paragem; angulo é o da seta, que só existe com
@@ -198,14 +197,12 @@ fun BussolaConteudo(
 ) {
     val cores = MaterialTheme.colorScheme
     Column(modifier.fillMaxSize().background(cores.background)) {
-        TextButton(onClick = aoVoltar, Modifier.statusBarsPadding().padding(start = 4.dp)) { Text("← " + stringResource(R.string.voltar)) }
+        CabecalhoAzulejo(stringResource(R.string.bussola_encontrar), aoVoltar)
         Column(
             Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Text(stringResource(R.string.bussola_encontrar), style = MaterialTheme.typography.headlineSmall, color = cores.primary)
-            FrisoAzulejo(Modifier.fillMaxWidth())
             when (estado) {
                 EstadoBussola.PorPedir -> Pedido(R.string.bussola_localizacao_texto, aoPermitir)
                 EstadoBussola.Recusada -> Pedido(R.string.bussola_localizacao_recusada, aoPermitir)
@@ -225,7 +222,7 @@ private fun Mensagem(texto: String) =
 @Composable
 private fun Pedido(texto: Int, aoPermitir: () -> Unit) {
     Mensagem(stringResource(texto))
-    Button(onClick = aoPermitir, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.loc_aceitar)) }
+    BotaoPrincipal(aoPermitir, Modifier.fillMaxWidth()) { Text(stringResource(R.string.loc_aceitar)) }
 }
 
 /** A seta (ou, sem sensor, só o rumo em texto), a distância e o nome da paragem. */
@@ -245,20 +242,18 @@ private fun Alvo(nome: String, e: EstadoBussola.Ativa) {
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
         e.angulo?.let { Seta(it.toFloat()) }
-        Text(distancia, style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.ExtraBold, color = cores.onBackground)
+        Text(distancia, style = MaterialTheme.typography.displayMedium, fontWeight = FontWeight.Black, color = cores.onBackground)
         if (e.angulo == null) Text(rumoEmTexto, style = MaterialTheme.typography.titleLarge, color = cores.onBackground)
         Text(nome, style = MaterialTheme.typography.titleLarge, color = cores.onBackground, textAlign = TextAlign.Center)
     }
 }
 
-/** Uma seta grande a apontar para cima, rodada [graus] para a direita. */
+/** Uma seta grande a apontar para cima, rodada [graus] para a direita: amarela num disco cobalto, nos dois temas. */
 @Composable
 private fun Seta(graus: Float) {
-    val cor = MaterialTheme.colorScheme.primary
-    val disco = MaterialTheme.colorScheme.surfaceVariant
     Canvas(Modifier.size(240.dp).graphicsLayer { rotationZ = graus }) {
         val l = size.width
-        drawCircle(disco)
+        drawCircle(Azulejo.Cobalto)
         drawPath(
             Path().apply {
                 moveTo(l * 0.50f, l * 0.08f)
@@ -270,7 +265,7 @@ private fun Seta(graus: Float) {
                 lineTo(l * 0.15f, l * 0.50f)
                 close()
             },
-            cor,
+            Azulejo.Eletrico,
         )
     }
 }

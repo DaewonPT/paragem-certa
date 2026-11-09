@@ -216,7 +216,7 @@ fun Navegacao(
     // Sobre as faixas azuis (o mapa do Início e os cabeçalhos azulejados) os ícones da barra de estado ficam claros.
     BarraDeEstadoDaNavegacao(
         nasRotas = nasRotas,
-        comFaixa = naInicio || nasLinhas || listOf(Pesquisa::class, Favoritos::class, Definicoes::class, Ajuda::class, Reclamar::class, ContaRota::class, PerturbacoesRota::class, Paragem::class, LinhaRota::class)
+        comFaixa = naInicio || nasLinhas || listOf(Pesquisa::class, Favoritos::class, Definicoes::class, Ajuda::class, Reclamar::class, ContaRota::class, PerturbacoesRota::class, Paragem::class, LinhaRota::class, Bussola::class)
             .any { destino?.hasRoute(it) == true },
     )
 

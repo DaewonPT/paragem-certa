@@ -35,7 +35,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
@@ -52,6 +51,7 @@ import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import pt.pixellusitano.paragemcerta.dados.Comunidade
 import pt.pixellusitano.paragemcerta.dados.Configuracoes
 import pt.pixellusitano.paragemcerta.ui.mapa.Mapa
+import pt.pixellusitano.paragemcerta.ui.tema.Azulejo
 import pt.pixellusitano.paragemcerta.ui.tema.LocalEscuro
 
 // O limite do servidor (worker/src/correcoes.ts): o nome tem 1 a 80 caracteres depois de cortado, contados por pontos de código.
@@ -245,12 +245,11 @@ internal fun FolhaCorrigirConteudo(
 /** O ponto fixo ao centro do mapa: é o sítio que a pessoa arrasta até à paragem. Desenhado aqui (um "⌖" em texto depende da letra do telemóvel). */
 @Composable
 private fun PontoFixo(modifier: Modifier = Modifier) {
-    val escuro = LocalEscuro.current
     val descricao = stringResource(R.string.corrigir_ponto)
     // As cores da paragem de saída no mapa (Mapa.kt), para se perceber que é o ponto a pôr no sítio.
     Box(
-        modifier.size(24.dp).background(if (escuro) Color(0xFFFFA94D) else Color(0xFFD9480F), CircleShape)
-            .border(3.dp, if (escuro) Color(0xFF0B1222) else Color.White, CircleShape)
+        modifier.size(24.dp).background(Azulejo.Eletrico, CircleShape)
+            .border(3.dp, Azulejo.Tinta, CircleShape)
             .semantics { contentDescription = descricao },
     )
 }

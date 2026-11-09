@@ -5,7 +5,9 @@ import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -13,6 +15,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -21,6 +24,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -28,16 +32,16 @@ import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -48,6 +52,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.inset
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -69,6 +81,9 @@ import pt.pixellusitano.paragemcerta.core.viagem.EstadoViagem
 import pt.pixellusitano.paragemcerta.core.viagem.Fase
 import pt.pixellusitano.paragemcerta.core.viagem.paragensDe
 import pt.pixellusitano.paragemcerta.dados.Comunidade
+import pt.pixellusitano.paragemcerta.ui.comum.BotaoPrincipal
+import pt.pixellusitano.paragemcerta.ui.comum.BotaoSecundario
+import pt.pixellusitano.paragemcerta.ui.comum.CartaoAzulejo
 import pt.pixellusitano.paragemcerta.ui.comum.LISBOA_FUSO
 import pt.pixellusitano.paragemcerta.ui.comum.SeloLinha
 import pt.pixellusitano.paragemcerta.ui.comum.corDaLinha
@@ -83,6 +98,8 @@ import pt.pixellusitano.paragemcerta.ui.rotas.nomeModo
 import pt.pixellusitano.paragemcerta.ui.rotas.percursos
 import pt.pixellusitano.paragemcerta.ui.rotas.textoDistancia
 import pt.pixellusitano.paragemcerta.ui.rotas.textoPartilha
+import pt.pixellusitano.paragemcerta.ui.tema.Azulejo
+import pt.pixellusitano.paragemcerta.ui.tema.Icones
 import pt.pixellusitano.paragemcerta.ui.tema.LocalEscuro
 import pt.pixellusitano.paragemcerta.viagem.FicheirosViagem
 import pt.pixellusitano.paragemcerta.viagem.Notificacoes
@@ -233,6 +250,11 @@ fun ViagemConteudo(
             BottomSheetScaffold(
                 sheetPeekHeight = PAINEL_VISIVEL,
                 sheetContainerColor = cores.background,
+                sheetDragHandle = {
+                    Box(Modifier.fillMaxWidth().contornoDeCima(cores.outlineVariant, BottomSheetDefaults.ExpandedShape), contentAlignment = Alignment.Center) {
+                        BottomSheetDefaults.DragHandle()
+                    }
+                },
                 sheetContent = {
                     // Altura fixa: o pager e a lista de paragens só se esticam com um limite.
                     Column(Modifier.fillMaxWidth().height(alturaPainel)) {
@@ -254,17 +276,29 @@ fun ViagemConteudo(
                     mapa(seguir && comLocalizacao) { seguir = false }
                     Column(Modifier.statusBarsPadding().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween) {
-                            Surface(shape = RoundedCornerShape(24.dp), shadowElevation = 4.dp) {
-                                TextButton(onClick = aoVoltar) { Text("← " + stringResource(R.string.voltar)) }
+                            Surface(shape = CircleShape, shadowElevation = 4.dp, border = BorderStroke(1.dp, cores.outlineVariant)) {
+                                IconButton(onClick = aoVoltar, Modifier.size(48.dp)) { Icon(Icones.Voltar, stringResource(R.string.voltar)) }
                             }
-                            if (comLocalizacao && !seguir) Button(onClick = { seguir = true }) { Text(stringResource(R.string.viagem_seguir_me)) }
+                            if (comLocalizacao && !seguir) {
+                                Button(
+                                    onClick = { seguir = true }, shape = MaterialTheme.shapes.medium,
+                                    border = BorderStroke(1.dp, cores.outlineVariant),
+                                ) {
+                                    Icon(Icones.Posicao, null, Modifier.size(18.dp))
+                                    Spacer(Modifier.width(8.dp))
+                                    Text(stringResource(R.string.viagem_seguir_me))
+                                }
+                            }
                         }
                         if (ecra.horario) {
-                            Surface(color = cores.secondaryContainer, shape = RoundedCornerShape(8.dp), shadowElevation = 4.dp) {
-                                Text(
-                                    stringResource(R.string.viagem_selo_horario), Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                                    style = MaterialTheme.typography.labelLarge,
-                                )
+                            Surface(color = cores.secondary, contentColor = cores.onSecondary, shape = MaterialTheme.shapes.small, shadowElevation = 4.dp) {
+                                Row(
+                                    Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                                    verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                ) {
+                                    Icon(Icones.Relogio, null, Modifier.size(18.dp))
+                                    Text(stringResource(R.string.viagem_selo_horario), style = MaterialTheme.typography.labelLarge)
+                                }
                             }
                         }
                     }
@@ -281,7 +315,10 @@ private fun Cartao(ecra: EcraViagem, i: Int, aoEncontrar: (Lugar, String?) -> Un
     val c = ecra.cartoes[i]
     Column(Modifier.fillMaxSize()) {
         Cabecalho(ecra, c, i, aoEncontrar)
-        if (c.paragens.isNotEmpty()) Paragens(c)
+        if (c.paragens.isNotEmpty()) {
+            // Sem esticar: com poucas paragens o cartão acaba com elas.
+            CartaoAzulejo(Modifier.weight(1f, fill = false).fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 8.dp)) { Paragens(c) }
+        }
     }
 }
 
@@ -307,16 +344,19 @@ private fun Cabecalho(ecra: EcraViagem, c: CartaoEtapa, i: Int, aoEncontrar: (Lu
             // A pé, o estado traz os metros que faltam; nas outras etapas, o caminho que a fonte deu (ou a reta).
             val metros = if (c.situacao == Situacao.ATUAL) estado.progresso
             else e.distancia ?: distanciaMetros(e.de.lat, e.de.lon, e.para.lat, e.para.lon)
-            Text(
-                "🚶 " + stringResource(R.string.viagem_a_pe, e.para.nome, textoDistancia(metros)),
-                color = cores.onSurface, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Icon(Icones.APe, null, Modifier.size(20.dp), tint = cores.onSurface)
+                Text(
+                    stringResource(R.string.viagem_a_pe, e.para.nome, textoDistancia(metros)),
+                    color = cores.onSurface, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold,
+                )
+            }
             Text(stringResource(R.string.rotas_a_pe, minutosDe(Duration.between(e.partida, e.chegada)).toInt()), color = cores.onSurfaceVariant)
             // A última etapa a pé acaba no destino, não numa paragem.
             if (c.situacao == Situacao.ATUAL && i < ecra.cartoes.lastIndex) {
                 // A foto da bússola é a da paragem onde se embarca: a primeira da etapa em veículo que vem a seguir (sem ela, sem foto).
                 val embarque = chaveDaParagemEtapa(ecra.cartoes.getOrNull(i + 1)?.etapa?.paragens?.firstOrNull()?.id)
-                OutlinedButton(onClick = { aoEncontrar(e.para, embarque) }) { Text(stringResource(R.string.bussola_encontrar)) }
+                BotaoSecundario({ aoEncontrar(e.para, embarque) }) { Text(stringResource(R.string.bussola_encontrar)) }
             }
         } else {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -351,18 +391,19 @@ private fun Paragens(c: CartaoEtapa) {
     val lista = rememberLazyListState()
     val aqui = c.paragens.indexOfFirst { it.aqui }
     LaunchedEffect(aqui) { if (aqui > 0 && !lista.isScrollInProgress) lista.animateScrollToItem(aqui - 1) }
-    LazyColumn(Modifier.fillMaxSize(), lista) { items(c.paragens) { LinhaParagem(it) } }
+    LazyColumn(Modifier.fillMaxWidth(), lista) { items(c.paragens) { LinhaParagem(it) } }
 }
 
 @Composable
 private fun LinhaParagem(p: ParagemVista) {
     val cores = MaterialTheme.colorScheme
     val cor = if (p.passada) cores.onSurfaceVariant else cores.onSurface
+    // A passada é só um anel; a de saída é amarela com contorno Tinta, para não depender só do amarelo.
     val marcador = when {
-        p.aqui -> cores.primary
-        p.sai -> cores.secondary
-        p.passada -> cores.outlineVariant
-        else -> cores.onSurfaceVariant
+        p.aqui -> Modifier.background(cores.primary, CircleShape)
+        p.sai -> Modifier.background(Azulejo.Eletrico, CircleShape).border(1.dp, Azulejo.Tinta, CircleShape)
+        p.passada -> Modifier.border(2.dp, cores.onSurfaceVariant, CircleShape)
+        else -> Modifier.background(cores.onSurfaceVariant, CircleShape)
     }
     val etiquetas = listOfNotNull(
         if (p.aqui) stringResource(R.string.viagem_estas_aqui) else null,
@@ -375,7 +416,7 @@ private fun LinhaParagem(p: ParagemVista) {
     ) {
         // Largura mínima, não fixa: com letra grande a hora cresce em vez de partir em duas linhas.
         Text(p.hora.horaLisboa(), Modifier.widthIn(min = 56.dp), color = cor, fontWeight = FontWeight.ExtraBold, softWrap = false)
-        Box(Modifier.size(12.dp).background(marcador, CircleShape))
+        Box(Modifier.size(12.dp).then(marcador))
         Column(Modifier.weight(1f)) {
             Text(p.nome, color = cor, fontWeight = if (p.aqui || p.sai) FontWeight.Bold else FontWeight.Normal)
             if (etiquetas.isNotEmpty()) {
@@ -396,7 +437,7 @@ private fun Rodape(ecra: EcraViagem, aoPartilhar: () -> Unit) {
             stringResource(R.string.viagem_chegada_prevista, ecra.chegada.horaLisboa()),
             color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold,
         )
-        Button(onClick = aoPartilhar, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.viagem_partilhar)) }
+        BotaoPrincipal(aoPartilhar, Modifier.fillMaxWidth()) { Text(stringResource(R.string.viagem_partilhar)) }
     }
 }
 
@@ -404,7 +445,7 @@ private fun Rodape(ecra: EcraViagem, aoPartilhar: () -> Unit) {
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun Botoes(estado: EstadoViagem, aoSilenciar: () -> Unit, aoJaSai: () -> Unit, aoParar: () -> Unit, aoRelatar: (() -> Unit)?) {
-    Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background)) {
+    Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface)) {
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
         // Em linhas que quebram: com letra a 200 % os três botões não cabem lado a lado.
         FlowRow(
@@ -412,14 +453,25 @@ private fun Botoes(estado: EstadoViagem, aoSilenciar: () -> Unit, aoJaSai: () ->
             horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             if (!estado.terminada) {
-                OutlinedButton(onClick = aoSilenciar, enabled = !estado.silenciado) {
+                BotaoSecundario(aoSilenciar, ativo = !estado.silenciado) {
                     Text(stringResource(if (estado.silenciado) R.string.viagem_silenciado else R.string.viagem_silenciar))
                 }
                 // Só se sai de um veículo: a pé não há de que sair e à espera "Já saí" saltava o autocarro que ainda vais apanhar.
-                OutlinedButton(onClick = aoJaSai, enabled = estado.fase == Fase.A_BORDO) { Text(stringResource(R.string.viagem_ja_sai)) }
-                aoRelatar?.let { OutlinedButton(onClick = it) { Text(stringResource(R.string.relatar)) } }
+                BotaoSecundario(aoJaSai, ativo = estado.fase == Fase.A_BORDO) { Text(stringResource(R.string.viagem_ja_sai)) }
+                aoRelatar?.let { BotaoSecundario(it) { Text(stringResource(R.string.relatar)) } }
             }
-            OutlinedButton(onClick = aoParar) { Text(stringResource(if (estado.terminada) R.string.viagem_concluir else R.string.viagem_parar)) }
+            BotaoSecundario(aoParar) { Text(stringResource(if (estado.terminada) R.string.viagem_concluir else R.string.viagem_parar)) }
         }
     }
+}
+
+/**
+ * O contorno da [forma] sem o fundo: na pega, a linha de cima e os cantos da folha.
+ * Limite: abaixo da pega os lados da folha não têm contorno; num ecrã mais largo do que a folha, ela separa-se do mapa só por cima.
+ */
+private fun Modifier.contornoDeCima(cor: Color, forma: Shape) = drawWithCache {
+    val traco = 1.dp.toPx()
+    // Com o dobro da altura, o fundo do contorno cai fora do desenho e é cortado.
+    val contorno = forma.createOutline(Size(size.width - traco, size.height * 2), layoutDirection, this)
+    onDrawBehind { clipRect { inset(traco / 2) { drawOutline(contorno, cor, style = Stroke(traco)) } } }
 }

@@ -11,8 +11,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
@@ -33,6 +36,7 @@ import org.robolectric.annotation.GraphicsMode
 import pt.pixellusitano.paragemcerta.core.viagem.EstadoViagem
 import pt.pixellusitano.paragemcerta.core.viagem.Fase
 import pt.pixellusitano.paragemcerta.ui.rotas.percursos
+import pt.pixellusitano.paragemcerta.ui.tema.LocalEscuro
 import pt.pixellusitano.paragemcerta.ui.tema.ModoTema
 import pt.pixellusitano.paragemcerta.ui.tema.TemaParagemCerta
 import java.time.Instant
@@ -56,7 +60,8 @@ class ViagemEcraTest {
     private fun MapaFalso(aSeguir: Boolean, aoDeixarDeSeguir: () -> Unit) {
         SideEffect { seguir = aSeguir }
         Box(
-            Modifier.fillMaxSize().background(Color(0xFFDDE5F0)).testTag("mapa")
+            // No escuro, o fundo do estilo escuro do OpenFreeMap: a folha e os botões por cima têm de se ver contra ele.
+            Modifier.fillMaxSize().background(if (LocalEscuro.current) Color(0xFF0C0C0C) else Color(0xFFDDE5F0)).testTag("mapa")
                 .pointerInput(Unit) { detectDragGestures { _, _ -> aoDeixarDeSeguir() } },
         )
     }
@@ -82,7 +87,7 @@ class ViagemEcraTest {
             texto(it).assertIsDisplayed()
             assertTrue("$it no painel, por baixo do mapa", texto(it).fetchSemanticsNode().boundsInRoot.top > metade)
         }
-        texto("← Voltar").assertIsDisplayed()
+        regra.onNodeWithContentDescription("Voltar").assertIsDisplayed().assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp)
     }
 
     @Test fun oMapaComecaASeguirAPessoaEArrastarOMapaMostraSeguirMe() {

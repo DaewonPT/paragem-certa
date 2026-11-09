@@ -20,7 +20,8 @@ import java.time.Instant
 
 /** Puxa o painel da viagem para cima: por baixo do mapa só se vê o título da etapa e as primeiras paragens; os botões ficam mais abaixo. */
 internal fun ComposeTestRule.abrirPainel() {
-    onRoot().performTouchInput { swipeUp(startY = height * 0.9f, endY = height * 0.1f) }
+    // A meio do painel recolhido: mais abaixo, com letra a 200 %, o dedo cai nos botões da barra e não arrasta o painel.
+    onRoot().performTouchInput { swipeUp(startY = height * 0.6f, endY = height * 0.1f) }
     waitForIdle()
 }
 

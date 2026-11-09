@@ -234,10 +234,26 @@ class CamadasTest {
     @Test fun veiculosTemCorPeloOperador() {
         fun v(id: String, linha: String) = Veiculo(id, linha, 38.7, -9.1, null, Instant.EPOCH)
         val cores = mapOf("1009" to "#E4002B")
-        assertEquals("#F2B705" to "#1A1A1A", coresDoVeiculo(v("carris:5247", "15E"), cores))
-        assertEquals("#F2B705" to "#1A1A1A", coresDoVeiculo(v("carris:5248", ""), cores)) // sem nome também é da Carris
-        assertEquals("#E4002B" to "#FFFFFF", coresDoVeiculo(v("[YA15B]2261", "1009"), cores))
-        assertEquals("#132A4F" to "#FFFFFF", coresDoVeiculo(v("[YA15B]2262", "1010"), cores)) // sem cor: o azul da app
+        assertEquals("#F2B705" to "#1A1A1A", coresDoVeiculo(v("carris:5247", "15E"), cores, escuro = false))
+        assertEquals("#F2B705" to "#1A1A1A", coresDoVeiculo(v("carris:5248", ""), cores, escuro = false)) // sem nome também é da Carris
+        assertEquals("#E4002B" to "#FFFFFF", coresDoVeiculo(v("[YA15B]2261", "1009"), cores, escuro = false))
+        assertEquals("#1F4FA3" to "#FFFFFF", coresDoVeiculo(v("[YA15B]2262", "1010"), cores, escuro = false)) // sem cor: o azul da app
+        assertEquals("#132A4F" to "#FFFFFF", coresDoVeiculo(v("[YA15B]2263", "1011"), mapOf("1011" to "#132A4F"), escuro = false))
+    }
+
+    @Test fun corNeutraNoMapaEscuro() {
+        // O cobalto (a cor das linhas sem cor publicada) não se vê no mapa escuro: lá passa ao azul-céu, como o primary do tema.
+        assertEquals("#7FB0FF", corDaLinhaNoMapa("#1F4FA3", escuro = true))
+        assertEquals("#1F4FA3", corDaLinhaNoMapa("#1F4FA3", escuro = false))
+        assertEquals("#E4002B", corDaLinhaNoMapa("#E4002B", escuro = true))
+        // O número por cima do círculo segue a regra do selo da linha: Tinta sobre o amarelo do elétrico, branco sobre cores escuras.
+        assertEquals("#132A4F", corDoNumeroDoVeiculo("#E2A400"))
+        assertEquals("#FFFFFF", corDoNumeroDoVeiculo("#E4002B"))
+        assertEquals("#FFFFFF", corDoNumeroDoVeiculo("#132A4F"))
+        // Um veículo da CM sem cor, no escuro: o azul-céu com o número em Tinta.
+        fun v(id: String, linha: String) = Veiculo(id, linha, 38.7, -9.1, null, Instant.EPOCH)
+        assertEquals("#7FB0FF" to "#132A4F", coresDoVeiculo(v("[YA15B]2262", "1010"), emptyMap(), escuro = true))
+        assertEquals("#F2B705" to "#1A1A1A", coresDoVeiculo(v("carris:5247", "15E"), emptyMap(), escuro = true))
     }
 
     @Test fun linhaMostraOsVeiculosDela() {

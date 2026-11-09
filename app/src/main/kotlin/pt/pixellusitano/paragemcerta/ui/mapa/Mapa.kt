@@ -10,7 +10,6 @@ import pt.pixellusitano.paragemcerta.ui.inicio.Zona
 import pt.pixellusitano.paragemcerta.ui.inicio.duracaoCamara
 import pt.pixellusitano.paragemcerta.ui.inicio.maisRecente
 import pt.pixellusitano.paragemcerta.ui.inicio.temLocalizacao
-import android.graphics.Color as CorAndroid
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -20,12 +19,15 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.toColorInt
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import org.maplibre.android.MapLibre
@@ -36,6 +38,7 @@ import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.location.LocationComponent
 import org.maplibre.android.location.LocationComponentActivationOptions
+import org.maplibre.android.location.LocationComponentOptions
 import org.maplibre.android.location.OnCameraTrackingChangedListener
 import org.maplibre.android.location.modes.CameraMode
 import org.maplibre.android.location.modes.RenderMode
@@ -61,7 +64,10 @@ import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.Paragem
 import pt.pixellusitano.paragemcerta.core.modelo.Veiculo
 import pt.pixellusitano.paragemcerta.dados.DetalheLinha
+import pt.pixellusitano.paragemcerta.ui.comum.corDoTextoSobre
 import pt.pixellusitano.paragemcerta.ui.comunidade.aplicarCorrecoes
+import pt.pixellusitano.paragemcerta.ui.rotas.hex
+import pt.pixellusitano.paragemcerta.ui.tema.Azulejo
 import java.time.Duration
 import java.time.Instant
 
@@ -144,9 +150,18 @@ fun veiculosDaLinha(todos: List<Veiculo>, d: DetalheLinha): List<Veiculo> = when
     else -> emptyList()
 }
 
-/** A cor do círculo e a do texto de um veículo: a Carris tem as suas; a CM, a da linha (ou o azul da app) com texto branco. */
-internal fun coresDoVeiculo(v: Veiculo, coresLinhas: Map<String, String>): Pair<String, String> =
-    if (v.daCarris) COR_CARRIS to COR_TEXTO_CARRIS else (coresLinhas[v.linhaId] ?: "#132A4F") to "#FFFFFF"
+/** A cor do círculo e a do texto de um veículo: a Carris tem as suas; a CM, a da linha (ou o azul da app) com o número que se lê sobre ela. */
+internal fun coresDoVeiculo(v: Veiculo, coresLinhas: Map<String, String>, escuro: Boolean): Pair<String, String> =
+    if (v.daCarris) COR_CARRIS to COR_TEXTO_CARRIS
+    else corDaLinhaNoMapa(coresLinhas[v.linhaId] ?: hex(Azulejo.Cobalto), escuro).let { it to corDoNumeroDoVeiculo(it) }
+
+/** A cor de uma linha no mapa: o cobalto (o das linhas sem cor publicada) não se vê no mapa escuro e lá passa ao azul-céu, como o primary do tema. */
+internal fun corDaLinhaNoMapa(hex: String, escuro: Boolean): String =
+    if (escuro && hex.equals(hex(Azulejo.Cobalto), ignoreCase = true)) hex(Azulejo.CeuNoite) else hex
+
+/** O número dentro do círculo do veículo: branco ou Tinta, o que se lê melhor sobre [hex] (a regra do selo da linha). */
+internal fun corDoNumeroDoVeiculo(hex: String): String =
+    runCatching { hex(corDoTextoSobre(Color(hex.toColorInt()))) }.getOrDefault(hex(Azulejo.Branco))
 
 @SuppressLint("MissingPermission", "ClickableViewAccessibility")
 @Composable
@@ -313,7 +328,7 @@ fun Mapa(
             prepararCamadas(contexto, estilo, escuro)
             estado.estilo = estilo
             // Mudar de estilo (claro/escuro) deita fora o ponto da posição: volta a ativá-lo.
-            if (posicaoVisivel) ativarPosicao(contexto, mapa, estilo, aSeguir, aBussola, ouvinteSeguir)
+            if (posicaoVisivel) ativarPosicao(contexto, mapa, estilo, escuro, aSeguir, aBussola, ouvinteSeguir)
         }
     }
 
@@ -330,7 +345,7 @@ fun Mapa(
     LaunchedEffect(mostrarPosicao) {
         val mapa = estado.mapa ?: return@LaunchedEffect
         val estilo = estado.estilo ?: return@LaunchedEffect
-        if (mostrarPosicao) ativarPosicao(contexto, mapa, estilo, aSeguir, aBussola, ouvinteSeguir)
+        if (mostrarPosicao) ativarPosicao(contexto, mapa, estilo, escuro, aSeguir, aBussola, ouvinteSeguir)
     }
 
     // "Seguir-me" e a bússola põem a câmara na pessoa; mexer no mapa tira-a de lá.
@@ -401,7 +416,7 @@ fun Mapa(
                 Feature.fromGeometry(Point.fromLngLat(v.lon, v.lat)).apply {
                     addStringProperty("id", v.id)
                     addStringProperty("linha", v.linhaId)
-                    val (cor, corTexto) = coresDoVeiculo(v, coresLinhas)
+                    val (cor, corTexto) = coresDoVeiculo(v, coresLinhas, escuro)
                     addStringProperty("cor", cor)
                     addStringProperty("corTexto", corTexto)
                     addBooleanProperty("antigo", Duration.between(v.ultimoSinal, agora) > SINAL_ANTIGO)
@@ -425,7 +440,7 @@ fun Mapa(
         estado.estilo?.getSourceAs<GeoJsonSource>(FONTE_PERCURSOS)?.setGeoJson(
             FeatureCollection.fromFeatures(percursos.filter { it.pontos.size >= 2 }.map { p ->
                 Feature.fromGeometry(LineString.fromLngLats(p.pontos.map { (lat, lon) -> Point.fromLngLat(lon, lat) })).apply {
-                    addStringProperty("cor", p.cor)
+                    addStringProperty("cor", corDaLinhaNoMapa(p.cor, escuro))
                     addBooleanProperty("aPe", p.aPe)
                     addBooleanProperty("esbatido", p.esbatido)
                 }
@@ -480,12 +495,13 @@ private class EstadoMapa {
     var estilo: Style? by mutableStateOf(null)
 }
 
-/** Liga o ponto azul da posição (motor de localização do próprio MapLibre, sem serviços da Google). */
+/** Liga o ponto azul da posição (motor de localização do próprio MapLibre, sem serviços da Google), no azul do tema. */
 @SuppressLint("MissingPermission")
 private fun ativarPosicao(
     contexto: Context,
     mapa: MapLibreMap,
     estilo: Style,
+    escuro: Boolean,
     seguir: Boolean,
     bussola: Boolean,
     ouvinteSeguir: OnCameraTrackingChangedListener,
@@ -493,7 +509,11 @@ private fun ativarPosicao(
     if (!temLocalizacao(contexto)) return
     try {
         mapa.locationComponent.apply {
-            activateLocationComponent(LocationComponentActivationOptions.builder(contexto, estilo).useDefaultLocationEngine(true).build())
+            val azul = (if (escuro) Azulejo.CeuNoite else Azulejo.Cobalto).toArgb()
+            val opcoes = LocationComponentOptions.builder(contexto).foregroundTintColor(azul).bearingTintColor(azul).accuracyColor(azul).build()
+            activateLocationComponent(
+                LocationComponentActivationOptions.builder(contexto, estilo).locationComponentOptions(opcoes).useDefaultLocationEngine(true).build(),
+            )
             isLocationComponentEnabled = true
             // Ativar outra vez (novo estilo, permissão dada depois) não pode deixar o aviso repetido.
             removeOnCameraTrackingChangedListener(ouvinteSeguir)
@@ -548,6 +568,9 @@ private fun sairDaBussola(mapa: MapLibreMap, duracao: Int) {
 }
 
 private fun prepararCamadas(contexto: Context, estilo: Style, escuro: Boolean) {
+    val texto = hex(if (escuro) Azulejo.Branco else Azulejo.Tinta)
+    val halo = hex(if (escuro) Azulejo.Noite else Azulejo.Branco)
+    val azul = hex(if (escuro) Azulejo.CeuNoite else Azulejo.Cobalto)
     // O triângulo é um desenho (vetor) e não um "⚠" em texto: as letras do OpenFreeMap não o têm.
     ContextCompat.getDrawable(contexto, R.drawable.relato_mapa)?.let { estilo.addImage(IMAGEM_RELATO, it) }
     ContextCompat.getDrawable(contexto, R.drawable.gira_mapa)?.let { estilo.addImage(IMAGEM_GIRA, it) }
@@ -568,7 +591,7 @@ private fun prepararCamadas(contexto: Context, estilo: Style, escuro: Boolean) {
     )
     estilo.addLayer(
         LineLayer(CAMADA_A_PE, FONTE_PERCURSOS).withProperties(
-            PropertyFactory.lineColor(if (escuro) "#8D9AB3" else "#56647C"),
+            PropertyFactory.lineColor(hex(if (escuro) Azulejo.CinzaNoite else Azulejo.Cinza)),
             PropertyFactory.lineWidth(3f),
             PropertyFactory.lineOpacity(Expression.switchCase(Expression.get("esbatido"), Expression.literal(0.45f), Expression.literal(1f))),
             PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
@@ -587,17 +610,17 @@ private fun prepararCamadas(contexto: Context, estilo: Style, escuro: Boolean) {
             PropertyFactory.textOffset(arrayOf(0f, 0.2f)),
             // Com o zoom afastado as que se tapam saem sozinhas; um nome que não cabe sai sem tirar o pino.
             PropertyFactory.textOptional(true),
-            PropertyFactory.textColor(if (escuro) "#FFFFFF" else "#0B1222"),
-            PropertyFactory.textHaloColor(if (escuro) "#0B1222" else "#FFFFFF"),
+            PropertyFactory.textColor(texto),
+            PropertyFactory.textHaloColor(halo),
             PropertyFactory.textHaloWidth(1.5f),
         ).apply { minZoom = ZOOM_GIRA.toFloat() },
     )
     estilo.addLayer(
         CircleLayer(CAMADA_PARAGENS, FONTE_PARAGENS).withProperties(
             PropertyFactory.circleRadius(6f),
-            PropertyFactory.circleColor(if (escuro) "#7FB0FF" else "#1F4FA3"),
+            PropertyFactory.circleColor(azul),
             PropertyFactory.circleStrokeWidth(2f),
-            PropertyFactory.circleStrokeColor(if (escuro) "#0B1222" else "#FFFFFF"),
+            PropertyFactory.circleStrokeColor(halo),
         ),
     )
     // Por cima das paragens com um relato confirmado: o triângulo assenta em cima do ponto, sem o tapar.
@@ -609,18 +632,13 @@ private fun prepararCamadas(contexto: Context, estilo: Style, escuro: Boolean) {
             PropertyFactory.iconOffset(arrayOf(0f, -8f)),
         ).withFilter(Expression.eq(Expression.get("relato"), Expression.literal(true))),
     )
-    // As paragens da viagem: pequenas, e a de saída maior, de outra cor e com o nome.
+    // As paragens da viagem: pequenas, e a de saída maior, amarela com contorno Tinta (o amarelo nunca sozinho) e com o nome.
     estilo.addLayer(
         CircleLayer(CAMADA_MARCAS, FONTE_MARCAS).withProperties(
             PropertyFactory.circleRadius(Expression.switchCase(Expression.get("sai"), Expression.literal(10f), Expression.literal(5f))),
-            PropertyFactory.circleColor(
-                Expression.switchCase(
-                    Expression.get("sai"), Expression.literal(if (escuro) "#FFA94D" else "#D9480F"),
-                    Expression.literal(if (escuro) "#7FB0FF" else "#1F4FA3"),
-                ),
-            ),
+            PropertyFactory.circleColor(Expression.switchCase(Expression.get("sai"), Expression.literal(hex(Azulejo.Eletrico)), Expression.literal(azul))),
             PropertyFactory.circleStrokeWidth(2f),
-            PropertyFactory.circleStrokeColor(if (escuro) "#0B1222" else "#FFFFFF"),
+            PropertyFactory.circleStrokeColor(Expression.switchCase(Expression.get("sai"), Expression.literal(hex(Azulejo.Tinta)), Expression.literal(halo))),
         ),
     )
     estilo.addLayer(
@@ -630,8 +648,8 @@ private fun prepararCamadas(contexto: Context, estilo: Style, escuro: Boolean) {
             PropertyFactory.textSize(12f),
             PropertyFactory.textAnchor(Property.TEXT_ANCHOR_TOP),
             PropertyFactory.textOffset(arrayOf(0f, 1f)),
-            PropertyFactory.textColor(if (escuro) "#FFFFFF" else "#0B1222"),
-            PropertyFactory.textHaloColor(if (escuro) "#0B1222" else "#FFFFFF"),
+            PropertyFactory.textColor(texto),
+            PropertyFactory.textHaloColor(halo),
             PropertyFactory.textHaloWidth(1.5f),
             PropertyFactory.textAllowOverlap(true),
         ).withFilter(Expression.eq(Expression.get("sai"), Expression.literal(true))),
@@ -642,7 +660,7 @@ private fun prepararCamadas(contexto: Context, estilo: Style, escuro: Boolean) {
             PropertyFactory.circleRadius(12f),
             PropertyFactory.circleColor(Expression.get("cor")),
             PropertyFactory.circleStrokeWidth(2f),
-            PropertyFactory.circleStrokeColor(CorAndroid.WHITE),
+            PropertyFactory.circleStrokeColor(hex(Azulejo.Branco)),
             PropertyFactory.circleOpacity(opacidade),
             PropertyFactory.circleStrokeOpacity(opacidade),
         ),

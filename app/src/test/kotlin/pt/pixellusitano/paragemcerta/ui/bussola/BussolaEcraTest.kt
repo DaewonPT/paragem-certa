@@ -24,7 +24,11 @@ import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertWidthIsAtLeast
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
@@ -90,7 +94,7 @@ class BussolaEcraTest {
     // ---- o conteúdo ----
 
     @Composable
-    private fun Conteudo(estado: EstadoBussola, aoPermitir: () -> Unit = {}) = TemaParagemCerta(ModoTema.CLARO) {
+    private fun Conteudo(estado: EstadoBussola, aoPermitir: () -> Unit = {}, modo: ModoTema = ModoTema.CLARO) = TemaParagemCerta(modo) {
         BussolaConteudo("Cais do Sodré", estado, aoPermitir, aoVoltar = {}, modifier = Modifier.width(360.dp))
     }
 
@@ -101,6 +105,18 @@ class BussolaEcraTest {
         regra.onNodeWithContentDescription("Paragem Cais do Sodré, a 120 m, à tua direita").assertExists()
         regra.onNodeWithText("Calibra a bússola: move o telemóvel num 8.").assertDoesNotExist()
         regra.onNodeWithText("Este telemóvel não tem bússola. Aqui vês só a distância e a direção.").assertDoesNotExist()
+    }
+
+    @Test fun oCabecalhoEUmTituloComOVoltarDe48dp() {
+        var voltou = 0
+        regra.setContent {
+            TemaParagemCerta(ModoTema.CLARO) {
+                BussolaConteudo("Cais do Sodré", EstadoBussola.AProcurar, aoPermitir = {}, aoVoltar = { voltou++ }, modifier = Modifier.width(360.dp))
+            }
+        }
+        regra.onNode(hasText("Encontrar a paragem") and isHeading()).assertIsDisplayed()
+        regra.onNodeWithContentDescription("Voltar").assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp).performClick()
+        assertEquals(1, voltou)
     }
 
     @Test fun osQuatroLadosDaDescricao() {
@@ -152,11 +168,13 @@ class BussolaEcraTest {
     }
 
     // A seta fixa em 60° (a paragem a nordeste, com o telemóvel a apontar para o norte-noroeste).
+    @Config(qualifiers = "w360dp-h780dp")
     @Test fun bussola() = captureRoboImage("src/test/screenshots/bussola.png") {
         Conteudo(EstadoBussola.Ativa(120.0, rumo = 40.0, angulo = 60.0, semSensor = false, calibrar = false))
     }
 
     // A foto de rua por baixo do alvo, sem menu: a imagem é feita aqui, sem esperar por nenhum pedido.
+    @Config(qualifiers = "w360dp-h780dp")
     @Test fun bussola_com_foto_claro() = captureRoboImage("src/test/screenshots/bussola_com_foto_claro.png") {
         val imagem = Bitmap.createBitmap(960, 720, Bitmap.Config.ARGB_8888).also {
             val tela = Canvas(it)
@@ -175,6 +193,11 @@ class BussolaEcraTest {
                 },
             )
         }
+    }
+
+    @Config(qualifiers = "w360dp-h780dp")
+    @Test fun bussola_escuro() = captureRoboImage("src/test/screenshots/bussola_escuro.png") {
+        Conteudo(EstadoBussola.Ativa(120.0, rumo = 40.0, angulo = 60.0, semSensor = false, calibrar = false), modo = ModoTema.ESCURO)
     }
 
     // ---- o ecrã ligado à localização e ao sensor ----

@@ -112,7 +112,7 @@ class ViagemScreenshotTest {
     @Test fun aPeDizADistanciaEOTempoEJaSaiNaoServe() {
         mostrar(ex.aPe(plano, etapa = 0, falta = 120.0))
         texto("Etapa 1 de 4 · Agora").assertExists()
-        texto("🚶 A pé até Cais do Sodré · 120 m").assertExists()
+        texto("A pé até Cais do Sodré · 120 m").assertExists()
         texto("3 min a pé").assertExists()
         texto("Já saí").assertIsNotEnabled()
         texto("Silenciar").assertIsEnabled()
@@ -138,7 +138,7 @@ class ViagemScreenshotTest {
         val etapas = plano.itinerario.etapas.take(3)
         val ateOFim = plano.copy(itinerario = plano.itinerario.copy(etapas = etapas, chegada = etapas.last().chegada))
         mostrar(ex.aPe(ateOFim, etapa = 2, falta = 90.0), ateOFim)
-        texto("🚶 A pé até Oriente (Norte) · 90 m").assertExists()
+        texto("A pé até Oriente (Norte) · 90 m").assertExists()
         texto("Encontrar a paragem").assertDoesNotExist()
     }
 
@@ -160,7 +160,7 @@ class ViagemScreenshotTest {
         texto("Etapa 2 de 4 · Agora").performTouchInput { swipeLeft() }
         regra.waitForIdle()
         texto("Etapa 3 de 4 · A seguir").assertExists()
-        texto("🚶 A pé até Oriente (Norte) · 90 m").assertExists()
+        texto("A pé até Oriente (Norte) · 90 m").assertExists()
     }
 
     @Test fun osBotoesPedemAsAcoes() {
