@@ -1,6 +1,7 @@
 package pt.pixellusitano.paragemcerta.ui.comum
 
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -20,7 +21,7 @@ fun DialogoNome(titulo: String, inicial: String, aoConfirmar: (String) -> Unit, 
         onDismissRequest = aoCancelar,
         title = { Text(titulo) },
         text = {
-            OutlinedTextField(nome, { nome = it }, singleLine = true, label = { Text(stringResource(R.string.dialogo_nome)) })
+            OutlinedTextField(nome, { nome = it }, shape = MaterialTheme.shapes.medium, singleLine = true, label = { Text(stringResource(R.string.dialogo_nome)) })
         },
         confirmButton = {
             TextButton(onClick = { aoConfirmar(nome.trim()) }, enabled = nome.isNotBlank()) { Text(stringResource(R.string.guardar)) }

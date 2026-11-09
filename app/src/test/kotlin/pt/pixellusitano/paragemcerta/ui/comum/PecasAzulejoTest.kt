@@ -2,6 +2,7 @@ package pt.pixellusitano.paragemcerta.ui.comum
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -52,6 +53,20 @@ class PecasAzulejoTest {
         regra.setContent { TemaParagemCerta(ModoTema.CLARO) { CabecalhoAzulejo("Menu", aoVoltar = null) } }
         regra.onNodeWithContentDescription("Voltar").assertDoesNotExist()
         regra.onNodeWithText("Menu").assert(ehTitulo)
+    }
+
+    @Test fun cabecalhoSemVoltarTemAAlturaDoComVoltar() {
+        regra.setContent {
+            TemaParagemCerta(ModoTema.CLARO) {
+                Column {
+                    Box(Modifier.testTag("com")) { CabecalhoAzulejo("Menu", {}) }
+                    Box(Modifier.testTag("sem")) { CabecalhoAzulejo("Menu", aoVoltar = null) }
+                }
+            }
+        }
+        val com = regra.onNodeWithTag("com").getBoundsInRoot()
+        val sem = regra.onNodeWithTag("sem").getBoundsInRoot()
+        assertEquals(com.bottom - com.top, sem.bottom - sem.top)
     }
 
     @Composable private fun CabecalhoCompleto() = CabecalhoAzulejo(

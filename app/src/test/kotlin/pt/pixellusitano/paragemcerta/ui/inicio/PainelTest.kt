@@ -257,12 +257,12 @@ class PainelTest {
 
     @Test fun soComLinhasFavoritasNaoMostraOVazio() {
         painel(listOf(blocoDaLinha(f3708, noTerminal, true)))
-        regra.onNodeWithText("Toca na ☆ de uma paragem, de uma linha ou de um sítio para o veres aqui").assertDoesNotExist()
+        regra.onNodeWithText("Toca na estrela de uma paragem, de uma linha ou de um sítio para o veres aqui").assertDoesNotExist()
         regra.onNodeWithText("3708 → $costa").assertIsDisplayed()
     }
 
     private val convite = "Toca para escolher a morada"
-    private val dica = "Toca na ☆ de uma paragem, de uma linha ou de um sítio para o veres aqui"
+    private val dica = "Toca na estrela de uma paragem, de uma linha ou de um sítio para o veres aqui"
 
     /** O cartão que convida a escolher a morada da Casa ou do Trabalho ([nome]). */
     private fun convite(nome: String) = hasText(nome) and hasText(convite)

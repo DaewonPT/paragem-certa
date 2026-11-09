@@ -150,6 +150,12 @@ class ContaScreenshotTest {
         }
     }
 
+    @Test fun conta_codigo_escuro() = captureRoboImage("src/test/screenshots/conta_codigo_escuro.png") {
+        TemaParagemCerta(ModoTema.ESCURO) {
+            EcraConta(passo = PassoEntrada.CODIGO, mensagem = "Código errado", modifier = Modifier.width(360.dp))
+        }
+    }
+
     @Test fun conta_com_conta() = captureRoboImage("src/test/screenshots/conta_com_conta.png") {
         TemaParagemCerta(ModoTema.CLARO) {
             EcraConta(estado = EstadoConta.Com("ana@exemplo.pt", sincronizadaEm), modifier = Modifier.width(360.dp))

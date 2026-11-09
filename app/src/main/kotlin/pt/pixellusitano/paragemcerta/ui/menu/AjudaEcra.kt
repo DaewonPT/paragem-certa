@@ -1,6 +1,7 @@
 package pt.pixellusitano.paragemcerta.ui.menu
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -12,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.ui.comum.CabecalhoAzulejo
@@ -29,13 +31,15 @@ fun AjudaEcra(aoVoltar: () -> Unit, modifier: Modifier = Modifier) {
     val cores = MaterialTheme.colorScheme
     Column(modifier.background(cores.background)) {
         CabecalhoAzulejo(stringResource(R.string.menu_ajuda), aoVoltar)
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp)) {
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             PERGUNTAS.forEach { (pergunta, resposta) ->
-                Text(
-                    stringResource(pergunta), Modifier.padding(top = 16.dp).semantics { heading() },
-                    style = MaterialTheme.typography.titleMedium, color = cores.onBackground,
-                )
-                Text(stringResource(resposta), Modifier.padding(top = 4.dp), color = cores.onSurfaceVariant)
+                CartaoDeSecao {
+                    Text(
+                        stringResource(pergunta), Modifier.padding(top = 12.dp).semantics { heading() },
+                        style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Black, color = cores.onSurface,
+                    )
+                    Text(stringResource(resposta), Modifier.padding(top = 4.dp, bottom = 12.dp), color = cores.onSurfaceVariant)
+                }
             }
         }
     }

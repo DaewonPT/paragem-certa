@@ -1,6 +1,10 @@
 package pt.pixellusitano.paragemcerta.ui.sobre
 
 import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertWidthIsAtLeast
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
@@ -21,24 +25,35 @@ class SobreScreenshotTest {
     @get:Rule val regra = createComposeRule()
 
     @Test fun sobre_claro() = captureRoboImage("src/test/screenshots/sobre_claro.png") {
-        TemaParagemCerta(ModoTema.CLARO) { SobreEcra(versao = "0.1.0", aoAbrir = {}) }
+        TemaParagemCerta(ModoTema.CLARO) { SobreEcra(versao = "0.1.0", aoVoltar = {}, aoAbrir = {}) }
+    }
+
+    @Test fun sobre_escuro() = captureRoboImage("src/test/screenshots/sobre_escuro.png") {
+        TemaParagemCerta(ModoTema.ESCURO) { SobreEcra(versao = "0.1.0", aoVoltar = {}, aoAbrir = {}) }
+    }
+
+    @Test fun sobreTemOVoltarDe48eChamaOCallback() {
+        var voltou = 0
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { SobreEcra(versao = "0.1.0", aoVoltar = { voltou++ }, aoAbrir = {}) } }
+        regra.onNodeWithContentDescription("Voltar").assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp).performClick()
+        assertEquals(1, voltou)
     }
 
     @Test fun apoiarAbreAPaginaDeDonativos() {
         var aberto: String? = null
-        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { SobreEcra(versao = "0.1.0", aoAbrir = { aberto = it }, urlDoacoes = "https://exemplo.pt/doar") } }
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { SobreEcra(versao = "0.1.0", aoVoltar = {}, aoAbrir = { aberto = it }, urlDoacoes = "https://exemplo.pt/doar") } }
         regra.onNodeWithText("Apoiar a Paragem Certa com um donativo").assertHasClickAction().performClick()
         assertEquals("https://exemplo.pt/doar", aberto)
     }
 
     @Test fun semLigacaoDeDonativosNaoHaApoiar() {
-        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { SobreEcra(versao = "0.1.0", aoAbrir = {}) } }
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { SobreEcra(versao = "0.1.0", aoVoltar = {}, aoAbrir = {}) } }
         regra.onNodeWithText("Apoiar a Paragem Certa com um donativo").assertDoesNotExist()
     }
 
     @Test fun termosEPoliticaDePrivacidade_temLigacao() {
         val abertos = mutableListOf<String>()
-        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { SobreEcra(versao = "0.1.0", aoAbrir = { abertos += it }) } }
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { SobreEcra(versao = "0.1.0", aoVoltar = {}, aoAbrir = { abertos += it }) } }
         regra.onNodeWithText("Termos").performScrollTo().assertHasClickAction().performClick()
         regra.onNodeWithText("Política de privacidade").performScrollTo().assertHasClickAction().performClick()
         assertEquals(listOf("https://paragemcerta.pixellusitano.com/termos", "https://paragemcerta.pixellusitano.com/privacidade"), abertos)
@@ -46,14 +61,14 @@ class SobreScreenshotTest {
 
     @Test fun fonteTransitous_temLigacao() {
         var aberto: String? = null
-        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { SobreEcra(versao = "0.1.0", aoAbrir = { aberto = it }) } }
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { SobreEcra(versao = "0.1.0", aoVoltar = {}, aoAbrir = { aberto = it }) } }
         regra.onNodeWithText("Transitous — horários e rotas").assertHasClickAction().performClick()
         assertEquals("https://transitous.org/sources", aberto)
     }
 
     @Test fun sobreTemOMetroSempre() {
         val abertos = mutableListOf<String>()
-        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { SobreEcra(versao = "0.1.0", aoAbrir = { abertos += it }) } }
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { SobreEcra(versao = "0.1.0", aoVoltar = {}, aoAbrir = { abertos += it }) } }
         // Com o interruptor da Carris desligado (o de omissão): o Metro, a EMEL e os outros operadores já lá estão; a Carris não.
         regra.onNodeWithText("Metropolitano de Lisboa (CC BY 4.0)").performScrollTo().assertHasClickAction().performClick()
         regra.onNodeWithText("Estações GIRA: EMEL (dados.emel.pt), CC BY-SA 4.0").performScrollTo().assertHasClickAction().performClick()
@@ -64,7 +79,7 @@ class SobreScreenshotTest {
 
     @Test fun sobreSoTemACarrisComAoVivo() {
         var aberto: String? = null
-        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { SobreEcra(versao = "0.1.0", aoAbrir = { aberto = it }, carrisAoVivo = true) } }
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { SobreEcra(versao = "0.1.0", aoVoltar = {}, aoAbrir = { aberto = it }, carrisAoVivo = true) } }
         regra.onNodeWithText("Carris (posições ao vivo)").performScrollTo().assertHasClickAction().performClick()
         assertEquals("https://www.carris.pt", aberto)
         regra.onNodeWithText("Metropolitano de Lisboa (CC BY 4.0)").assertExists()
@@ -72,14 +87,14 @@ class SobreScreenshotTest {
 
     @Test fun sobreTemOPanoramax() {
         var aberto: String? = null
-        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { SobreEcra(versao = "0.1.0", aoAbrir = { aberto = it }) } }
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { SobreEcra(versao = "0.1.0", aoVoltar = {}, aoAbrir = { aberto = it }) } }
         regra.onNodeWithText("Fotos de rua: Panoramax").performScrollTo().assertHasClickAction().performClick()
         assertEquals("https://panoramax.fr", aberto)
     }
 
     @Test fun fonteGeoApi_temLigacao() {
         var aberto: String? = null
-        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { SobreEcra(versao = "0.1.0", aoAbrir = { aberto = it }) } }
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { SobreEcra(versao = "0.1.0", aoVoltar = {}, aoAbrir = { aberto = it }) } }
         // A lista de fontes cresceu (Metro, EMEL, operadores): esta já fica abaixo do ecrã do teste.
         regra.onNodeWithText("Código postal via GEO API PT (geoapi.pt) · dados CTT/INE").performScrollTo().assertHasClickAction().performClick()
         assertEquals("https://geoapi.pt", aberto)

@@ -13,9 +13,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -35,23 +33,25 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import java.time.format.DateTimeFormatter
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import pt.pixellusitano.paragemcerta.R
-import pt.pixellusitano.paragemcerta.ui.comum.CabecalhoAzulejo
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import pt.pixellusitano.paragemcerta.core.rede.emPausa
 import pt.pixellusitano.paragemcerta.dados.Conta
 import pt.pixellusitano.paragemcerta.dados.EstadoConta
 import pt.pixellusitano.paragemcerta.dados.Repositorio
 import pt.pixellusitano.paragemcerta.dados.pedirTokenGoogle
+import pt.pixellusitano.paragemcerta.ui.comum.BotaoPrincipal
+import pt.pixellusitano.paragemcerta.ui.comum.BotaoSecundario
+import pt.pixellusitano.paragemcerta.ui.comum.CabecalhoAzulejo
 import pt.pixellusitano.paragemcerta.ui.comum.LISBOA_FUSO
 import pt.pixellusitano.paragemcerta.ui.sobre.URL_PRIVACIDADE
 import pt.pixellusitano.paragemcerta.ui.sobre.URL_TERMOS
-import java.time.format.DateTimeFormatter
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Duration.Companion.seconds
 
 private val HORA = DateTimeFormatter.ofPattern("HH:mm")
 
@@ -206,53 +206,55 @@ fun ContaConteudo(
     Column(modifier.background(MaterialTheme.colorScheme.background)) {
         CabecalhoAzulejo(stringResource(R.string.menu_conta), aoVoltar)
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp)) {
-            when (estado) {
-                is EstadoConta.Com -> {
-                    Text(estado.email, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
-                    Text(
-                        estado.sincronizadaEm?.let { stringResource(R.string.conta_sincronizado_as, HORA.format(it.atZone(LISBOA_FUSO))) }
-                            ?: stringResource(R.string.conta_por_sincronizar),
-                        Modifier.padding(bottom = 12.dp), color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    Button(onClick = aoSincronizar, enabled = !aOcupar, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.conta_sincronizar)) }
-                    Ligacao(stringResource(R.string.conta_sair), aoSair)
-                    Ligacao(stringResource(R.string.conta_apagar), { apagar = true }, MaterialTheme.colorScheme.error)
-                }
-                EstadoConta.SemConta -> {
-                    Text(stringResource(R.string.conta_nota), Modifier.padding(bottom = 12.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    if (googleDisponivel && passo != PassoEntrada.CODIGO) {
-                        Button(onClick = aoEntrarComGoogle, enabled = !aOcupar, modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)) {
-                            Text(stringResource(R.string.conta_google))
+            CartaoDeSecao {
+                Column(Modifier.padding(vertical = 12.dp)) {
+                    when (estado) {
+                        is EstadoConta.Com -> {
+                            Text(estado.email, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
+                            Text(
+                                estado.sincronizadaEm?.let { stringResource(R.string.conta_sincronizado_as, HORA.format(it.atZone(LISBOA_FUSO))) }
+                                    ?: stringResource(R.string.conta_por_sincronizar),
+                                Modifier.padding(bottom = 12.dp), color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            BotaoPrincipal(aoSincronizar, Modifier.fillMaxWidth(), ativo = !aOcupar) { Text(stringResource(R.string.conta_sincronizar)) }
+                            Ligacao(stringResource(R.string.conta_sair), aoSair)
+                            Ligacao(stringResource(R.string.conta_apagar), { apagar = true }, MaterialTheme.colorScheme.error)
                         }
-                    }
-                    when (passo) {
-                        PassoEntrada.ESCOLHA ->
-                            OutlinedButton(onClick = { aoMudarPasso(PassoEntrada.EMAIL) }, modifier = Modifier.fillMaxWidth()) {
-                                Text(stringResource(R.string.conta_entrar_email))
+                        EstadoConta.SemConta -> {
+                            Text(stringResource(R.string.conta_nota), Modifier.padding(bottom = 12.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            if (googleDisponivel && passo != PassoEntrada.CODIGO) {
+                                BotaoPrincipal(aoEntrarComGoogle, Modifier.fillMaxWidth().padding(bottom = 8.dp), ativo = !aOcupar) {
+                                    Text(stringResource(R.string.conta_google))
+                                }
                             }
-                        PassoEntrada.EMAIL -> {
-                            OutlinedTextField(
-                                email, { email = it }, Modifier.fillMaxWidth(), singleLine = true,
-                                label = { Text(stringResource(R.string.conta_email)) },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                            )
-                            Button(
-                                onClick = { aoPedirCodigo(email.trim()) }, enabled = !aOcupar && '@' in email,
-                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                            ) { Text(stringResource(R.string.conta_enviar_codigo)) }
-                        }
-                        PassoEntrada.CODIGO -> {
-                            Text(stringResource(R.string.conta_codigo_enviado, email.trim()), Modifier.padding(bottom = 8.dp), color = MaterialTheme.colorScheme.onBackground)
-                            OutlinedTextField(
-                                codigo, { codigo = it.filter(Char::isDigit).take(6) }, Modifier.fillMaxWidth(), singleLine = true,
-                                label = { Text(stringResource(R.string.conta_codigo)) },
-                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                            )
-                            Button(
-                                onClick = { aoConfirmarCodigo(email.trim(), codigo) }, enabled = !aOcupar && codigo.length == 6,
-                                modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                            ) { Text(stringResource(R.string.conta_entrar)) }
-                            TextButton(onClick = { aoMudarPasso(PassoEntrada.EMAIL) }) { Text(stringResource(R.string.conta_mudar_email)) }
+                            when (passo) {
+                                PassoEntrada.ESCOLHA ->
+                                    BotaoSecundario({ aoMudarPasso(PassoEntrada.EMAIL) }, Modifier.fillMaxWidth()) {
+                                        Text(stringResource(R.string.conta_entrar_email))
+                                    }
+                                PassoEntrada.EMAIL -> {
+                                    OutlinedTextField(
+                                        email, { email = it }, Modifier.fillMaxWidth(), singleLine = true, shape = MaterialTheme.shapes.medium,
+                                        label = { Text(stringResource(R.string.conta_email)) },
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                                    )
+                                    BotaoPrincipal(
+                                        { aoPedirCodigo(email.trim()) }, Modifier.fillMaxWidth().padding(top = 8.dp), ativo = !aOcupar && '@' in email,
+                                    ) { Text(stringResource(R.string.conta_enviar_codigo)) }
+                                }
+                                PassoEntrada.CODIGO -> {
+                                    Text(stringResource(R.string.conta_codigo_enviado, email.trim()), Modifier.padding(bottom = 8.dp), color = MaterialTheme.colorScheme.onSurface)
+                                    OutlinedTextField(
+                                        codigo, { codigo = it.filter(Char::isDigit).take(6) }, Modifier.fillMaxWidth(), singleLine = true, shape = MaterialTheme.shapes.medium,
+                                        label = { Text(stringResource(R.string.conta_codigo)) },
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                    )
+                                    BotaoPrincipal(
+                                        { aoConfirmarCodigo(email.trim(), codigo) }, Modifier.fillMaxWidth().padding(top = 8.dp), ativo = !aOcupar && codigo.length == 6,
+                                    ) { Text(stringResource(R.string.conta_entrar)) }
+                                    Ligacao(stringResource(R.string.conta_mudar_email), { aoMudarPasso(PassoEntrada.EMAIL) })
+                                }
+                            }
                         }
                     }
                 }
@@ -262,10 +264,13 @@ fun ContaConteudo(
                 Text(it, Modifier.padding(top = 12.dp).semantics { liveRegion = LiveRegionMode.Polite }, color = MaterialTheme.colorScheme.error)
             }
             if (aOcupar) Text(stringResource(R.string.a_carregar), Modifier.padding(top = 12.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            Column(Modifier.padding(top = 24.dp)) {
-                Ligacao(stringResource(R.string.ligacao_termos), { aoAbrir(URL_TERMOS) })
-                Ligacao(stringResource(R.string.ligacao_privacidade), { aoAbrir(URL_PRIVACIDADE) })
-            }
+            CartaoDeItens(
+                listOf(
+                    ItemDeMenu(stringResource(R.string.ligacao_termos), { aoAbrir(URL_TERMOS) }, comSeta = false),
+                    ItemDeMenu(stringResource(R.string.ligacao_privacidade), { aoAbrir(URL_PRIVACIDADE) }, comSeta = false),
+                ),
+                Modifier.padding(top = 16.dp),
+            )
         }
     }
     if (apagar) {

@@ -2,6 +2,7 @@ package pt.pixellusitano.paragemcerta.ui.menu
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
@@ -13,8 +14,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import pt.pixellusitano.paragemcerta.R
-import pt.pixellusitano.paragemcerta.ui.comum.CabecalhoAzulejo
 import pt.pixellusitano.paragemcerta.core.fontes.servidor.CanalReclamacaoTexto
+import pt.pixellusitano.paragemcerta.ui.comum.CabecalhoAzulejo
 
 data class CanalReclamacao(@StringRes val nome: Int, val url: String)
 
@@ -33,9 +34,9 @@ fun ReclamarEcra(aoAbrir: (String) -> Unit, aoVoltar: () -> Unit, modifier: Modi
     val lista = canais.ifEmpty { CANAIS_RECLAMACAO.map { CanalReclamacaoTexto(stringResource(it.nome), it.url) } }
     Column(modifier.background(MaterialTheme.colorScheme.background)) {
         CabecalhoAzulejo(stringResource(R.string.menu_reclamar), aoVoltar)
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp)) {
-            Text(stringResource(R.string.reclamar_nota), Modifier.padding(bottom = 8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            lista.forEach { Ligacao(it.nome, { aoAbrir(it.url) }) }
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(stringResource(R.string.reclamar_nota), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            CartaoDeItens(lista.map { ItemDeMenu(it.nome, { aoAbrir(it.url) }) })
         }
     }
 }

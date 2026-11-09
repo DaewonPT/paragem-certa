@@ -1,12 +1,10 @@
 package pt.pixellusitano.paragemcerta.ui.sobre
 
-import androidx.annotation.StringRes
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -15,10 +13,14 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.text.style.TextDecoration
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import pt.pixellusitano.paragemcerta.R
+import pt.pixellusitano.paragemcerta.ui.comum.CabecalhoAzulejo
+import pt.pixellusitano.paragemcerta.ui.comum.CartaoAzulejo
+import pt.pixellusitano.paragemcerta.ui.comum.TituloSecao
+import pt.pixellusitano.paragemcerta.ui.menu.CartaoDeItens
+import pt.pixellusitano.paragemcerta.ui.menu.ItemDeMenu
 import pt.pixellusitano.paragemcerta.ui.tema.FrisoAzulejo
 
 const val URL_REPOSITORIO = "https://github.com/DaewonPT/paragem-certa"
@@ -46,38 +48,27 @@ private fun fontes(carrisAoVivo: Boolean) = listOfNotNull(
  * [urlDoacoes]: a página dos donativos, só na versão do GitHub (nula na da Play).
  */
 @Composable
-fun SobreEcra(versao: String, aoAbrir: (String) -> Unit, carrisAoVivo: Boolean = false, urlDoacoes: String? = null) {
-    Column(
-        Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)
-            .verticalScroll(rememberScrollState()).padding(16.dp),
-    ) {
-        Text(stringResource(R.string.app_name), style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.primary)
-        Text(stringResource(R.string.sobre_versao, versao), color = MaterialTheme.colorScheme.onSurfaceVariant)
-        FrisoAzulejo(Modifier.fillMaxWidth().padding(vertical = 12.dp))
-        Text(stringResource(R.string.sobre_autor), color = MaterialTheme.colorScheme.onBackground)
-        Ligacao(R.string.sobre_licenca, URL_REPOSITORIO, aoAbrir)
-        urlDoacoes?.let { Ligacao(R.string.sobre_apoiar, it, aoAbrir) }
+fun SobreEcra(versao: String, aoAbrir: (String) -> Unit, aoVoltar: () -> Unit, carrisAoVivo: Boolean = false, urlDoacoes: String? = null) {
+    @Composable
+    fun ligacoes(itens: List<Pair<String, String>>) = CartaoDeItens(itens.map { (texto, url) -> ItemDeMenu(texto, { aoAbrir(url) }, comSeta = false) })
 
-        Text(stringResource(R.string.sobre_fontes), style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.padding(top = 20.dp, bottom = 4.dp))
-        fontes(carrisAoVivo).forEach { (texto, url) -> Ligacao(texto, url, aoAbrir) }
-
-        Text(stringResource(R.string.sobre_contacto), style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.padding(top = 20.dp, bottom = 4.dp))
-        Ligacao(null, "mailto:$EMAIL_CONTACTO", aoAbrir, textoFixo = EMAIL_CONTACTO)
-
-        Ligacao(R.string.ligacao_termos, URL_TERMOS, aoAbrir)
-        Ligacao(R.string.ligacao_privacidade, URL_PRIVACIDADE, aoAbrir)
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        CabecalhoAzulejo(stringResource(R.string.menu_sobre), aoVoltar)
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            CartaoAzulejo(Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp)) {
+                    Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface)
+                    Text(stringResource(R.string.sobre_versao, versao), color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    FrisoAzulejo(Modifier.fillMaxWidth().padding(vertical = 12.dp))
+                    Text(stringResource(R.string.sobre_autor), color = MaterialTheme.colorScheme.onSurface)
+                }
+            }
+            ligacoes(listOfNotNull(stringResource(R.string.sobre_licenca) to URL_REPOSITORIO, urlDoacoes?.let { stringResource(R.string.sobre_apoiar) to it }))
+            TituloSecao(stringResource(R.string.sobre_fontes))
+            ligacoes(fontes(carrisAoVivo).map { (texto, url) -> stringResource(texto) to url })
+            TituloSecao(stringResource(R.string.sobre_contacto))
+            ligacoes(listOf(EMAIL_CONTACTO to "mailto:$EMAIL_CONTACTO"))
+            ligacoes(listOf(stringResource(R.string.ligacao_termos) to URL_TERMOS, stringResource(R.string.ligacao_privacidade) to URL_PRIVACIDADE))
+        }
     }
-}
-
-@Composable
-private fun Ligacao(@StringRes texto: Int?, url: String, aoAbrir: (String) -> Unit, textoFixo: String? = null) {
-    Text(
-        textoFixo ?: stringResource(texto!!),
-        color = MaterialTheme.colorScheme.primary,
-        textDecoration = TextDecoration.Underline,
-        modifier = Modifier.fillMaxWidth().heightIn(min = 48.dp)
-            .clickable(role = Role.Button) { aoAbrir(url) }.padding(vertical = 12.dp),
-    )
 }

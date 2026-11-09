@@ -216,7 +216,7 @@ fun Navegacao(
     // Sobre as faixas azuis (o mapa do Início e os cabeçalhos azulejados) os ícones da barra de estado ficam claros.
     BarraDeEstadoDaNavegacao(
         nasRotas = nasRotas,
-        comFaixa = naInicio || nasLinhas || listOf(Pesquisa::class, Favoritos::class, Definicoes::class, Ajuda::class, Reclamar::class, ContaRota::class, PerturbacoesRota::class, Paragem::class, LinhaRota::class, Bussola::class)
+        comFaixa = naInicio || nasLinhas || noMenu || listOf(Pesquisa::class, Sobre::class, Favoritos::class, Definicoes::class, Ajuda::class, Reclamar::class, ContaRota::class, PerturbacoesRota::class, Paragem::class, LinhaRota::class, Bussola::class)
             .any { destino?.hasRoute(it) == true },
     )
 
@@ -389,7 +389,7 @@ fun Navegacao(
             }
             composable<Sobre> {
                 SobreEcra(
-                    versao = BuildConfig.VERSION_NAME, aoAbrir = ::abrirUrl, carrisAoVivo = config.interruptores.carrisAoVivo,
+                    versao = BuildConfig.VERSION_NAME, aoAbrir = ::abrirUrl, aoVoltar = { nav.popBackStack() }, carrisAoVivo = config.interruptores.carrisAoVivo,
                     urlDoacoes = BuildConfig.URL_DOACOES.ifBlank { null },
                 )
             }

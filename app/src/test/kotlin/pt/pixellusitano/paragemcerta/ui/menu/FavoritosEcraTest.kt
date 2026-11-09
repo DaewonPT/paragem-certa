@@ -61,11 +61,11 @@ class FavoritosEcraTest {
             TemaParagemCerta(ModoTema.CLARO) { Ecra(listOf(b3708, bAz), aoAbrirLinha = { abertas += it }, aoSubirLinha = { subidas += it }, aoRemoverLinha = { removidas += it }) }
         }
         regra.onNodeWithText("Linhas").assertIsDisplayed()
-        regra.onNodeWithText("★ 3708 → Costa da Caparica (Terminal) em Cais do Sodré (Terminal)").assertIsDisplayed()
-        regra.onNodeWithText("★ Az → Santa Apolónia em Colégio Militar/Luz").assertIsDisplayed()
+        regra.onNodeWithText("3708 → Costa da Caparica (Terminal) em Cais do Sodré (Terminal)").assertIsDisplayed()
+        regra.onNodeWithText("Az → Santa Apolónia em Colégio Militar/Luz").assertIsDisplayed()
 
-        regra.onNodeWithText("★ Az → Santa Apolónia em Colégio Militar/Luz").performClick()
-        regra.onNodeWithText("↑ Subir").performClick() // só a segunda tem "Subir"; as paragens têm só uma e a primeira não sobe
+        regra.onNodeWithText("Az → Santa Apolónia em Colégio Militar/Luz").performClick()
+        regra.onNodeWithText("Subir").performClick() // só a segunda tem "Subir"; as paragens têm só uma e a primeira não sobe
         regra.onAllNodesWithText("Remover")[1].performClick() // [0] é a paragem, [1] a 3708, [2] a Az
         regra.onAllNodesWithText("Remover")[2].performClick()
         assertEquals(listOf(fAz), abertas)
@@ -78,7 +78,7 @@ class FavoritosEcraTest {
         regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Ecra(listOf(b3708, bAz)) } }
         regra.onNodeWithText("A carregar…").assertIsDisplayed()
         regra.onAllNodesWithText("Esta linha já não existe.").assertCountEquals(0)
-        regra.onNodeWithText("↑ Subir").assertIsDisplayed()
+        regra.onNodeWithText("Subir").assertIsDisplayed()
     }
 
     @Test fun linhaQueJaNaoExisteSoDeixaRemover() {
@@ -91,8 +91,8 @@ class FavoritosEcraTest {
             }
         }
         regra.onNodeWithText("Esta linha já não existe.").assertIsDisplayed()
-        regra.onNodeWithText("★ 999 → Algés em Cais Sodré").performClick()
-        regra.onAllNodesWithText("↑ Subir").assertCountEquals(0)
+        regra.onNodeWithText("999 → Algés em Cais Sodré").performClick()
+        regra.onAllNodesWithText("Subir").assertCountEquals(0)
         regra.onAllNodesWithText("Remover")[2].performClick()
         assertTrue(abertas.isEmpty())
         assertTrue(subidas.isEmpty())
@@ -102,18 +102,18 @@ class FavoritosEcraTest {
     @Test fun semLinhasNaoHaSeccaoNemMudaOResto() {
         regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Ecra(emptyList()) } }
         regra.onAllNodesWithText("Linhas").assertCountEquals(0)
-        regra.onNodeWithText("★ Cais do Sodré (Terminal)").assertIsDisplayed()
+        regra.onNodeWithText("Cais do Sodré (Terminal)").assertIsDisplayed()
     }
 
     @Test fun soComLinhasNaoDizQueNaoTemFavoritas() {
-        val aviso = "Ainda não tens favoritas. Abre uma paragem ou uma linha e toca na ☆."
+        val aviso = "Ainda não tens favoritas. Abre uma paragem ou uma linha e toca na estrela."
         regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Ecra(listOf(b3708), favoritas = emptyList()) } }
         regra.onAllNodesWithText(aviso).assertCountEquals(0)
     }
 
     @Test fun semParagensNemLinhasDizOndeGuardar() {
         regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Ecra(emptyList(), favoritas = emptyList()) } }
-        regra.onNodeWithText("Ainda não tens favoritas. Abre uma paragem ou uma linha e toca na ☆.").assertIsDisplayed()
+        regra.onNodeWithText("Ainda não tens favoritas. Abre uma paragem ou uma linha e toca na estrela.").assertIsDisplayed()
     }
 
     @Test fun favoritos_com_linhas_claro() = captureRoboImage("src/test/screenshots/favoritos_com_linhas_claro.png") {

@@ -1,8 +1,22 @@
 package pt.pixellusitano.paragemcerta.ui.menu
 
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertWidthIsAtLeast
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsOff
 import androidx.compose.ui.test.assertIsOn
@@ -14,6 +28,8 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -108,6 +124,70 @@ class MenuScreenshotTest {
                 EcraInicial.FAVORITOS,
             )
         }
+    }
+
+    @Test @Config(qualifiers = "w360dp-h2200dp")
+    fun definicoes_escuro() = captureRoboImage("src/test/screenshots/definicoes_escuro.png") {
+        TemaParagemCerta(ModoTema.ESCURO) {
+            EcraDefinicoes(
+                Modifier.width(360.dp),
+                Filtros(modos = setOf(Modo.METRO), maxAPeMin = 10, ritmo = Ritmo.LENTO, ordem = Ordem.CHEGADA_MAIS_CEDO, acessivel = true),
+                EcraInicial.FAVORITOS,
+            )
+        }
+    }
+
+    @Test @Config(qualifiers = "w360dp-h780dp")
+    fun menuNaoTemVoltarEOsItensSaoBotoes() {
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { EcraMenu(aoAbrirConta = {}) } }
+        regra.onNodeWithContentDescription("Voltar").assertDoesNotExist()
+        listOf("Conta", "Favoritos", "Definições", "Ajuda", "Reclamar de um transporte", "Enviar opinião", "Sobre").forEach {
+            regra.onNodeWithText(it).assertHasClickAction().assertHeightIsAtLeast(48.dp)
+                .assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+        }
+    }
+
+    @Test @Config(qualifiers = "w360dp-h2200dp")
+    fun osTitulosDeSeccaoDasDefinicoesSaoTodosCabecalhosDoMesmoEstilo() {
+        regra.setContent {
+            TemaParagemCerta(ModoTema.CLARO) { EcraDefinicoes(aoMudarCamadaRelatos = {}) }
+        }
+        val estilos = listOf("Aparência", "Cores do atraso", "Avisos da viagem", "Camadas do mapa", "Preferências de rotas", "Ecrã inicial", "Privacidade").map {
+            val no = regra.onNodeWithText(it).assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)).fetchSemanticsNode()
+            val resultados = mutableListOf<TextLayoutResult>()
+            no.config[SemanticsActions.GetTextLayoutResult].action?.invoke(resultados)
+            resultados.single().layoutInput.style.let { s -> s.fontSize to s.fontWeight }
+        }
+        assertEquals(1, estilos.distinct().size)
+    }
+
+    @Test @Config(qualifiers = "w360dp-h2200dp")
+    fun osAjustesDosLimitesSaoBotoesDe48() {
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { EcraDefinicoes() } }
+        listOf("Menos: Amarelo a partir de 3 min", "Mais: Amarelo a partir de 3 min", "Menos: Vermelho acima de 8 min", "Mais: Vermelho acima de 8 min").forEach {
+            regra.onNodeWithContentDescription(it).assertHasClickAction().assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp)
+        }
+    }
+
+    @Test @Config(qualifiers = "w360dp-h2200dp")
+    fun oMeioEscolhidoDasPreferenciasDeRotasTemOContornoPrimario() {
+        var primaria = Color.Unspecified
+        regra.setContent {
+            TemaParagemCerta(ModoTema.CLARO) {
+                primaria = MaterialTheme.colorScheme.primary
+                EcraDefinicoes(Modifier.width(360.dp), Filtros(modos = setOf(Modo.METRO)))
+            }
+        }
+        fun temContorno(nome: String): Boolean {
+            val img = regra.onNodeWithText(nome).performScrollTo().captureToImage().toPixelMap()
+            // A meio da altura, à esquerda: ou o contorno ou o fundo do botão.
+            return (0..2).any { x ->
+                val c = img[x, img.height / 2]
+                kotlin.math.abs(c.red - primaria.red) < 0.05f && kotlin.math.abs(c.green - primaria.green) < 0.05f && kotlin.math.abs(c.blue - primaria.blue) < 0.05f
+            }
+        }
+        assertTrue(temContorno("Metro"))
+        assertFalse(temContorno("Barco"))
     }
 
     // As "Camadas do mapa" estão sempre nas Definições (autocarros ao vivo e GIRA); com a comunidade ligada ganham a dos relatos.
@@ -211,7 +291,7 @@ class MenuScreenshotTest {
     fun tocarNaFavoritaAbreAParagem() {
         var aberta: Favorita? = null
         regra.setContent { TemaParagemCerta(ModoTema.CLARO) { EcraFavoritos(aoAbrirFavorita = { aberta = it }) } }
-        regra.onNodeWithText("★ Cais do Sodré").performClick()
+        regra.onNodeWithText("Cais do Sodré").performClick()
         assertEquals(favoritas[1], aberta)
     }
 

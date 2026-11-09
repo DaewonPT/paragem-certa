@@ -47,7 +47,7 @@ fun CabecalhoAzulejo(
     }
     FaixaAzulejo(modifier) {
         if (subtitulo == null && acao == null && antesDoTitulo == null) {
-            Row(Modifier.heightIn(min = 48.dp).padding(horizontal = 4.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.padding(horizontal = 4.dp, vertical = 8.dp).heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (aoVoltar != null) voltar()
                 Text(
                     titulo, Modifier.padding(start = if (aoVoltar == null) 16.dp else 0.dp).semantics { heading() },

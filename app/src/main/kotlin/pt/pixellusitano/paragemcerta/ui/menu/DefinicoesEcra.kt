@@ -5,16 +5,20 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
@@ -40,7 +44,6 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import pt.pixellusitano.paragemcerta.R
-import pt.pixellusitano.paragemcerta.ui.comum.CabecalhoAzulejo
 import pt.pixellusitano.paragemcerta.atualizar.Atualizacoes
 import pt.pixellusitano.paragemcerta.core.atraso.Limites
 import pt.pixellusitano.paragemcerta.core.modelo.Filtros
@@ -48,7 +51,10 @@ import pt.pixellusitano.paragemcerta.dados.Conta
 import pt.pixellusitano.paragemcerta.dados.EcraInicial
 import pt.pixellusitano.paragemcerta.dados.EstadoConta
 import pt.pixellusitano.paragemcerta.dados.Preferencias
-import pt.pixellusitano.paragemcerta.ui.tema.FrisoAzulejo
+import pt.pixellusitano.paragemcerta.ui.comum.CabecalhoAzulejo
+import pt.pixellusitano.paragemcerta.ui.comum.CartaoAzulejo
+import pt.pixellusitano.paragemcerta.ui.comum.TituloSecao
+import pt.pixellusitano.paragemcerta.ui.tema.Icones
 import pt.pixellusitano.paragemcerta.ui.tema.ModoTema
 
 /** [comunidadeLigada]: o interruptor `comunidade` da config; sem ele não há a camada dos relatos. */
@@ -168,12 +174,12 @@ fun DefinicoesConteudo(
                 avisosComunidade = avisosComunidade, aoMudarAvisosComunidade = aoMudarAvisosComunidade,
             )
             CamadasDoMapa(
-                camadaAoVivo, aoMudarCamadaAoVivo, camadaGira, aoMudarCamadaGira, camadaRelatos, aoMudarCamadaRelatos, Modifier.padding(top = 16.dp),
+                camadaAoVivo, aoMudarCamadaAoVivo, camadaGira, aoMudarCamadaGira, camadaRelatos, aoMudarCamadaRelatos,
             )
-            PreferenciasRotas(filtros, aoMudarFiltros, Modifier.padding(top = 24.dp))
-            EcraInicialOpcoes(ecraInicial, aoMudarEcraInicial, Modifier.padding(top = 24.dp))
-            secaoAtualizacoes(Modifier.padding(top = 24.dp))
-            Privacidade(aoApagarDados, Modifier.padding(top = 24.dp), aoApagarConta)
+            PreferenciasRotas(filtros, aoMudarFiltros)
+            EcraInicialOpcoes(ecraInicial, aoMudarEcraInicial)
+            secaoAtualizacoes(Modifier)
+            Privacidade(aoApagarDados, Modifier, aoApagarConta)
         }
     }
 }
@@ -185,10 +191,12 @@ private fun CamadasDoMapa(
     relatos: Boolean, aoMudarRelatos: ((Boolean) -> Unit)?, modifier: Modifier = Modifier,
 ) {
     Column(modifier.background(MaterialTheme.colorScheme.background)) {
-        Subtitulo(stringResource(R.string.eu_camadas_mapa))
-        Interruptor(stringResource(R.string.eu_camada_ao_vivo), aoVivo, aoMudarAoVivo)
-        Interruptor(stringResource(R.string.eu_camada_gira), gira, aoMudarGira)
-        if (aoMudarRelatos != null) Interruptor(stringResource(R.string.eu_camada_relatos), relatos, aoMudarRelatos)
+        TituloSecao(stringResource(R.string.eu_camadas_mapa))
+        CartaoDeSecao {
+            Interruptor(stringResource(R.string.eu_camada_ao_vivo), aoVivo, aoMudarAoVivo)
+            Interruptor(stringResource(R.string.eu_camada_gira), gira, aoMudarGira)
+            if (aoMudarRelatos != null) Interruptor(stringResource(R.string.eu_camada_relatos), relatos, aoMudarRelatos)
+        }
     }
 }
 
@@ -197,15 +205,17 @@ private fun CamadasDoMapa(
 private fun EcraInicialOpcoes(escolhido: EcraInicial, aoEscolher: (EcraInicial) -> Unit, modifier: Modifier = Modifier) {
     Column(modifier.background(MaterialTheme.colorScheme.background)) {
         TituloSecao(stringResource(R.string.pref_ecra_inicial))
-        Escolha(
-            listOf(
-                EcraInicial.MAPA to stringResource(R.string.pref_ecra_mapa),
-                EcraInicial.ROTAS to stringResource(R.string.pref_ecra_rotas),
-                EcraInicial.LINHAS to stringResource(R.string.pref_ecra_linhas),
-                EcraInicial.FAVORITOS to stringResource(R.string.pref_ecra_favoritos),
-            ),
-            escolhido, aoEscolher,
-        )
+        CartaoDeSecao {
+            Escolha(
+                listOf(
+                    EcraInicial.MAPA to stringResource(R.string.pref_ecra_mapa),
+                    EcraInicial.ROTAS to stringResource(R.string.pref_ecra_rotas),
+                    EcraInicial.LINHAS to stringResource(R.string.pref_ecra_linhas),
+                    EcraInicial.FAVORITOS to stringResource(R.string.pref_ecra_favoritos),
+                ),
+                escolhido, aoEscolher,
+            )
+        }
     }
 }
 
@@ -220,9 +230,11 @@ fun SecaoAtualizacoes(
 ) {
     Column(modifier.background(MaterialTheme.colorScheme.background)) {
         TituloSecao(stringResource(R.string.eu_atualizacoes))
-        Text(stringResource(R.string.eu_atualizacoes_quando), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Interruptor(stringResource(R.string.eu_atualizar_sozinha), sozinha, aoMudarSozinha)
-        Interruptor(stringResource(R.string.eu_atualizar_dados_moveis), dadosMoveis, aoMudarDadosMoveis, ativo = sozinha)
+        CartaoDeSecao {
+            Text(stringResource(R.string.eu_atualizacoes_quando), Modifier.padding(top = 12.dp), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Interruptor(stringResource(R.string.eu_atualizar_sozinha), sozinha, aoMudarSozinha)
+            Interruptor(stringResource(R.string.eu_atualizar_dados_moveis), dadosMoveis, aoMudarDadosMoveis, ativo = sozinha)
+        }
     }
 }
 
@@ -233,8 +245,10 @@ fun Privacidade(aoApagarDados: () -> Unit, modifier: Modifier = Modifier, aoApag
     var confirmarConta by remember { mutableStateOf(false) }
     Column(modifier.background(MaterialTheme.colorScheme.background)) {
         TituloSecao(stringResource(R.string.eu_privacidade))
-        Ligacao(stringResource(R.string.eu_apagar_dados), { confirmar = true }, MaterialTheme.colorScheme.error)
-        if (aoApagarConta != null) Ligacao(stringResource(R.string.conta_apagar), { confirmarConta = true }, MaterialTheme.colorScheme.error)
+        CartaoDeSecao {
+            Ligacao(stringResource(R.string.eu_apagar_dados), { confirmar = true }, MaterialTheme.colorScheme.error)
+            if (aoApagarConta != null) Ligacao(stringResource(R.string.conta_apagar), { confirmarConta = true }, MaterialTheme.colorScheme.error)
+        }
     }
     if (confirmarConta && aoApagarConta != null) {
         DialogoApagarConta(
@@ -287,43 +301,48 @@ fun Definicoes(
     aoMudarAvisosComunidade: ((Boolean) -> Unit)? = null,
 ) {
     Column(modifier.background(MaterialTheme.colorScheme.background)) {
-        Subtitulo(stringResource(R.string.eu_modo))
-        Escolha(
-            listOf(
-                ModoTema.SISTEMA to stringResource(R.string.modo_sistema),
-                ModoTema.CLARO to stringResource(R.string.modo_claro),
-                ModoTema.ESCURO to stringResource(R.string.modo_escuro),
-            ),
-            modo, aoMudarModo,
-        )
-        Subtitulo(stringResource(R.string.eu_limites), Modifier.padding(top = 16.dp))
-        Ajuste(
-            stringResource(R.string.eu_limite_atrasado, limites.atrasado),
-            menos = { if (limites.atrasado > 1) aoMudarLimites(limites.copy(atrasado = limites.atrasado - 1)) },
-            mais = { if (limites.atrasado + 1 < limites.muitoAtrasado) aoMudarLimites(limites.copy(atrasado = limites.atrasado + 1)) },
-        )
-        Ajuste(
-            stringResource(R.string.eu_limite_muito, limites.muitoAtrasado),
-            menos = { if (limites.muitoAtrasado - 1 > limites.atrasado) aoMudarLimites(limites.copy(muitoAtrasado = limites.muitoAtrasado - 1)) },
-            mais = { if (limites.muitoAtrasado < 30) aoMudarLimites(limites.copy(muitoAtrasado = limites.muitoAtrasado + 1)) },
-        )
-        Subtitulo(stringResource(R.string.eu_avisos), Modifier.padding(top = 16.dp))
-        Interruptor(stringResource(R.string.eu_som_aviso), somAviso, aoMudarSom)
-        Interruptor(stringResource(R.string.eu_vibracao_aviso), vibracaoAviso, aoMudarVibracao)
-        if (aoMudarAvisosComunidade != null) Interruptor(stringResource(R.string.eu_avisos_comunidade), avisosComunidade, aoMudarAvisosComunidade)
+        TituloSecao(stringResource(R.string.eu_modo))
+        CartaoDeSecao {
+            Escolha(
+                listOf(
+                    ModoTema.SISTEMA to stringResource(R.string.modo_sistema),
+                    ModoTema.CLARO to stringResource(R.string.modo_claro),
+                    ModoTema.ESCURO to stringResource(R.string.modo_escuro),
+                ),
+                modo, aoMudarModo,
+            )
+        }
+        TituloSecao(stringResource(R.string.eu_limites))
+        CartaoDeSecao {
+            Ajuste(
+                stringResource(R.string.eu_limite_atrasado, limites.atrasado),
+                menos = { if (limites.atrasado > 1) aoMudarLimites(limites.copy(atrasado = limites.atrasado - 1)) },
+                mais = { if (limites.atrasado + 1 < limites.muitoAtrasado) aoMudarLimites(limites.copy(atrasado = limites.atrasado + 1)) },
+            )
+            Ajuste(
+                stringResource(R.string.eu_limite_muito, limites.muitoAtrasado),
+                menos = { if (limites.muitoAtrasado - 1 > limites.atrasado) aoMudarLimites(limites.copy(muitoAtrasado = limites.muitoAtrasado - 1)) },
+                mais = { if (limites.muitoAtrasado < 30) aoMudarLimites(limites.copy(muitoAtrasado = limites.muitoAtrasado + 1)) },
+            )
+        }
+        TituloSecao(stringResource(R.string.eu_avisos))
+        CartaoDeSecao {
+            Interruptor(stringResource(R.string.eu_som_aviso), somAviso, aoMudarSom)
+            Interruptor(stringResource(R.string.eu_vibracao_aviso), vibracaoAviso, aoMudarVibracao)
+            if (aoMudarAvisosComunidade != null) Interruptor(stringResource(R.string.eu_avisos_comunidade), avisosComunidade, aoMudarAvisosComunidade)
+        }
     }
 }
 
-/** Título de uma secção das definições, com o friso por baixo. */
+/** O cartão de uma secção das definições, com a margem do conteúdo. */
 @Composable
-internal fun TituloSecao(texto: String) {
-    Text(texto, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
-    FrisoAzulejo(Modifier.fillMaxWidth().padding(vertical = 8.dp))
+internal fun CartaoDeSecao(conteudo: @Composable ColumnScope.() -> Unit) {
+    CartaoAzulejo(Modifier.fillMaxWidth()) { Column(Modifier.padding(horizontal = 16.dp), content = conteudo) }
 }
 
 @Composable
 internal fun Subtitulo(texto: String, modifier: Modifier = Modifier) {
-    Text(texto, modifier, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onBackground)
+    Text(texto, modifier, style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurface)
 }
 
 /** Uma escolha entre várias, em linhas de 48 dp com o botão de opção. */
@@ -336,7 +355,7 @@ internal fun <T> Escolha(opcoes: List<Pair<T, String>>, escolhida: T, aoEscolher
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 RadioButton(selected = escolhida == valor, onClick = null)
-                Text(texto, color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.padding(start = 8.dp))
+                Text(texto, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(start = 8.dp))
             }
         }
     }
@@ -350,7 +369,7 @@ internal fun Interruptor(texto: String, ligado: Boolean, aoMudar: (Boolean) -> U
     ) {
         Text(
             texto,
-            color = if (ativo) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant,
+            color = if (ativo) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurfaceVariant,
             modifier = Modifier.weight(1f),
         )
         Switch(checked = ligado, onCheckedChange = null, enabled = ativo)
@@ -361,13 +380,14 @@ internal fun Interruptor(texto: String, ligado: Boolean, aoMudar: (Boolean) -> U
 private fun Ajuste(texto: String, menos: () -> Unit, mais: () -> Unit) {
     val rotuloMenos = stringResource(R.string.menos)
     val rotuloMais = stringResource(R.string.mais)
+    val primaria = MaterialTheme.colorScheme.primary
     Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(texto, color = MaterialTheme.colorScheme.onBackground, modifier = Modifier.weight(1f))
-        TextButton(onClick = menos, modifier = Modifier.semantics { contentDescription = "$rotuloMenos: $texto" }) {
-            Text("−", style = MaterialTheme.typography.titleLarge)
+        Text(texto, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
+        IconButton(onClick = menos, modifier = Modifier.size(48.dp).semantics { contentDescription = "$rotuloMenos: $texto" }) {
+            Icon(Icones.Diminuir, null, tint = primaria)
         }
-        TextButton(onClick = mais, modifier = Modifier.semantics { contentDescription = "$rotuloMais: $texto" }) {
-            Text("+", style = MaterialTheme.typography.titleLarge)
+        IconButton(onClick = mais, modifier = Modifier.size(48.dp).semantics { contentDescription = "$rotuloMais: $texto" }) {
+            Icon(Icones.Aumentar, null, tint = primaria)
         }
     }
 }
