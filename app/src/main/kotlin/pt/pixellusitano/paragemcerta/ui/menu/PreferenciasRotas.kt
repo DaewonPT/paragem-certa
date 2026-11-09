@@ -1,5 +1,9 @@
 package pt.pixellusitano.paragemcerta.ui.menu
 
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.foundation.layout.size
+import pt.pixellusitano.paragemcerta.ui.tema.iconeModo
+import androidx.compose.material3.Icon
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -18,7 +22,6 @@ import pt.pixellusitano.paragemcerta.core.modelo.Filtros
 import pt.pixellusitano.paragemcerta.core.modelo.Ordem
 import pt.pixellusitano.paragemcerta.core.modelo.Ritmo
 import pt.pixellusitano.paragemcerta.ui.rotas.MODOS_FILTRO
-import pt.pixellusitano.paragemcerta.ui.rotas.simboloModo
 
 private val MINUTOS_A_PE = listOf(5, 10, 15, 20)
 
@@ -45,7 +48,7 @@ fun PreferenciasRotas(filtros: Filtros, aoMudar: (Filtros) -> Unit, modifier: Mo
                 val escolhido = modo in filtros.modos
                 FilterChip(
                     escolhido, { aoMudar(filtros.copy(modos = if (escolhido) filtros.modos - modo else filtros.modos + modo)) },
-                    label = { Text("${simboloModo(modo)} ${stringResource(texto)}") },
+                    leadingIcon = { Icon(iconeModo(modo), null, Modifier.size(FilterChipDefaults.IconSize)) }, label = { Text(stringResource(texto)) },
                 )
             }
         }

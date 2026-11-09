@@ -1,5 +1,8 @@
 package pt.pixellusitano.paragemcerta.ui.inicio
 
+import pt.pixellusitano.paragemcerta.ui.tema.iconeLocal
+import pt.pixellusitano.paragemcerta.ui.tema.Icones
+import androidx.compose.material3.Icon
 import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -96,7 +99,6 @@ import pt.pixellusitano.paragemcerta.ui.mapa.veiculosDoMapa
 import pt.pixellusitano.paragemcerta.ui.rotas.EscolherLugarEcra
 import pt.pixellusitano.paragemcerta.ui.rotas.lugaresRecentes
 import pt.pixellusitano.paragemcerta.ui.rotas.rememberGuardarLocal
-import pt.pixellusitano.paragemcerta.ui.rotas.simboloLocal
 import pt.pixellusitano.paragemcerta.ui.viagem.rememberRetomarViagem
 import pt.pixellusitano.paragemcerta.ui.viagem.viagemEmCurso
 import pt.pixellusitano.paragemcerta.ui.viagem.viagemInterrompida
@@ -405,15 +407,15 @@ internal fun MenuPonto(lugar: Lugar, aoIrPara: () -> Unit, aoPartirDaqui: () -> 
             style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.onSurface,
         )
         listOf(
-            "🧭" to R.string.menu_ir_para_aqui to aoIrPara,
-            "🚩" to R.string.menu_partir_daqui to aoPartirDaqui,
-            simboloLocal("CASA") to R.string.guardar_como_casa to { aoGuardar("CASA") },
-            simboloLocal("TRABALHO") to R.string.guardar_como_trabalho to { aoGuardar("TRABALHO") },
-            simboloLocal("OUTRO") to R.string.guardar_como_local to { aoGuardar("OUTRO") },
-        ).forEach { (simboloTexto, acao) ->
+            Icones.Navegacao to R.string.menu_ir_para_aqui to aoIrPara,
+            Icones.Partida to R.string.menu_partir_daqui to aoPartirDaqui,
+            iconeLocal("CASA") to R.string.guardar_como_casa to { aoGuardar("CASA") },
+            iconeLocal("TRABALHO") to R.string.guardar_como_trabalho to { aoGuardar("TRABALHO") },
+            iconeLocal("OUTRO") to R.string.guardar_como_local to { aoGuardar("OUTRO") },
+        ).forEach { (iconeTexto, acao) ->
             ItemLista(onClick = acao) {
-                Text(simboloTexto.first, color = MaterialTheme.colorScheme.primary)
-                Text(stringResource(simboloTexto.second), color = MaterialTheme.colorScheme.onSurface)
+                Icon(iconeTexto.first, contentDescription = null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                Text(stringResource(iconeTexto.second), color = MaterialTheme.colorScheme.onSurface)
             }
         }
         Spacer(Modifier.navigationBarsPadding().padding(bottom = 16.dp))

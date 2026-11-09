@@ -1,5 +1,6 @@
 package pt.pixellusitano.paragemcerta.ui.rotas
 
+import pt.pixellusitano.paragemcerta.ui.comum.SeloModo
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -59,15 +60,6 @@ internal fun minutosDe(d: Duration) = (d.seconds + 30) / 60
 internal fun textoDuracao(d: Duration): String {
     val m = minutosDe(d)
     return if (m < 60) "$m min" else "${m / 60} h ${"%02d".format(m % 60)} min"
-}
-
-internal fun simboloModo(m: Modo) = when (m) {
-    Modo.AUTOCARRO -> "🚌"
-    Modo.ELETRICO -> "🚋"
-    Modo.METRO -> "Ⓜ"
-    Modo.COMBOIO -> "🚆"
-    Modo.BARCO -> "⛴"
-    Modo.OUTRO -> "🚍"
 }
 
 @Composable
@@ -187,7 +179,7 @@ fun CartaoRota(
                 it.etapas.forEachIndexed { i, e ->
                     if (i > 0) Text("›", color = cores.onSurfaceVariant)
                     if (e.aPe) Text("🚶${minutosDe(Duration.between(e.partida, e.chegada))}", color = cores.onSurfaceVariant)
-                    else SeloLinha(e.linhaNome ?: simboloModo(e.modo), corDaLinha(e.cor, e.modo))
+                    else e.linhaNome?.let { SeloLinha(it, corDaLinha(e.cor, e.modo)) } ?: SeloModo(e.modo, corDaLinha(e.cor, e.modo))
                 }
             }
             val transbordos =

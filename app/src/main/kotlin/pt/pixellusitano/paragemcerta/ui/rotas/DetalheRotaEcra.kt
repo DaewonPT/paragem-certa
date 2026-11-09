@@ -1,5 +1,10 @@
 package pt.pixellusitano.paragemcerta.ui.rotas
 
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.IconButton
+import pt.pixellusitano.paragemcerta.ui.tema.Icones
+import androidx.compose.material3.Icon
+import pt.pixellusitano.paragemcerta.ui.comum.SeloModo
 import android.content.Intent
 import android.net.Uri
 import androidx.compose.foundation.background
@@ -149,7 +154,7 @@ fun DetalheRotaConteudo(
         Box(Modifier.fillMaxWidth().height(260.dp)) {
             mapa()
             Surface(shape = CircleShape, shadowElevation = 4.dp, modifier = Modifier.statusBarsPadding().padding(8.dp)) {
-                TextButton(onClick = aoVoltar) { Text("←") }
+                IconButton(onClick = aoVoltar, Modifier.size(48.dp)) { Icon(Icones.Voltar, stringResource(R.string.voltar)) }
             }
         }
         LazyColumn(Modifier.fillMaxSize()) {
@@ -212,7 +217,7 @@ private fun LinhaEtapa(e: Etapa, paraNome: String) {
         val paragens = e.paragensIntermedias + 1 // contando a paragem onde se sai
         Hora(e.partida.horaLisboa(), corHora) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SeloLinha(e.linhaNome ?: simboloModo(e.modo), corDaLinha(e.cor, e.modo))
+                e.linhaNome?.let { SeloLinha(it, corDaLinha(e.cor, e.modo)) } ?: SeloModo(e.modo, corDaLinha(e.cor, e.modo))
                 Text(
                     listOfNotNull(nomeModo(e.modo), e.linhaNome).joinToString(" ") + (e.destino?.let { " → $it" } ?: ""),
                     color = cores.onSurface, fontWeight = FontWeight.Bold,

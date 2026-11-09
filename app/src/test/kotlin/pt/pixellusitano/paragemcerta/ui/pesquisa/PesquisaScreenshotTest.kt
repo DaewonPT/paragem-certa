@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
@@ -86,6 +88,11 @@ class PesquisaScreenshotTest {
         }
         // Só o resultado que é um código postal leva a atribuição à GeoAPI.pt.
         regra.onAllNodesWithText(contexto.getString(R.string.fonte_geoapi)).assertCountEquals(1)
+    }
+
+    @Test fun voltarTemDescricaoE48dp() {
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { PesquisaConteudo("", emptyList(), false, {}, {}, {}, {}, {}) } }
+        regra.onNodeWithContentDescription("Voltar").assertHeightIsAtLeast(48.dp).assertWidthIsAtLeast(48.dp)
     }
 
     @Test fun estrelaNaPesquisaGuardaOSitio() {

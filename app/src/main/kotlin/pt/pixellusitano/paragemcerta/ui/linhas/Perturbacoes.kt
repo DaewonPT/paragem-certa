@@ -1,5 +1,9 @@
 package pt.pixellusitano.paragemcerta.ui.linhas
 
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.foundation.layout.size
+import pt.pixellusitano.paragemcerta.ui.tema.iconeModo
+import androidx.compose.material3.Icon
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -56,7 +60,6 @@ import pt.pixellusitano.paragemcerta.dados.Repositorio
 import pt.pixellusitano.paragemcerta.ui.comum.ItemLista
 import pt.pixellusitano.paragemcerta.ui.comum.LISBOA_FUSO
 import pt.pixellusitano.paragemcerta.ui.menu.CabecalhoEcra
-import pt.pixellusitano.paragemcerta.ui.rotas.simboloModo
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 
@@ -198,7 +201,7 @@ fun PerturbacoesConteudo(
                 FlowRow(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(filtro == null, { aoFiltrar(null) }, label = { Text(stringResource(R.string.linhas_todos)) })
                     modos.forEach { m ->
-                        FilterChip(filtro == m, { aoFiltrar(m) }, label = { Text("${simboloModo(m)} ${stringResource(textoDoModo(m))}") })
+                        FilterChip(filtro == m, { aoFiltrar(m) }, leadingIcon = { Icon(iconeModo(m), null, Modifier.size(FilterChipDefaults.IconSize)) }, label = { Text(stringResource(textoDoModo(m))) })
                     }
                 }
             }

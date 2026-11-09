@@ -1,5 +1,10 @@
 package pt.pixellusitano.paragemcerta.ui.menu
 
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import pt.pixellusitano.paragemcerta.ui.tema.iconeLocal
+import androidx.compose.material3.Icon
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -44,7 +49,6 @@ import pt.pixellusitano.paragemcerta.ui.comum.DialogoNome
 import pt.pixellusitano.paragemcerta.ui.inicio.BlocoLinha
 import pt.pixellusitano.paragemcerta.ui.inicio.rememberBlocosDeLinhas
 import pt.pixellusitano.paragemcerta.ui.inicio.tituloDaLinha
-import pt.pixellusitano.paragemcerta.ui.rotas.simboloLocal
 
 @Composable
 fun FavoritosEcra(
@@ -153,10 +157,11 @@ fun FavoritosConteudo(
             var menu by remember { mutableStateOf(false) }
             val opcoes = stringResource(R.string.locais_opcoes, l.nome)
             Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    "${simboloLocal(l.tipo)}  ${l.nome}", Modifier.weight(1f).padding(vertical = 12.dp),
-                    color = cores.onBackground, maxLines = 2, overflow = TextOverflow.Ellipsis,
-                )
+                Row(Modifier.weight(1f).padding(vertical = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Icon(iconeLocal(l.tipo), contentDescription = null, Modifier.size(20.dp), tint = cores.primary)
+                    Spacer(Modifier.width(6.dp))
+                    Text(l.nome, color = cores.onBackground, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                }
                 Box {
                     TextButton(onClick = { menu = true }, modifier = Modifier.semantics { contentDescription = opcoes }) { Text("⋯") }
                     DropdownMenu(menu, onDismissRequest = { menu = false }) {

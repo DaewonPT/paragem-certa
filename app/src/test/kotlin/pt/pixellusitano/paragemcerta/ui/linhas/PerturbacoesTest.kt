@@ -152,7 +152,7 @@ class PerturbacoesTest {
         regra.onNodeWithText("Mais sobre: Obras na Rua Direita").assertExists()
         // Sem nada nas tuas linhas, não há essa secção.
         regra.onNodeWithText("Nas tuas linhas").assertDoesNotExist()
-        regra.onNodeWithText("Ⓜ Metro").performClick()
+        regra.onNodeWithText("Metro").performClick()
         assertEquals(Modo.METRO, filtro)
         regra.onNodeWithText("Obras na Rua Direita").assertDoesNotExist()
         regra.onNodeWithText("Linha Verde: perturbação").assertExists()

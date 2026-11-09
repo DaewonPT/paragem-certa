@@ -1,5 +1,8 @@
 package pt.pixellusitano.paragemcerta.ui.pesquisa
 
+import androidx.compose.foundation.layout.size
+import pt.pixellusitano.paragemcerta.ui.tema.Icones
+import androidx.compose.material3.Icon
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -107,7 +110,7 @@ fun PesquisaConteudo(
 
     Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding()) {
         Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = aoVoltar) { Text("←") }
+            IconButton(onClick = aoVoltar, Modifier.size(48.dp)) { Icon(Icones.Voltar, stringResource(R.string.voltar)) }
             OutlinedTextField(
                 value = texto,
                 onValueChange = aoEscrever,

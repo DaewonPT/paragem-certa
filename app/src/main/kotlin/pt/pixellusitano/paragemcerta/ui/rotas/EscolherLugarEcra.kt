@@ -1,5 +1,11 @@
 package pt.pixellusitano.paragemcerta.ui.rotas
 
+import androidx.compose.material3.IconButton
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.graphics.vector.ImageVector
+import pt.pixellusitano.paragemcerta.ui.tema.iconeLocal
+import pt.pixellusitano.paragemcerta.ui.tema.Icones
+import androidx.compose.material3.Icon
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -49,12 +55,6 @@ import pt.pixellusitano.paragemcerta.dados.LocalGuardado
 import pt.pixellusitano.paragemcerta.dados.Repositorio
 import pt.pixellusitano.paragemcerta.dados.ViagemRecente
 import pt.pixellusitano.paragemcerta.ui.comum.ItemLista
-
-internal fun simboloLocal(tipo: String) = when (tipo) {
-    "CASA" -> "🏠"
-    "TRABALHO" -> "💼"
-    else -> "⭐"
-}
 
 /** Os lugares das viagens recentes para escolher: sem "A minha posição", sem nomes repetidos, no máximo 8. */
 internal fun lugaresRecentes(recentes: List<ViagemRecente>): List<Lugar> =
@@ -121,7 +121,7 @@ fun EscolherLugarEcra(
 
     Column(Modifier.fillMaxSize().background(cores.background).statusBarsPadding()) {
         Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = aoVoltar) { Text("←") }
+            IconButton(onClick = aoVoltar, Modifier.size(48.dp)) { Icon(Icones.Voltar, stringResource(R.string.voltar)) }
             OutlinedTextField(
                 value = texto,
                 onValueChange = { texto = it },
@@ -133,8 +133,8 @@ fun EscolherLugarEcra(
         }
         LazyColumn {
             if (texto.trim().length < 2) {
-                if (comPosicao) item { Opcao("◎", stringResource(R.string.rotas_minha_posicao)) { aoEscolher(null) } }
-                items(locais) { l -> Opcao(simboloLocal(l.tipo), l.nome) { aoEscolher(l.lugar) } }
+                if (comPosicao) item { Opcao(Icones.Posicao, stringResource(R.string.rotas_minha_posicao)) { aoEscolher(null) } }
+                items(locais) { l -> Opcao(iconeLocal(l.tipo), l.nome) { aoEscolher(l.lugar) } }
                 if (recentes.isNotEmpty()) {
                     item {
                         Text(
@@ -142,7 +142,7 @@ fun EscolherLugarEcra(
                             style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp),
                         )
                     }
-                    items(recentes) { l -> Opcao("🕘", l.nome) { aoEscolher(l) } }
+                    items(recentes) { l -> Opcao(Icones.Relogio, l.nome) { aoEscolher(l) } }
                 }
             } else {
                 val r = resultados
@@ -159,9 +159,9 @@ fun EscolherLugarEcra(
 }
 
 @Composable
-private fun Opcao(simbolo: String, nome: String, aoTocar: () -> Unit) {
+private fun Opcao(icone: ImageVector, nome: String, aoTocar: () -> Unit) {
     ItemLista(onClick = aoTocar) {
-        Text(simbolo, color = MaterialTheme.colorScheme.primary)
+        Icon(icone, contentDescription = null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
         Text(nome, color = MaterialTheme.colorScheme.onBackground)
     }
     HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)

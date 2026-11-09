@@ -133,7 +133,7 @@ class PainelTest {
         assertEquals(noTerminal.atualizadoEm, b.estado.atualizadoEm)
 
         painel(listOf(b))
-        regra.onNodeWithText("★ 3708 → $costa em Cais do Sodré (Terminal)").assertIsDisplayed()
+        regra.onNodeWithText("3708 → $costa em Cais do Sodré (Terminal)").assertIsDisplayed()
         // Três no sentido, mas o bloco mostra duas (a árvore sem juntar: o bloco, que se toca, junta as descrições das chegadas).
         assertEquals(2, regra.onAllNodes(hasContentDescription("Linha 3708 para", substring = true), useUnmergedTree = true).fetchSemanticsNodes().size)
     }
@@ -185,8 +185,8 @@ class PainelTest {
         val linhas = catalogoLinhas()
         regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Painel(repo, null, {}, {}, catalogo = linhas) } }
         regra.waitUntil(5_000) {
-            regra.onAllNodesWithText("★ 3708 → $costa em Cais do Sodré (Terminal)").fetchSemanticsNodes().isNotEmpty() &&
-                regra.onAllNodesWithText("★ Cais do Sodré (Terminal)").fetchSemanticsNodes().isNotEmpty()
+            regra.onAllNodesWithText("3708 → $costa em Cais do Sodré (Terminal)").fetchSemanticsNodes().isNotEmpty() &&
+                regra.onAllNodesWithText("Cais do Sodré (Terminal)").fetchSemanticsNodes().isNotEmpty()
         }
         regra.waitForIdle()
         assertEquals(http.pedidos.toString(), 1, http.pedidos.count { "arrivals" in it })
@@ -204,7 +204,7 @@ class PainelTest {
         val abertas = mutableListOf<LinhaFavorita>()
         val f = LinhaFavorita(sumida, 0, RefParagem(Fonte.TRANSITOUS, "pt-Carris_3803"), "999", "Algés", 0)
         painel(listOf(BlocoLinha(f, "Cais Sodré", null, existe = false)), aoAbrirLinha = { abertas += it })
-        regra.onNodeWithText("★ 999 → Algés em Cais Sodré").assertIsDisplayed()
+        regra.onNodeWithText("999 → Algés em Cais Sodré").assertIsDisplayed()
         regra.onNodeWithText("Esta linha já não existe.").assertIsDisplayed()
         regra.onAllNodesWithText("A carregar…").assertCountEquals(0)
         // Só se pode tirar (nos Favoritos): no painel tocar nela não abre nada.
@@ -221,11 +221,11 @@ class PainelTest {
         val abertas = mutableListOf<LinhaFavorita>()
         val f = LinhaFavorita(az.ref, 0, az.sentidos.first().paragens.first().ref, "Az", "Santa Apolónia", 0)
         painel(listOf(BlocoLinha(f, "Colégio Militar/Luz", null, existe = null)), aoAbrirLinha = { abertas += it })
-        regra.onNodeWithText("★ Az → Santa Apolónia em Colégio Militar/Luz").assertIsDisplayed()
+        regra.onNodeWithText("Az → Santa Apolónia em Colégio Militar/Luz").assertIsDisplayed()
         regra.onNodeWithText("A carregar…").assertIsDisplayed()
         regra.onAllNodesWithText("Esta linha já não existe.").assertCountEquals(0)
         // Mantém as ações: tocar abre a linha.
-        regra.onNodeWithText("★ Az → Santa Apolónia em Colégio Militar/Luz").performClick()
+        regra.onNodeWithText("Az → Santa Apolónia em Colégio Militar/Luz").performClick()
         assertEquals(listOf(f), abertas)
     }
 
@@ -240,19 +240,19 @@ class PainelTest {
 
         assertEquals(EstadoCatalogo.ACarregar, linhas.estado.value)
         // A paragem ainda não tem nome (não está no Room nem no catálogo): a linha aparece sem "em …".
-        regra.onNodeWithText("★ Az → Santa Apolónia").assertIsDisplayed()
+        regra.onNodeWithText("Az → Santa Apolónia").assertIsDisplayed()
         regra.onNodeWithText("A carregar…").assertIsDisplayed()
         regra.onAllNodesWithText("Esta linha já não existe.").assertCountEquals(0)
 
         runBlocking { linhas.aoAbrir() }
-        regra.waitUntil(5_000) { regra.onAllNodesWithText("★ Az → Santa Apolónia em Colégio Militar/Luz").fetchSemanticsNodes().isNotEmpty() }
+        regra.waitUntil(5_000) { regra.onAllNodesWithText("Az → Santa Apolónia em Colégio Militar/Luz").fetchSemanticsNodes().isNotEmpty() }
         regra.onAllNodesWithText("Esta linha já não existe.").assertCountEquals(0)
     }
 
     @Test fun soComLinhasFavoritasNaoMostraOVazio() {
         painel(listOf(blocoDaLinha(f3708, noTerminal, true)))
         regra.onNodeWithText("Toca na ☆ de uma paragem, de uma linha ou de um sítio para o veres aqui").assertDoesNotExist()
-        regra.onNodeWithText("★ 3708 → $costa").assertIsDisplayed()
+        regra.onNodeWithText("3708 → $costa").assertIsDisplayed()
     }
 
     private val convite = "Toca para escolher a morada"
@@ -311,12 +311,12 @@ class PainelTest {
         val pedidos = mutableListOf<String>()
         val casa = LocalGuardado(1, "Casa", Lugar("Casa", 38.72, -9.14, TipoLugar.LOCAL), "CASA", 0)
         painelComLocais(listOf(BlocoLocal(casa, EstadoLocal.SEM_POSICAO))) { pedidos += it }
-        regra.onNodeWithText("🏠 Casa").assertIsDisplayed() // o cartão de sempre, com a sugestão quando há posição
+        regra.onNodeWithText("Casa").assertIsDisplayed() // o cartão de sempre, com a sugestão quando há posição
         regra.onAllNodesWithText(convite).assertCountEquals(1)
         regra.onNodeWithText(dica).assertDoesNotExist()
         // Sozinho na fila, o convite ocupa a largura toda, como o cartão da Casa por cima.
         val trabalho = regra.onNode(convite("Trabalho")).getBoundsInRoot()
-        assertEquals(regra.onNodeWithText("🏠 Casa").getBoundsInRoot().width, trabalho.width)
+        assertEquals(regra.onNodeWithText("Casa").getBoundsInRoot().width, trabalho.width)
         assertTrue("${trabalho.height}", trabalho.height <= 72.dp)
 
         regra.onNode(convite("Trabalho")).performClick()
@@ -361,7 +361,7 @@ class PainelTest {
         regra.onNodeWithText("Café Central").performClick()
 
         // De volta ao painel, com a Casa no lugar do convite.
-        regra.waitUntil(5_000) { regra.onAllNodesWithText("🏠 Casa").fetchSemanticsNodes().isNotEmpty() }
+        regra.waitUntil(5_000) { regra.onAllNodesWithText("Casa").fetchSemanticsNodes().isNotEmpty() }
         regra.onAllNodes(convite("Casa")).assertCountEquals(0)
         assertEquals("Guardado nos favoritos", ShadowToast.getTextOfLatestToast())
         val guardados = runBlocking { repo.locais().first() }
@@ -391,7 +391,7 @@ class PainelTest {
         regra.onNodeWithText("Onde é a tua casa?").assertIsDisplayed()
         // Guardar como casa é escolher: volta ao painel.
         guardarComo("Guardar como casa")
-        regra.waitUntil(5_000) { regra.onAllNodesWithText("🏠 Casa").fetchSemanticsNodes().isNotEmpty() }
+        regra.waitUntil(5_000) { regra.onAllNodesWithText("Casa").fetchSemanticsNodes().isNotEmpty() }
         regra.onAllNodesWithText("Onde é a tua casa?").assertCountEquals(0)
         assertEquals(setOf("CASA", "TRABALHO", "OUTRO"), runBlocking { repo.locais().first() }.map { it.tipo }.toSet())
     }
@@ -409,7 +409,7 @@ class PainelTest {
         // O ← do ecrã também volta sem guardar.
         regra.onNode(convite("Casa")).performClick()
         regra.onNodeWithText("Onde é a tua casa?").assertIsDisplayed()
-        regra.onNodeWithText("←").performClick()
+        regra.onNodeWithContentDescription("Voltar").performClick()
         regra.onNode(convite("Casa")).assertIsDisplayed()
         assertTrue(runBlocking { repo.locais().first() }.isEmpty())
     }

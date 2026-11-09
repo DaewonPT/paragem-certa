@@ -1,5 +1,9 @@
 package pt.pixellusitano.paragemcerta.ui.linhas
 
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.foundation.layout.size
+import pt.pixellusitano.paragemcerta.ui.tema.iconeModo
+import androidx.compose.material3.Icon
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -24,7 +28,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
@@ -44,7 +47,6 @@ import pt.pixellusitano.paragemcerta.dados.Repositorio
 import pt.pixellusitano.paragemcerta.ui.comum.ItemLista
 import pt.pixellusitano.paragemcerta.ui.comum.SeloLinha
 import pt.pixellusitano.paragemcerta.ui.comum.corDaLinha
-import pt.pixellusitano.paragemcerta.ui.rotas.simboloModo
 import java.time.LocalDate
 
 /** Os meios pela ordem da lista (e dos botões); "Outro" só aparece em "Todos". */
@@ -132,7 +134,7 @@ fun LinhasConteudo(
                 FlowRow(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     FilterChip(modo == null, { aoEscolherModo(null) }, label = { Text(stringResource(R.string.linhas_todos)) })
                     ORDEM_MODOS.filter { it != Modo.OUTRO }.forEach { m ->
-                        FilterChip(modo == m, { aoEscolherModo(m) }, label = { Text("${simboloModo(m)} ${stringResource(textoDoModo(m))}") })
+                        FilterChip(modo == m, { aoEscolherModo(m) }, leadingIcon = { Icon(iconeModo(m), null, Modifier.size(FilterChipDefaults.IconSize)) }, label = { Text(stringResource(textoDoModo(m))) })
                     }
                 }
             }

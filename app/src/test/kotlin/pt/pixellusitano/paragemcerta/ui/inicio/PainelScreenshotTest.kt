@@ -186,7 +186,7 @@ class PainelScreenshotTest {
             }
         }
         fun topo(texto: String) = regra.onNodeWithText(texto).fetchSemanticsNode().boundsInRoot.top
-        val ordem = listOf("🏠 Casa", "💼 Trabalho", "★ Cais do Sodré", "⭐ Café Central").map(::topo)
+        val ordem = listOf("Casa", "Trabalho", "Cais do Sodré", "Café Central").map(::topo)
         assertEquals(ordem.sorted(), ordem)
         assertEquals(4, ordem.toSet().size)
     }
@@ -242,7 +242,7 @@ class PainelScreenshotTest {
                 )
             }
         }
-        regra.onNodeWithText("⭐ Café Central").performClick()
+        regra.onNodeWithText("Café Central").performClick()
         assertEquals(bloco, tocado)
     }
 
@@ -263,7 +263,7 @@ class PainelScreenshotTest {
         var verMais = 0
         var tocou = 0
         cartao(EstadoLocal.AUTOMATICO, itinerario = rota, aoTocar = { tocou++ }, aoVerMais = { verMais++ })
-        regra.onNodeWithText("🏠 Casa").assertIsDisplayed()
+        regra.onNodeWithText("Casa").assertIsDisplayed()
         regra.onNodeWithText("210").assertIsDisplayed() // o selo da linha da primeira etapa em veículo
         regra.onNodeWithText("30 min · sai às 02:28").assertIsDisplayed()
         regra.onNodeWithText("Ver mais opções").performClick()

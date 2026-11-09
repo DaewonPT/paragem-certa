@@ -1,5 +1,9 @@
 package pt.pixellusitano.paragemcerta.ui.rotas
 
+import androidx.compose.material3.FilterChipDefaults
+import androidx.compose.foundation.layout.size
+import pt.pixellusitano.paragemcerta.ui.tema.iconeModo
+import androidx.compose.material3.Icon
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -223,7 +227,7 @@ fun RotasConteudo(
                 MODOS_FILTRO.forEach { (modo, texto) ->
                     val escolhido = modo in filtros.modos
                     FilterChip(escolhido, { aoMudarFiltros(filtros.copy(modos = if (escolhido) filtros.modos - modo else filtros.modos + modo)) },
-                        label = { Text("${simboloModo(modo)} ${stringResource(texto)}") })
+                        leadingIcon = { Icon(iconeModo(modo), null, Modifier.size(FilterChipDefaults.IconSize)) }, label = { Text(stringResource(texto)) })
                 }
             }
         }

@@ -1,5 +1,13 @@
 package pt.pixellusitano.paragemcerta.ui.inicio
 
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.ui.graphics.vector.ImageVector
+import pt.pixellusitano.paragemcerta.ui.comum.SeloModo
+import pt.pixellusitano.paragemcerta.ui.tema.iconeLocal
+import pt.pixellusitano.paragemcerta.ui.tema.Icones
+import androidx.compose.material3.Icon
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -28,7 +36,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -64,8 +71,6 @@ import pt.pixellusitano.paragemcerta.ui.Rotas
 import pt.pixellusitano.paragemcerta.ui.rotas.MINHA_POSICAO
 import pt.pixellusitano.paragemcerta.ui.rotas.horaLisboa
 import pt.pixellusitano.paragemcerta.ui.rotas.paraRota
-import pt.pixellusitano.paragemcerta.ui.rotas.simboloLocal
-import pt.pixellusitano.paragemcerta.ui.rotas.simboloModo
 import pt.pixellusitano.paragemcerta.ui.rotas.textoDuracao
 import pt.pixellusitano.paragemcerta.dados.Repositorio
 import pt.pixellusitano.paragemcerta.ui.comum.CartaoAzulejo
@@ -191,13 +196,18 @@ fun CartaoLocal(
     val sugestao = itinerario.takeIf { estado != EstadoLocal.PERTO }
     CartaoAzulejo(Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = aoTocar).padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(simboloLocal(local.tipo) + " " + local.nome, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(iconeLocal(local.tipo), contentDescription = null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.width(6.dp))
+                Text(local.nome, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+            }
             val corDetalhe = MaterialTheme.colorScheme.onSurfaceVariant
             when {
                 estado == EstadoLocal.PERTO -> Text(stringResource(R.string.painel_perto_local), style = MaterialTheme.typography.bodyMedium, color = corDetalhe)
                 sugestao != null -> Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     val e = sugestao.etapas.firstOrNull { !it.aPe }
-                    if (e == null) Text("🚶") else SeloLinha(e.linhaNome ?: simboloModo(e.modo), corDaLinha(e.cor, e.modo))
+                    if (e == null) Icon(Icones.APe, stringResource(R.string.a_pe), Modifier.size(20.dp), tint = corDetalhe)
+                    else e.linhaNome?.let { SeloLinha(it, corDaLinha(e.cor, e.modo)) } ?: SeloModo(e.modo, corDaLinha(e.cor, e.modo))
                     Text(
                         stringResource(R.string.painel_duracao_saida, textoDuracao(sugestao.duracao), sugestao.partida.horaLisboa()),
                         style = MaterialTheme.typography.bodyMedium, color = corDetalhe,
@@ -214,11 +224,11 @@ fun CartaoLocal(
 }
 
 @Composable
-private fun CartaoAcao(simbolo: String, titulo: String, detalhe: String, aoAbrir: () -> Unit) {
+private fun CartaoAcao(icone: ImageVector, titulo: String, detalhe: String, aoAbrir: () -> Unit) {
     CartaoAzulejo(Modifier.fillMaxWidth(), aoTocar = aoAbrir) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            // O leitor de ecrã lê o título e o detalhe, não o símbolo.
-            Text(simbolo, Modifier.clearAndSetSemantics {}, style = MaterialTheme.typography.titleLarge)
+            // O leitor de ecrã lê o título e o detalhe, não o ícone.
+            Icon(icone, contentDescription = null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
             Column(Modifier.weight(1f)) {
                 Text(titulo, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
                 Text(detalhe, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -232,9 +242,9 @@ private fun CartaoAcao(simbolo: String, titulo: String, detalhe: String, aoAbrir
 private fun CartaoPorDefinir(tipo: String, nome: String, modifier: Modifier, linhas: Int, aoDefinir: () -> Unit) {
     CartaoAzulejo(modifier) {
         Column(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button, onClick = aoDefinir).padding(12.dp)) {
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                // O leitor de ecrã lê "Casa, Toca para escolher a morada", sem o símbolo.
-                Text(simboloLocal(tipo), Modifier.clearAndSetSemantics {}, style = MaterialTheme.typography.titleSmall)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                // O leitor de ecrã lê "Casa, Toca para escolher a morada", sem o ícone.
+                Icon(iconeLocal(tipo), contentDescription = null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
                 Text(nome, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface, maxLines = linhas, overflow = TextOverflow.Ellipsis)
             }
             Text(
@@ -273,7 +283,7 @@ fun PainelConteudo(
     Column(modifier.background(MaterialTheme.colorScheme.surface).padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
         FrisoAzulejo(Modifier.fillMaxWidth().padding(bottom = 8.dp))
         ultima?.let { r ->
-            CartaoAcao("↻", stringResource(R.string.painel_repetir), stringResource(R.string.painel_de_para, r.de.nome, r.para.nome)) {
+            CartaoAcao(Icones.Repetir, stringResource(R.string.painel_repetir), stringResource(R.string.painel_de_para, r.de.nome, r.para.nome)) {
                 aoRepetir(r)
             }
         }
@@ -301,7 +311,7 @@ fun PainelConteudo(
             Text(stringResource(R.string.painel_sem_favoritas), color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(vertical = 8.dp))
         }
-        favoritas.forEach { Bloco(it, "★ ", linhas, agora, aoAbrirParagem) }
+        favoritas.forEach { Bloco(it, true, linhas, agora, aoAbrirParagem) }
         linhasFavoritas.forEach { BlocoDeLinha(it, linhas, agora, aoAbrirLinha) }
         CartoesLocais(outros, aoTocarLocal, aoVerMaisLocal)
 
@@ -315,7 +325,7 @@ fun PainelConteudo(
                     .padding(vertical = 12.dp),
             )
         } else {
-            pertoDeTi.forEach { Bloco(it, "", linhas, agora, aoAbrirParagem) }
+            pertoDeTi.forEach { Bloco(it, false, linhas, agora, aoAbrirParagem) }
         }
     }
 }
@@ -328,24 +338,37 @@ private fun CartoesLocais(locais: List<BlocoLocal>, aoTocar: (BlocoLocal) -> Uni
     }
 }
 
+/** A estrela dos favoritos, antes do nome; sem descrição, que o nome já diz tudo. */
 @Composable
-private fun Bloco(b: BlocoParagem, prefixo: String, linhas: Map<String, Linha>, agora: Instant, aoAbrir: (RefParagem) -> Unit) {
+private fun IconeEstrela() {
+    Icon(Icones.Estrela, contentDescription = null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.primary)
+    Spacer(Modifier.width(6.dp))
+}
+
+@Composable
+private fun Bloco(b: BlocoParagem, estrela: Boolean, linhas: Map<String, Linha>, agora: Instant, aoAbrir: (RefParagem) -> Unit) {
     Column(Modifier.fillMaxWidth().clickable(role = Role.Button) { aoAbrir(b.ref) }.padding(vertical = 6.dp)) {
-        Text(prefixo + b.nome, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (estrela) IconeEstrela()
+            Text(b.nome, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+        }
         Chegadas(b.estado, b.maximo, linhas, agora)
         HorizontalDivider(Modifier.padding(top = 6.dp), color = MaterialTheme.colorScheme.outlineVariant)
     }
 }
 
 /**
- * Uma linha favorita: "★ 728 → Restelo em Cais do Sodré" e as 2 próximas chegadas dela ali. Sem saber se a linha existe mostra o
+ * Uma linha favorita: "728 → Restelo em Cais do Sodré" com a estrela e as 2 próximas chegadas dela ali. Sem saber se a linha existe mostra o
  * nome guardado com "A carregar…" (tocar abre-a); uma que já não existe só diz isso (tirá-la é nos Favoritos) e não abre nada.
  */
 @Composable
 private fun BlocoDeLinha(b: BlocoLinha, linhas: Map<String, Linha>, agora: Instant, aoAbrir: (LinhaFavorita) -> Unit) {
     val abre = if (b.existe == false) Modifier else Modifier.clickable(role = Role.Button) { aoAbrir(b.favorita) }
     Column(Modifier.fillMaxWidth().then(abre).padding(vertical = 6.dp)) {
-        Text("★ " + tituloDaLinha(b), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            IconeEstrela()
+            Text(tituloDaLinha(b), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+        }
         when (b.existe) {
             true -> Chegadas(b.estado, 2, linhas, agora)
             false -> Text(stringResource(R.string.linha_ja_nao_existe), color = MaterialTheme.colorScheme.onSurfaceVariant,

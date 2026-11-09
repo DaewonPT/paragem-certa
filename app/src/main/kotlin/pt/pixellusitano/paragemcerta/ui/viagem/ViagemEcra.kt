@@ -1,5 +1,6 @@
 package pt.pixellusitano.paragemcerta.ui.viagem
 
+import pt.pixellusitano.paragemcerta.ui.comum.SeloModo
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
@@ -80,7 +81,6 @@ import pt.pixellusitano.paragemcerta.ui.rotas.horaLisboa
 import pt.pixellusitano.paragemcerta.ui.rotas.minutosDe
 import pt.pixellusitano.paragemcerta.ui.rotas.nomeModo
 import pt.pixellusitano.paragemcerta.ui.rotas.percursos
-import pt.pixellusitano.paragemcerta.ui.rotas.simboloModo
 import pt.pixellusitano.paragemcerta.ui.rotas.textoDistancia
 import pt.pixellusitano.paragemcerta.ui.rotas.textoPartilha
 import pt.pixellusitano.paragemcerta.ui.tema.LocalEscuro
@@ -320,7 +320,7 @@ private fun Cabecalho(ecra: EcraViagem, c: CartaoEtapa, i: Int, aoEncontrar: (Lu
             }
         } else {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SeloLinha(e.linhaNome ?: simboloModo(e.modo), corDaLinha(e.cor, e.modo))
+                e.linhaNome?.let { SeloLinha(it, corDaLinha(e.cor, e.modo)) } ?: SeloModo(e.modo, corDaLinha(e.cor, e.modo))
                 Text(
                     listOfNotNull(nomeModo(e.modo), e.linhaNome).joinToString(" ") + (e.destino?.let { " → $it" } ?: ""),
                     color = cores.onSurface, fontWeight = FontWeight.Bold,

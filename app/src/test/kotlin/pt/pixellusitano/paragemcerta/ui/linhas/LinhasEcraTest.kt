@@ -13,6 +13,7 @@ import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.isSelectable
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -234,9 +235,9 @@ class LinhasEcraTest {
         }
         regra.onNodeWithText("Procurar uma linha").assertIsDisplayed()
         regra.onNode(hasSetTextAction()).performTextInput("15")
-        regra.onNodeWithText("Ⓜ Metro").assertIsSelected()
+        regra.onNode(hasText("Metro") and isSelectable()).assertIsSelected()
         regra.onNodeWithText("Todos").assertIsNotSelected()
-        regra.onNodeWithText("🚆 Comboio").performClick()
+        regra.onNode(hasText("Comboio") and isSelectable()).performClick()
         regra.onNodeWithText("Todos").performClick()
         assertEquals(listOf("texto=15", "meio=COMBOIO", "meio=null"), pedidos)
         regra.onNodeWithText("Todos").assertIsSelected()
