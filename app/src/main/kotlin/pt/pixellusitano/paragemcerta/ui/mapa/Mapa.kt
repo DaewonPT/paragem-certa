@@ -3,8 +3,10 @@ package pt.pixellusitano.paragemcerta.ui.mapa
 import android.annotation.SuppressLint
 import android.content.Context
 import android.view.Gravity
+import pt.pixellusitano.paragemcerta.ui.comum.animacoesLigadas
 import pt.pixellusitano.paragemcerta.ui.inicio.PosicaoComHora
 import pt.pixellusitano.paragemcerta.ui.inicio.Zona
+import pt.pixellusitano.paragemcerta.ui.inicio.duracaoCamara
 import pt.pixellusitano.paragemcerta.ui.inicio.maisRecente
 import pt.pixellusitano.paragemcerta.ui.inicio.temLocalizacao
 import android.graphics.Color as CorAndroid
@@ -18,6 +20,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
@@ -26,6 +30,7 @@ import androidx.lifecycle.LifecycleEventObserver
 import org.maplibre.android.MapLibre
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
+import org.maplibre.android.gestures.MoveGestureDetector
 import org.maplibre.android.geometry.LatLngBounds
 import org.maplibre.android.geometry.LatLng
 import org.maplibre.android.location.LocationComponent
@@ -178,6 +183,14 @@ fun Mapa(
     /** As estações GIRA a desenhar (pino a partir do zoom 13, com o nome a partir do 15); vazio com a camada desligada. */
     gira: List<EstacaoGira> = emptyList(),
     aoTocarGira: (EstacaoGira) -> Unit = {},
+    /** Modo bússola: a câmara segue a pessoa e roda com o telemóvel; ao sair, o mapa volta ao norte e fica plano. */
+    bussola: Boolean = false,
+    /** A pessoa começou a arrastar o mapa com um dedo (o zoom com dois dedos não conta). */
+    aoArrastar: () -> Unit = {},
+    /** O rumo da câmara (graus) sempre que ela se mexe. */
+    aoRodar: (rumo: Double) -> Unit = {},
+    /** A distância do topo a que ficam a atribuição e o logótipo. */
+    margemTopo: Dp = 180.dp,
 ) {
     val contexto = LocalContext.current
     val ciclo = LocalLifecycleOwner.current.lifecycle
@@ -192,6 +205,9 @@ fun Mapa(
     val posicaoVisivel by rememberUpdatedState(mostrarPosicao)
     val aSeguir by rememberUpdatedState(seguir)
     val deixouDeSeguir by rememberUpdatedState(aoDeixarDeSeguir)
+    val aBussola by rememberUpdatedState(bussola)
+    val arrastar by rememberUpdatedState(aoArrastar)
+    val rodar by rememberUpdatedState(aoRodar)
     // O MapLibre avisa quando a pessoa mexe na câmara a meio de uma viagem e passa sozinho a NONE.
     val ouvinteSeguir = remember {
         object : OnCameraTrackingChangedListener {
@@ -212,19 +228,36 @@ fun Mapa(
                 } ?: CameraPosition.Builder().target(centroInicial).zoom(15.5).build()
                 estado.utilizadorMexeu = camaraInicial != null
                 mapa.uiSettings.isRotateGesturesEnabled = false
-                // Por omissão ficam no canto de baixo, tapados pelo painel: passam para cima, por baixo da pesquisa.
-                val px = resources.displayMetrics.density
-                // Mais abaixo que a pesquisa e o botão de centrar; a atribuição do OpenStreetMap é obrigatória e tem de ficar à vista.
+                // A bússola do MapLibre diz "Compasso" em português: a app tem a sua.
+                mapa.uiSettings.isCompassEnabled = false
+                // Por omissão ficam no canto de baixo, tapados pelo painel: passam para cima (a margem vem de margemTopo).
                 mapa.uiSettings.attributionGravity = Gravity.TOP or Gravity.END
-                mapa.uiSettings.setAttributionMargins(0, (180 * px).toInt(), (12 * px).toInt(), 0)
                 mapa.uiSettings.logoGravity = Gravity.TOP or Gravity.START
-                mapa.uiSettings.setLogoMargins((12 * px).toInt(), (180 * px).toInt(), 0, 0)
                 mapa.addOnCameraMoveStartedListener { razao ->
                     if (razao == MapLibreMap.OnCameraMoveStartedListener.REASON_API_GESTURE) {
                         estado.utilizadorMexeu = true
                         estado.centrarAoChegar = false
                     }
                 }
+                mapa.addOnMoveListener(object : MapLibreMap.OnMoveListener {
+                    override fun onMoveBegin(detector: MoveGestureDetector) {
+                        if (detector.pointersCount == 1) {
+                            estado.aArrastar = true
+                            arrastar()
+                        }
+                    }
+
+                    override fun onMove(detector: MoveGestureDetector) = Unit
+
+                    override fun onMoveEnd(detector: MoveGestureDetector) {
+                        estado.aArrastar = false
+                        if (estado.endireitarNoFim) {
+                            estado.endireitarNoFim = false
+                            endireitar(mapa, duracaoCamara(animacoesLigadas(contexto)))
+                        }
+                    }
+                })
+                mapa.addOnCameraMoveListener { rodar(mapa.cameraPosition.bearing) }
                 mapa.addOnCameraIdleListener {
                     val b = mapa.projection.visibleRegion.latLngBounds
                     mover(b.latitudeSouth, b.longitudeWest, b.latitudeNorth, b.longitudeEast, mapa.cameraPosition.zoom)
@@ -272,21 +305,37 @@ fun Mapa(
             prepararCamadas(contexto, estilo, escuro)
             estado.estilo = estilo
             // Mudar de estilo (claro/escuro) deita fora o ponto da posição: volta a ativá-lo.
-            if (posicaoVisivel) ativarPosicao(contexto, mapa, estilo, aSeguir, ouvinteSeguir)
+            if (posicaoVisivel) ativarPosicao(contexto, mapa, estilo, aSeguir, aBussola, ouvinteSeguir)
         }
+    }
+
+    // Abaixo do que o ecrã põe no topo: a atribuição do OpenStreetMap é obrigatória e tem de ficar à vista.
+    LaunchedEffect(margemTopo, estado.mapa) {
+        val mapa = estado.mapa ?: return@LaunchedEffect
+        val px = vista.resources.displayMetrics.density
+        val topo = (margemTopo.value * px).toInt()
+        mapa.uiSettings.setAttributionMargins(0, topo, (12 * px).toInt(), 0)
+        mapa.uiSettings.setLogoMargins((12 * px).toInt(), topo, 0, 0)
     }
 
     // A permissão pode chegar depois de o estilo estar carregado.
     LaunchedEffect(mostrarPosicao) {
         val mapa = estado.mapa ?: return@LaunchedEffect
         val estilo = estado.estilo ?: return@LaunchedEffect
-        if (mostrarPosicao) ativarPosicao(contexto, mapa, estilo, aSeguir, ouvinteSeguir)
+        if (mostrarPosicao) ativarPosicao(contexto, mapa, estilo, aSeguir, aBussola, ouvinteSeguir)
     }
 
-    // "Seguir-me" volta a pôr a câmara na pessoa; mexer no mapa tira-a de lá.
-    LaunchedEffect(seguir, estado.estilo) {
-        val componente = estado.mapa?.locationComponent ?: return@LaunchedEffect
-        if (estado.estilo != null && componente.isLocationComponentActivated) seguirPosicao(componente, seguir)
+    // "Seguir-me" e a bússola põem a câmara na pessoa; mexer no mapa tira-a de lá.
+    LaunchedEffect(seguir, bussola, estado.estilo) {
+        val mapa = estado.mapa ?: return@LaunchedEffect
+        val componente = mapa.locationComponent
+        val duracao = duracaoCamara(animacoesLigadas(contexto))
+        if (estado.estilo != null && componente.isLocationComponentActivated) seguirPosicao(componente, seguir, bussola, duracao)
+        // Ao sair da bússola o mapa volta ao norte; a meio de um arrasto espera pelo fim do gesto, para não lutar com o dedo.
+        if (estado.bussolaAntes && !bussola) {
+            if (estado.aArrastar) estado.endireitarNoFim = true else endireitar(mapa, duracao)
+        }
+        estado.bussolaAntes = bussola
     }
 
     LaunchedEffect(centrarAgora, estado.mapa) {
@@ -303,6 +352,12 @@ fun Mapa(
     LaunchedEffect(centrarEm, estado.mapa) {
         val mapa = estado.mapa ?: return@LaunchedEffect
         if (centrarEm == null) return@LaunchedEffect
+        // Na bússola quem move a câmara é o MapLibre: um easeCamera da app desligava-lhe o seguimento.
+        if (aBussola) {
+            estado.centrarAoChegar = false
+            estado.utilizadorMexeu = true
+            return@LaunchedEffect
+        }
         if (estado.centrarAoChegar) {
             estado.centrarAoChegar = false
             val destino = posicaoMaisNova(mapa, centrarEm, horaCentrarEm) ?: centrarEm
@@ -407,13 +462,25 @@ private class EstadoMapa {
     var utilizadorMexeu = false
     /** "Centrar" foi tocado e a posição pedida nessa altura ainda não chegou. */
     var centrarAoChegar = false
+    /** Um dedo está a arrastar o mapa. */
+    var aArrastar = false
+    /** Saiu-se da bússola a meio de um arrasto: o mapa volta ao norte quando o dedo sair. */
+    var endireitarNoFim = false
+    var bussolaAntes = false
     var mapa: MapLibreMap? by mutableStateOf(null)
     var estilo: Style? by mutableStateOf(null)
 }
 
 /** Liga o ponto azul da posição (motor de localização do próprio MapLibre, sem serviços da Google). */
 @SuppressLint("MissingPermission")
-private fun ativarPosicao(contexto: Context, mapa: MapLibreMap, estilo: Style, seguir: Boolean, ouvinteSeguir: OnCameraTrackingChangedListener) {
+private fun ativarPosicao(
+    contexto: Context,
+    mapa: MapLibreMap,
+    estilo: Style,
+    seguir: Boolean,
+    bussola: Boolean,
+    ouvinteSeguir: OnCameraTrackingChangedListener,
+) {
     if (!temLocalizacao(contexto)) return
     try {
         mapa.locationComponent.apply {
@@ -422,18 +489,38 @@ private fun ativarPosicao(contexto: Context, mapa: MapLibreMap, estilo: Style, s
             // Ativar outra vez (novo estilo, permissão dada depois) não pode deixar o aviso repetido.
             removeOnCameraTrackingChangedListener(ouvinteSeguir)
             addOnCameraTrackingChangedListener(ouvinteSeguir)
-            seguirPosicao(this, seguir)
+            seguirPosicao(this, seguir, bussola, duracaoCamara(animacoesLigadas(contexto)))
         }
     } catch (_: SecurityException) {
         // A permissão foi retirada entre a verificação e a ativação: fica sem ponto.
     }
 }
 
-/** A seguir: a câmara fica na pessoa, virada para onde ela se move (seta no lugar do ponto); senão, só o ponto azul. */
-private fun seguirPosicao(componente: LocationComponent, seguir: Boolean) {
-    componente.renderMode = if (seguir) RenderMode.GPS else RenderMode.NORMAL
-    if (seguir) componente.setCameraMode(CameraMode.TRACKING_GPS, 750L, ZOOM_A_SEGUIR, null, 0.0, null)
-    else componente.cameraMode = CameraMode.NONE
+/**
+ * O desenho do ponto e o modo da câmara: a bússola segue a pessoa e roda com o telemóvel; a viagem segue-a virada para onde
+ * ela se move (seta no lugar do ponto); senão, só o ponto azul.
+ */
+internal fun modoDaCamara(seguir: Boolean, bussola: Boolean): Pair<Int, Int> = when {
+    bussola -> RenderMode.COMPASS to CameraMode.TRACKING_COMPASS
+    seguir -> RenderMode.GPS to CameraMode.TRACKING_GPS
+    else -> RenderMode.NORMAL to CameraMode.NONE
+}
+
+private fun seguirPosicao(componente: LocationComponent, seguir: Boolean, bussola: Boolean, duracao: Int) {
+    val (desenho, camara) = modoDaCamara(seguir, bussola)
+    componente.renderMode = desenho
+    when (camara) {
+        // Uma transição de 0 ms nunca avisa que acabou e a câmara ficava parada sem seguir: 1 ms é igualmente imediato.
+        CameraMode.TRACKING_COMPASS -> componente.setCameraMode(camara, maxOf(duracao, 1).toLong(), ZOOM_A_SEGUIR, null, 50.0, null)
+        CameraMode.TRACKING_GPS -> componente.setCameraMode(camara, 750L, ZOOM_A_SEGUIR, null, 0.0, null)
+        else -> componente.cameraMode = camara
+    }
+}
+
+/** Volta o mapa ao norte e sem inclinação; sem animações, de imediato (o easeCamera não aceita duração 0). */
+private fun endireitar(mapa: MapLibreMap, duracao: Int) {
+    val direito = CameraUpdateFactory.newCameraPosition(CameraPosition.Builder(mapa.cameraPosition).bearing(0.0).tilt(0.0).build())
+    if (duracao > 0) mapa.easeCamera(direito, duracao) else mapa.moveCamera(direito)
 }
 
 private fun prepararCamadas(contexto: Context, estilo: Style, escuro: Boolean) {
