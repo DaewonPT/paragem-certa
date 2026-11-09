@@ -260,8 +260,8 @@ fun ContaConteudo(
                 }
             }
             if (estado is EstadoConta.Com) {
-                // Sair e apagar noutro cartão, longe do Sincronizar, com o espaço que há entre cartões nas Definições.
-                Spacer(Modifier.height(12.dp))
+                // Sair e apagar noutro cartão, longe do Sincronizar, com os mesmos 16 dp que há entre os outros cartões do ecrã.
+                Spacer(Modifier.height(16.dp))
                 CartaoDeSecao {
                     Ligacao(stringResource(R.string.conta_sair), aoSair)
                     Ligacao(stringResource(R.string.conta_apagar), { apagar = true }, MaterialTheme.colorScheme.error)
