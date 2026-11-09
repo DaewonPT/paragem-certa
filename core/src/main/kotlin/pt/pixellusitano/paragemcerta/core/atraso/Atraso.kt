@@ -46,7 +46,7 @@ fun rotuloTempo(c: Chegada, agora: Instant, zona: ZoneId): String {
 fun rotuloAtraso(c: Chegada, l: Limites = Limites()): String = rotuloAtraso(c.programada, c.prevista, l)
 
 fun rotuloAtraso(programada: Instant, prevista: Instant?, l: Limites = Limites()): String {
-    prevista ?: return "🕒 horário"
+    prevista ?: return "horário"
     val d = minutosDeAtraso(programada, prevista)
     return when (estado(programada, prevista, l)) {
         EstadoAtraso.A_HORAS -> "a horas"

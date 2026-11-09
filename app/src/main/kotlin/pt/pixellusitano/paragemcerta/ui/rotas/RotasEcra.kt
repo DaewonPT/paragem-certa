@@ -16,7 +16,11 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.Box
+import androidx.compose.ui.graphics.vector.ImageVector
+import pt.pixellusitano.paragemcerta.ui.comum.FaixaAzulejo
+import pt.pixellusitano.paragemcerta.ui.comum.bordaDoFiltro
+import pt.pixellusitano.paragemcerta.ui.tema.Icones
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -30,6 +34,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
+import androidx.compose.material3.TimePickerDefaults
+import androidx.compose.material3.TimePickerState
 import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -59,6 +65,7 @@ import pt.pixellusitano.paragemcerta.core.modelo.Modo
 import pt.pixellusitano.paragemcerta.dados.Comunidade
 import pt.pixellusitano.paragemcerta.dados.Preferencias
 import pt.pixellusitano.paragemcerta.dados.Repositorio
+import pt.pixellusitano.paragemcerta.ui.AjustarBarraDeEstado
 import pt.pixellusitano.paragemcerta.ui.comum.CartaoAzulejo
 import pt.pixellusitano.paragemcerta.ui.comum.LISBOA_FUSO
 import pt.pixellusitano.paragemcerta.ui.inicio.pedirPosicaoAtual
@@ -78,6 +85,10 @@ internal val MODOS_FILTRO = listOf(
 /** Os nomes das linhas em veículo das rotas, sem repetir: o que se pergunta à comunidade para os cartões. */
 internal fun linhasDasRotas(itinerarios: List<Itinerario>): List<String> =
     itinerarios.flatMap { it.etapas }.filter { !it.aPe }.mapNotNull { it.linhaNome }.distinct()
+
+/** A lista (com a faixa) e o Escolher lugar pedem ícones claros; o Detalhe, com o mapa por baixo da barra de estado, pede-os escuros. */
+@Composable
+internal fun BarraDeEstadoDasRotas(aEscolher: Boolean, semRota: Boolean) = AjustarBarraDeEstado(comFaixa = aEscolher || semRota)
 
 @Composable
 fun RotasEcra(
@@ -128,6 +139,7 @@ fun RotasEcra(
     BackHandler(enabled = escolher == null && aberto != null) { vm.abrir(null) }
 
     val rota = aberto
+    BarraDeEstadoDasRotas(aEscolher = escolher != null, semRota = rota == null)
     when (val campo = escolher) {
         null if rota != null -> DetalheRotaEcra(
             rota,
@@ -145,7 +157,6 @@ fun RotasEcra(
             aoAbrirRota = vm::abrir, aoTentarOutraVez = vm::tentarOutraVez,
             aoMaisCedo = vm::maisCedo, aoMaisTarde = vm::maisTarde,
             relatos = relatos,
-            modifier = Modifier.statusBarsPadding(),
         )
         else -> EscolherLugarEcra(
             titulo = stringResource(if (campo == Campo.ORIGEM) R.string.rotas_de else R.string.rotas_para),
@@ -188,93 +199,102 @@ fun RotasConteudo(
     // Uma página nova (ou uma procura nova) começa de cima, não onde estava o fim da lista anterior.
     LaunchedEffect((estado as? EstadoRotas.Prontas)?.itinerarios) { lista.scrollToItem(0) }
 
-    LazyColumn(
-        modifier.fillMaxSize().background(cores.background), lista,
-        contentPadding = PaddingValues(16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        item {
-            CartaoAzulejo(Modifier.fillMaxWidth()) {
+    // As filas de filtros rolam até à borda do ecrã e levam o recuo por dentro; os outros itens recuam por fora.
+    val recuo = Modifier.padding(horizontal = 16.dp)
+    Column(modifier.fillMaxSize().background(cores.background)) {
+        FaixaAzulejo {
+            CartaoAzulejo(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 16.dp)) {
                 CampoLugar(
-                    "◎", stringResource(R.string.rotas_de), pedido.origem?.nome ?: stringResource(R.string.rotas_minha_posicao),
+                    Icones.Posicao, stringResource(R.string.rotas_de), pedido.origem?.nome ?: stringResource(R.string.rotas_minha_posicao),
                     vazio = false, aoTocar = aoEscolherOrigem,
                 )
                 HorizontalDivider(color = cores.outlineVariant)
                 CampoLugar(
-                    "📍", stringResource(R.string.rotas_para), pedido.destino?.nome ?: stringResource(R.string.pesquisa_dica),
+                    Icones.Lugar, stringResource(R.string.rotas_para), pedido.destino?.nome ?: stringResource(R.string.pesquisa_dica),
                     vazio = pedido.destino == null, aoTocar = aoEscolherDestino,
                 )
             }
         }
-        item {
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(
-                    selected = pedido.tipoHora == TipoHora.AGORA, onClick = { aoMudarHora(TipoHora.AGORA, null) },
-                    label = { Text(stringResource(R.string.rotas_partir_agora)) },
-                )
-                ChipHora(TipoHora.PARTIR, pedido, agora, R.string.rotas_partir_as, R.string.rotas_partir_quando) { escolherHora = it }
-                ChipHora(TipoHora.CHEGAR, pedido, agora, R.string.rotas_chegar_as, R.string.rotas_chegar_quando) { escolherHora = it }
-            }
-        }
-        item {
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                FilterChip(filtros.menosAPe, { aoMudarFiltros(filtros.copy(menosAPe = !filtros.menosAPe)) },
-                    label = { Text(stringResource(R.string.rotas_menos_a_pe)) })
-                FilterChip(filtros.menosTransbordos, { aoMudarFiltros(filtros.copy(menosTransbordos = !filtros.menosTransbordos)) },
-                    label = { Text(stringResource(R.string.rotas_menos_transbordos)) })
-                FilterChip(filtros.acessivel, { aoMudarFiltros(filtros.copy(acessivel = !filtros.acessivel)) },
-                    label = { Text(stringResource(R.string.rotas_acessivel)) })
-                MODOS_FILTRO.forEach { (modo, texto) ->
-                    val escolhido = modo in filtros.modos
-                    FilterChip(escolhido, { aoMudarFiltros(filtros.copy(modos = if (escolhido) filtros.modos - modo else filtros.modos + modo)) },
-                        leadingIcon = { Icon(iconeModo(modo), null, Modifier.size(FilterChipDefaults.IconSize)) }, label = { Text(stringResource(texto)) })
-                }
-            }
-        }
-        when (estado) {
-            EstadoRotas.Inicial -> item { Aviso(stringResource(R.string.rotas_dica)) }
-            EstadoRotas.ACarregar -> item {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    LinearProgressIndicator(Modifier.fillMaxWidth())
-                    Aviso(stringResource(R.string.rotas_a_procurar))
-                }
-            }
-            is EstadoRotas.Prontas -> {
-                itemsIndexed(estado.itinerarios) { i, it ->
-                    CartaoRota(
-                        it, estado.etiquetas.getOrElse(i) { emptySet() },
-                        comAlerta = it.etapas.any { e -> !e.aPe && e.linhaNome in alertas },
-                        aoAbrir = { aoAbrirRota(it) },
-                        partidas = estado.partidas[i], agora = agora,
-                        relato = relatoDoCartao(it, relatos),
+        LazyColumn(
+            Modifier.weight(1f).fillMaxWidth(), lista,
+            contentPadding = PaddingValues(vertical = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item {
+                Row(Modifier.horizontalScroll(rememberScrollState()).then(recuo), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val agoraEscolhido = pedido.tipoHora == TipoHora.AGORA
+                    FilterChip(
+                        selected = agoraEscolhido, onClick = { aoMudarHora(TipoHora.AGORA, null) },
+                        label = { Text(stringResource(R.string.rotas_partir_agora)) }, border = bordaDoFiltro(agoraEscolhido),
                     )
+                    ChipHora(TipoHora.PARTIR, pedido, agora, R.string.rotas_partir_as, R.string.rotas_partir_quando) { escolherHora = it }
+                    ChipHora(TipoHora.CHEGAR, pedido, agora, R.string.rotas_chegar_as, R.string.rotas_chegar_quando) { escolherHora = it }
                 }
-                if (estado.anterior != null || estado.seguinte != null || estado.aCarregarPagina || estado.erroPagina) item {
-                    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                        if (estado.aCarregarPagina) LinearProgressIndicator(Modifier.fillMaxWidth())
-                        else Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            if (estado.anterior != null) TextButton(onClick = aoMaisCedo) { Text(stringResource(R.string.rotas_mais_cedo)) }
-                            if (estado.seguinte != null) TextButton(onClick = aoMaisTarde) { Text(stringResource(R.string.rotas_mais_tarde)) }
-                        }
-                        if (estado.erroPagina) Aviso(stringResource(R.string.rotas_erro_pagina))
+            }
+            item {
+                Row(Modifier.horizontalScroll(rememberScrollState()).then(recuo), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(filtros.menosAPe, { aoMudarFiltros(filtros.copy(menosAPe = !filtros.menosAPe)) },
+                        label = { Text(stringResource(R.string.rotas_menos_a_pe)) }, border = bordaDoFiltro(filtros.menosAPe))
+                    FilterChip(filtros.menosTransbordos, { aoMudarFiltros(filtros.copy(menosTransbordos = !filtros.menosTransbordos)) },
+                        label = { Text(stringResource(R.string.rotas_menos_transbordos)) }, border = bordaDoFiltro(filtros.menosTransbordos))
+                    FilterChip(filtros.acessivel, { aoMudarFiltros(filtros.copy(acessivel = !filtros.acessivel)) },
+                        label = { Text(stringResource(R.string.rotas_acessivel)) }, border = bordaDoFiltro(filtros.acessivel))
+                    MODOS_FILTRO.forEach { (modo, texto) ->
+                        val escolhido = modo in filtros.modos
+                        FilterChip(escolhido, { aoMudarFiltros(filtros.copy(modos = if (escolhido) filtros.modos - modo else filtros.modos + modo)) },
+                            leadingIcon = { Icon(iconeModo(modo), null, Modifier.size(FilterChipDefaults.IconSize)) }, label = { Text(stringResource(texto)) },
+                            border = bordaDoFiltro(escolhido))
                     }
                 }
             }
-            is EstadoRotas.Vazias -> item {
-                Aviso(
-                    stringResource(
-                        when (estado.motivo) {
-                            Motivo.SEM_LIGACOES -> R.string.rotas_sem_ligacoes
-                            Motivo.MUITO_PERTO -> R.string.rotas_muito_perto
-                            Motivo.SEM_ORIGEM -> R.string.rotas_sem_origem
-                        },
-                    ),
-                )
-            }
-            is EstadoRotas.Erro -> item {
-                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally) {
-                    Aviso(stringResource(if (estado.semLigacao) R.string.rotas_erro_rede else R.string.rotas_erro_servico))
-                    TextButton(onClick = aoTentarOutraVez) { Text(stringResource(R.string.rotas_tentar)) }
+            when (estado) {
+                EstadoRotas.Inicial -> item { Aviso(stringResource(R.string.rotas_dica), recuo) }
+                EstadoRotas.ACarregar -> item {
+                    Column(recuo, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        LinearProgressIndicator(Modifier.fillMaxWidth())
+                        Aviso(stringResource(R.string.rotas_a_procurar), Modifier)
+                    }
+                }
+                is EstadoRotas.Prontas -> {
+                    itemsIndexed(estado.itinerarios) { i, it ->
+                        Box(recuo) {
+                            CartaoRota(
+                                it, estado.etiquetas.getOrElse(i) { emptySet() },
+                                comAlerta = it.etapas.any { e -> !e.aPe && e.linhaNome in alertas },
+                                aoAbrir = { aoAbrirRota(it) },
+                                partidas = estado.partidas[i], agora = agora,
+                                relato = relatoDoCartao(it, relatos),
+                            )
+                        }
+                    }
+                    if (estado.anterior != null || estado.seguinte != null || estado.aCarregarPagina || estado.erroPagina) item {
+                        Column(Modifier.fillMaxWidth().then(recuo), horizontalAlignment = Alignment.CenterHorizontally) {
+                            if (estado.aCarregarPagina) LinearProgressIndicator(Modifier.fillMaxWidth())
+                            else Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                if (estado.anterior != null) TextButton(onClick = aoMaisCedo) { Text(stringResource(R.string.rotas_mais_cedo)) }
+                                if (estado.seguinte != null) TextButton(onClick = aoMaisTarde) { Text(stringResource(R.string.rotas_mais_tarde)) }
+                            }
+                            if (estado.erroPagina) Aviso(stringResource(R.string.rotas_erro_pagina), Modifier)
+                        }
+                    }
+                }
+                is EstadoRotas.Vazias -> item {
+                    Aviso(
+                        stringResource(
+                            when (estado.motivo) {
+                                Motivo.SEM_LIGACOES -> R.string.rotas_sem_ligacoes
+                                Motivo.MUITO_PERTO -> R.string.rotas_muito_perto
+                                Motivo.SEM_ORIGEM -> R.string.rotas_sem_origem
+                            },
+                        ),
+                        recuo,
+                    )
+                }
+                is EstadoRotas.Erro -> item {
+                    Column(Modifier.fillMaxWidth().then(recuo), horizontalAlignment = Alignment.CenterHorizontally) {
+                        Aviso(stringResource(if (estado.semLigacao) R.string.rotas_erro_rede else R.string.rotas_erro_servico), Modifier)
+                        TextButton(onClick = aoTentarOutraVez) { Text(stringResource(R.string.rotas_tentar)) }
+                    }
                 }
             }
         }
@@ -293,14 +313,14 @@ fun RotasConteudo(
 }
 
 @Composable
-private fun CampoLugar(simbolo: String, rotulo: String, valor: String, vazio: Boolean, aoTocar: () -> Unit) {
+private fun CampoLugar(icone: ImageVector, rotulo: String, valor: String, vazio: Boolean, aoTocar: () -> Unit) {
     val cores = MaterialTheme.colorScheme
     Row(
         Modifier.fillMaxWidth().heightIn(min = 56.dp).clickable(role = Role.Button, onClick = aoTocar).padding(horizontal = 16.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(simbolo, color = cores.primary, style = MaterialTheme.typography.titleLarge)
+        Icon(icone, null, Modifier.size(24.dp), tint = cores.primary)
         Column(Modifier.weight(1f)) {
             Text(rotulo, color = cores.onSurfaceVariant, style = MaterialTheme.typography.labelMedium)
             Text(
@@ -322,7 +342,7 @@ private fun ChipHora(tipo: TipoHora, pedido: PedidoRotas, agora: Instant, semHor
         val amanha = proximaOcorrencia(hora, zona).toLocalDate() != zona.toLocalDate()
         stringResource(comHora, stringResource(if (amanha) R.string.rotas_amanha_as else R.string.rotas_as, HORA.format(hora)))
     }
-    FilterChip(selected = hora != null, onClick = { aoEscolher(tipo) }, label = { Text(texto) })
+    FilterChip(selected = hora != null, onClick = { aoEscolher(tipo) }, label = { Text(texto) }, border = bordaDoFiltro(hora != null))
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -333,14 +353,29 @@ private fun SeletorHora(inicial: LocalTime, aoConfirmar: (LocalTime) -> Unit, ao
         onDismissRequest = aoCancelar,
         confirmButton = { TextButton(onClick = { aoConfirmar(LocalTime.of(estado.hour, estado.minute)) }) { Text(stringResource(R.string.ok)) } },
         dismissButton = { TextButton(onClick = aoCancelar) { Text(stringResource(R.string.cancelar)) } },
-        text = { TimePicker(estado) },
+        text = { CorpoSeletorHora(estado) },
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun CorpoSeletorHora(estado: TimePickerState) {
+    val cores = MaterialTheme.colorScheme
+    TimePicker(
+        estado,
+        colors = TimePickerDefaults.colors(
+            clockDialColor = cores.secondaryContainer,
+            timeSelectorUnselectedContainerColor = cores.secondaryContainer,
+            timeSelectorSelectedContainerColor = cores.primary,
+            timeSelectorSelectedContentColor = cores.onPrimary,
+        ),
     )
 }
 
 @Composable
-private fun Aviso(texto: String) {
+private fun Aviso(texto: String, modifier: Modifier) {
     Text(
-        texto, Modifier.fillMaxWidth().padding(vertical = 24.dp),
+        texto, modifier.fillMaxWidth().padding(vertical = 24.dp),
         color = MaterialTheme.colorScheme.onSurfaceVariant, textAlign = TextAlign.Center,
     )
 }

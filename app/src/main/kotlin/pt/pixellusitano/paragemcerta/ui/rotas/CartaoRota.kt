@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -28,7 +30,6 @@ import pt.pixellusitano.paragemcerta.core.atraso.EstadoAtraso
 import pt.pixellusitano.paragemcerta.core.atraso.Limites
 import pt.pixellusitano.paragemcerta.core.atraso.aindaPorChegar
 import pt.pixellusitano.paragemcerta.core.atraso.estado
-import pt.pixellusitano.paragemcerta.core.atraso.rotuloAtraso
 import pt.pixellusitano.paragemcerta.core.comunidade.TipoRelato
 import pt.pixellusitano.paragemcerta.core.comunidade.chaveLinha
 import pt.pixellusitano.paragemcerta.core.fontes.servidor.RelatoRemoto
@@ -39,11 +40,13 @@ import pt.pixellusitano.paragemcerta.ui.comunidade.nomeDoTipo
 import pt.pixellusitano.paragemcerta.ui.comum.CartaoAzulejo
 import pt.pixellusitano.paragemcerta.ui.comum.LISBOA_FUSO
 import pt.pixellusitano.paragemcerta.ui.comum.LocalLimites
+import pt.pixellusitano.paragemcerta.ui.comum.RotuloAtraso
 import pt.pixellusitano.paragemcerta.ui.comum.SeloLinha
 import pt.pixellusitano.paragemcerta.ui.comum.corDaLinha
 import pt.pixellusitano.paragemcerta.ui.comum.minutos
 import pt.pixellusitano.paragemcerta.ui.comum.situacaoAtraso
 import pt.pixellusitano.paragemcerta.ui.tema.CoresAtraso
+import pt.pixellusitano.paragemcerta.ui.tema.Icones
 import pt.pixellusitano.paragemcerta.ui.tema.LocalEscuro
 import java.time.Duration
 import java.time.Instant
@@ -107,7 +110,7 @@ fun relatoDoCartao(it: Itinerario, relatos: List<RelatoRemoto>): RelatoRemoto? {
     return TipoRelato.entries.filter { t -> t.deLinha }.firstNotNullOfOrNull { t -> daRota.firstOrNull { r -> r.tipo == t.chave } }
 }
 
-/** O cartão inteiro numa frase para o leitor de ecrã, sem os símbolos ("›", 🚶) que ele leria à letra. */
+/** O cartão inteiro numa frase para o leitor de ecrã, sem os ícones. */
 internal fun descricaoRota(
     it: Itinerario, etiquetas: List<String>, comAlerta: Boolean, limites: Limites,
     partidas: List<Chegada>? = null, agora: Instant = Instant.now(), relatoTexto: String? = null,
@@ -136,10 +139,20 @@ internal fun descricaoRota(
     ).joinToString(". ", postfix = ".")
 }
 
+/** O aviso a vermelho do cartão, com o triângulo à frente. */
+@Composable
+private fun AvisoDaLinha(texto: String) {
+    val erro = MaterialTheme.colorScheme.error
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Icon(Icones.Aviso, null, Modifier.size(16.dp), tint = erro)
+        Text(texto, color = erro, style = MaterialTheme.typography.labelLarge)
+    }
+}
+
 /**
  * Um itinerário na lista: duração, horas, etapas, a pé e transbordos, a 1.ª partida com cor de atraso (ou, havendo [partidas],
  * as próximas partidas dessa linha) e as etiquetas. A lista pode ficar aberta enquanto o relógio anda: as que já passaram não contam.
- * Com um [relato] confirmado (ver [relatoDoCartao]) o cartão diz "⚠ Desvio confirmado na 736" no lugar do "aviso numa linha".
+ * Com um [relato] confirmado (ver [relatoDoCartao]) o cartão diz "Desvio confirmado na 736" (com o triângulo de aviso) no lugar do "aviso numa linha".
  */
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -167,17 +180,24 @@ fun CartaoRota(
             Modifier.padding(16.dp).clearAndSetSemantics { contentDescription = descricao },
             verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            // Com letra grande a hora passa para a linha de baixo em vez de espremer a duração.
+            FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
-                    textoDuracao(it.duracao), Modifier.weight(1f),
-                    color = cores.onSurface, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold,
+                    textoDuracao(it.duracao), color = cores.onSurface, softWrap = false,
+                    style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black,
                 )
                 Text("${it.partida.horaLisboa()} – ${it.chegada.horaLisboa()}", color = cores.onSurfaceVariant)
             }
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp),
+                itemVerticalAlignment = Alignment.CenterVertically,
+            ) {
                 it.etapas.forEachIndexed { i, e ->
-                    if (i > 0) Text("›", color = cores.onSurfaceVariant)
-                    if (e.aPe) Text("🚶${minutosDe(Duration.between(e.partida, e.chegada))}", color = cores.onSurfaceVariant)
+                    if (i > 0) Icon(Icones.Seguinte, null, Modifier.size(16.dp), tint = cores.onSurfaceVariant)
+                    if (e.aPe) Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(Icones.APe, null, Modifier.size(16.dp), tint = cores.onSurfaceVariant)
+                        Text(minutosDe(Duration.between(e.partida, e.chegada)).toString(), color = cores.onSurfaceVariant)
+                    }
                     else e.linhaNome?.let { SeloLinha(it, corDaLinha(e.cor, e.modo)) } ?: SeloModo(e.modo, corDaLinha(e.cor, e.modo))
                 }
             }
@@ -213,12 +233,12 @@ fun CartaoRota(
                     )
                     Column(horizontalAlignment = Alignment.End) {
                         Text(e.partida.horaLisboa(), color = cor, fontWeight = FontWeight.ExtraBold)
-                        Text(rotuloAtraso(e.partidaProgramada, prevista, limites), color = cor, style = MaterialTheme.typography.labelSmall)
+                        RotuloAtraso(e.partidaProgramada, prevista, limites, cor)
                     }
                 }
             }
             if (etiquetas.isNotEmpty() || comAlerta || textoRelato != null) {
-                FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), itemVerticalAlignment = Alignment.CenterVertically) {
                     etiquetas.sortedBy { e -> e.ordinal }.forEach { e ->
                         Text(
                             textoEtiqueta(e),
@@ -226,8 +246,8 @@ fun CartaoRota(
                             style = MaterialTheme.typography.labelLarge,
                         )
                     }
-                    if (textoRelato != null) Text(textoRelato, color = cores.error, style = MaterialTheme.typography.labelLarge)
-                    else if (comAlerta) Text("⚠ " + stringResource(R.string.rotas_aviso_linha), color = cores.error, style = MaterialTheme.typography.labelLarge)
+                    if (textoRelato != null) AvisoDaLinha(textoRelato)
+                    else if (comAlerta) AvisoDaLinha(stringResource(R.string.rotas_aviso_linha))
                 }
             }
         }

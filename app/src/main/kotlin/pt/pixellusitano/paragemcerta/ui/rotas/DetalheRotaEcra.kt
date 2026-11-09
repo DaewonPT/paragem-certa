@@ -7,7 +7,17 @@ import androidx.compose.material3.Icon
 import pt.pixellusitano.paragemcerta.ui.comum.SeloModo
 import android.content.Intent
 import android.net.Uri
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.shape.CornerSize
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
+import pt.pixellusitano.paragemcerta.ui.comum.BotaoPrincipal
+import pt.pixellusitano.paragemcerta.ui.comum.BotaoSecundario
+import pt.pixellusitano.paragemcerta.ui.comum.CartaoAzulejo
+import pt.pixellusitano.paragemcerta.ui.comum.RotuloAtraso
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,12 +29,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -45,7 +52,6 @@ import androidx.compose.ui.unit.dp
 import org.maplibre.android.geometry.LatLng
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.core.atraso.estado
-import pt.pixellusitano.paragemcerta.core.atraso.rotuloAtraso
 import pt.pixellusitano.paragemcerta.core.modelo.Etapa
 import pt.pixellusitano.paragemcerta.core.modelo.Itinerario
 import pt.pixellusitano.paragemcerta.dados.Preferencias
@@ -149,43 +155,62 @@ fun DetalheRotaConteudo(
     modifier: Modifier = Modifier,
 ) {
     val cores = MaterialTheme.colorScheme
-    Column(modifier.fillMaxSize().background(cores.background)) {
-        Box(Modifier.fillMaxWidth().height(260.dp)) {
+    Box(modifier.fillMaxSize().background(cores.background)) {
+        Box(Modifier.fillMaxWidth().height(ALTURA_DO_MAPA)) {
             mapa()
-            Surface(shape = CircleShape, shadowElevation = 4.dp, modifier = Modifier.statusBarsPadding().padding(8.dp)) {
+            Surface(
+                shape = CircleShape, shadowElevation = 4.dp, border = BorderStroke(1.dp, cores.outlineVariant),
+                modifier = Modifier.statusBarsPadding().padding(8.dp),
+            ) {
                 IconButton(onClick = aoVoltar, Modifier.size(48.dp)) { Icon(Icones.Voltar, stringResource(R.string.voltar)) }
             }
         }
-        LazyColumn(Modifier.fillMaxSize()) {
+        // A folha com os dados sobe 28 dp por cima do mapa, de topo redondo.
+        LazyColumn(
+            Modifier.fillMaxSize().padding(top = ALTURA_DO_MAPA - 28.dp)
+                .clip(MaterialTheme.shapes.extraLarge.copy(bottomStart = CornerSize(0.dp), bottomEnd = CornerSize(0.dp)))
+                .background(cores.background),
+            contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             item {
-                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("$de → $para", color = cores.onSurface, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.ExtraBold)
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        "$de → $para", Modifier.semantics { heading() },
+                        color = cores.onSurface, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Black,
+                    )
                     Text(
                         "${textoDuracao(it.duracao)} · ${it.partida.horaLisboa()} – ${it.chegada.horaLisboa()}",
                         color = cores.onSurfaceVariant,
                     )
                 }
-                HorizontalDivider(color = cores.outlineVariant)
-            }
-            itemsIndexed(it.etapas) { i, e ->
-                LinhaEtapa(e, paraNome = if (i == it.etapas.lastIndex) para else e.para.nome)
-                HorizontalDivider(color = cores.outlineVariant)
             }
             item {
-                Hora(it.chegada.horaLisboa(), cores.onSurface) {
-                    Text("🏁 " + stringResource(R.string.detalhe_chegada, para), color = cores.onSurface, fontWeight = FontWeight.Bold)
+                CartaoAzulejo(Modifier.fillMaxWidth()) {
+                    it.etapas.forEachIndexed { i, e ->
+                        LinhaEtapa(e, paraNome = if (i == it.etapas.lastIndex) para else e.para.nome)
+                        HorizontalDivider(color = cores.outlineVariant)
+                    }
+                    Hora(it.chegada.horaLisboa(), cores.onSurface) {
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            Icon(Icones.Lugar, null, Modifier.size(20.dp), tint = cores.primary)
+                            Text(stringResource(R.string.detalhe_chegada, para), color = cores.onSurface, fontWeight = FontWeight.Bold)
+                        }
+                    }
                 }
             }
             item {
-                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Button(onClick = aoComecar, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.detalhe_comecar)) }
-                    OutlinedButton(onClick = aoPartilhar, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.detalhe_partilhar)) }
-                    OutlinedButton(onClick = aoAbrirTvde, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.detalhe_tvde)) }
+                Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    BotaoPrincipal(aoComecar, Modifier.fillMaxWidth()) { Text(stringResource(R.string.detalhe_comecar)) }
+                    BotaoSecundario(aoPartilhar, Modifier.fillMaxWidth()) { Text(stringResource(R.string.detalhe_partilhar)) }
+                    BotaoSecundario(aoAbrirTvde, Modifier.fillMaxWidth()) { Text(stringResource(R.string.detalhe_tvde)) }
                 }
             }
         }
     }
 }
+
+private val ALTURA_DO_MAPA = 260.dp
 
 /** Hora à esquerda, numa coluna fixa, e o que acontece a essa hora à direita. */
 @Composable
@@ -203,10 +228,13 @@ private fun LinhaEtapa(e: Etapa, paraNome: String) {
     val minutos = minutosDe(Duration.between(e.partida, e.chegada)).toInt()
     if (e.aPe) {
         Hora(e.partida.horaLisboa(), cores.onSurfaceVariant) {
-            Text(
-                "🚶 " + stringResource(R.string.detalhe_a_pe, minutos) + (e.distancia?.let { " (${textoDistancia(it)})" } ?: ""),
-                color = cores.onSurface,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Icon(Icones.APe, null, Modifier.size(20.dp), tint = cores.onSurfaceVariant)
+                Text(
+                    stringResource(R.string.detalhe_a_pe, minutos) + (e.distancia?.let { " (${textoDistancia(it)})" } ?: ""),
+                    color = cores.onSurface,
+                )
+            }
             Text(stringResource(R.string.detalhe_ate, paraNome), color = cores.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
         }
     } else {
@@ -222,7 +250,7 @@ private fun LinhaEtapa(e: Etapa, paraNome: String) {
                     color = cores.onSurface, fontWeight = FontWeight.Bold,
                 )
             }
-            Text(rotuloAtraso(e.partidaProgramada, prevista, limites), color = corHora, style = MaterialTheme.typography.labelSmall)
+            RotuloAtraso(e.partidaProgramada, prevista, limites, corHora)
             Text(
                 listOf(
                     textoDuracao(Duration.between(e.partida, e.chegada)),

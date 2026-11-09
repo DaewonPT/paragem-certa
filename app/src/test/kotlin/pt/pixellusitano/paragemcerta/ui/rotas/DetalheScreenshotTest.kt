@@ -50,6 +50,12 @@ class DetalheScreenshotTest {
         TemaParagemCerta(ModoTema.CLARO) { Detalhe() }
     }
 
+    @Test fun detalhe_escuro() {
+        regra.setContent { TemaParagemCerta(ModoTema.ESCURO) { Detalhe() } }
+        regra.onNodeWithText("Abrir app de TVDE").performScrollTo()
+        regra.onRoot().captureRoboImage("src/test/screenshots/detalhe_escuro.png")
+    }
+
     @Test fun detalhe_letra200() = captureRoboImage("src/test/screenshots/detalhe_letra200.png") {
         val d = LocalDensity.current
         CompositionLocalProvider(LocalDensity provides Density(d.density, fontScale = 2f)) {
@@ -70,7 +76,7 @@ class DetalheScreenshotTest {
 
     @Test fun detalhe_comecar() {
         regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Detalhe() } }
-        regra.onNodeWithText("Começar viagem").performScrollTo()
+        regra.onNodeWithText("Abrir app de TVDE").performScrollTo()
         regra.onRoot().captureRoboImage("src/test/screenshots/detalhe_comecar.png")
     }
 }

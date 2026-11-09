@@ -1,6 +1,10 @@
 package pt.pixellusitano.paragemcerta.ui.rotas
 
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Surface
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
@@ -82,5 +86,20 @@ class RotasScreenshotTest {
         CompositionLocalProvider(LocalDensity provides Density(d.density, fontScale = 2f)) {
             TemaParagemCerta(ModoTema.CLARO) { Rotas(prontas) }
         }
+    }
+
+    // O diálogo é outra janela e a captura não a apanha: o corpo do seletor desenha-se dentro de uma superfície igual à do diálogo.
+    @OptIn(ExperimentalMaterial3Api::class)
+    @Composable
+    private fun HoraAberta() = Surface(Modifier.width(360.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh) {
+        CorpoSeletorHora(rememberTimePickerState(8, 30, is24Hour = true))
+    }
+
+    @Test fun rotas_hora_claro() = captureRoboImage("src/test/screenshots/rotas_hora_claro.png") {
+        TemaParagemCerta(ModoTema.CLARO) { HoraAberta() }
+    }
+
+    @Test fun rotas_hora_escuro() = captureRoboImage("src/test/screenshots/rotas_hora_escuro.png") {
+        TemaParagemCerta(ModoTema.ESCURO) { HoraAberta() }
     }
 }

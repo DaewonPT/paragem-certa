@@ -45,7 +45,7 @@ class AtrasoTest {
         assertEquals("+9", rotuloAtraso(c(540)))
         assertEquals("a horas", rotuloAtraso(c(30)))
         assertEquals("−2 adiantado", rotuloAtraso(c(-120)))
-        assertEquals("🕒 horário", rotuloAtraso(c(null)))
+        assertEquals("horário", rotuloAtraso(c(null)))
     }
 
     @Test fun passadasSaoDescartadas() {

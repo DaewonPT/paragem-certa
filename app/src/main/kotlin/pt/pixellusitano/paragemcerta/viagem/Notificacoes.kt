@@ -167,7 +167,8 @@ object Notificacoes {
     /** "⚠ Desvio confirmado na 736", com ", à frente da tua paragem" se [aFrente]; null para um tipo que esta versão não conhece. */
     internal fun textoRelato(c: Context, r: RelatoRemoto, aFrente: Boolean): String? {
         val tipo = TipoRelato.entries.firstOrNull { it.chave == r.tipo } ?: return null
-        val texto = c.getString(R.string.rotas_relato_confirmado, c.getString(nomeDoTipo(tipo)), r.linha)
+        // O título de uma notificação não leva ícones: o aviso vai em texto.
+        val texto = "⚠ " + c.getString(R.string.rotas_relato_confirmado, c.getString(nomeDoTipo(tipo)), r.linha)
         return if (aFrente) c.getString(R.string.relato_a_frente, texto) else texto
     }
 

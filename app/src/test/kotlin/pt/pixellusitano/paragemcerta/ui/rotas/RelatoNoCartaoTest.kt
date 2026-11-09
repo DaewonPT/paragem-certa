@@ -157,33 +157,34 @@ class RelatoNoCartaoTest {
 
     @Test fun cartaoDizDesvioConfirmado() {
         cartao(desvio)
-        texto("⚠ Desvio confirmado na 736").assertIsDisplayed()
+        texto("Desvio confirmado na 736").assertIsDisplayed()
         // O leitor de ecrã lê a mesma frase na descrição do cartão.
-        regra.onNode(hasContentDescription("⚠ Desvio confirmado na 736", substring = true)).assertExists()
+        regra.onNode(hasContentDescription("Desvio confirmado na 736", substring = true)).assertExists()
     }
 
     @Test fun relatoFicaNoLugarDoAvisoNumaLinha() {
         cartao(desvio, comAlerta = true)
-        texto("⚠ Desvio confirmado na 736").assertIsDisplayed()
-        texto("⚠ aviso numa linha").assertDoesNotExist()
+        texto("Desvio confirmado na 736").assertIsDisplayed()
+        texto("aviso numa linha").assertDoesNotExist()
         regra.onNode(hasContentDescription("Aviso numa linha", substring = true)).assertDoesNotExist()
     }
 
     @Test fun semRelatoOAvisoNumaLinhaFicaComoEstava() {
         cartao(null, comAlerta = true)
-        texto("⚠ aviso numa linha").assertIsDisplayed()
+        texto("aviso numa linha").assertIsDisplayed()
         regra.onNode(hasContentDescription("Aviso numa linha", substring = true)).assertExists()
         regra.onNodeWithText("confirmado", substring = true, useUnmergedTree = true).assertDoesNotExist()
     }
 
     @Test fun semRelatoNemAvisoNaoHaLinhaDeAviso() {
         cartao(null)
-        regra.onNodeWithText("⚠", substring = true, useUnmergedTree = true).assertDoesNotExist()
+        texto("aviso numa linha").assertDoesNotExist()
+        regra.onNodeWithText("confirmado", substring = true, useUnmergedTree = true).assertDoesNotExist()
     }
 
     @Test fun descricaoDoCartaoUsaOMesmoTextoDoRelato() {
-        val d = descricaoRota(rota, emptyList(), comAlerta = true, Limites(), relatoTexto = "⚠ Desvio confirmado na 736")
-        assertTrue(d.endsWith("⚠ Desvio confirmado na 736."))
+        val d = descricaoRota(rota, emptyList(), comAlerta = true, Limites(), relatoTexto = "Desvio confirmado na 736")
+        assertTrue(d.endsWith("Desvio confirmado na 736."))
         assertFalse(d.contains("Aviso numa linha"))
         assertTrue(descricaoRota(rota, emptyList(), comAlerta = true, Limites()).endsWith("Aviso numa linha."))
     }
@@ -206,7 +207,7 @@ class RelatoNoCartaoTest {
                 )
             }
         }
-        val cartoes = regra.onAllNodesWithText("⚠ Acidente confirmado na 208", useUnmergedTree = true).fetchSemanticsNodes().size
+        val cartoes = regra.onAllNodesWithText("Acidente confirmado na 208", useUnmergedTree = true).fetchSemanticsNodes().size
         assertEquals(rotas.count { r -> r.etapas.any { !it.aPe && it.linhaNome == "208" } }, cartoes)
         assertTrue(cartoes in 1 until rotas.size)
     }

@@ -25,6 +25,12 @@ fun AjustarBarraDeEstado(comFaixa: Boolean) {
     }
 }
 
+/** Nas Rotas a Navegacao não decide a barra: quem a decide é o ecrã (ver [BarraDeEstadoDasRotas]), porque a lista e o Detalhe pedem coisas diferentes. */
+@Composable
+fun BarraDeEstadoDaNavegacao(nasRotas: Boolean, comFaixa: Boolean) {
+    if (!nasRotas) AjustarBarraDeEstado(comFaixa)
+}
+
 /** A janela por trás do Compose segue o modo da app (que pode ser o contrário do do telemóvel), para não aparecer a cor errada ao rodar ou redimensionar. */
 @Composable
 fun AjustarJanela(escuro: Boolean) {

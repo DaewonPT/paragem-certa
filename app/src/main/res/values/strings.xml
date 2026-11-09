@@ -211,7 +211,7 @@
     <string name="rotas_erro_pagina">Não foi possível carregar mais rotas</string>
     <string name="rotas_aviso_linha">aviso numa linha</string>
     <!-- %1$s = o tipo do relato ("Desvio"), %2$s = a linha ("736") -->
-    <string name="rotas_relato_confirmado">⚠ %1$s confirmado na %2$s</string>
+    <string name="rotas_relato_confirmado">%1$s confirmado na %2$s</string>
     <string name="escolher_procura">Sítio, rua, código postal ou paragem</string>
     <string name="escolher_recentes">Recentes</string>
     <string name="escolher_sem_resultados">Sem resultados. Experimenta escrever a rua ou o nome do sítio.</string>

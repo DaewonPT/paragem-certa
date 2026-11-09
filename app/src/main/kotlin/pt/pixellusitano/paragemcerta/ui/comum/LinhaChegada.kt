@@ -39,6 +39,7 @@ import pt.pixellusitano.paragemcerta.dados.AoVivo
 import pt.pixellusitano.paragemcerta.ui.linhas.textoDoModo
 import pt.pixellusitano.paragemcerta.ui.tema.Azulejo
 import pt.pixellusitano.paragemcerta.ui.tema.CoresAtraso
+import pt.pixellusitano.paragemcerta.ui.tema.Icones
 import pt.pixellusitano.paragemcerta.ui.tema.LocalEscuro
 import pt.pixellusitano.paragemcerta.ui.tema.contraste
 import pt.pixellusitano.paragemcerta.ui.tema.iconeModo
@@ -131,6 +132,15 @@ private fun textoAoVivo(a: AoVivo): String =
     if (a.paragensEmFalta == 0) stringResource(R.string.ao_vivo_a_chegar)
     else pluralStringResource(R.plurals.ao_vivo_paragens, a.paragensEmFalta, a.paragensEmFalta)
 
+/** "+3", "a horas" ou, sem hora prevista (só a do horário), o relógio e "horário". */
+@Composable
+fun RotuloAtraso(programada: Instant, prevista: Instant?, limites: Limites, cor: Color) {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        if (prevista == null) Icon(Icones.Relogio, null, Modifier.size(12.dp), tint = cor)
+        Text(rotuloAtraso(programada, prevista, limites), color = cor, style = MaterialTheme.typography.labelSmall)
+    }
+}
+
 /** [aoVivo] (só Carris) toma o lugar do "horário", a verde; com tempo real do Transitous na chegada, esse é que se mostra. */
 @Composable
 fun LinhaChegada(c: Chegada, linha: Linha?, agora: Instant, limites: Limites = LocalLimites.current, aoVivo: AoVivo? = null) {
@@ -158,7 +168,7 @@ fun LinhaChegada(c: Chegada, linha: Linha?, agora: Instant, limites: Limites = L
         Column(horizontalAlignment = Alignment.End) {
             Text(rotuloTempo(c, agora, LISBOA_FUSO), color = cor, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium)
             if (etiquetaAoVivo != null) Text(etiquetaAoVivo, color = CoresAtraso.cor(EstadoAtraso.A_HORAS, escuro), style = MaterialTheme.typography.labelSmall)
-            else Text(rotuloAtraso(c, limites), color = cor, style = MaterialTheme.typography.labelSmall)
+            else RotuloAtraso(c.programada, c.prevista, limites, cor)
         }
     }
 }
