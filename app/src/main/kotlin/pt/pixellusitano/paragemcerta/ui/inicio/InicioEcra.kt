@@ -589,7 +589,8 @@ class LigacaoMapaInicio(
 /** A faixa azul de azulejos por baixo da barra de estado: o campo da pesquisa e, com a conta ligada, o botão Conta. */
 @Composable
 private fun FaixaInicio(aoPesquisar: () -> Unit, aoAbrirConta: (() -> Unit)?, modifier: Modifier = Modifier) {
-    FaixaAzulejo(modifier) {
+    // Consome os toques da margem: o mapa está por baixo e não os pode receber.
+    FaixaAzulejo(modifier.pointerInput(Unit) {}) {
         Row(
             Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),

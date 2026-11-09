@@ -38,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -235,7 +236,8 @@ fun LinhaConteudo(
     val d = estado.detalhe
     val s = d?.sentidos?.firstOrNull { it.sentido == estado.sentido }
     Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        Box(Modifier.zIndex(1f)) { CabecalhoDaLinha(estado, aoVoltar, aoFavorita) }
+        // A faixa consome os toques que não são dos botões: o mapa estende-se por baixo dela e não os pode receber.
+        Box(Modifier.zIndex(1f).pointerInput(Unit) {}) { CabecalhoDaLinha(estado, aoVoltar, aoFavorita) }
         if (d == null || s == null) {
             val texto = when {
                 estado.semLinha -> R.string.linha_ja_nao_existe

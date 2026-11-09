@@ -1,6 +1,7 @@
 package pt.pixellusitano.paragemcerta.ui.linhas
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.width
@@ -11,6 +12,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -35,6 +37,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
+import androidx.compose.ui.test.click
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import org.junit.Assert.assertEquals
@@ -106,6 +110,7 @@ class LinhaEcraTest {
     private var habituais = 0
     private var horarios = 0
     private var mapasOficiais = 0
+    private var toquesNoMapa = 0
 
     // O MapLibre não desenha no Robolectric: no lugar do mapa fica um retângulo.
     @Composable
@@ -122,7 +127,7 @@ class LinhaEcraTest {
                     aoUsarComoHabitual = { habituais++ },
                     aoVerHorario = { horarios++ },
                     aoAbrirMapaOficial = if (comMapaOficial) ({ mapasOficiais++ }) else null,
-                    mapa = { Box(Modifier.fillMaxSize().testTag("mapa").background(Color(0xFFDDE5F0))) },
+                    mapa = { Box(Modifier.fillMaxSize().testTag("mapa").background(Color(0xFFDDE5F0)).pointerInput(Unit) { detectTapGestures { toquesNoMapa++ } }) },
                     modifier = Modifier.width(360.dp),
                     agora = AGORA_DA_LINHA,
                 )
@@ -193,6 +198,13 @@ class LinhaEcraTest {
         regra.waitForIdle()
         regra.onNodeWithText("Próximas em Paragem 35").assertIsDisplayed()
         regra.onNodeWithText("Abrir paragem").assertIsDisplayed()
+    }
+
+    @Test fun tocarNaFaixaNaoChegaAoMapa() {
+        mostrar()
+        regra.onNodeWithText("Carris").performTouchInput { click() }
+        regra.waitForIdle()
+        assertEquals(0, toquesNoMapa)
     }
 
     @Test fun mudarDeSentidoPeloChip() {

@@ -7,6 +7,7 @@ import android.hardware.SensorManager
 import androidx.activity.compose.LocalActivityResultRegistryOwner
 import androidx.activity.result.ActivityResultRegistryOwner
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -18,6 +19,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.test.DeviceConfigurationOverride
 import androidx.compose.ui.test.FontScale
 import androidx.compose.ui.semantics.Role
@@ -34,7 +37,9 @@ import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.height
@@ -98,6 +103,7 @@ class InicioEcraTest {
     private var ligacao: LigacaoMapaInicio? = null
     private var pesquisou = 0
     private var abriuConta = 0
+    private var toquesNoMapa = 0
     private var definirAberto = 0
     private var mostrar by mutableStateOf(true)
 
@@ -151,7 +157,7 @@ class InicioEcraTest {
                             mapa = {
                                 ligacao = it
                                 // No escuro, o fundo do estilo escuro do OpenFreeMap: a folha e os botões por cima têm de se ver contra ele.
-                                Box(Modifier.fillMaxSize().background(if (LocalEscuro.current) Color(0xFF0C0C0C) else Color(0xFFDDE5F0)).testTag("mapa"))
+                                Box(Modifier.fillMaxSize().background(if (LocalEscuro.current) Color(0xFF0C0C0C) else Color(0xFFDDE5F0)).testTag("mapa").pointerInput(Unit) { detectTapGestures { toquesNoMapa++ } })
                             },
                         )
                     }
@@ -291,6 +297,13 @@ class InicioEcraTest {
         val bussola = regra.onNodeWithContentDescription("Voltar ao norte").getUnclippedBoundsInRoot()
         assertEquals((ecra.right - 12.dp).value, bussola.right.value, 1f)
         assertEquals((faixa.bottom + 40.dp).value, bussola.top.value, 1f)
+    }
+
+    @Test fun tocarNaMargemDaFaixaNaoChegaAoMapa() {
+        abrir(contaLigada = true)
+        regra.onNodeWithTag("faixa").performTouchInput { click(Offset(4f, height / 2f)) }
+        regra.waitForIdle()
+        assertEquals(0, toquesNoMapa)
     }
 
     @Test fun botaoFicaPorCimaDoPainel() {
