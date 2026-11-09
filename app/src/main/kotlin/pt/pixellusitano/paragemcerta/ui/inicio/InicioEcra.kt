@@ -7,6 +7,7 @@ import android.Manifest
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
+import android.view.accessibility.AccessibilityManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -23,6 +24,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.border
 import androidx.compose.foundation.shape.CornerSize
@@ -47,6 +53,8 @@ import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.mutableDoubleStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -60,7 +68,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.input.pointer.pointerInput
@@ -117,6 +124,8 @@ import pt.pixellusitano.paragemcerta.ui.viagem.viagemInterrompida
 import pt.pixellusitano.paragemcerta.viagem.FicheirosViagem
 import java.time.Duration
 import java.time.Instant
+import kotlin.math.round
+import kotlin.math.roundToInt
 
 /** Os relatos pedem-se 1 s depois de a câmara parar; o Início só entrega a lista de paragens 0,5 s depois (ver [InicioViewModel]). */
 internal const val ESPERA_RELATOS_MS = 1_000L - InicioViewModel.ESPERA_CAMARA_MS
@@ -240,6 +249,23 @@ fun InicioEcra(
     var explicar by remember { mutableStateOf(!comLocalizacao && !localizacaoJaPerguntada(contexto)) }
     var posicao by remember { mutableStateOf(ultimaPosicao(contexto)) }
     var centrarAgora by remember { mutableIntStateOf(0) }
+    // remember e não rememberSaveable: sair do Início desliga o modo.
+    var modo by remember { mutableStateOf(ModoPosicao.LIVRE) }
+    val bussolaDisponivel = remember { temBussola(contexto) }
+    var ultimaEnviada by remember { mutableStateOf<CamaraEnviada?>(null) }
+    var rumo by remember { mutableDoubleStateOf(0.0) }
+    // Até as Preferências responderem conta como vista: antes isso que mostrá-la duas vezes.
+    val dicaVista by preferencias.dicaBussolaVista.collectAsStateWithLifecycle(initialValue = true)
+    var dica by remember { mutableStateOf(false) }
+    LaunchedEffect(dica, modo) {
+        if (modo != ModoPosicao.BUSSOLA) {
+            dica = false
+        } else if (dica && contexto.getSystemService(AccessibilityManager::class.java)?.isTouchExplorationEnabled != true) {
+            // Com o TalkBack não fecha sozinha: 8 s podem não chegar para a ouvir.
+            delay(8_000)
+            dica = false
+        }
+    }
     // A hora da posição pedida: o mapa só centra nela se for mais nova que a do ponto azul (0 = a última conhecida, sem hora).
     var horaPosicao by remember { mutableLongStateOf(0L) }
     val receberPosicao = { l: android.location.Location ->
@@ -252,10 +278,31 @@ fun InicioEcra(
     // A permissão pode ter sido dada nas definições do sistema: volta a ver sempre que se regressa à app.
     LifecycleResumeEffect(Unit) {
         comLocalizacao = temLocalizacao(contexto)
+        if (!comLocalizacao) modo = ModoPosicao.LIVRE
         onPauseOrDispose { }
     }
     LaunchedEffect(comLocalizacao) {
         if (comLocalizacao) pedirLocalizacaoAtual(contexto, receberPosicao)
+    }
+    val pedirPermissao = { pedir.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)) }
+    val tocarPosicao = {
+        val novo = aoTocar(modo, bussolaDisponivel, comLocalizacao)
+        when {
+            !comLocalizacao -> pedirPermissao()
+            novo == ModoPosicao.CENTRADO -> {
+                centrarAgora++
+                pedirLocalizacaoAtual(contexto, receberPosicao)
+            }
+            novo == ModoPosicao.BUSSOLA -> {
+                // Sem mexer na câmara (o mapa passa a seguir a pessoa sozinho); o primeiro movimento pede logo as paragens.
+                ultimaEnviada = null
+                if (!dicaVista) {
+                    dica = true
+                    escopo.launch { preferencias.marcarDicaBussolaVista() }
+                }
+            }
+        }
+        modo = novo
     }
 
     // O Android pode ter fechado o serviço da viagem enquanto a app esteve fora: vê-se sempre que se regressa.
@@ -311,8 +358,11 @@ fun InicioEcra(
         val densidade = LocalDensity.current
         // A atribuição e o logótipo do mapa ficam logo abaixo da faixa.
         val ligacao = LigacaoMapaInicio(
-            bussola = false, margemTopo = with(densidade) { alturaFaixa.toDp() } + 8.dp,
-            aoDeixarDeSeguir = {}, aoArrastar = {}, aoRodar = {},
+            bussola = modo == ModoPosicao.BUSSOLA, margemTopo = with(densidade) { alturaFaixa.toDp() } + 8.dp,
+            aoDeixarDeSeguir = { modo = ModoPosicao.LIVRE },
+            aoArrastar = { modo = aoArrastar(modo) },
+            // O mapa avisa a cada fotograma: ao grau, o estado só muda quando o rumo muda mesmo.
+            aoRodar = { rumo = round(it) },
         )
         (mapa ?: { l ->
             Mapa(
@@ -325,7 +375,15 @@ fun InicioEcra(
                 centroInicial = posicao?.let { LatLng(it.first, it.second) } ?: LISBOA,
                 camaraInicial = vm.camara,
                 centrarEm = posicao?.let { LatLng(it.first, it.second) },
-                aoMoverCamara = vm::aoMoverCamara,
+                aoMoverCamara = { minLat, minLon, maxLat, maxLon, zoom ->
+                    val lat = (minLat + maxLat) / 2
+                    val lon = (minLon + maxLon) / 2
+                    // Na bússola a câmara anda com a pessoa: só se pedem as paragens quando andou 30 m ou mudou o zoom.
+                    if (modo != ModoPosicao.BUSSOLA || deveEnviarCamara(ultimaEnviada, lat, lon, zoom)) {
+                        if (modo == ModoPosicao.BUSSOLA) ultimaEnviada = CamaraEnviada(lat, lon, zoom)
+                        vm.aoMoverCamara(minLat, minLon, maxLat, maxLon, zoom)
+                    }
+                },
                 aoTocarParagem = aoAbrirParagem,
                 // Um cartão de cada vez: tocar num veículo fecha o da estação e vice-versa.
                 aoTocarVeiculo = {
@@ -350,7 +408,7 @@ fun InicioEcra(
             )
         })(ligacao)
         FaixaInicio(aoPesquisar, aoAbrirConta, Modifier.testTag("faixa").onSizeChanged { alturaFaixa = it.height })
-        Column(Modifier.padding(top = with(densidade) { alturaFaixa.toDp() }).padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Column(Modifier.fillMaxWidth().padding(top = with(densidade) { alturaFaixa.toDp() }).padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (interrompida) {
                 AvisoViagem(
                     R.string.viagem_interrompida,
@@ -370,13 +428,32 @@ fun InicioEcra(
                     aoFechar = { giraEscolhida = null },
                 )
             }
-            BotaoCentrar(Modifier.align(Alignment.End)) {
-                if (comLocalizacao) {
-                    centrarAgora++
-                    pedirLocalizacaoAtual(contexto, receberPosicao)
-                } else {
-                    pedir.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
-                }
+            if (modo == ModoPosicao.BUSSOLA) {
+                val semAvisos = !interrompida && !emCurso && escolhido == null && giraEscolhida == null
+                // Sem avisos, 40 dp abaixo da faixa (por baixo da atribuição do mapa); com eles, logo a seguir ao último.
+                BussolaPequena(
+                    { rumo.toFloat() }, aoTocar = { modo = ModoPosicao.LIVRE },
+                    Modifier.align(Alignment.End).padding(top = if (semAvisos) 32.dp else 0.dp),
+                )
+            }
+        }
+        val topoFolha = { runCatching { folha.bottomSheetState.requireOffset() }.getOrNull() }
+        // O botão fica 12 dp acima do painel e some quando chegaria a menos de 8 dp da faixa.
+        val botaoCabe by remember(densidade) {
+            derivedStateOf { topoFolha()?.let { it - with(densidade) { (52 + 12 + 8).dp.toPx() } >= alturaFaixa } == true }
+        }
+        if (botaoCabe) {
+            Row(
+                Modifier.align(Alignment.TopEnd).padding(start = 12.dp, end = 12.dp).layout { medida, restricoes ->
+                    val p = medida.measure(restricoes)
+                    // Lido aqui e não na composição: arrastar o painel só volta a pôr o botão no sítio.
+                    val y = (topoFolha() ?: 0f).roundToInt() - 12.dp.roundToPx() - p.height
+                    layout(p.width, p.height) { p.place(0, y) }
+                },
+                verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                if (dica) DicaBussola(aoFechar = { dica = false }, Modifier.weight(1f, fill = false))
+                BotaoPosicao(modo, bussolaDisponivel, tocarPosicao)
             }
         }
     }
@@ -387,7 +464,7 @@ fun InicioEcra(
                 aoAceitar = {
                     marcarLocalizacaoPerguntada(contexto)
                     explicar = false
-                    pedir.launch(arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION))
+                    pedirPermissao()
                 },
                 aoRecusar = {
                     marcarLocalizacaoPerguntada(contexto)
@@ -535,18 +612,53 @@ internal fun AvisoViagem(texto: Int, aoAbrir: () -> Unit, modifier: Modifier = M
     }
 }
 
+/** O botão da posição: livre (alvo vazio), centrado (alvo cheio) ou bússola (seta, fundo cheio). */
 @Composable
-private fun BotaoCentrar(modifier: Modifier, aoTocar: () -> Unit) {
-    val descricao = stringResource(R.string.centrar_posicao)
+private fun BotaoPosicao(modo: ModoPosicao, temBussola: Boolean, aoTocar: () -> Unit, modifier: Modifier = Modifier) {
+    val bussola = modo == ModoPosicao.BUSSOLA
+    val descricao = stringResource(if (bussola) R.string.sair_modo_bussola else R.string.centrar_posicao)
+    val estado = if (modo == ModoPosicao.CENTRADO) stringResource(if (temBussola) R.string.centrado_com_bussola else R.string.centrado) else null
+    val cores = MaterialTheme.colorScheme
     Surface(
-        modifier.size(48.dp).clickable(role = Role.Button, onClick = aoTocar).semantics { contentDescription = descricao },
-        shape = CircleShape, shadowElevation = 6.dp,
-        border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.secondary),
+        onClick = aoTocar,
+        modifier = modifier.size(52.dp).semantics {
+            contentDescription = descricao
+            if (estado != null) stateDescription = estado
+        },
+        shape = CircleShape, color = if (bussola) cores.primary else cores.surface, shadowElevation = 6.dp,
     ) {
         Box(contentAlignment = Alignment.Center) {
-            // O leitor de ecrã lê a descrição, não o símbolo.
-            Text("◎", Modifier.clearAndSetSemantics {}, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge)
+            val icone = when (modo) {
+                ModoPosicao.LIVRE -> Icones.Posicao
+                ModoPosicao.CENTRADO -> Icones.PosicaoCheia
+                ModoPosicao.BUSSOLA -> Icones.Navegacao
+            }
+            Icon(icone, contentDescription = null, tint = if (bussola) cores.onPrimary else cores.primary)
         }
+    }
+}
+
+/** A bússola pequena do modo bússola: aponta para o norte do mapa ([rumo] lido só ao desenhar) e tocá-la sai do modo. */
+@Composable
+private fun BussolaPequena(rumo: () -> Float, aoTocar: () -> Unit, modifier: Modifier = Modifier) {
+    Surface(onClick = aoTocar, modifier = modifier.size(48.dp), shape = CircleShape, color = Color.White, shadowElevation = 6.dp) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(Icones.Bussola, stringResource(R.string.voltar_ao_norte), Modifier.graphicsLayer { rotationZ = -rumo() }, tint = Azulejo.Cobalto)
+        }
+    }
+}
+
+/** A dica da primeira vez no modo bússola, anunciada pelo TalkBack; tocá-la fecha-a. */
+@Composable
+private fun DicaBussola(aoFechar: () -> Unit, modifier: Modifier = Modifier) {
+    Surface(
+        onClick = aoFechar, modifier = modifier.semantics { liveRegion = LiveRegionMode.Polite },
+        shape = MaterialTheme.shapes.medium, color = Azulejo.Tinta, shadowElevation = 6.dp,
+    ) {
+        Text(
+            stringResource(R.string.dica_bussola), Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            color = Color.White, style = MaterialTheme.typography.bodyMedium,
+        )
     }
 }
 

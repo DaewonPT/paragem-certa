@@ -56,6 +56,9 @@ class Preferencias(private val loja: DataStore<Preferences>) {
     /** Depois da primeira viagem já não se explica a poupança de bateria. */
     val primeiraViagemFeita: Flow<Boolean> = loja.data.map { it[PRIMEIRA_VIAGEM_FEITA] ?: false }
 
+    /** A dica do modo bússola no mapa só aparece da primeira vez. */
+    val dicaBussolaVista: Flow<Boolean> = loja.data.map { it[DICA_BUSSOLA_VISTA] ?: false }
+
     /** Se a viagem e o "Avisa-me" avisam dos relatos confirmados da comunidade. */
     val avisosComunidade: Flow<Boolean> = loja.data.map { it[AVISOS_COMUNIDADE] ?: true }
 
@@ -122,6 +125,10 @@ class Preferencias(private val loja: DataStore<Preferences>) {
         loja.edit { it[PRIMEIRA_VIAGEM_FEITA] = true }
     }
 
+    suspend fun marcarDicaBussolaVista() {
+        loja.edit { it[DICA_BUSSOLA_VISTA] = true }
+    }
+
     suspend fun definirFiltros(f: Filtros) {
         loja.edit {
             it[MENOS_A_PE] = f.menosAPe
@@ -167,6 +174,7 @@ class Preferencias(private val loja: DataStore<Preferences>) {
         val SOM_AVISO = booleanPreferencesKey("som_aviso")
         val VIBRACAO_AVISO = booleanPreferencesKey("vibracao_aviso")
         val PRIMEIRA_VIAGEM_FEITA = booleanPreferencesKey("primeira_viagem_feita")
+        val DICA_BUSSOLA_VISTA = booleanPreferencesKey("dica_bussola_vista")
         val AVISOS_COMUNIDADE = booleanPreferencesKey("avisos_comunidade")
         val CAMADA_RELATOS = booleanPreferencesKey("camada_relatos")
         val OCULTOS = stringPreferencesKey("ocultos")

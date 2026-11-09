@@ -25,6 +25,11 @@
     <string name="loc_aceitar">Permitir localização</string>
     <string name="loc_recusar">Agora não</string>
     <string name="centrar_posicao">Centrar na minha posição</string>
+    <string name="sair_modo_bussola">Sair do modo bússola</string>
+    <string name="centrado_com_bussola">Centrado; toca outra vez para seguir com a bússola</string>
+    <string name="centrado">Centrado</string>
+    <string name="voltar_ao_norte">Voltar ao norte</string>
+    <string name="dica_bussola">Arrasta o mapa ou toca outra vez para sair</string>
     <string name="veiculo_linha">Linha %1$s</string>
     <string name="veiculo_destino">para %1$s</string>
     <string name="veiculo_sinal">último sinal há %1$d s</string>

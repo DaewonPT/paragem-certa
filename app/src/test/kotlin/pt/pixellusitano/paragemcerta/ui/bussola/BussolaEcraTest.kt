@@ -51,7 +51,7 @@ import pt.pixellusitano.paragemcerta.ui.tema.ModoTema
 import pt.pixellusitano.paragemcerta.ui.tema.TemaParagemCerta
 
 /** O Android a responder ao pedido da localização: [dar] diz se a pessoa aceita. */
-private class RegistoFalso(private val dar: Boolean) : ActivityResultRegistry() {
+internal class RegistoFalso(private val dar: Boolean) : ActivityResultRegistry() {
     val pedidas = mutableListOf<List<String>>()
     override fun <I, O> onLaunch(requestCode: Int, contract: ActivityResultContract<I, O>, input: I, options: ActivityOptionsCompat?) {
         val permissoes = (input as Array<*>).map { it as String }

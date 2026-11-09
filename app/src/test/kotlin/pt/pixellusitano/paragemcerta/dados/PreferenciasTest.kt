@@ -144,6 +144,13 @@ class PreferenciasTest {
         assertFalse(p.primeiraViagemFeita.first())
     }
 
+    @Test fun dicaBussolaComecaPorVerEFicaVista() = runTest {
+        val p = prefs()
+        assertFalse(p.dicaBussolaVista.first())
+        p.marcarDicaBussolaVista()
+        assertTrue(p.dicaBussolaVista.first())
+    }
+
     @Test fun guardaSomVibracaoEPrimeiraViagem() = runTest {
         val p = prefs()
         p.definirSomAviso(false)
