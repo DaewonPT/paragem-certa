@@ -1,6 +1,7 @@
 package pt.pixellusitano.paragemcerta.ui.linhas
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,20 +13,17 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -37,11 +35,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -72,10 +70,15 @@ import pt.pixellusitano.paragemcerta.dados.LinhaFavorita
 import pt.pixellusitano.paragemcerta.dados.Preferencias
 import pt.pixellusitano.paragemcerta.dados.Repositorio
 import pt.pixellusitano.paragemcerta.dados.SentidoLinha
+import pt.pixellusitano.paragemcerta.ui.comum.BotaoPrincipal
+import pt.pixellusitano.paragemcerta.ui.comum.BotaoSecundario
+import pt.pixellusitano.paragemcerta.ui.comum.CabecalhoAzulejo
 import pt.pixellusitano.paragemcerta.ui.comum.CartaoAzulejo
 import pt.pixellusitano.paragemcerta.ui.comum.FaixaEstado
 import pt.pixellusitano.paragemcerta.ui.comum.LinhaChegada
 import pt.pixellusitano.paragemcerta.ui.comum.SeloLinha
+import pt.pixellusitano.paragemcerta.ui.comum.TituloSecao
+import pt.pixellusitano.paragemcerta.ui.comum.bordaDoFiltro
 import pt.pixellusitano.paragemcerta.ui.comum.corDaLinha
 import pt.pixellusitano.paragemcerta.ui.comunidade.haQuanto
 import pt.pixellusitano.paragemcerta.ui.comunidade.nomeDoTipo
@@ -89,7 +92,8 @@ import pt.pixellusitano.paragemcerta.ui.mapa.veiculosDaLinha
 import pt.pixellusitano.paragemcerta.ui.paragem.estiloDaGravidade
 import pt.pixellusitano.paragemcerta.ui.paragem.rememberAoVivoCarris
 import pt.pixellusitano.paragemcerta.ui.rotas.hex
-import pt.pixellusitano.paragemcerta.ui.tema.FrisoAzulejo
+import pt.pixellusitano.paragemcerta.ui.tema.Azulejo
+import pt.pixellusitano.paragemcerta.ui.tema.Icones
 import pt.pixellusitano.paragemcerta.ui.tema.LocalEscuro
 import pt.pixellusitano.paragemcerta.ui.tema.iconeRelato
 import java.time.Instant
@@ -230,7 +234,6 @@ fun LinhaConteudo(
     val s = d?.sentidos?.firstOrNull { it.sentido == estado.sentido }
     Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         CabecalhoDaLinha(estado, aoVoltar, aoFavorita)
-        FrisoAzulejo(Modifier.fillMaxWidth())
         if (d == null || s == null) {
             val texto = when {
                 estado.semLinha -> R.string.linha_ja_nao_existe
@@ -263,6 +266,7 @@ fun LinhaConteudo(
                             selected = o.sentido == s.sentido,
                             onClick = { aoMudarSentido(o.sentido) },
                             label = { Text(stringResource(R.string.linha_sentido, o.destino)) },
+                            border = bordaDoFiltro(o.sentido == s.sentido),
                         )
                     }
                 }
@@ -273,7 +277,7 @@ fun LinhaConteudo(
             }
             if (aoAbrirMapaOficial != null) {
                 item(key = "mapa-oficial") {
-                    OutlinedButton(onClick = aoAbrirMapaOficial, modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp).fillMaxWidth()) {
+                    BotaoSecundario(aoAbrirMapaOficial, Modifier.padding(horizontal = 16.dp, vertical = 4.dp).fillMaxWidth()) {
                         Text(stringResource(R.string.linha_mapa_oficial))
                     }
                 }
@@ -305,39 +309,30 @@ fun LinhaConteudo(
 @Composable
 private fun CabecalhoDaLinha(estado: EstadoLinha, aoVoltar: () -> Unit, aoFavorita: () -> Unit) {
     val d = estado.detalhe
-    Column(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.primary).statusBarsPadding().padding(start = 4.dp, end = 4.dp, bottom = 12.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            TextButton(onClick = aoVoltar) { Text("← " + stringResource(R.string.voltar), color = MaterialTheme.colorScheme.onPrimary) }
-            Row(Modifier.weight(1f), horizontalArrangement = Arrangement.End) {
-                if (d != null) {
-                    val descricao = stringResource(if (estado.favorita != null) R.string.linha_favorita else R.string.linha_nao_favorita)
-                    IconButton(onClick = aoFavorita, enabled = estado.escolhida != null, modifier = Modifier.semantics { contentDescription = descricao }) {
-                        Text(
-                            if (estado.favorita != null) "★" else "☆", style = MaterialTheme.typography.headlineSmall,
-                            color = MaterialTheme.colorScheme.secondary,
-                        )
-                    }
-                }
-            }
-        }
-        if (d != null) {
-            // Sem nome curto (algumas da CP) o nome da linha é o longo: um selo desse tamanho não cabia.
-            val longo = d.nomeLongo.takeIf { it.isNotEmpty() && it != d.nome }
-            Row(Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                if (longo != null) SeloLinha(d.nome, corDaLinha(d.cor, d.modo), d.corTexto?.let { corDaLinha(it, d.modo) })
-                Text(longo ?: d.nome, Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onPrimary)
-            }
-            Text(d.operador, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f), modifier = Modifier.padding(horizontal = 12.dp))
-        }
+    if (d == null) {
+        CabecalhoAzulejo("", aoVoltar)
+        return
     }
+    // Sem nome curto (algumas da CP) o nome da linha é o longo: um selo desse tamanho não cabia.
+    val longo = d.nomeLongo.takeIf { it.isNotEmpty() && it != d.nome }
+    val descricao = stringResource(if (estado.favorita != null) R.string.linha_favorita else R.string.linha_nao_favorita)
+    CabecalhoAzulejo(
+        longo ?: d.nome, aoVoltar, subtitulo = d.operador,
+        acao = {
+            IconButton(onClick = aoFavorita, enabled = estado.escolhida != null, modifier = Modifier.size(48.dp)) {
+                Icon(if (estado.favorita != null) Icones.EstrelaCheia else Icones.Estrela, descricao, tint = Azulejo.Eletrico)
+            }
+        },
+        // O contorno branco mantém o selo à vista quando a linha não tem cor publicada e a cor neutra é a da própria faixa.
+        antesDoTitulo = longo?.let {
+            { SeloLinha(d.nome, corDaLinha(d.cor, d.modo), d.corTexto?.let { c -> corDaLinha(c, d.modo) }, Modifier.border(1.5.dp, Color.White, MaterialTheme.shapes.small)) }
+        },
+    )
 }
 
 @Composable
 private fun Titulo(texto: Int) {
-    Text(
-        stringResource(texto), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium,
-        modifier = Modifier.padding(start = 16.dp, top = 12.dp, end = 16.dp, bottom = 4.dp).semantics { heading() },
-    )
+    TituloSecao(stringResource(texto), Modifier.padding(horizontal = 16.dp))
 }
 
 /** O que se faz com a paragem escolhida: as próximas chegadas da linha nela, abri-la, o horário de hoje e, numa favorita, torná-la a habitual. */
@@ -351,27 +346,29 @@ private fun PainelDaParagem(
     aoUsarComoHabitual: () -> Unit,
     aoVerHorario: () -> Unit,
 ) {
-    Column(Modifier.fillMaxWidth().padding(start = 38.dp, end = 16.dp, bottom = 12.dp)) {
-        Text(
-            stringResource(R.string.linha_proximas, p.nome), style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.semantics { heading() },
-        )
-        val e = estado.chegadas
-        if (e != null) FaixaEstado(e, agora, Modifier.padding(vertical = 4.dp))
-        // Com o relógio do ecrã: uma chegada que já passou sai sem esperar pelo pedido seguinte.
-        val visiveis = e?.chegadas?.filter { aindaPorChegar(it, agora) }?.take(CHEGADAS_VISIVEIS)
-        when {
-            e == null -> Texto(stringResource(R.string.a_carregar))
-            visiveis.isNullOrEmpty() && !e.semLigacao && !e.tempoRealIndisponivel -> Texto(stringResource(R.string.sem_chegadas))
-            else -> visiveis.orEmpty().forEach { LinhaChegada(it, linha, agora, aoVivo = estado.aoVivo[it.idViagem]) }
-        }
-        Button(onClick = { aoAbrirParagem(p) }, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
-            Text(stringResource(R.string.linha_abrir_paragem))
-        }
-        if (estado.horarioAberto) HorarioDeHoje(estado)
-        else OutlinedButton(onClick = aoVerHorario, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.linha_horario_hoje)) }
-        if (estado.favorita != null && estado.favorita.paragem != p.ref) {
-            TextButton(onClick = aoUsarComoHabitual, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.linha_usar_habitual)) }
+    CartaoAzulejo(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp)) {
+        Column(Modifier.padding(12.dp)) {
+            Text(
+                stringResource(R.string.linha_proximas, p.nome), style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.semantics { heading() },
+            )
+            val e = estado.chegadas
+            if (e != null) FaixaEstado(e, agora, Modifier.padding(vertical = 4.dp))
+            // Com o relógio do ecrã: uma chegada que já passou sai sem esperar pelo pedido seguinte.
+            val visiveis = e?.chegadas?.filter { aindaPorChegar(it, agora) }?.take(CHEGADAS_VISIVEIS)
+            when {
+                e == null -> Texto(stringResource(R.string.a_carregar))
+                visiveis.isNullOrEmpty() && !e.semLigacao && !e.tempoRealIndisponivel -> Texto(stringResource(R.string.sem_chegadas))
+                else -> visiveis.orEmpty().forEach { LinhaChegada(it, linha, agora, aoVivo = estado.aoVivo[it.idViagem]) }
+            }
+            BotaoPrincipal({ aoAbrirParagem(p) }, Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                Text(stringResource(R.string.linha_abrir_paragem))
+            }
+            if (estado.horarioAberto) HorarioDeHoje(estado)
+            else BotaoSecundario(aoVerHorario, Modifier.fillMaxWidth()) { Text(stringResource(R.string.linha_horario_hoje)) }
+            if (estado.favorita != null && estado.favorita.paragem != p.ref) {
+                TextButton(onClick = aoUsarComoHabitual, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.linha_usar_habitual)) }
+            }
         }
     }
 }

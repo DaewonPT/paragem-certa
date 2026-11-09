@@ -10,6 +10,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
+import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.hasClickAction
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasSetTextAction
 import androidx.compose.ui.test.hasText
@@ -249,7 +254,41 @@ class LinhasEcraTest {
         regra.onNode(hasSetTextAction() and hasText("Procurar uma linha")).assertExists()
     }
 
-    @Test fun linhas_claro() = captureRoboImage("src/test/screenshots/linhas_claro.png") {
+    @Test fun campoDeProcuraFicaDentroDaFaixa() {
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Ecra(agruparLinhas(cm, catalogo, "", null)) } }
+        val campo = regra.onNode(hasSetTextAction()).fetchSemanticsNode().boundsInRoot
+        // À esquerda do campo está a faixa cobalto, não o fundo marfim.
+        val pixel = regra.onRoot().captureToImage().toPixelMap()[2, campo.center.y.toInt()]
+        assertTrue("fora da faixa: $pixel", pixel.red < 0.3f && pixel.blue > 0.5f)
+    }
+
+    @Test fun meioEscolhidoTemABordaDoFiltro() {
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Ecra(agruparLinhas(cm, catalogo, "", null)) } }
+        val img = regra.onNode(hasText("Todos") and isSelectable()).captureToImage().toPixelMap()
+        val borda = (0..2).map { img[it, img.height / 2] }
+        assertTrue("sem borda primária: $borda", borda.any { it.red < 0.3f && it.blue > 0.5f })
+    }
+
+    @Test fun perturbacoesEUmBotaoComOTextoDeHoje() {
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { CartaoPerturbacoes(2, aoAbrir = {}) } }
+        regra.onNode(hasText("Perturbações (2)") and hasClickAction()).assertIsDisplayed()
+    }
+
+    @Test fun linhasSemNomeCurtoLevamOSeloDoModo() {
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Ecra(agruparLinhas(cm, catalogo, "", Modo.COMBOIO)) } }
+        regra.onNodeWithContentDescription("Comboio", useUnmergedTree = true).assertExists()
+    }
+
+    @Test fun linhas_com_perturbacoes() = captureRoboImage("src/test/screenshots/linhas_com_perturbacoes.png") {
+        TemaParagemCerta(ModoTema.CLARO) {
+            LinhasConteudo(
+                agruparLinhas(cm, catalogo, "", null), "", {}, null, {}, EstadoCatalogo.Pronto(catalogo), {},
+                perturbacoes = { CartaoPerturbacoes(3, aoAbrir = {}) }, modifier = Modifier.width(360.dp),
+            )
+        }
+    }
+
+    @Test fun linhas_claro()= captureRoboImage("src/test/screenshots/linhas_claro.png") {
         TemaParagemCerta(ModoTema.CLARO) { Ecra(agruparLinhas(cm, catalogo, "", null)) }
     }
 

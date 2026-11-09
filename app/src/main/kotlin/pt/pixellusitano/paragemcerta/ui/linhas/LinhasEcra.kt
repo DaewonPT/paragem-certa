@@ -13,24 +13,22 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -44,8 +42,14 @@ import pt.pixellusitano.paragemcerta.core.modelo.Modo
 import pt.pixellusitano.paragemcerta.dados.CatalogoLinhas
 import pt.pixellusitano.paragemcerta.dados.EstadoCatalogo
 import pt.pixellusitano.paragemcerta.dados.Repositorio
+import pt.pixellusitano.paragemcerta.ui.comum.CampoAzulejo
+import pt.pixellusitano.paragemcerta.ui.comum.CartaoAzulejo
+import pt.pixellusitano.paragemcerta.ui.comum.FaixaAzulejo
 import pt.pixellusitano.paragemcerta.ui.comum.ItemLista
 import pt.pixellusitano.paragemcerta.ui.comum.SeloLinha
+import pt.pixellusitano.paragemcerta.ui.comum.SeloModo
+import pt.pixellusitano.paragemcerta.ui.comum.TituloSecao
+import pt.pixellusitano.paragemcerta.ui.comum.bordaDoFiltro
 import pt.pixellusitano.paragemcerta.ui.comum.corDaLinha
 import java.time.LocalDate
 
@@ -120,21 +124,20 @@ fun LinhasConteudo(
     perturbacoes: @Composable () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding()) {
-        OutlinedTextField(
-            value = filtro,
-            onValueChange = aoFiltrar,
-            singleLine = true,
-            label = { Text(stringResource(R.string.linhas_procurar)) },
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
-        )
+    Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        FaixaAzulejo {
+            CampoAzulejo(filtro, aoFiltrar, stringResource(R.string.linhas_procurar), Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 16.dp))
+        }
         LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 16.dp)) {
             item(key = "meios") {
                 // Passam à linha seguinte em vez de ficarem escondidos de lado (ecrãs estreitos ou letra grande).
-                FlowRow(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(modo == null, { aoEscolherModo(null) }, label = { Text(stringResource(R.string.linhas_todos)) })
+                FlowRow(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(modo == null, { aoEscolherModo(null) }, label = { Text(stringResource(R.string.linhas_todos)) }, border = bordaDoFiltro(modo == null))
                     ORDEM_MODOS.filter { it != Modo.OUTRO }.forEach { m ->
-                        FilterChip(modo == m, { aoEscolherModo(m) }, leadingIcon = { Icon(iconeModo(m), null, Modifier.size(FilterChipDefaults.IconSize)) }, label = { Text(stringResource(textoDoModo(m))) })
+                        FilterChip(
+                            modo == m, { aoEscolherModo(m) }, leadingIcon = { Icon(iconeModo(m), null, Modifier.size(FilterChipDefaults.IconSize)) },
+                            label = { Text(stringResource(textoDoModo(m))) }, border = bordaDoFiltro(modo == m),
+                        )
                     }
                 }
             }
@@ -146,26 +149,32 @@ fun LinhasConteudo(
             }
             grupos.forEach { g ->
                 item(key = "meio-${g.modo}") {
-                    Text(
-                        stringResource(textoDoModo(g.modo)), color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium,
-                        modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp).semantics { heading() },
-                    )
+                    Row(Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Icon(iconeModo(g.modo), null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
+                        TituloSecao(stringResource(textoDoModo(g.modo)))
+                    }
                 }
+                // Limite: as linhas de um operador compõem-se todas de uma vez (o cartão é um só item da lista).
                 g.operadores.forEach { (operador, linhas) ->
                     item(key = "operador-${g.modo}-$operador") {
-                        Text(
-                            operador, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelLarge,
-                            modifier = Modifier.padding(start = 16.dp, top = 8.dp, end = 16.dp),
-                        )
-                    }
-                    items(linhas, key = { it.ref.chave }) { l ->
-                        ItemLista(onClick = { aoAbrirLinha(l.ref) }) {
-                            // Sem nome curto (algumas da CP) o nome da linha é o longo: um selo desse tamanho não cabia.
-                            val longo = l.nomeLongo.takeIf { it.isNotEmpty() && it != l.nome }
-                            if (longo != null) SeloLinha(l.nome, corDaLinha(l.cor, l.modo), l.corTexto?.let { corDaLinha(it, l.modo) })
-                            Text(longo ?: l.nome, color = MaterialTheme.colorScheme.onBackground, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        CartaoAzulejo(Modifier.padding(horizontal = 16.dp, vertical = 4.dp).fillMaxWidth()) {
+                            Text(
+                                operador, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelLarge,
+                                modifier = Modifier.padding(start = 16.dp, top = 12.dp, end = 16.dp),
+                            )
+                            linhas.forEach { l ->
+                                // Sem nome curto (algumas da CP) o nome da linha é o longo: um selo desse tamanho não cabia.
+                                val longo = l.nomeLongo.takeIf { it.isNotEmpty() && it != l.nome }
+                                val cor = corDaLinha(l.cor, l.modo)
+                                key(l.ref.chave) {
+                                    ItemLista(onClick = { aoAbrirLinha(l.ref) }) {
+                                        if (longo != null) SeloLinha(l.nome, cor, l.corTexto?.let { corDaLinha(it, l.modo) }) else SeloModo(l.modo, cor)
+                                        Text(longo ?: l.nome, color = MaterialTheme.colorScheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                    }
+                                }
+                                if (l !== linhas.last()) HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                            }
                         }
-                        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                     }
                 }
             }

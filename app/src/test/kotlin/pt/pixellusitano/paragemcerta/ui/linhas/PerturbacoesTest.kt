@@ -1,16 +1,25 @@
 package pt.pixellusitano.paragemcerta.ui.linhas
 
 import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
 import kotlinx.coroutines.flow.first
@@ -214,7 +223,52 @@ class PerturbacoesTest {
         regra.onNodeWithText("Não há perturbações para mostrar.").assertDoesNotExist()
     }
 
-    @Test fun faixa_perturbacoes_claro() = captureRoboImage("src/test/screenshots/faixa_perturbacoes_claro.png") {
+    @Test fun fecharDaFaixaEUmBotaoDe48dp() {
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { FaixaPerturbacoes(2, aoAbrir = {}, aoFechar = {}) } }
+        regra.onNodeWithContentDescription("Fechar").assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp)
+        regra.onNodeWithText("×").assertDoesNotExist()
+    }
+
+    @Test fun titulosDasSeccoesSaoCabecalhos() {
+        regra.setContent {
+            TemaParagemCerta(ModoTema.CLARO) {
+                PerturbacoesConteudo(
+                    listOf(perturbacao("Obras", setOf("1009"))), listOf(perturbacao("Desvio", setOf("3708"))),
+                    null, {}, aoVoltar = {}, modifier = Modifier.width(360.dp),
+                )
+            }
+        }
+        val ehTitulo = SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)
+        regra.onNodeWithText("Nas tuas linhas").assert(ehTitulo)
+        regra.onNodeWithText("Carris Metropolitana").assert(ehTitulo)
+    }
+
+    @Composable
+    private fun Lista(modo: ModoTema, letra: Float = 1f) {
+        val d = LocalDensity.current
+        CompositionLocalProvider(LocalDensity provides Density(d.density, fontScale = letra)) {
+            TemaParagemCerta(modo) {
+                PerturbacoesConteudo(
+                    minhas = listOf(perturbacao("Cascais | 1625: Desvio de percurso Alcoitão", setOf("1625"), fim = DIA_12)),
+                    outras = listOf(
+                        perturbacao("Odivelas | 1604: Paragem desativada", setOf("1604")),
+                        perturbacao("Setúbal | 4725: Obras na Avenida", setOf("4725"), fim = DIA_12),
+                    ),
+                    filtro = null, aoFiltrar = {}, aoVoltar = {}, modifier = Modifier.width(360.dp),
+                )
+            }
+        }
+    }
+
+    @Test fun perturbacoes_escuro() = captureRoboImage("src/test/screenshots/perturbacoes_escuro.png") { Lista(ModoTema.ESCURO) }
+
+    @Test fun perturbacoes_letra200() = captureRoboImage("src/test/screenshots/perturbacoes_letra200.png") { Lista(ModoTema.CLARO, letra = 2f) }
+
+    @Test fun faixa_perturbacoes_escuro() = captureRoboImage("src/test/screenshots/faixa_perturbacoes_escuro.png") {
+        TemaParagemCerta(ModoTema.ESCURO) { FaixaPerturbacoes(2, aoAbrir = {}, aoFechar = {}) }
+    }
+
+    @Test fun faixa_perturbacoes_claro()= captureRoboImage("src/test/screenshots/faixa_perturbacoes_claro.png") {
         TemaParagemCerta(ModoTema.CLARO) { FaixaPerturbacoes(2, aoAbrir = {}, aoFechar = {}) }
     }
 

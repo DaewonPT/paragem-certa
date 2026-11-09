@@ -19,6 +19,12 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertWidthIsAtLeast
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
@@ -266,7 +272,31 @@ class LinhaEcraTest {
         assertEquals(1, mapasOficiais)
     }
 
-    @Test fun estrelaPedeOFavoritoEDizOQueFaz() {
+    @Test fun voltarEEstrelaSaoIconesDe48dp() {
+        mostrar()
+        regra.onNodeWithContentDescription("Voltar").assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp)
+        regra.onNodeWithContentDescription("Juntar a linha às favoritas").assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp)
+        regra.onNodeWithText("★").assertDoesNotExist()
+    }
+
+    @Test fun titulosDasSeccoesSaoCabecalhos() {
+        mostrar(completo)
+        val ehTitulo = SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading)
+        regra.onNodeWithText("Relatos desta linha").assert(ehTitulo)
+        regra.onNodeWithText("Paragens").assert(ehTitulo)
+    }
+
+    // Uma linha sem cor publicada tem o próprio cobalto como cor: sem contorno, o selo desaparecia na faixa.
+    @Test fun seloNaFaixaTemContorno() {
+        mostrar(ESTADO_DA_LINHA.copy(detalhe = DETALHE_15E.copy(cor = "#1F4FA3")))
+        val selo = regra.onNodeWithText("15E").fetchSemanticsNode().boundsInRoot
+        val img = regra.onRoot().captureToImage().toPixelMap()
+        // O texto do selo tem 6 dp de folga até à borda: o contorno branco está nesse intervalo, à esquerda do texto.
+        val aEsquerda = (selo.left.toInt() - 12..selo.left.toInt()).map { img[it, selo.center.y.toInt()] }
+        assertTrue("sem contorno branco: $aEsquerda", aEsquerda.any { it.red > 0.9f && it.green > 0.9f && it.blue > 0.9f })
+    }
+
+    @Test fun estrelaPedeOFavoritoEDizOQueFaz(){
         mostrar()
         regra.onNodeWithContentDescription("Juntar a linha às favoritas").performClick()
         assertEquals(1, estrelas)

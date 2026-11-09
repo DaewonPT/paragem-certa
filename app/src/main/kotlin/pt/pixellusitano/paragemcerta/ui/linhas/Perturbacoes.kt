@@ -4,6 +4,7 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.foundation.layout.size
 import pt.pixellusitano.paragemcerta.ui.tema.iconeModo
 import androidx.compose.material3.Icon
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -18,13 +19,11 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -39,10 +38,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -56,7 +51,10 @@ import pt.pixellusitano.paragemcerta.core.perturbacoes.novas
 import pt.pixellusitano.paragemcerta.dados.FontePerturbacoes
 import pt.pixellusitano.paragemcerta.dados.Preferencias
 import pt.pixellusitano.paragemcerta.dados.Repositorio
-import pt.pixellusitano.paragemcerta.ui.comum.ItemLista
+import pt.pixellusitano.paragemcerta.ui.comum.CartaoAzulejo
+import pt.pixellusitano.paragemcerta.ui.comum.TituloSecao
+import pt.pixellusitano.paragemcerta.ui.comum.bordaDoFiltro
+import pt.pixellusitano.paragemcerta.ui.tema.Icones
 import pt.pixellusitano.paragemcerta.ui.comum.LISBOA_FUSO
 import pt.pixellusitano.paragemcerta.ui.comum.CabecalhoAzulejo
 import java.time.Instant
@@ -81,21 +79,19 @@ suspend fun minhasLinhas(r: Repositorio): Set<String> =
 /** "2 perturbações novas nas tuas linhas": tocar abre a lista ([aoAbrir]); × fecha. */
 @Composable
 fun FaixaPerturbacoes(n: Int, aoAbrir: () -> Unit, aoFechar: () -> Unit, modifier: Modifier = Modifier) {
-    val fechar = stringResource(R.string.fechar)
     Surface(
-        modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), shape = RoundedCornerShape(14.dp), shadowElevation = 6.dp,
-        color = MaterialTheme.colorScheme.secondaryContainer,
+        modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp), shape = MaterialTheme.shapes.medium, shadowElevation = 6.dp,
+        color = MaterialTheme.colorScheme.secondaryContainer, border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(
-                pluralStringResource(R.plurals.faixa_perturbacoes, n, n),
+            Row(
                 Modifier.weight(1f).heightIn(min = 48.dp).clickable(role = Role.Button, onClick = aoAbrir).padding(start = 16.dp, top = 12.dp, bottom = 12.dp),
-                style = MaterialTheme.typography.titleSmall,
-            )
-            TextButton(onClick = aoFechar, modifier = Modifier.semantics { contentDescription = fechar }) {
-                // O leitor de ecrã lê "Fechar", não o símbolo.
-                Text("×", Modifier.clearAndSetSemantics {}, style = MaterialTheme.typography.titleLarge)
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Icon(Icones.Avisar, null, Modifier.size(20.dp))
+                Text(pluralStringResource(R.plurals.faixa_perturbacoes, n, n), style = MaterialTheme.typography.titleSmall)
             }
+            IconButton(onClick = aoFechar, Modifier.size(48.dp)) { Icon(Icones.Fechar, stringResource(R.string.fechar)) }
         }
     }
 }
@@ -129,10 +125,7 @@ fun FaixaAoAbrir(
 fun LinhaPerturbacoes(fonte: FontePerturbacoes, aoAbrir: () -> Unit, agora: () -> Instant = Instant::now) {
     val n by produceState<Int?>(null) { value = fonte.todas(agora())?.size }
     val total = n ?: return
-    ItemLista(onClick = aoAbrir) {
-        Text(stringResource(R.string.linhas_perturbacoes, total), color = MaterialTheme.colorScheme.onBackground)
-    }
-    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+    CartaoPerturbacoes(total, aoAbrir)
 }
 
 /** O ecrã "Perturbações": pede todas e separa as das tuas linhas ([minhas]). */
@@ -179,9 +172,9 @@ fun PerturbacoesConteudo(
     @Composable
     fun Item(p: Perturbacao) {
         val aberta = p.id in abertas
-        ItemLista(onClick = { abertas = if (aberta) abertas - p.id else abertas + p.id }) {
-            Column(Modifier.fillMaxWidth()) {
-                Text(p.titulo, color = MaterialTheme.colorScheme.onBackground)
+        CartaoAzulejo(Modifier.padding(horizontal = 16.dp, vertical = 4.dp).fillMaxWidth(), aoTocar = { abertas = if (aberta) abertas - p.id else abertas + p.id }) {
+            Column(Modifier.fillMaxWidth().heightIn(min = 56.dp).padding(horizontal = 16.dp, vertical = 12.dp)) {
+                Text(p.titulo, color = MaterialTheme.colorScheme.onSurface)
                 p.fim?.let {
                     Text(
                         stringResource(R.string.perturbacoes_ate, DIA.format(it.atZone(LISBOA_FUSO))),
@@ -191,16 +184,15 @@ fun PerturbacoesConteudo(
                 if (aberta) Text(p.texto, Modifier.padding(top = 4.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         }
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
     }
     Column(modifier.background(MaterialTheme.colorScheme.background)) {
         CabecalhoAzulejo(stringResource(R.string.perturbacoes_titulo), aoVoltar)
         LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 16.dp)) {
             item(key = "meios") {
-                FlowRow(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    FilterChip(filtro == null, { aoFiltrar(null) }, label = { Text(stringResource(R.string.linhas_todos)) })
+                FlowRow(Modifier.padding(start = 16.dp, end = 16.dp, top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    FilterChip(filtro == null, { aoFiltrar(null) }, label = { Text(stringResource(R.string.linhas_todos)) }, border = bordaDoFiltro(filtro == null))
                     modos.forEach { m ->
-                        FilterChip(filtro == m, { aoFiltrar(m) }, leadingIcon = { Icon(iconeModo(m), null, Modifier.size(FilterChipDefaults.IconSize)) }, label = { Text(stringResource(textoDoModo(m))) })
+                        FilterChip(filtro == m, { aoFiltrar(m) }, leadingIcon = { Icon(iconeModo(m), null, Modifier.size(FilterChipDefaults.IconSize)) }, label = { Text(stringResource(textoDoModo(m))) }, border = bordaDoFiltro(filtro == m))
                     }
                 }
             }
@@ -233,8 +225,18 @@ fun PerturbacoesConteudo(
 
 @Composable
 private fun Titulo(texto: String) {
-    Text(
-        texto, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium,
-        modifier = Modifier.padding(start = 16.dp, top = 16.dp, end = 16.dp).semantics { heading() },
-    )
+    TituloSecao(texto, Modifier.padding(horizontal = 16.dp))
+}
+
+@Composable
+internal fun CartaoPerturbacoes(total: Int, aoAbrir: () -> Unit) {
+    CartaoAzulejo(Modifier.padding(horizontal = 16.dp, vertical = 8.dp).fillMaxWidth(), aoTocar = aoAbrir) {
+        Row(
+            Modifier.heightIn(min = 56.dp).padding(horizontal = 16.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Icon(Icones.Avisar, null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
+            Text(stringResource(R.string.linhas_perturbacoes, total), color = MaterialTheme.colorScheme.onSurface)
+        }
+    }
 }

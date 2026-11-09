@@ -2,6 +2,7 @@ package pt.pixellusitano.paragemcerta.ui.comum
 
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.TextSelectionColors
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -34,6 +35,8 @@ fun CampoAzulejo(
             focusedTextColor = Azulejo.Tinta, unfocusedTextColor = Azulejo.Tinta,
             focusedLabelColor = Azulejo.Cobalto, unfocusedLabelColor = Azulejo.Cinza,
             cursorColor = Azulejo.Cobalto,
+            // A seleção também é fixa: no escuro o esquema daria um azul-claro sobre o branco.
+            selectionColors = TextSelectionColors(handleColor = Azulejo.Cobalto, backgroundColor = Azulejo.Cobalto.copy(alpha = 0.25f)),
             focusedIndicatorColor = Color.Transparent, unfocusedIndicatorColor = Color.Transparent,
             disabledIndicatorColor = Color.Transparent, errorIndicatorColor = Color.Transparent,
         ),
