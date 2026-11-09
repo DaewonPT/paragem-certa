@@ -596,4 +596,11 @@
     <string name="widget_abrir_app">Abrir a app</string>
     <string name="widget_linha_descricao">%1$s para %2$s às %3$s</string>
     <string name="widget_linha_descricao_tempo_real">%1$s para %2$s às %3$s, em tempo real</string>
+    <string name="widget_perto">Estás perto</string>
+    <string name="widget_toca_atualizar">Toca em ↻</string>
+    <string name="widget_sem_morada">Toca para escolher a morada</string>
+    <string name="widget_sem_transportes">Não há transportes para lá agora</string>
+    <string name="widget_casa_sem_ligacao">Sem ligação — toca em ↻</string>
+    <string name="widget_sem_posicao">Abre a app para saber onde estás</string>
+    <string name="widget_posicao_das">posição das %1$s</string>
 </resources>

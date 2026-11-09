@@ -269,6 +269,7 @@ fun Navegacao(
                                 aoAbrirRotas = { nav.navigate(it) },
                                 aoAbrirLinha = { nav.navigate(it.rotaDaLinha()) },
                                 aoDefinirLocal = aoDefinirLocal,
+                                aoSugerir = ligacoes.casaTrabalho::aoSugerir,
                             )
                         },
                     )

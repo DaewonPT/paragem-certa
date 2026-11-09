@@ -60,6 +60,7 @@ import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.Itinerario
 import pt.pixellusitano.paragemcerta.core.modelo.Linha
 import pt.pixellusitano.paragemcerta.core.modelo.Lugar
+import pt.pixellusitano.paragemcerta.core.modelo.PlanoRotas
 import pt.pixellusitano.paragemcerta.core.modelo.TipoLugar
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import pt.pixellusitano.paragemcerta.core.regras.distanciaMetros
@@ -425,26 +426,37 @@ private fun Chegadas(e: EstadoChegadas?, maximo: Int, linhas: Map<String, Linha>
 /** A sugestão do momento guardada para um sítio: quando e de onde foi pedida (null = o pedido falhou). */
 private class Sugestao(val em: Instant, val origem: Pair<Double, Double>, val itinerario: Itinerario?)
 
+/** A ligação que chega mais cedo de [de] a [para]; Ok(null) = não há transportes, Falha = o pedido falhou. */
+suspend fun melhorLigacao(
+    planear: suspend (Lugar, Lugar, Instant) -> Resultado<PlanoRotas>, de: Lugar, para: Lugar, agora: Instant,
+): Resultado<Itinerario?> = when (val r = planear(de, para, agora)) {
+    is Resultado.Ok -> Resultado.Ok(r.valor.itinerarios.minByOrNull { it.chegada })
+    is Resultado.Falha -> r
+}
+
 /**
  * Pede as rotas daqui a [local] e guarda a mais cedo a chegar em [sugestoes], ou reaproveita a guardada se ainda serve ([validade] e 200 m).
  * Um pedido que falhou também fica guardado (itinerário null), mas nunca é reaproveitado: pede-se de novo.
+ * Uma sugestão nova da Casa ou do Trabalho vai também para [aoSugerir] (o widget), sem pedidos a mais.
  */
 private suspend fun sugerir(
     repositorio: Repositorio, sugestoes: MutableMap<Long, Sugestao>, calculando: MutableSet<Long>,
     local: LocalGuardado, posicao: Pair<Double, Double>, validade: Duration,
+    aoSugerir: suspend (LocalGuardado, Itinerario, Pair<Double, Double>) -> Unit,
 ): Itinerario? {
     val agora = Instant.now()
     sugestoes[local.id]?.takeIf { it.itinerario != null && guardadoValido(it.em, it.origem, agora, posicao, validade) }
         ?.let { return it.itinerario }
     calculando += local.id
-    try {
+    val i = try {
         val partida = Lugar(MINHA_POSICAO, posicao.first, posicao.second, TipoLugar.POSICAO)
-        val i = (repositorio.planear(partida, local.lugar, agora, false, Filtros()) as? Resultado.Ok)?.valor?.itinerarios?.minByOrNull { it.chegada }
-        sugestoes[local.id] = Sugestao(agora, posicao, i)
-        return i
+        val r = melhorLigacao({ de, para, h -> repositorio.planear(de, para, h, false, Filtros()) }, partida, local.lugar, agora)
+        (r as? Resultado.Ok)?.valor.also { sugestoes[local.id] = Sugestao(agora, posicao, it) }
     } finally {
         calculando -= local.id
     }
+    if (i != null && (local.tipo == "CASA" || local.tipo == "TRABALHO")) aoSugerir(local, i, posicao)
+    return i
 }
 
 /**
@@ -462,6 +474,8 @@ fun Painel(
     aoAbrirLinha: (LinhaFavorita) -> Unit = {},
     /** Tocar na Casa ou no Trabalho ainda sem morada ("CASA" ou "TRABALHO"). */
     aoDefinirLocal: (tipo: String) -> Unit = {},
+    /** Uma sugestão nova da Casa ou do Trabalho, com a posição de onde se calculou (para o widget). */
+    aoSugerir: suspend (LocalGuardado, Itinerario, Pair<Double, Double>) -> Unit = { _, _, _ -> },
 ) {
     val favoritas by remember { repositorio.favoritas() }.collectAsStateWithLifecycle(initialValue = emptyList())
     val linhasGuardadas by remember { repositorio.linhasFavoritas() }.collectAsStateWithLifecycle(initialValue = emptyList())
@@ -482,7 +496,7 @@ fun Painel(
     val escopo = rememberCoroutineScope()
     LaunchedEffect(locais, posicao) {
         val p = posicao ?: return@LaunchedEffect
-        for (l in locais) if (estadoDoLocal(l, p) == EstadoLocal.AUTOMATICO) sugerir(repositorio, sugestoes, calculando, l, p, VALIDADE_AUTOMATICO)
+        for (l in locais) if (estadoDoLocal(l, p) == EstadoLocal.AUTOMATICO) sugerir(repositorio, sugestoes, calculando, l, p, VALIDADE_AUTOMATICO, aoSugerir)
     }
     val blocosLocais = locais.map { l ->
         val estado = estadoDoLocal(l, posicao)
@@ -520,7 +534,7 @@ fun Painel(
         aoTocarLocal = { b ->
             if (posicao != null && toqueCalcula(b.estado, b.itinerario, b.aCalcular)) {
                 // Sem rota (rede em baixo, ou nenhuma) o toque não fica sem resposta: as rotas explicam o que falhou.
-                escopo.launch { if (sugerir(repositorio, sugestoes, calculando, b.local, posicao, VALIDADE_AO_TOQUE) == null) abrirRotas(b.local) }
+                escopo.launch { if (sugerir(repositorio, sugestoes, calculando, b.local, posicao, VALIDADE_AO_TOQUE, aoSugerir) == null) abrirRotas(b.local) }
             } else abrirRotas(b.local)
         },
         aoVerMaisLocal = { b -> abrirRotas(b.local) },

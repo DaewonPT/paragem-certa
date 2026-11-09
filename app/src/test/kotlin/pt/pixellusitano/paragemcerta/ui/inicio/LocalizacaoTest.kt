@@ -13,8 +13,14 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performScrollTo
+import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.async
+import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
+import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -28,7 +34,9 @@ import org.robolectric.shadows.ShadowSensor
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.ui.tema.ModoTema
 import pt.pixellusitano.paragemcerta.ui.tema.TemaParagemCerta
+import java.util.concurrent.Executor
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
 class LocalizacaoTest {
     @get:Rule val regra = createComposeRule()
@@ -73,6 +81,66 @@ class LocalizacaoTest {
         )
         ShadowLooper.idleMainLooper()
         assertEquals(1_762_000_000_000L, recebida?.time)
+    }
+
+    private fun gestorCom(vararg ligados: String, permissao: Boolean = true): Pair<Application, LocationManager> {
+        val app = RuntimeEnvironment.getApplication() as Application
+        if (permissao) shadowOf(app).grantPermissions(Manifest.permission.ACCESS_FINE_LOCATION)
+        else shadowOf(app).denyPermissions(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
+        val gestor = app.getSystemService(LocationManager::class.java)
+        listOf(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER, LocationManager.PASSIVE_PROVIDER)
+            .forEach { shadowOf(gestor).setProviderEnabled(it, it in ligados) }
+        return app to gestor
+    }
+
+    private val direto = Executor { it.run() }
+
+    @Test fun posicaoAtualSemPermissaoNaoPedeNada() = runTest {
+        val (app, gestor) = gestorCom(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER, permissao = false)
+        assertNull(posicaoAtual(app, executor = direto))
+        assertEquals(0L, testScheduler.currentTime)
+        assertTrue(shadowOf(gestor).getLocationRequests(LocationManager.GPS_PROVIDER).isEmpty())
+        assertTrue(shadowOf(gestor).getLocationRequests(LocationManager.NETWORK_PROVIDER).isEmpty())
+    }
+
+    @Test fun posicaoAtualPedePelaRedePrimeiro() = runTest {
+        val (app, gestor) = gestorCom(LocationManager.GPS_PROVIDER, LocationManager.NETWORK_PROVIDER)
+        val pedido = async { posicaoAtual(app, executor = direto) }
+        runCurrent()
+        assertEquals(1, shadowOf(gestor).getLocationRequests(LocationManager.NETWORK_PROVIDER).size)
+        assertTrue(shadowOf(gestor).getLocationRequests(LocationManager.GPS_PROVIDER).isEmpty())
+        shadowOf(gestor).simulateLocation(
+            Location(LocationManager.NETWORK_PROVIDER).apply { latitude = 38.7036; longitude = -9.1772; time = 1_762_000_000_000L },
+        )
+        assertEquals(PosicaoComHora(38.7036, -9.1772, 1_762_000_000_000L), pedido.await())
+    }
+
+    @Test fun posicaoAtualSemRedeUsaOGps() = runTest {
+        val (app, gestor) = gestorCom(LocationManager.GPS_PROVIDER)
+        val pedido = async { posicaoAtual(app, executor = direto) }
+        runCurrent()
+        assertEquals(1, shadowOf(gestor).getLocationRequests(LocationManager.GPS_PROVIDER).size)
+        pedido.cancel()
+    }
+
+    @Test fun posicaoAtualSemRespostaDaNuloAoFimDoLimite() = runTest {
+        val (app, gestor) = gestorCom(LocationManager.NETWORK_PROVIDER)
+        val pedido = async { posicaoAtual(app, executor = direto) }
+        advanceTimeBy(2_999)
+        runCurrent()
+        assertFalse(pedido.isCompleted)
+        advanceTimeBy(1)
+        runCurrent()
+        assertTrue(pedido.isCompleted)
+        assertNull(pedido.await())
+        // O CancellationSignal cancelado tira o pedido ao gestor: nada fica à espera de uma posição.
+        assertTrue(shadowOf(gestor).getLocationRequests(LocationManager.NETWORK_PROVIDER).isEmpty())
+    }
+
+    @Test fun posicaoAtualSemFornecedorDaNulo() = runTest {
+        val (app, _) = gestorCom()
+        assertNull(posicaoAtual(app, executor = direto))
+        assertEquals(0L, testScheduler.currentTime)
     }
 
     // "Centrar" depois de um salto grande (o telemóvel esteve sem GPS e agora está noutra cidade): a posição do componente do

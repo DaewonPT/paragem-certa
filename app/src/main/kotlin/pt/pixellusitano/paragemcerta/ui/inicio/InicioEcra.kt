@@ -126,6 +126,7 @@ import pt.pixellusitano.paragemcerta.ui.viagem.rememberRetomarViagem
 import pt.pixellusitano.paragemcerta.ui.viagem.viagemEmCurso
 import pt.pixellusitano.paragemcerta.ui.viagem.viagemInterrompida
 import pt.pixellusitano.paragemcerta.viagem.FicheirosViagem
+import pt.pixellusitano.paragemcerta.widget.DadosWidget
 import java.time.Duration
 import java.time.Instant
 import kotlin.math.round
@@ -275,6 +276,8 @@ fun InicioEcra(
     val receberPosicao = { l: android.location.Location ->
         posicao = l.latitude to l.longitude
         horaPosicao = l.time
+        // Para o ↻ do widget "Casa e Trabalho", que com a app fechada quase nunca consegue a posição atual.
+        DadosWidget(contexto).guardarPosicao(PosicaoComHora(l.latitude, l.longitude, l.time))
     }
     val pedir = rememberLauncherForActivityResult(ActivityResultContracts.RequestMultiplePermissions()) { r ->
         comLocalizacao = r.values.any { it }

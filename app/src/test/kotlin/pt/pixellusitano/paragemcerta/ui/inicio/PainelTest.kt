@@ -25,6 +25,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.height
@@ -52,13 +53,16 @@ import pt.pixellusitano.paragemcerta.core.fontes.transitous.Transitous
 import pt.pixellusitano.paragemcerta.core.linhas.RefLinha
 import pt.pixellusitano.paragemcerta.core.linhas.lerCatalogo
 import pt.pixellusitano.paragemcerta.core.modelo.Chegada
+import pt.pixellusitano.paragemcerta.core.modelo.Filtros
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
+import pt.pixellusitano.paragemcerta.core.modelo.Itinerario
 import pt.pixellusitano.paragemcerta.core.modelo.Linha
 import pt.pixellusitano.paragemcerta.core.modelo.Lugar
 import pt.pixellusitano.paragemcerta.core.modelo.Modo
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
 import pt.pixellusitano.paragemcerta.core.modelo.TipoLugar
 import pt.pixellusitano.paragemcerta.core.rede.Resposta
+import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import pt.pixellusitano.paragemcerta.dados.BaseDados
 import pt.pixellusitano.paragemcerta.dados.CatalogoLinhas
 import pt.pixellusitano.paragemcerta.dados.EstadoCatalogo
@@ -69,6 +73,7 @@ import pt.pixellusitano.paragemcerta.dados.LinhaFavorita
 import pt.pixellusitano.paragemcerta.dados.LocalGuardado
 import pt.pixellusitano.paragemcerta.dados.Repositorio
 import pt.pixellusitano.paragemcerta.dados.fixture
+import pt.pixellusitano.paragemcerta.ui.rotas.MINHA_POSICAO
 import pt.pixellusitano.paragemcerta.ui.rotas.rememberGuardarLocal
 import pt.pixellusitano.paragemcerta.ui.tema.ModoTema
 import pt.pixellusitano.paragemcerta.ui.tema.TemaParagemCerta
@@ -418,5 +423,51 @@ class PainelTest {
         regra.onNodeWithContentDescription("Voltar").performClick()
         regra.onNode(convite("Casa")).assertIsDisplayed()
         assertTrue(runBlocking { repo.locais().first() }.isEmpty())
+    }
+
+    // Do Saldanha: a Casa e o café ficam a mais de 500 m, por isso a sugestão pede rotas.
+    private val saldanha = 38.7369 to -9.1450
+    private val sugeridas = mutableListOf<Triple<LocalGuardado, Itinerario, Pair<Double, Double>>>()
+
+    private fun painelComSugestoes(repo: Repositorio) {
+        val linhas = catalogoLinhas()
+        regra.setContent {
+            TemaParagemCerta(ModoTema.CLARO) {
+                Painel(repo, saldanha, {}, {}, catalogo = linhas, aoSugerir = { l, i, de -> sugeridas += Triple(l, i, de) })
+            }
+        }
+    }
+
+    // Sem paragens perto: a única coisa pedida à rede é a rota.
+    private fun repositorioComRotas() = repositorio(
+        HttpPorUrl("plan" to listOf({ Resposta(200, fixture("transitous-plan.json")) }), "map/stops" to listOf({ Resposta(200, "[]") })),
+    )
+
+    @Test fun sugestaoDaCasaVaiParaOWidget() {
+        val repo = repositorioComRotas()
+        runBlocking { repo.guardarLocal("Casa", Lugar("Casa", 38.7058, -9.1431, TipoLugar.MORADA), "CASA") }
+        painelComSugestoes(repo)
+        regra.waitUntil(5_000) { sugeridas.isNotEmpty() }
+        regra.waitForIdle()
+
+        val casa = runBlocking { repo.locais().first() }.single()
+        val de = Lugar(MINHA_POSICAO, saldanha.first, saldanha.second, TipoLugar.POSICAO)
+        val maisCedo = (runBlocking { repo.planear(de, casa.lugar, agora, false, Filtros()) } as Resultado.Ok).valor.itinerarios.minBy { it.chegada }
+        assertEquals(1, sugeridas.size)
+        assertEquals(casa, sugeridas[0].first)
+        assertEquals(maisCedo, sugeridas[0].second)
+        assertEquals(saldanha, sugeridas[0].third)
+    }
+
+    @Test fun sugestaoDeOutroSitioNaoVaiParaOWidget() {
+        val repo = repositorioComRotas()
+        runBlocking { repo.guardarLocal("Café Central", Lugar("Café Central", 38.7101, -9.1402, TipoLugar.LOCAL), "OUTRO") }
+        painelComSugestoes(repo)
+        regra.waitUntil(5_000) { regra.onAllNodesWithText("Café Central").fetchSemanticsNodes().isNotEmpty() }
+        regra.onNodeWithText("Café Central").performScrollTo().performClick()
+        // O toque calcula a sugestão (a hora de saída aparece no cartão), mas o widget só quer a Casa e o Trabalho.
+        regra.waitUntil(5_000) { regra.onAllNodes(hasText("sai às", substring = true)).fetchSemanticsNodes().isNotEmpty() }
+        regra.waitForIdle()
+        assertTrue(sugeridas.isEmpty())
     }
 }

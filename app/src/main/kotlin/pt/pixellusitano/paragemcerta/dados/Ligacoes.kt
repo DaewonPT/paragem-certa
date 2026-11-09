@@ -9,9 +9,14 @@ import pt.pixellusitano.paragemcerta.core.fontes.emel.Gira
 import pt.pixellusitano.paragemcerta.core.fontes.geoapi.GeoApi
 import pt.pixellusitano.paragemcerta.core.fontes.servidor.ServidorParagemCerta
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.Transitous
+import kotlinx.coroutines.flow.first
 import pt.pixellusitano.paragemcerta.core.fotos.lerFotosDeRua
+import pt.pixellusitano.paragemcerta.core.modelo.Filtros
 import pt.pixellusitano.paragemcerta.core.rede.OkHttpHttp
 import pt.pixellusitano.paragemcerta.core.rede.userAgent
+import pt.pixellusitano.paragemcerta.ui.inicio.posicaoAtual
+import pt.pixellusitano.paragemcerta.widget.AtualizadorCasaTrabalho
+import pt.pixellusitano.paragemcerta.widget.DadosWidget
 import pt.pixellusitano.paragemcerta.widget.criarAtualizadorWidgets
 import java.time.Instant
 
@@ -34,7 +39,16 @@ class Ligacoes(contexto: Context) {
     )
     val preferencias = Preferencias(contexto.applicationContext.lojaPreferencias)
     val widgets = criarAtualizadorWidgets(contexto.applicationContext, repositorio)
-    val conta = Conta(contexto, servidor, repositorio, esquecerWidgets = widgets::aoApagarDados)
+    val casaTrabalho = AtualizadorCasaTrabalho(
+        DadosWidget(contexto.applicationContext),
+        lerLocais = { repositorio.locais().first() },
+        planear = { de, para, hora -> repositorio.planear(de, para, hora, false, Filtros()) },
+        posicaoAtual = { posicaoAtual(contexto.applicationContext) },
+        desenhar = { _, _ -> },
+        todos = { emptyList() },
+    )
+    // Por esta ordem: primeiro limpa o ficheiro dos widgets, depois o "Casa e Trabalho" redesenha-se sem nada.
+    val conta = Conta(contexto, servidor, repositorio, esquecerWidgets = { widgets.aoApagarDados(); casaTrabalho.redesenhar() })
     val comunidade by lazy { Comunidade(servidor, conta, configuracoes, preferencias) }
     val detalheDasLinhas = DetalheDasLinhas(cm, transitous, catalogoLinhas, repositorio)
     val estacoesGira = EstacoesGira(contexto.filesDir, Gira(http), Instant::now)

@@ -9,9 +9,17 @@ import android.hardware.SensorManager
 import android.location.Location
 import android.location.LocationManager
 import androidx.core.content.ContextCompat
+import android.os.CancellationSignal
 import androidx.core.location.LocationManagerCompat
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withTimeoutOrNull
+import kotlinx.serialization.Serializable
 import pt.pixellusitano.paragemcerta.core.regras.distanciaMetros
+import java.util.concurrent.Executor
+import kotlin.coroutines.resume
 import kotlin.math.abs
+import kotlin.time.Duration
+import kotlin.time.Duration.Companion.seconds
 
 fun temLocalizacao(contexto: Context): Boolean =
     ContextCompat.checkSelfPermission(contexto, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
@@ -46,7 +54,31 @@ fun pedirLocalizacaoAtual(contexto: Context, aoReceber: (Location) -> Unit) {
     }
 }
 
+/**
+ * A posição atual para quem não pode esperar: null sem permissão (sem tocar no gestor), sem fornecedor, sem resposta ou ao fim de
+ * [limite], e nesse caso o pedido é cancelado. Pela rede primeiro: o GPS a frio, dentro de casa, quase nunca responde a tempo.
+ */
+@SuppressLint("MissingPermission")
+suspend fun posicaoAtual(
+    contexto: Context, limite: Duration = 3.seconds, executor: Executor = ContextCompat.getMainExecutor(contexto),
+): PosicaoComHora? {
+    if (!temLocalizacao(contexto)) return null
+    val gestor = contexto.getSystemService(LocationManager::class.java) ?: return null
+    val fornecedor = listOf(LocationManager.NETWORK_PROVIDER, LocationManager.GPS_PROVIDER, LocationManager.PASSIVE_PROVIDER)
+        .firstOrNull { runCatching { gestor.isProviderEnabled(it) }.getOrDefault(false) } ?: return null
+    return withTimeoutOrNull(limite) {
+        suspendCancellableCoroutine { c ->
+            val sinal = CancellationSignal()
+            c.invokeOnCancellation { sinal.cancel() }
+            LocationManagerCompat.getCurrentLocation(gestor, fornecedor, sinal, executor) { l: Location? ->
+                c.resume(l?.let { PosicaoComHora(it.latitude, it.longitude, it.time) })
+            }
+        }
+    }
+}
+
 /** Uma posição com a hora da medição (ms desde 1970); hora 0 = não se sabe. */
+@Serializable
 data class PosicaoComHora(val lat: Double, val lon: Double, val hora: Long)
 
 /** A mais nova das duas; sem hora ou na mesma hora fica a primeira. */

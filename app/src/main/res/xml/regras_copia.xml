@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Até ao Android 11. O ficheiro dos widgets tem a última posição: fica só neste telemóvel. -->
+<full-backup-content>
+    <exclude domain="sharedpref" path="widgets.xml" />
+</full-backup-content>
