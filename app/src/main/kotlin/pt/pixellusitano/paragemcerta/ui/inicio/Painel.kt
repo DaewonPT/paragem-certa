@@ -19,7 +19,6 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -36,7 +35,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.delay
@@ -78,9 +81,17 @@ import pt.pixellusitano.paragemcerta.ui.comum.FaixaEstado
 import pt.pixellusitano.paragemcerta.ui.comum.LinhaChegada
 import pt.pixellusitano.paragemcerta.ui.comum.SeloLinha
 import pt.pixellusitano.paragemcerta.ui.comum.corDaLinha
-import pt.pixellusitano.paragemcerta.ui.tema.FrisoAzulejo
 import java.time.Duration
 import java.time.Instant
+
+/** Altura do painel fechado, a pega incluída: mostra Casa, Trabalho e o título e a primeira linha do primeiro cartão. */
+internal val PAINEL_FECHADO = 408.dp
+/** A pega de arrastar do painel (a do Material 3). */
+internal val ALTURA_PEGA = 48.dp
+internal const val LIMITE_PAINEL = 0.45f
+
+/** O painel fechado nunca passa de [LIMITE_PAINEL] do ecrã, para o mapa não ficar tapado em ecrãs baixos. */
+internal fun alturaPainelFechado(alturaEcra: Dp): Dp = minOf(PAINEL_FECHADO, alturaEcra * LIMITE_PAINEL)
 
 /** Uma paragem no painel, com as suas chegadas (estado null enquanto carrega). */
 data class BlocoParagem(val ref: RefParagem, val nome: String, val estado: EstadoChegadas?, val maximo: Int)
@@ -208,8 +219,17 @@ fun CartaoLocal(
                     val e = sugestao.etapas.firstOrNull { !it.aPe }
                     if (e == null) Icon(Icones.APe, stringResource(R.string.a_pe), Modifier.size(20.dp), tint = corDetalhe)
                     else e.linhaNome?.let { SeloLinha(it, corDaLinha(e.cor, e.modo)) } ?: SeloModo(e.modo, corDaLinha(e.cor, e.modo))
+                    val duracao = textoDuracao(sugestao.duracao)
+                    val texto = stringResource(R.string.painel_duracao_saida, duracao, sugestao.partida.horaLisboa())
                     Text(
-                        stringResource(R.string.painel_duracao_saida, textoDuracao(sugestao.duracao), sugestao.partida.horaLisboa()),
+                        // A duração em negrito, o resto do texto (a hora de saída) como estava.
+                        remember(texto, duracao) {
+                            buildAnnotatedString {
+                                append(texto)
+                                val i = texto.indexOf(duracao)
+                                if (i >= 0) addStyle(SpanStyle(fontWeight = FontWeight.Black), i, i + duracao.length)
+                            }
+                        },
                         style = MaterialTheme.typography.bodyMedium, color = corDetalhe,
                     )
                 }
@@ -280,15 +300,14 @@ fun PainelConteudo(
 ) {
     // "Favoritos" por esta ordem: Casa, Trabalho, as paragens, as linhas e os outros sítios (cada grupo pela ordem em que o utilizador o pôs).
     val outros = locais.filter { it.local.tipo != "CASA" && it.local.tipo != "TRABALHO" }
-    Column(modifier.background(MaterialTheme.colorScheme.surface).padding(horizontal = 16.dp).padding(bottom = 16.dp)) {
-        FrisoAzulejo(Modifier.fillMaxWidth().padding(bottom = 8.dp))
+    Column(modifier.background(MaterialTheme.colorScheme.background).padding(horizontal = 16.dp).padding(top = 8.dp, bottom = 16.dp)) {
         ultima?.let { r ->
             CartaoAcao(Icones.Repetir, stringResource(R.string.painel_repetir), stringResource(R.string.painel_de_para, r.de.nome, r.para.nome)) {
                 aoRepetir(r)
             }
         }
         Text(stringResource(R.string.painel_favoritos), style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
+            fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
         // Casa e Trabalho estão sempre cá: as guardadas com o cartão de sempre e as que ainda não têm morada lado a lado numa fila baixa,
         // para não empurrarem as paragens para fora do painel fechado. Só depois de lidos os locais: antes, um toque substituiria a guardada.
         val tipos = listOf("CASA" to R.string.locais_casa, "TRABALHO" to R.string.locais_trabalho)
@@ -311,12 +330,14 @@ fun PainelConteudo(
             Text(stringResource(R.string.painel_sem_favoritas), color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(vertical = 8.dp))
         }
-        favoritas.forEach { Bloco(it, true, linhas, agora, aoAbrirParagem) }
-        linhasFavoritas.forEach { BlocoDeLinha(it, linhas, agora, aoAbrirLinha) }
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            favoritas.forEach { Bloco(it, true, linhas, agora, aoAbrirParagem) }
+            linhasFavoritas.forEach { BlocoDeLinha(it, linhas, agora, aoAbrirLinha) }
+        }
         CartoesLocais(outros, aoTocarLocal, aoVerMaisLocal)
 
         Text(stringResource(R.string.painel_perto), style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
+            fontWeight = FontWeight.Black, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
         if (pertoDeTi == null) {
             Text(
                 stringResource(R.string.painel_procura),
@@ -325,7 +346,7 @@ fun PainelConteudo(
                     .padding(vertical = 12.dp),
             )
         } else {
-            pertoDeTi.forEach { Bloco(it, false, linhas, agora, aoAbrirParagem) }
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) { pertoDeTi.forEach { Bloco(it, false, linhas, agora, aoAbrirParagem) } }
         }
     }
 }
@@ -347,13 +368,14 @@ private fun IconeEstrela() {
 
 @Composable
 private fun Bloco(b: BlocoParagem, estrela: Boolean, linhas: Map<String, Linha>, agora: Instant, aoAbrir: (RefParagem) -> Unit) {
-    Column(Modifier.fillMaxWidth().clickable(role = Role.Button) { aoAbrir(b.ref) }.padding(vertical = 6.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            if (estrela) IconeEstrela()
-            Text(b.nome, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+    CartaoAzulejo(Modifier.fillMaxWidth(), aoTocar = { aoAbrir(b.ref) }) {
+        Column(Modifier.fillMaxWidth().padding(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (estrela) IconeEstrela()
+                Text(b.nome, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+            }
+            Chegadas(b.estado, b.maximo, linhas, agora)
         }
-        Chegadas(b.estado, b.maximo, linhas, agora)
-        HorizontalDivider(Modifier.padding(top = 6.dp), color = MaterialTheme.colorScheme.outlineVariant)
     }
 }
 
@@ -363,20 +385,20 @@ private fun Bloco(b: BlocoParagem, estrela: Boolean, linhas: Map<String, Linha>,
  */
 @Composable
 private fun BlocoDeLinha(b: BlocoLinha, linhas: Map<String, Linha>, agora: Instant, aoAbrir: (LinhaFavorita) -> Unit) {
-    val abre = if (b.existe == false) Modifier else Modifier.clickable(role = Role.Button) { aoAbrir(b.favorita) }
-    Column(Modifier.fillMaxWidth().then(abre).padding(vertical = 6.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconeEstrela()
-            Text(tituloDaLinha(b), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+    CartaoAzulejo(Modifier.fillMaxWidth(), aoTocar = if (b.existe == false) null else ({ aoAbrir(b.favorita) })) {
+        Column(Modifier.fillMaxWidth().padding(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconeEstrela()
+                Text(tituloDaLinha(b), style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
+            }
+            when (b.existe) {
+                true -> Chegadas(b.estado, 2, linhas, agora)
+                false -> Text(stringResource(R.string.linha_ja_nao_existe), color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 6.dp))
+                null -> Text(stringResource(R.string.a_carregar), color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 6.dp))
+            }
         }
-        when (b.existe) {
-            true -> Chegadas(b.estado, 2, linhas, agora)
-            false -> Text(stringResource(R.string.linha_ja_nao_existe), color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 6.dp))
-            null -> Text(stringResource(R.string.a_carregar), color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 6.dp))
-        }
-        HorizontalDivider(Modifier.padding(top = 6.dp), color = MaterialTheme.colorScheme.outlineVariant)
     }
 }
 

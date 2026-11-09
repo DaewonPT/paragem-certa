@@ -4,6 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import androidx.compose.ui.unit.dp
 import pt.pixellusitano.paragemcerta.ui.inicio.ModoPosicao.BUSSOLA
 import pt.pixellusitano.paragemcerta.ui.inicio.ModoPosicao.CENTRADO
 import pt.pixellusitano.paragemcerta.ui.inicio.ModoPosicao.LIVRE
@@ -26,4 +27,9 @@ class ModoPosicaoTest {
     }
 
     @Test fun duracao() { assertEquals(750, duracaoCamara(true)); assertEquals(0, duracaoCamara(false)) }
+
+    @Test fun alturaDoPainelFechadoTemTeto() {
+        assertEquals(minOf(PAINEL_FECHADO, 351.dp), alturaPainelFechado(780.dp))
+        assertEquals(PAINEL_FECHADO, alturaPainelFechado(2000.dp))
+    }
 }

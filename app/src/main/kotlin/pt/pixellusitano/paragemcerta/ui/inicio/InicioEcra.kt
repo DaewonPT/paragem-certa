@@ -15,6 +15,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
@@ -298,11 +299,11 @@ fun InicioEcra(
         DefinirLocalEcra(repositorio, tipo, guardarLocal, aoFechar = { definir = null })
         return
     }
-    Box(Modifier.fillMaxSize()) {
+    BoxWithConstraints(Modifier.fillMaxSize()) {
     BottomSheetScaffold(
         scaffoldState = folha,
-        sheetPeekHeight = 260.dp,
-        sheetContainerColor = MaterialTheme.colorScheme.surface,
+        sheetPeekHeight = alturaPainelFechado(maxHeight),
+        sheetContainerColor = MaterialTheme.colorScheme.background,
         sheetContent = { painel(posicao) { definir = it } },
     ) { _ ->
     Box(Modifier.fillMaxSize()) {

@@ -1,6 +1,10 @@
 package pt.pixellusitano.paragemcerta.ui.inicio
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentHeight
+import androidx.compose.ui.Alignment
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
@@ -10,6 +14,7 @@ import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
@@ -144,15 +149,17 @@ class PainelScreenshotTest {
         assertFalse(toqueCalcula(EstadoLocal.PERTO, null, aCalcular = false))
     }
 
+    private val ultima = ViagemRecente(
+        Lugar("A minha posição", 38.7, -9.14, TipoLugar.POSICAO), Lugar("Oriente", 38.7678, -9.099, TipoLugar.LOCAL), agora,
+    )
+
     @Test fun painel_casa() = captureRoboImage("src/test/screenshots/painel_casa.png") {
         TemaParagemCerta(ModoTema.CLARO) {
             PainelConteudo(
                 favoritas = emptyList(), pertoDeTi = emptyList(), linhas = linhas, agora = agora,
                 aoAbrirParagem = {}, aoPesquisar = {}, modifier = Modifier.width(360.dp),
                 locais = listOf(BlocoLocal(casa(longe), EstadoLocal.AUTOMATICO, rota)),
-                ultima = ViagemRecente(
-                    Lugar("A minha posição", 38.7, -9.14, TipoLugar.POSICAO), Lugar("Oriente", 38.7678, -9.099, TipoLugar.LOCAL), agora,
-                ),
+                ultima = ultima,
             )
         }
     }
@@ -172,6 +179,29 @@ class PainelScreenshotTest {
                 ),
             )
         }
+    }
+
+    @Test fun painelFechadoMostraOPrimeiroCartaoDepoisDeCasaETrabalho() {
+        regra.setContent {
+            TemaParagemCerta(ModoTema.CLARO) {
+                Box(Modifier.width(360.dp).height(PAINEL_FECHADO - ALTURA_PEGA)) {
+                    PainelConteudo(
+                        favoritas = blocos(bom), pertoDeTi = emptyList(), linhas = linhas, agora = agora,
+                        aoAbrirParagem = {}, aoPesquisar = {},
+                        // Sem altura limitada, como dentro do painel (que rola): com o limite do Box os cartões de baixo encolhiam para 0 e o teste passava sempre.
+                        modifier = Modifier.width(360.dp).wrapContentHeight(Alignment.Top, unbounded = true),
+                        locais = listOf(
+                            BlocoLocal(casa(perto), EstadoLocal.PERTO),
+                            BlocoLocal(trabalho, EstadoLocal.AUTOMATICO, rota),
+                            BlocoLocal(cafe, EstadoLocal.AO_TOQUE),
+                        ),
+                        ultima = ultima,
+                    )
+                }
+            }
+        }
+        val b = regra.onNodeWithText("Cais do Sodré", useUnmergedTree = true).getUnclippedBoundsInRoot()
+        assertTrue("${b.bottom} > ${PAINEL_FECHADO - ALTURA_PEGA}", b.bottom <= PAINEL_FECHADO - ALTURA_PEGA)
     }
 
     @Test fun favoritosPelaOrdemDoPainel() {
