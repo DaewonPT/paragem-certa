@@ -9,9 +9,11 @@
     android:orientation="vertical">
 
     <!-- A faixa vai de ponta a ponta: o enchimento é do corpo e do nome, não da raiz. -->
+    <!-- Altura fixa: o fundo do Android 12 ou mais traz o padrão de 88 dp, e com wrap_content a faixa crescia até lá. -->
     <LinearLayout
+        android:id="@+id/widget_faixa"
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="48dp"
         android:background="@drawable/widget_faixa"
         android:gravity="center_vertical"
         android:orientation="horizontal"
@@ -78,14 +80,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:background="@drawable/widget_selo"
+                    android:fontFamily="sans-serif-black"
                     android:gravity="center"
                     android:importantForAccessibility="no"
                     android:maxLines="1"
-                    android:minWidth="44dp"
+                    android:minWidth="40dp"
                     android:paddingHorizontal="6dp"
-                    android:paddingVertical="1dp"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
+                    android:paddingVertical="3dp"
+                    android:textSize="14sp" />
 
                 <TextView
                     android:id="@+id/widget_linha_1_destino"
@@ -123,14 +125,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:background="@drawable/widget_selo"
+                    android:fontFamily="sans-serif-black"
                     android:gravity="center"
                     android:importantForAccessibility="no"
                     android:maxLines="1"
-                    android:minWidth="44dp"
+                    android:minWidth="40dp"
                     android:paddingHorizontal="6dp"
-                    android:paddingVertical="1dp"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
+                    android:paddingVertical="3dp"
+                    android:textSize="14sp" />
 
                 <TextView
                     android:id="@+id/widget_linha_2_destino"
@@ -168,14 +170,14 @@
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:background="@drawable/widget_selo"
+                    android:fontFamily="sans-serif-black"
                     android:gravity="center"
                     android:importantForAccessibility="no"
                     android:maxLines="1"
-                    android:minWidth="44dp"
+                    android:minWidth="40dp"
                     android:paddingHorizontal="6dp"
-                    android:paddingVertical="1dp"
-                    android:textSize="14sp"
-                    android:textStyle="bold" />
+                    android:paddingVertical="3dp"
+                    android:textSize="14sp" />
 
                 <TextView
                     android:id="@+id/widget_linha_3_destino"

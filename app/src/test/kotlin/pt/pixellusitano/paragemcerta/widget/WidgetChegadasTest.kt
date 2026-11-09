@@ -176,6 +176,19 @@ class WidgetChegadasTest {
         }
     }
 
+    // A 340x170 (um 4x2 comum): a faixa fica em 48 dp e as três chegadas cabem por baixo dela.
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test fun aFaixaTem48DpEAsTresLinhasCabem() {
+        val v = desenhado(comChegadas.copy(linhas = List(3) { LinhaWidget("3708", "Restelo", "14:32", aoVivo = false, cor = COBALTO) }))
+        v.measure(View.MeasureSpec.makeMeasureSpec(340, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(170, View.MeasureSpec.EXACTLY))
+        v.layout(0, 0, 340, 170)
+        val dp = contexto.resources.displayMetrics.density
+        assertEquals((48 * dp).toInt(), v.findViewById<View>(R.id.widget_faixa).height)
+        val linha3 = v.findViewById<View>(R.id.widget_linha_3)
+        val abaixo = IntArray(2).also { linha3.getLocationInWindow(it) }[1] - IntArray(2).also { v.getLocationInWindow(it) }[1] + linha3.height
+        assertTrue("linha 3 acaba em $abaixo de ${v.height}", linha3.height > 0 && abaixo <= v.height)
+    }
+
     @Test fun naoAcordaSozinho() = assertEquals(0, configuracao().getAttributeIntValue(ANDROID, "updatePeriodMillis", -1))
 
     // O Android faz ComponentName(pacote, configure) sem acrescentar nada: ".widget.X" não abria, e a variante pessoal tem outro pacote.
