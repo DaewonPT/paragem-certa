@@ -568,7 +568,7 @@ private fun prepararCamadas(contexto: Context, estilo: Style, escuro: Boolean) {
     )
     estilo.addLayer(
         LineLayer(CAMADA_A_PE, FONTE_PERCURSOS).withProperties(
-            PropertyFactory.lineColor(if (escuro) "#8D9AB3" else "#627189"),
+            PropertyFactory.lineColor(if (escuro) "#8D9AB3" else "#56647C"),
             PropertyFactory.lineWidth(3f),
             PropertyFactory.lineOpacity(Expression.switchCase(Expression.get("esbatido"), Expression.literal(0.45f), Expression.literal(1f))),
             PropertyFactory.lineCap(Property.LINE_CAP_ROUND),

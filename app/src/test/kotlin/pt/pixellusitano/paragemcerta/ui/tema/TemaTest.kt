@@ -41,6 +41,11 @@ class TemaTest {
         assertEquals(Azulejo.Branco, c.surfaceContainerHigh)
         assertEquals(Azulejo.Branco, c.surfaceVariant)
         assertEquals(Color(0xFFDCE6F7), c.secondaryContainer)
+        assertEquals(Azulejo.Cinza, c.outline)
+        assertEquals(Azulejo.Vermelho, c.error)
+        assertEquals(Azulejo.Branco, c.onError)
+        assertEquals(Color(0xFFDCE6F7), c.primaryContainer)
+        assertEquals(Azulejo.Tinta, c.onPrimaryContainer)
         assertEquals(RoundedCornerShape(14.dp), f.medium)
         assertEquals(RoundedCornerShape(20.dp), f.large)
     }
@@ -50,5 +55,11 @@ class TemaTest {
         assertEquals(Azulejo.NoiteSuperficie, c.surfaceContainer)
         assertEquals(Azulejo.ContornoNoite, c.outlineVariant)
         assertEquals(Azulejo.LinhaEscura, c.secondaryContainer)
+        assertEquals(Color(0xFF33467A), c.outlineVariant)
+        assertEquals(Azulejo.CinzaNoite, c.outline)
+        assertEquals(Azulejo.VermelhoNoite, c.error)
+        assertEquals(Azulejo.Noite, c.onError)
+        assertEquals(Azulejo.LinhaEscura, c.primaryContainer)
+        assertEquals(Azulejo.TextoNoite, c.onPrimaryContainer)
     }
 }

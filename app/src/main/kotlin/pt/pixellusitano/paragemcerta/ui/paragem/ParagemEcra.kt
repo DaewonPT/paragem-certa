@@ -73,6 +73,7 @@ import pt.pixellusitano.paragemcerta.ui.comunidade.RelatarNaParagem
 import pt.pixellusitano.paragemcerta.ui.comunidade.aplicarCorrecoes
 import pt.pixellusitano.paragemcerta.ui.comunidade.fotoDeRuaVisivel
 import pt.pixellusitano.paragemcerta.ui.comunidade.rememberRelatosDaParagem
+import pt.pixellusitano.paragemcerta.ui.tema.CoresGravidade
 import pt.pixellusitano.paragemcerta.ui.tema.FrisoAzulejo
 import pt.pixellusitano.paragemcerta.ui.tema.LocalEscuro
 import java.time.Instant
@@ -314,10 +315,13 @@ private fun CartaoAlerta(a: Alerta) {
 }
 
 /** As cores e o ícone de cada gravidade; os cartões dos relatos usam os mesmos (por confirmar = INFO, confirmado = AVISO). */
-internal fun estiloDaGravidade(g: Gravidade, escuro: Boolean) = when (g) {
-    Gravidade.GRAVE -> EstiloAlerta(if (escuro) Color(0xFF3A1414) else Color(0xFFFDECEC), if (escuro) Color(0xFFF87171) else Color(0xFF9B1C1C), R.string.gravidade_grave, "⛔")
-    Gravidade.AVISO -> EstiloAlerta(if (escuro) Color(0xFF3A2E0B) else Color(0xFFFFF4CF), if (escuro) Color(0xFFFBBF24) else Color(0xFF7A5A00), R.string.gravidade_aviso, "⚠")
-    Gravidade.INFO -> EstiloAlerta(if (escuro) Color(0xFF14233F) else Color(0xFFE8EFFB), if (escuro) Color(0xFF7FB0FF) else Color(0xFF1F4FA3), R.string.gravidade_info, "ⓘ")
+internal fun estiloDaGravidade(g: Gravidade, escuro: Boolean): EstiloAlerta {
+    val (rotulo, icone) = when (g) {
+        Gravidade.GRAVE -> R.string.gravidade_grave to "⛔"
+        Gravidade.AVISO -> R.string.gravidade_aviso to "⚠"
+        Gravidade.INFO -> R.string.gravidade_info to "ⓘ"
+    }
+    return EstiloAlerta(CoresGravidade.fundo(g, escuro), CoresGravidade.texto(g, escuro), rotulo, icone)
 }
 
 internal data class EstiloAlerta(val fundo: Color, val texto: Color, val rotulo: Int, val icone: String)
