@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Janela de arranque em marfim, para não piscar branco antes de o Compose desenhar. -->
+    <style name="Theme.ParagemCerta" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowBackground">#F4F7FC</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+    </style>
+</resources>

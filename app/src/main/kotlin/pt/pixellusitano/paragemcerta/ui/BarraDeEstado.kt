@@ -1,10 +1,14 @@
 package pt.pixellusitano.paragemcerta.ui
 
 import android.app.Activity
+import android.graphics.drawable.ColorDrawable
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalView
 import androidx.core.view.WindowCompat
+import pt.pixellusitano.paragemcerta.ui.tema.Azulejo
 import pt.pixellusitano.paragemcerta.ui.tema.LocalEscuro
 
 /** Ícones escuros só no tema claro e sem faixa azul por baixo; sobre o azul (ou no escuro) ficam claros. */
@@ -18,5 +22,15 @@ fun AjustarBarraDeEstado(comFaixa: Boolean) {
     SideEffect {
         val janela = (vista.context as? Activity)?.window ?: return@SideEffect
         WindowCompat.getInsetsController(janela, vista).isAppearanceLightStatusBars = iconesEscurosNaBarraDeEstado(escuro, comFaixa)
+    }
+}
+
+/** A janela por trás do Compose segue o modo da app (que pode ser o contrário do do telemóvel), para não aparecer a cor errada ao rodar ou redimensionar. */
+@Composable
+fun AjustarJanela(escuro: Boolean) {
+    val vista = LocalView.current
+    DisposableEffect(escuro) {
+        (vista.context as? Activity)?.window?.setBackgroundDrawable(ColorDrawable((if (escuro) Azulejo.Noite else Azulejo.Marfim).toArgb()))
+        onDispose { }
     }
 }

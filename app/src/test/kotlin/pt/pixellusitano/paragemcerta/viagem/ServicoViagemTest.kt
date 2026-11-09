@@ -8,6 +8,7 @@ import android.content.pm.ServiceInfo
 import android.location.Location
 import android.location.LocationManager
 import android.os.Looper
+import androidx.compose.ui.graphics.toArgb
 import kotlinx.serialization.json.Json
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -44,6 +45,7 @@ import pt.pixellusitano.paragemcerta.core.viagem.Origem
 import pt.pixellusitano.paragemcerta.core.viagem.Percurso
 import pt.pixellusitano.paragemcerta.core.viagem.PlanoViagem
 import pt.pixellusitano.paragemcerta.core.viagem.Viagem
+import pt.pixellusitano.paragemcerta.ui.tema.Azulejo
 import java.io.File
 import java.time.Duration
 import java.time.Instant
@@ -221,6 +223,7 @@ class ServicoViagemTest {
         assertEquals(ServiceInfo.FOREGROUND_SERVICE_TYPE_LOCATION, s.get().foregroundServiceType)
         val n = sombra.lastForegroundNotification
         assertEquals("viagem", n.channelId)
+        assertEquals(Azulejo.Cobalto.toArgb(), n.color)
         assertTrue(titulo(n)!!.startsWith("A pé até Cais do Sodré · "))
         // "Já saí" só a bordo: a pé não há de que sair, e à espera saltava o autocarro que a pessoa ainda vai apanhar.
         assertEquals(listOf("Silenciar", "Parar"), n.actions.map { it.title.toString() })

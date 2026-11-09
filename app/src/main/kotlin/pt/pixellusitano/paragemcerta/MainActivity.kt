@@ -22,6 +22,7 @@ import kotlinx.coroutines.launch
 import pt.pixellusitano.paragemcerta.atualizar.Atualizacoes
 import pt.pixellusitano.paragemcerta.core.atraso.Limites
 import pt.pixellusitano.paragemcerta.dados.AtualizacaoDiaria
+import pt.pixellusitano.paragemcerta.ui.AjustarJanela
 import pt.pixellusitano.paragemcerta.ui.Navegacao
 import pt.pixellusitano.paragemcerta.ui.comum.LocalLimites
 import pt.pixellusitano.paragemcerta.ui.tema.ModoTema
@@ -80,6 +81,7 @@ class MainActivity : ComponentActivity() {
                 ModoTema.CLARO -> false
                 ModoTema.ESCURO -> true
             }
+            AjustarJanela(escuro)
             // Os ícones da barra de estado seguem o modo da app, não só o do telemóvel.
             DisposableEffect(escuro) {
                 val estilo = if (escuro) SystemBarStyle.dark(Color.TRANSPARENT) else SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT)

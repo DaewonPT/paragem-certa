@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.provider.Settings
+import androidx.compose.ui.graphics.toArgb
 import androidx.core.app.NotificationCompat
 import pt.pixellusitano.paragemcerta.MainActivity
 import pt.pixellusitano.paragemcerta.R
@@ -25,6 +26,7 @@ import pt.pixellusitano.paragemcerta.ui.comum.LISBOA_FUSO
 import pt.pixellusitano.paragemcerta.ui.comunidade.nomeDoTipo
 import pt.pixellusitano.paragemcerta.ui.rotas.nomeDaLinha
 import pt.pixellusitano.paragemcerta.ui.rotas.textoDistancia
+import pt.pixellusitano.paragemcerta.ui.tema.Azulejo
 import java.time.Duration
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -79,10 +81,12 @@ object Notificacoes {
         )
     }
 
+    private fun base(c: Context, canal: String): NotificationCompat.Builder =
+        NotificationCompat.Builder(c, canal).setSmallIcon(R.drawable.ic_notificacao).setColor(Azulejo.Cobalto.toArgb())
+
     /** A notificação fixa do serviço: onde vais e o que falta, com os botões Silenciar, Já saí (só a bordo) e Parar. */
     fun progresso(c: Context, plano: PlanoViagem, estado: EstadoViagem, viagem: Viagem, zona: ZoneId = LISBOA_FUSO): Notification =
-        NotificationCompat.Builder(c, CANAL_VIAGEM)
-            .setSmallIcon(R.drawable.ic_notificacao)
+        base(c, CANAL_VIAGEM)
             .setContentTitle(textoProgresso(c, plano, estado, viagem, zona))
             .setContentIntent(abrirApp(c))
             .setOngoing(true)
@@ -102,8 +106,7 @@ object Notificacoes {
     fun aviso(
         c: Context, evento: Evento, plano: PlanoViagem, estado: EstadoViagem, viagem: Viagem, zona: ZoneId = LISBOA_FUSO,
     ): Notification =
-        NotificationCompat.Builder(c, CANAL_AVISOS)
-            .setSmallIcon(R.drawable.ic_notificacao)
+        base(c, CANAL_AVISOS)
             .setContentTitle(textoAviso(c, evento, plano, estado, viagem, zona))
             .setContentIntent(abrirApp(c))
             .setCategory(NotificationCompat.CATEGORY_ALARM)
@@ -116,8 +119,7 @@ object Notificacoes {
      * [linhas] são as que ainda faltam avisar e [paragens] os nomes das paragens vigiadas (pelo menos uma).
      */
     fun vigia(c: Context, linhas: Int, paragens: List<String>): Notification =
-        NotificationCompat.Builder(c, CANAL_VIAGEM)
-            .setSmallIcon(R.drawable.ic_notificacao)
+        base(c, CANAL_VIAGEM)
             .setContentTitle(
                 if (paragens.size == 1) c.resources.getQuantityString(R.plurals.vigia_linhas, linhas, linhas, paragens[0])
                 else c.resources.getQuantityString(R.plurals.vigia_paragens, linhas, linhas, paragens.size),
@@ -132,8 +134,7 @@ object Notificacoes {
 
     /** O aviso urgente de que a linha pedida está a chegar à [paragem]; tocar nele abre a app. */
     fun chegada(c: Context, aviso: AvisoChegada, paragem: String): Notification =
-        NotificationCompat.Builder(c, CANAL_AVISOS)
-            .setSmallIcon(R.drawable.ic_notificacao)
+        base(c, CANAL_AVISOS)
             .setContentTitle(textoChegada(c, aviso, paragem))
             .setContentIntent(abrirApp(c, viagem = false))
             .setCategory(NotificationCompat.CATEGORY_ALARM)
@@ -154,8 +155,7 @@ object Notificacoes {
     fun relatoComunidade(c: Context, n: Int, texto: String, viagem: Boolean) {
         c.getSystemService(NotificationManager::class.java).notify(
             ID_RELATO + n,
-            NotificationCompat.Builder(c, CANAL_AVISOS)
-                .setSmallIcon(R.drawable.ic_notificacao)
+            base(c, CANAL_AVISOS)
                 .setContentTitle(texto)
                 .setContentIntent(abrirApp(c, viagem))
                 .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
@@ -178,8 +178,7 @@ object Notificacoes {
     fun perturbacao(c: Context, n: Int, p: Perturbacao, linha: String, viagem: Boolean) {
         c.getSystemService(NotificationManager::class.java).notify(
             ID_PERTURBACAO + n,
-            NotificationCompat.Builder(c, CANAL_AVISOS)
-                .setSmallIcon(R.drawable.ic_notificacao)
+            base(c, CANAL_AVISOS)
                 .setContentTitle(textoPerturbacao(c, p, linha))
                 .setContentText(p.titulo)
                 .setStyle(NotificationCompat.BigTextStyle().bigText(p.titulo))
@@ -196,8 +195,7 @@ object Notificacoes {
 
     /** "Liga a localização": toca-se nela para abrir as definições. O serviço cancela-a quando o GPS volta e quando a viagem acaba. */
     fun semLocalizacao(c: Context): Notification =
-        NotificationCompat.Builder(c, CANAL_AVISOS)
-            .setSmallIcon(R.drawable.ic_notificacao)
+        base(c, CANAL_AVISOS)
             .setContentTitle(c.getString(R.string.viagem_liga_localizacao))
             .setContentIntent(
                 PendingIntent.getActivity(c, 0, Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS), PendingIntent.FLAG_IMMUTABLE),
@@ -208,7 +206,7 @@ object Notificacoes {
 
     /** Para o serviço que arranca sem nada a seguir: o Android exige uma notificação a quem usa startForegroundService. */
     fun vazia(c: Context): Notification =
-        NotificationCompat.Builder(c, CANAL_VIAGEM).setSmallIcon(R.drawable.ic_notificacao).setContentTitle(c.getString(R.string.app_name)).build()
+        base(c, CANAL_VIAGEM).setContentTitle(c.getString(R.string.app_name)).build()
 
     internal fun textoProgresso(c: Context, plano: PlanoViagem, e: EstadoViagem, viagem: Viagem, zona: ZoneId): String {
         val etapas = plano.itinerario.etapas
