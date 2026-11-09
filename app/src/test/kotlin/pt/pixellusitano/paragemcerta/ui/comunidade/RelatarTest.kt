@@ -7,6 +7,10 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -182,6 +186,22 @@ class RelatarTest {
         regra.onNodeWithText("736").performClick()
         assertEquals(TipoRelato.DESVIO to "736", escolhas.last())
         assertEquals(2, escolhas.size)
+    }
+
+    @Test fun cadaTipoEUmBotao() {
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { FolhaRelatar(listOf("736"), null, aoEscolher = { _, _ -> }, aoFechar = {}) } }
+        TipoRelato.entries.forEach { regra.onNodeWithText(contexto.getString(nomeDoTipo(it))).assertHasClickAction() }
+    }
+
+    @Test fun linhaNaoAnunciaSelecionado() {
+        val escolhas = mutableListOf<Pair<TipoRelato, String?>>()
+        regra.setContent {
+            TemaParagemCerta(ModoTema.CLARO) {
+                FolhaRelatarConteudo(listOf("736"), null, aoEscolher = { t, l -> escolhas += t to l }, aoFechar = {}, tipoInicial = TipoRelato.DESVIO)
+            }
+        }
+        regra.onNodeWithText("736").assert(SemanticsMatcher.keyNotDefined(SemanticsProperties.Selected)).assertHasClickAction().performClick()
+        assertEquals(listOf<Pair<TipoRelato, String?>>(TipoRelato.DESVIO to "736"), escolhas)
     }
 
     // ---- a proximidade, só no telemóvel ----

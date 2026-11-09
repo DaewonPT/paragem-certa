@@ -1,6 +1,7 @@
 package pt.pixellusitano.paragemcerta.ui.comunidade
 
 import androidx.annotation.StringRes
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -38,6 +39,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.core.comunidade.MotivoDenuncia
+import pt.pixellusitano.paragemcerta.ui.comum.BotaoPrincipal
 
 // Os limites do servidor (worker/src/denuncias.ts): o nome até 80 caracteres e sem caracteres de controlo, a explicação até 500.
 private const val MAX_NOME = 80
@@ -85,7 +87,10 @@ internal fun DenunciarConteudo(
     var nome by rememberSaveable { mutableStateOf("") }
     var explicacao by rememberSaveable { mutableStateOf("") }
     var boaFe by rememberSaveable { mutableStateOf(false) }
-    Surface(modifier, shape = AlertDialogDefaults.shape, color = AlertDialogDefaults.containerColor, tonalElevation = AlertDialogDefaults.TonalElevation) {
+    Surface(
+        modifier, shape = AlertDialogDefaults.shape, color = AlertDialogDefaults.containerColor, tonalElevation = AlertDialogDefaults.TonalElevation,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
         Column(Modifier.sizeIn(minWidth = 280.dp, maxWidth = 560.dp).padding(24.dp)) {
             Text(stringResource(titulo), style = MaterialTheme.typography.headlineSmall)
             // Com letra grande o formulário rola e os botões ficam sempre à vista.
@@ -105,10 +110,12 @@ internal fun DenunciarConteudo(
                 OutlinedTextField(
                     nome, { nome = it.filter { c -> !c.isISOControl() }.take(MAX_NOME) },
                     Modifier.fillMaxWidth().padding(top = 8.dp), label = { Text(stringResource(R.string.denunciar_nome)) }, singleLine = true,
+                    shape = MaterialTheme.shapes.medium,
                 )
                 OutlinedTextField(
                     explicacao, { explicacao = it.take(MAX_EXPLICACAO) },
                     Modifier.fillMaxWidth().padding(top = 8.dp), label = { Text(stringResource(R.string.denunciar_explicacao)) }, minLines = 2,
+                    shape = MaterialTheme.shapes.medium,
                     supportingText = { Text("${explicacao.length}/$MAX_EXPLICACAO") },
                 )
                 Row(
@@ -126,7 +133,7 @@ internal fun DenunciarConteudo(
             // Com letra grande os dois botões quebram em vez de um sair do ecrã.
             FlowRow(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
                 TextButton(onClick = aoFechar) { Text(stringResource(R.string.cancelar)) }
-                TextButton(onClick = { aoEnviar(motivo, nome.trim(), explicacao.trim()) }, enabled = nome.isNotBlank() && boaFe) {
+                BotaoPrincipal({ aoEnviar(motivo, nome.trim(), explicacao.trim()) }, ativo = nome.isNotBlank() && boaFe) {
                     Text(stringResource(R.string.denunciar_enviar))
                 }
             }

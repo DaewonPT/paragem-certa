@@ -9,6 +9,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.annotation.StringRes
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -30,7 +31,6 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -68,6 +68,7 @@ import pt.pixellusitano.paragemcerta.core.fotos.FotoDeRua
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import pt.pixellusitano.paragemcerta.dados.Comunidade
 import pt.pixellusitano.paragemcerta.dados.Configuracoes
+import pt.pixellusitano.paragemcerta.ui.comum.BotaoSecundario
 import pt.pixellusitano.paragemcerta.ui.tema.Icones
 import java.io.File
 import java.io.FileNotFoundException
@@ -157,7 +158,7 @@ fun FotosDaParagem(
                 modifier = Modifier.padding(top = 16.dp),
             )
         } else if (escolhida == null) {
-            OutlinedButton(onClick = { folha = true }, modifier = Modifier.padding(top = 16.dp).fillMaxWidth()) {
+            BotaoSecundario({ folha = true }, Modifier.padding(top = 16.dp).fillMaxWidth()) {
                 Text(stringResource(R.string.foto_enviar))
             }
         }
@@ -299,7 +300,10 @@ internal fun FolhaEnviarFotoConteudo(
     aoFechar: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Surface(modifier, shape = AlertDialogDefaults.shape, color = AlertDialogDefaults.containerColor, tonalElevation = AlertDialogDefaults.TonalElevation) {
+    Surface(
+        modifier, shape = AlertDialogDefaults.shape, color = AlertDialogDefaults.containerColor, tonalElevation = AlertDialogDefaults.TonalElevation,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
         Column(Modifier.sizeIn(minWidth = 280.dp, maxWidth = 560.dp).padding(24.dp)) {
             Text(stringResource(R.string.foto_folha_titulo), style = MaterialTheme.typography.headlineSmall)
             // Com letra grande o texto rola e os botões de baixo ficam sempre à vista.
@@ -316,8 +320,8 @@ internal fun FolhaEnviarFotoConteudo(
                     )
                 }
                 FlowRow(Modifier.padding(top = 12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = aoEscolher, enabled = !ocupado) { Text(stringResource(R.string.foto_escolher)) }
-                    OutlinedButton(onClick = aoTirar, enabled = !ocupado) { Text(stringResource(R.string.foto_tirar)) }
+                    BotaoSecundario(aoEscolher, ativo = !ocupado) { Text(stringResource(R.string.foto_escolher)) }
+                    BotaoSecundario(aoTirar, ativo = !ocupado) { Text(stringResource(R.string.foto_tirar)) }
                 }
             }
             FlowRow(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {

@@ -2,6 +2,7 @@ package pt.pixellusitano.paragemcerta.ui.comunidade
 
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,10 +20,9 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.BasicAlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -39,6 +39,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -50,8 +51,11 @@ import pt.pixellusitano.paragemcerta.core.modelo.Paragem
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import pt.pixellusitano.paragemcerta.dados.Comunidade
 import pt.pixellusitano.paragemcerta.dados.Configuracoes
+import pt.pixellusitano.paragemcerta.ui.comum.BotaoPrincipal
+import pt.pixellusitano.paragemcerta.ui.comum.BotaoSecundario
 import pt.pixellusitano.paragemcerta.ui.mapa.Mapa
 import pt.pixellusitano.paragemcerta.ui.tema.Azulejo
+import pt.pixellusitano.paragemcerta.ui.tema.Icones
 import pt.pixellusitano.paragemcerta.ui.tema.LocalEscuro
 
 // O limite do servidor (worker/src/correcoes.ts): o nome tem 1 a 80 caracteres depois de cortado, contados por pontos de código.
@@ -93,10 +97,10 @@ private fun String.paraOCampoDoNome(): String {
 }
 
 /** As três coisas que se podem corrigir numa paragem. */
-internal enum class OpcaoCorrigir(@StringRes val texto: Int) {
-    POSICAO(R.string.corrigir_posicao),
-    NOME(R.string.corrigir_nome),
-    JA_NAO_EXISTE(R.string.corrigir_ja_nao_existe),
+internal enum class OpcaoCorrigir(@StringRes val texto: Int, val icone: ImageVector) {
+    POSICAO(R.string.corrigir_posicao, Icones.Posicao),
+    NOME(R.string.corrigir_nome, Icones.Lapis),
+    JA_NAO_EXISTE(R.string.corrigir_ja_nao_existe, Icones.Fechar),
 }
 
 /** O erro de uma correção que falhou: o limite diário tem texto próprio, o resto é o de toda a comunidade (a pausa primeiro). */
@@ -126,7 +130,7 @@ fun CorrigirNaParagem(
     if (!(config.interruptores.comunidade && config.interruptores.correcoes) || desligada) return
 
     // Precisa das coordenadas da paragem (o mapa abre nelas): enquanto ela não carrega, não se corrige.
-    OutlinedButton(onClick = { folha = true }, enabled = paragem != null, modifier = Modifier.padding(top = 16.dp).fillMaxWidth()) {
+    BotaoSecundario({ folha = true }, Modifier.padding(top = 16.dp).fillMaxWidth(), ativo = paragem != null) {
         Text(stringResource(R.string.corrigir_dados))
     }
     if (folha && paragem != null) {
@@ -195,14 +199,21 @@ internal fun FolhaCorrigirConteudo(
     var centro by rememberSaveable { mutableStateOf(LatLng(paragem.lat, paragem.lon)) }
     val escolhida = opcao
     val nomeCerto = nomeDaCorrecao(nome)
-    Surface(modifier, shape = AlertDialogDefaults.shape, color = AlertDialogDefaults.containerColor, tonalElevation = AlertDialogDefaults.TonalElevation) {
+    Surface(
+        modifier, shape = AlertDialogDefaults.shape, color = AlertDialogDefaults.containerColor, tonalElevation = AlertDialogDefaults.TonalElevation,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
         Column(Modifier.sizeIn(minWidth = 280.dp, maxWidth = 560.dp).padding(24.dp)) {
             Text(stringResource(escolhida?.texto ?: R.string.corrigir_titulo), style = MaterialTheme.typography.headlineSmall)
             if (escolhida == OpcaoCorrigir.POSICAO) {
                 // O mapa tem de ficar fora de uma coluna que rola: arrastá-lo na vertical faria rolar a folha em vez de o deslocar.
                 // Ocupa o que sobra (até 260 dp), para os botões ficarem sempre à vista.
                 Text(stringResource(R.string.corrigir_mapa_texto), Modifier.padding(top = 16.dp))
-                Box(Modifier.fillMaxWidth().padding(top = 12.dp).weight(1f, fill = false).heightIn(max = 260.dp)) {
+                // O contorno só se desenha: o mapa é uma SurfaceView, que ignora o recorte.
+                Box(
+                    Modifier.fillMaxWidth().padding(top = 12.dp).weight(1f, fill = false).heightIn(max = 260.dp)
+                        .border(1.dp, MaterialTheme.colorScheme.outlineVariant),
+                ) {
                     mapa(centro) { centro = it }
                     PontoFixo(Modifier.align(Alignment.Center))
                 }
@@ -211,11 +222,15 @@ internal fun FolhaCorrigirConteudo(
                 Column(Modifier.weight(1f, fill = false).padding(top = 16.dp).verticalScroll(rememberScrollState())) {
                     when (escolhida) {
                         null -> OpcaoCorrigir.entries.forEach { o ->
-                            OutlinedButton(onClick = { opcao = o }, modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) { Text(stringResource(o.texto)) }
+                            BotaoSecundario({ opcao = o }, Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                                Icon(o.icone, null, Modifier.padding(end = 8.dp))
+                                Text(stringResource(o.texto))
+                            }
                         }
                         OpcaoCorrigir.NOME -> OutlinedTextField(
                             nome, { nome = it.paraOCampoDoNome() }, Modifier.fillMaxWidth(),
                             label = { Text(stringResource(R.string.corrigir_nome_campo)) }, singleLine = true,
+                            shape = MaterialTheme.shapes.medium,
                         )
                         OpcaoCorrigir.JA_NAO_EXISTE -> Text(stringResource(R.string.corrigir_ja_nao_existe_texto))
                         OpcaoCorrigir.POSICAO -> Unit
@@ -226,15 +241,15 @@ internal fun FolhaCorrigirConteudo(
             FlowRow(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
                 TextButton(onClick = aoFechar) { Text(stringResource(R.string.cancelar)) }
                 if (escolhida != null) {
-                    Button(
-                        onClick = {
+                    BotaoPrincipal(
+                        aoTocar = {
                             when (escolhida) {
                                 OpcaoCorrigir.POSICAO -> aoEnviar(Correcao.Posicao(centro.latitude, centro.longitude))
                                 OpcaoCorrigir.NOME -> nomeCerto?.let { aoEnviar(Correcao.Nome(it)) }
                                 OpcaoCorrigir.JA_NAO_EXISTE -> aoEnviar(Correcao.JaNaoExiste)
                             }
                         },
-                        enabled = !ocupado && (escolhida != OpcaoCorrigir.NOME || nomeCerto != null),
+                        ativo = !ocupado && (escolhida != OpcaoCorrigir.NOME || nomeCerto != null),
                     ) { Text(stringResource(R.string.corrigir_enviar)) }
                 }
             }

@@ -13,6 +13,7 @@ import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.core.fotos.FotoDeRua
@@ -24,6 +25,7 @@ import java.time.Instant
 /** Compõem-se aqui; as imagens de referência gravam-se no CI. A folha é uma janela à parte, que as capturas não apanham: capta-se o cartão. */
 @RunWith(RobolectricTestRunner::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(qualifiers = "w360dp-h780dp")
 class EnviarFotoScreenshotTest {
     @Test fun enviar_foto_claro() = captureRoboImage("src/test/screenshots/enviar_foto_claro.png") {
         TemaParagemCerta(ModoTema.CLARO) {

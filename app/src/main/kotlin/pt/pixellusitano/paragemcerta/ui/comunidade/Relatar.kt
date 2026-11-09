@@ -2,6 +2,7 @@ package pt.pixellusitano.paragemcerta.ui.comunidade
 
 import android.content.Context
 import androidx.annotation.StringRes
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -15,10 +16,10 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
+import androidx.compose.material3.SuggestionChip
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -32,6 +33,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.Dispatchers
@@ -45,6 +47,8 @@ import pt.pixellusitano.paragemcerta.core.modelo.Paragem
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import pt.pixellusitano.paragemcerta.dados.Comunidade
 import pt.pixellusitano.paragemcerta.dados.Configuracoes
+import pt.pixellusitano.paragemcerta.ui.comum.BotaoSecundario
+import pt.pixellusitano.paragemcerta.ui.tema.iconeRelato
 
 @StringRes
 internal fun nomeDoTipo(t: TipoRelato) = when (t) {
@@ -90,35 +94,44 @@ internal fun FolhaRelatarConteudo(
     tipoInicial: TipoRelato? = null,
 ) {
     var tipo by rememberSaveable { mutableStateOf(tipoInicial) }
-    Surface(modifier, shape = AlertDialogDefaults.shape, color = AlertDialogDefaults.containerColor, tonalElevation = AlertDialogDefaults.TonalElevation) {
+    Surface(
+        modifier, shape = AlertDialogDefaults.shape, color = AlertDialogDefaults.containerColor, tonalElevation = AlertDialogDefaults.TonalElevation,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+    ) {
         Column(Modifier.sizeIn(minWidth = 280.dp, maxWidth = 560.dp).padding(24.dp)) {
             val escolhido = tipo
-            Text(
-                if (escolhido == null) stringResource(R.string.relatar) else stringResource(nomeDoTipo(escolhido)),
-                style = MaterialTheme.typography.headlineSmall,
-            )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                if (escolhido != null) Icon(iconeRelato(escolhido), null, Modifier.padding(end = 12.dp))
+                Text(
+                    if (escolhido == null) stringResource(R.string.relatar) else stringResource(nomeDoTipo(escolhido)),
+                    style = MaterialTheme.typography.headlineSmall,
+                )
+            }
             // Com letra grande os tipos rolam e o "Cancelar" fica sempre à vista.
             Column(Modifier.weight(1f, fill = false).padding(top = 16.dp).verticalScroll(rememberScrollState())) {
                 if (escolhido == null) {
                     TipoRelato.entries.forEach { t ->
                         // Sem linhas à vista não há em que linha relatar: ficam só os da paragem.
                         val pode = !t.deLinha || linhaFixa != null || linhas.isNotEmpty()
-                        OutlinedButton(
-                            onClick = {
+                        BotaoSecundario(
+                            aoTocar = {
                                 when {
                                     !t.deLinha -> aoEscolher(t, null)
                                     linhaFixa != null -> aoEscolher(t, linhaFixa)
                                     else -> tipo = t
                                 }
                             },
-                            enabled = pode,
+                            ativo = pode,
                             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                        ) { Text(stringResource(nomeDoTipo(t))) }
+                        ) {
+                            Icon(iconeRelato(t), null, Modifier.padding(end = 8.dp))
+                            Text(stringResource(nomeDoTipo(t)))
+                        }
                     }
                 } else {
                     Text(stringResource(R.string.relatar_que_linha), style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(bottom = 8.dp))
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        linhas.forEach { l -> FilterChip(selected = false, onClick = { aoEscolher(escolhido, l) }, label = { Text(l) }) }
+                        linhas.forEach { l -> SuggestionChip(onClick = { aoEscolher(escolhido, l) }, label = { Text(l, fontWeight = FontWeight.Black) }) }
                     }
                 }
             }
@@ -152,7 +165,7 @@ fun RelatarNaParagem(paragem: Paragem?, linhas: List<String>, comunidade: Comuni
         }
 
     // Precisa das coordenadas da paragem: enquanto ela não carrega, não se relata.
-    OutlinedButton(onClick = { folha = true }, enabled = paragem != null, modifier = Modifier.padding(top = 16.dp).fillMaxWidth()) {
+    BotaoSecundario({ folha = true }, Modifier.padding(top = 16.dp).fillMaxWidth(), ativo = paragem != null) {
         Text(stringResource(R.string.relatar))
     }
     if (folha) {
