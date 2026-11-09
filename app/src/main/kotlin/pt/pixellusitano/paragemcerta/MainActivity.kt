@@ -42,6 +42,13 @@ private suspend fun semFalhar(tarefa: suspend () -> Unit) {
     }
 }
 
+/** A atividade é exportada: só a Casa e o Trabalho podem vir de fora; outro tipo gravava um sítio que a app não conhece. */
+internal fun localADefinir(tipo: String?): String? = tipo?.takeIf { it == "CASA" || it == "TRABALHO" }
+
+/** Os extras são uma ação para fazer uma vez: nem depois de rodar o ecrã, nem quando os Recentes repetem o intent do widget. */
+internal fun lerExtrasDaAbertura(restaurada: Boolean, flags: Int): Boolean =
+    !restaurada && flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY == 0
+
 class MainActivity : ComponentActivity() {
     companion object {
         /** A chave da paragem que um widget tocado quer abrir. */
@@ -66,11 +73,11 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Só na abertura: depois de rodar o ecrã o intent é o mesmo e o ecrã da viagem não se abria outra vez.
-        abrirViagem = savedInstanceState == null && intent.getBooleanExtra(Notificacoes.EXTRA_ABRIR_VIAGEM, false)
-        abrirParagem = if (savedInstanceState == null) intent.getStringExtra(EXTRA_ABRIR_PARAGEM) else null
-        abrirRota = if (savedInstanceState == null) intent.getStringExtra(EXTRA_ABRIR_ROTA_LOCAL) else null
-        definirLocal = if (savedInstanceState == null) intent.getStringExtra(EXTRA_DEFINIR_LOCAL) else null
+        val nova = lerExtrasDaAbertura(savedInstanceState != null, intent.flags)
+        abrirViagem = nova && intent.getBooleanExtra(Notificacoes.EXTRA_ABRIR_VIAGEM, false)
+        abrirParagem = if (nova) intent.getStringExtra(EXTRA_ABRIR_PARAGEM) else null
+        abrirRota = if (nova) intent.getStringExtra(EXTRA_ABRIR_ROTA_LOCAL) else null
+        definirLocal = if (nova) localADefinir(intent.getStringExtra(EXTRA_DEFINIR_LOCAL)) else null
         // Aqui e não na Application: essa corre também no processo :trip, que não pode tocar no WorkManager.
         AtualizacaoDiaria.cancelarTrabalhosAntigos(applicationContext)
         enableEdgeToEdge()
@@ -136,6 +143,6 @@ class MainActivity : ComponentActivity() {
         if (intent.getBooleanExtra(Notificacoes.EXTRA_ABRIR_VIAGEM, false)) abrirViagem = true
         intent.getStringExtra(EXTRA_ABRIR_PARAGEM)?.let { abrirParagem = it }
         intent.getStringExtra(EXTRA_ABRIR_ROTA_LOCAL)?.let { abrirRota = it }
-        intent.getStringExtra(EXTRA_DEFINIR_LOCAL)?.let { definirLocal = it }
+        localADefinir(intent.getStringExtra(EXTRA_DEFINIR_LOCAL))?.let { definirLocal = it }
     }
 }

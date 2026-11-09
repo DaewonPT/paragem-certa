@@ -329,4 +329,13 @@ class RotasViewModelTest {
         assertEquals(l, lugarDaRota(l.paraRota()))
         assertNull(lugarDaRota("sem coordenadas"))
     }
+
+    @Test fun lugarNaRotaRecusaCoordenadasInvalidasENomesEnormes() {
+        assertNull(lugarDaRota("X|NaN|NaN"))
+        assertNull(lugarDaRota("X|200|0"))
+        assertNull(lugarDaRota("X|0|-181"))
+        assertNull(lugarDaRota("X|Infinity|0"))
+        assertNull(lugarDaRota("a".repeat(501) + "|38.7|-9.14"))
+        assertEquals(Lugar("a".repeat(500), 90.0, -180.0, TipoLugar.LOCAL), lugarDaRota("a".repeat(500) + "|90|-180"))
+    }
 }

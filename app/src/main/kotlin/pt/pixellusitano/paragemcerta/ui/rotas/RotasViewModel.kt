@@ -73,12 +73,16 @@ fun proximaOcorrencia(hora: LocalTime, agora: ZonedDateTime): ZonedDateTime {
 /** Lugar como argumento da rota de navegação: "nome|lat|lon" (o nome pode ter "|"). */
 fun Lugar.paraRota(): String = "$nome|$lat|$lon"
 
+/** Também vem de fora da app (o widget), por isso recusa coordenadas impossíveis e nomes enormes. */
 fun lugarDaRota(texto: String): Lugar? {
     val partes = texto.split('|')
     if (partes.size < 3) return null
     val lon = partes.last().toDoubleOrNull() ?: return null
     val lat = partes[partes.size - 2].toDoubleOrNull() ?: return null
-    return Lugar(partes.dropLast(2).joinToString("|"), lat, lon, TipoLugar.LOCAL)
+    if (!lat.isFinite() || lat !in -90.0..90.0 || !lon.isFinite() || lon !in -180.0..180.0) return null
+    val nome = partes.dropLast(2).joinToString("|")
+    if (nome.length > 500) return null
+    return Lugar(nome, lat, lon, TipoLugar.LOCAL)
 }
 
 class RotasViewModel(
