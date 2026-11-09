@@ -3,6 +3,7 @@ package pt.pixellusitano.paragemcerta.ui.mapa
 import android.annotation.SuppressLint
 import android.content.Context
 import android.view.Gravity
+import android.view.MotionEvent
 import pt.pixellusitano.paragemcerta.ui.comum.animacoesLigadas
 import pt.pixellusitano.paragemcerta.ui.inicio.PosicaoComHora
 import pt.pixellusitano.paragemcerta.ui.inicio.Zona
@@ -147,7 +148,7 @@ fun veiculosDaLinha(todos: List<Veiculo>, d: DetalheLinha): List<Veiculo> = when
 internal fun coresDoVeiculo(v: Veiculo, coresLinhas: Map<String, String>): Pair<String, String> =
     if (v.daCarris) COR_CARRIS to COR_TEXTO_CARRIS else (coresLinhas[v.linhaId] ?: "#132A4F") to "#FFFFFF"
 
-@SuppressLint("MissingPermission")
+@SuppressLint("MissingPermission", "ClickableViewAccessibility")
 @Composable
 fun Mapa(
     paragens: List<Paragem>,
@@ -241,22 +242,28 @@ fun Mapa(
                 }
                 mapa.addOnMoveListener(object : MapLibreMap.OnMoveListener {
                     override fun onMoveBegin(detector: MoveGestureDetector) {
-                        if (detector.pointersCount == 1) {
-                            estado.aArrastar = true
-                            arrastar()
-                        }
+                        if (detector.pointersCount == 1) arrastar()
                     }
 
                     override fun onMove(detector: MoveGestureDetector) = Unit
 
-                    override fun onMoveEnd(detector: MoveGestureDetector) {
-                        estado.aArrastar = false
-                        if (estado.endireitarNoFim) {
-                            estado.endireitarNoFim = false
-                            endireitar(mapa, duracaoCamara(animacoesLigadas(contexto)))
+                    override fun onMoveEnd(detector: MoveGestureDetector) = Unit
+                })
+                // Conta o dedo e não o gesto: ao deixar de seguir, o MapLibre interrompe o arrasto e recomeça-o com o dedo ainda
+                // no mapa; e trocar os gestos a meio de um toque deixava o mapa preso até o dedo sair.
+                setOnTouchListener { _, evento ->
+                    when (evento.actionMasked) {
+                        MotionEvent.ACTION_DOWN -> estado.dedoNoMapa = true
+                        MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                            estado.dedoNoMapa = false
+                            if (estado.sairNoFim) {
+                                estado.sairNoFim = false
+                                sairDaBussola(mapa, duracaoCamara(animacoesLigadas(contexto)))
+                            }
                         }
                     }
-                })
+                    false
+                }
                 mapa.addOnCameraMoveListener { rodar(mapa.cameraPosition.bearing) }
                 mapa.addOnCameraIdleListener {
                     val b = mapa.projection.visibleRegion.latLngBounds
@@ -331,9 +338,9 @@ fun Mapa(
         val componente = mapa.locationComponent
         val duracao = duracaoCamara(animacoesLigadas(contexto))
         if (estado.estilo != null && componente.isLocationComponentActivated) seguirPosicao(componente, seguir, bussola, duracao)
-        // Ao sair da bússola o mapa volta ao norte; a meio de um arrasto espera pelo fim do gesto, para não lutar com o dedo.
+        // Ao sair da bússola o mapa volta ao norte; com um dedo no mapa espera que ele saia, para não lutar com ele.
         if (estado.bussolaAntes && !bussola) {
-            if (estado.aArrastar) estado.endireitarNoFim = true else endireitar(mapa, duracao)
+            if (estado.dedoNoMapa) estado.sairNoFim = true else sairDaBussola(mapa, duracao)
         }
         estado.bussolaAntes = bussola
     }
@@ -462,10 +469,10 @@ private class EstadoMapa {
     var utilizadorMexeu = false
     /** "Centrar" foi tocado e a posição pedida nessa altura ainda não chegou. */
     var centrarAoChegar = false
-    /** Um dedo está a arrastar o mapa. */
-    var aArrastar = false
-    /** Saiu-se da bússola a meio de um arrasto: o mapa volta ao norte quando o dedo sair. */
-    var endireitarNoFim = false
+    /** Há um dedo no mapa. */
+    var dedoNoMapa = false
+    /** Saiu-se da bússola com um dedo no mapa: os gestos e o norte voltam quando o dedo sair. */
+    var sairNoFim = false
     var bussolaAntes = false
     var mapa: MapLibreMap? by mutableStateOf(null)
     var estilo: Style? by mutableStateOf(null)
@@ -508,6 +515,7 @@ internal fun modoDaCamara(seguir: Boolean, bussola: Boolean): Pair<Int, Int> = w
 
 private fun seguirPosicao(componente: LocationComponent, seguir: Boolean, bussola: Boolean, duracao: Int) {
     val (desenho, camara) = modoDaCamara(seguir, bussola)
+    if (bussola) gestosDaBussola(componente, true)
     componente.renderMode = desenho
     when (camara) {
         // Uma transição de 0 ms nunca avisa que acabou e a câmara ficava parada sem seguir: 1 ms é igualmente imediato.
@@ -517,8 +525,22 @@ private fun seguirPosicao(componente: LocationComponent, seguir: Boolean, bussol
     }
 }
 
-/** Volta o mapa ao norte e sem inclinação; sem animações, de imediato (o easeCamera não aceita duração 0). */
-private fun endireitar(mapa: MapLibreMap, duracao: Int) {
+/**
+ * Por omissão, qualquer gesto (também o zoom com dois dedos) tira a câmara da pessoa; na bússola só o arrasto com um dedo a
+ * deve tirar. Só na bússola: a viagem fica como sempre foi.
+ */
+private fun gestosDaBussola(componente: LocationComponent, ligar: Boolean) {
+    if (!componente.isLocationComponentActivated) return
+    val opcoes = componente.locationComponentOptions
+    if (opcoes.trackingGesturesManagement() != ligar) componente.applyStyle(opcoes.toBuilder().trackingGesturesManagement(ligar).build())
+}
+
+/**
+ * Os gestos voltam aos de sempre e o mapa volta ao norte e sem inclinação; sem animações, de imediato (o easeCamera não
+ * aceita duração 0).
+ */
+private fun sairDaBussola(mapa: MapLibreMap, duracao: Int) {
+    gestosDaBussola(mapa.locationComponent, false)
     val direito = CameraUpdateFactory.newCameraPosition(CameraPosition.Builder(mapa.cameraPosition).bearing(0.0).tilt(0.0).build())
     if (duracao > 0) mapa.easeCamera(direito, duracao) else mapa.moveCamera(direito)
 }
