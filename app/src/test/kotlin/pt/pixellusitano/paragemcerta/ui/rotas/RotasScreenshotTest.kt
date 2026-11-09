@@ -1,17 +1,19 @@
 package pt.pixellusitano.paragemcerta.ui.rotas
 
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
-import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performClick
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
+import com.github.takahirom.roborazzi.captureScreenRoboImage
+import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
@@ -34,6 +36,8 @@ import java.time.Instant
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = "w360dp-h780dp") // ecrã alto: os cartões ficam por baixo dos campos e filtros
 class RotasScreenshotTest {
+    @get:Rule val regra = createComposeRule()
+
     private val rotas = TransitousParser.rotas(fixture("transitous-plan.json"))
     private val prontas = EstadoRotas.Prontas(rotas, etiquetas(rotas))
     private val pedido = PedidoRotas(destino = Lugar("Oriente", 38.7678, -9.0990, TipoLugar.LOCAL))
@@ -88,18 +92,16 @@ class RotasScreenshotTest {
         }
     }
 
-    // O diálogo é outra janela e a captura não a apanha: o corpo do seletor desenha-se dentro de uma superfície igual à do diálogo.
-    @OptIn(ExperimentalMaterial3Api::class)
-    @Composable
-    private fun HoraAberta() = Surface(Modifier.width(360.dp), color = MaterialTheme.colorScheme.surfaceContainerHigh) {
-        CorpoSeletorHora(rememberTimePickerState(8, 30, is24Hour = true))
+    // O diálogo da hora é outra janela: abre-se a sério e captura-se o ecrã inteiro, que a inclui.
+    private fun horaAberta(modo: ModoTema, ficheiro: String) {
+        regra.setContent { TemaParagemCerta(modo) { Rotas(prontas) } }
+        regra.onNodeWithText("Partir às").performClick()
+        regra.waitForIdle()
+        regra.onNodeWithText("Cancelar").assertIsDisplayed()
+        captureScreenRoboImage(ficheiro)
     }
 
-    @Test fun rotas_hora_claro() = captureRoboImage("src/test/screenshots/rotas_hora_claro.png") {
-        TemaParagemCerta(ModoTema.CLARO) { HoraAberta() }
-    }
+    @Test fun rotas_hora_claro() = horaAberta(ModoTema.CLARO, "src/test/screenshots/rotas_hora_claro.png")
 
-    @Test fun rotas_hora_escuro() = captureRoboImage("src/test/screenshots/rotas_hora_escuro.png") {
-        TemaParagemCerta(ModoTema.ESCURO) { HoraAberta() }
-    }
+    @Test fun rotas_hora_escuro() = horaAberta(ModoTema.ESCURO, "src/test/screenshots/rotas_hora_escuro.png")
 }

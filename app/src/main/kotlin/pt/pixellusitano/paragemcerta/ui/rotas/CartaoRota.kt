@@ -43,6 +43,7 @@ import pt.pixellusitano.paragemcerta.ui.comum.LocalLimites
 import pt.pixellusitano.paragemcerta.ui.comum.RotuloAtraso
 import pt.pixellusitano.paragemcerta.ui.comum.SeloLinha
 import pt.pixellusitano.paragemcerta.ui.comum.corDaLinha
+import pt.pixellusitano.paragemcerta.ui.comum.ladoDoIcone
 import pt.pixellusitano.paragemcerta.ui.comum.minutos
 import pt.pixellusitano.paragemcerta.ui.comum.situacaoAtraso
 import pt.pixellusitano.paragemcerta.ui.tema.CoresAtraso
@@ -144,7 +145,7 @@ internal fun descricaoRota(
 private fun AvisoDaLinha(texto: String) {
     val erro = MaterialTheme.colorScheme.error
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-        Icon(Icones.Aviso, null, Modifier.size(16.dp), tint = erro)
+        Icon(Icones.Aviso, null, Modifier.size(ladoDoIcone(16)), tint = erro)
         Text(texto, color = erro, style = MaterialTheme.typography.labelLarge)
     }
 }
@@ -193,9 +194,9 @@ fun CartaoRota(
                 itemVerticalAlignment = Alignment.CenterVertically,
             ) {
                 it.etapas.forEachIndexed { i, e ->
-                    if (i > 0) Icon(Icones.Seguinte, null, Modifier.size(16.dp), tint = cores.onSurfaceVariant)
+                    if (i > 0) Icon(Icones.Seguinte, null, Modifier.size(ladoDoIcone(16)), tint = cores.onSurfaceVariant)
                     if (e.aPe) Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icones.APe, null, Modifier.size(16.dp), tint = cores.onSurfaceVariant)
+                        Icon(Icones.APe, null, Modifier.size(ladoDoIcone(16)), tint = cores.onSurfaceVariant)
                         Text(minutosDe(Duration.between(e.partida, e.chegada)).toString(), color = cores.onSurfaceVariant)
                     }
                     else e.linhaNome?.let { SeloLinha(it, corDaLinha(e.cor, e.modo)) } ?: SeloModo(e.modo, corDaLinha(e.cor, e.modo))

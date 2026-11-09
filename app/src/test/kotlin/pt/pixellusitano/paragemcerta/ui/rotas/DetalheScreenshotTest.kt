@@ -9,7 +9,13 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onFirst
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
@@ -51,10 +57,8 @@ class DetalheScreenshotTest {
         TemaParagemCerta(ModoTema.CLARO) { Detalhe() }
     }
 
-    @Test fun detalhe_escuro() {
-        regra.setContent { TemaParagemCerta(ModoTema.ESCURO) { Detalhe() } }
-        regra.onNodeWithText("Abrir app de TVDE").performScrollTo()
-        regra.onRoot().captureRoboImage("src/test/screenshots/detalhe_escuro.png")
+    @Test fun detalhe_escuro() = captureRoboImage("src/test/screenshots/detalhe_escuro.png") {
+        TemaParagemCerta(ModoTema.ESCURO) { Detalhe() }
     }
 
     @Test fun detalhe_letra200() = captureRoboImage("src/test/screenshots/detalhe_letra200.png") {
@@ -73,6 +77,22 @@ class DetalheScreenshotTest {
         assertTrue(comecar < partilhar)
         regra.onNodeWithText("Começar viagem").performClick()
         assertEquals(1, comecou)
+    }
+
+    @Test fun comLetraA200OSeloFicaPorCimaENenhumaPalavraPartePeloMeio() {
+        regra.setContent {
+            val d = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(d.density, fontScale = 2f)) {
+                TemaParagemCerta(ModoTema.CLARO) { Detalhe() }
+            }
+        }
+        val no = regra.onAllNodes(SemanticsMatcher("etapa de transporte") { n ->
+            n.config.getOrNull(SemanticsProperties.Text)?.any { it.text.startsWith("Autocarro") && "→" in it.text } == true
+        }, useUnmergedTree = true).onFirst().fetchSemanticsNode()
+        val resultados = mutableListOf<TextLayoutResult>()
+        no.config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(resultados)
+        val primeira = resultados.first().let { it.layoutInput.text.text.substring(0, it.getLineEnd(0)) }
+        assertTrue("a primeira linha é \"$primeira\"", primeira.startsWith("Autocarro"))
     }
 
     @Test fun detalhe_comecar() {

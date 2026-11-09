@@ -136,7 +136,7 @@ private fun textoAoVivo(a: AoVivo): String =
 @Composable
 fun RotuloAtraso(programada: Instant, prevista: Instant?, limites: Limites, cor: Color) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-        if (prevista == null) Icon(Icones.Relogio, null, Modifier.size(12.dp), tint = cor)
+        if (prevista == null) Icon(Icones.Relogio, null, Modifier.size(ladoDoIcone(12)), tint = cor)
         Text(rotuloAtraso(programada, prevista, limites), color = cor, style = MaterialTheme.typography.labelSmall)
     }
 }

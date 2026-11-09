@@ -45,6 +45,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -60,6 +61,7 @@ import pt.pixellusitano.paragemcerta.ui.comum.LocalLimites
 import pt.pixellusitano.paragemcerta.ui.comum.SeloLinha
 import pt.pixellusitano.paragemcerta.ui.comum.contornoDeCima
 import pt.pixellusitano.paragemcerta.ui.comum.corDaLinha
+import pt.pixellusitano.paragemcerta.ui.comum.ladoDoIcone
 import pt.pixellusitano.paragemcerta.ui.inicio.temLocalizacao
 import pt.pixellusitano.paragemcerta.ui.mapa.Mapa
 import pt.pixellusitano.paragemcerta.ui.mapa.Percurso
@@ -196,7 +198,7 @@ fun DetalheRotaConteudo(
                     }
                     Hora(it.chegada.horaLisboa(), cores.onSurface) {
                         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                            Icon(Icones.Lugar, null, Modifier.size(20.dp), tint = cores.primary)
+                            Icon(Icones.Lugar, null, Modifier.size(ladoDoIcone(20)), tint = cores.primary)
                             Text(stringResource(R.string.detalhe_chegada, para), color = cores.onSurface, fontWeight = FontWeight.Bold)
                         }
                     }
@@ -232,7 +234,7 @@ private fun LinhaEtapa(e: Etapa, paraNome: String) {
     if (e.aPe) {
         Hora(e.partida.horaLisboa(), cores.onSurfaceVariant) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                Icon(Icones.APe, null, Modifier.size(20.dp), tint = cores.onSurfaceVariant)
+                Icon(Icones.APe, null, Modifier.size(ladoDoIcone(20)), tint = cores.onSurfaceVariant)
                 Text(
                     stringResource(R.string.detalhe_a_pe, minutos) + (e.distancia?.let { " (${textoDistancia(it)})" } ?: ""),
                     color = cores.onSurface,
@@ -246,13 +248,16 @@ private fun LinhaEtapa(e: Etapa, paraNome: String) {
         val corHora = CoresAtraso.cor(estado(e.partidaProgramada, prevista, limites), LocalEscuro.current)
         val paragens = e.paragensIntermedias + 1 // contando a paragem onde se sai
         Hora(e.partida.horaLisboa(), corHora) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                e.linhaNome?.let { SeloLinha(it, corDaLinha(e.cor, e.modo)) } ?: SeloModo(e.modo, corDaLinha(e.cor, e.modo))
+            val selo = @Composable { e.linhaNome?.let { SeloLinha(it, corDaLinha(e.cor, e.modo)) } ?: SeloModo(e.modo, corDaLinha(e.cor, e.modo)) }
+            val nome = @Composable {
                 Text(
                     listOfNotNull(nomeModo(e.modo), e.linhaNome).joinToString(" ") + (e.destino?.let { " → $it" } ?: ""),
                     color = cores.onSurface, fontWeight = FontWeight.Bold,
                 )
             }
+            // Com letra grande o selo vai para cima do nome: ao lado, a palavra "Autocarro" partia a meio.
+            if (LocalDensity.current.fontScale >= 1.5f) Column(verticalArrangement = Arrangement.spacedBy(4.dp)) { selo(); nome() }
+            else Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) { selo(); nome() }
             RotuloAtraso(e.partidaProgramada, prevista, limites, corHora)
             Text(
                 listOf(
