@@ -2,6 +2,13 @@
 
 A versão mais recente aparece primeiro.
 
+## 0.5.1 — Azulejo em toda a app
+
+- Todos os ecrãs com o aspeto novo: faixa azul, cartões e ícones próprios.
+- Tema escuro afinado e sem clarão branco ao abrir.
+- Widget novo "Casa e Trabalho": 4×1 alterna entre os dois, 4×2 mostra os dois.
+- O widget da paragem também tem o aspeto novo.
+
 ## 0.5.0 — Azulejo
 
 - Aspeto novo: faixa azul com a pesquisa, painel com cartões e ícones próprios.
