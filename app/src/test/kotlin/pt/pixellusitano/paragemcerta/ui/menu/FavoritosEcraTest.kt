@@ -4,6 +4,11 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertCountEquals
+import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertWidthIsAtLeast
+import androidx.compose.ui.test.onAllNodesWithContentDescription
+import androidx.compose.ui.test.onNodeWithContentDescription
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
@@ -65,7 +70,7 @@ class FavoritosEcraTest {
         regra.onNodeWithText("Az → Santa Apolónia em Colégio Militar/Luz").assertIsDisplayed()
 
         regra.onNodeWithText("Az → Santa Apolónia em Colégio Militar/Luz").performClick()
-        regra.onNodeWithText("Subir").performClick() // só a segunda tem "Subir"; as paragens têm só uma e a primeira não sobe
+        regra.onNodeWithContentDescription("Subir").performClick() // só a segunda tem "Subir"; as paragens têm só uma e a primeira não sobe
         regra.onAllNodesWithText("Remover")[1].performClick() // [0] é a paragem, [1] a 3708, [2] a Az
         regra.onAllNodesWithText("Remover")[2].performClick()
         assertEquals(listOf(fAz), abertas)
@@ -78,7 +83,14 @@ class FavoritosEcraTest {
         regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Ecra(listOf(b3708, bAz)) } }
         regra.onNodeWithText("A carregar…").assertIsDisplayed()
         regra.onAllNodesWithText("Esta linha já não existe.").assertCountEquals(0)
-        regra.onNodeWithText("Subir").assertIsDisplayed()
+        regra.onNodeWithContentDescription("Subir").assertIsDisplayed()
+    }
+
+    // "Subir" é só o ícone, para dar ao nome a largura do texto; o alvo continua a ter 48 dp.
+    @Test fun subirEUmBotaoDe48dpSoComIcone() {
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Ecra(listOf(b3708, bAz)) } }
+        regra.onNodeWithContentDescription("Subir").assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp).assertHasClickAction()
+        regra.onAllNodesWithText("Subir").assertCountEquals(0)
     }
 
     @Test fun linhaQueJaNaoExisteSoDeixaRemover() {
@@ -92,7 +104,7 @@ class FavoritosEcraTest {
         }
         regra.onNodeWithText("Esta linha já não existe.").assertIsDisplayed()
         regra.onNodeWithText("999 → Algés em Cais Sodré").performClick()
-        regra.onAllNodesWithText("Subir").assertCountEquals(0)
+        regra.onAllNodesWithContentDescription("Subir").assertCountEquals(0)
         regra.onAllNodesWithText("Remover")[2].performClick()
         assertTrue(abertas.isEmpty())
         assertTrue(subidas.isEmpty())

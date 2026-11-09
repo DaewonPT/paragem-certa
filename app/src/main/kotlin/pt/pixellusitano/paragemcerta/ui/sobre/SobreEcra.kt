@@ -50,7 +50,7 @@ private fun fontes(carrisAoVivo: Boolean) = listOfNotNull(
 @Composable
 fun SobreEcra(versao: String, aoAbrir: (String) -> Unit, aoVoltar: () -> Unit, carrisAoVivo: Boolean = false, urlDoacoes: String? = null) {
     @Composable
-    fun ligacoes(itens: List<Pair<String, String>>) = CartaoDeItens(itens.map { (texto, url) -> ItemDeMenu(texto, { aoAbrir(url) }, comSeta = false) })
+    fun ligacoes(itens: List<Pair<String, String>>) = CartaoDeItens(itens.map { (texto, url) -> ItemDeMenu(texto, { aoAbrir(url) }) })
 
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
         CabecalhoAzulejo(stringResource(R.string.menu_sobre), aoVoltar)

@@ -199,7 +199,7 @@ fun BussolaConteudo(
     Column(modifier.fillMaxSize().background(cores.background)) {
         CabecalhoAzulejo(stringResource(R.string.bussola_encontrar), aoVoltar)
         Column(
-            Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 8.dp),
+            Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState()).padding(horizontal = 24.dp, vertical = 16.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {

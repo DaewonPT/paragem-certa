@@ -4,6 +4,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertIsEnabled
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -154,6 +155,17 @@ class ContaScreenshotTest {
         TemaParagemCerta(ModoTema.ESCURO) {
             EcraConta(passo = PassoEntrada.CODIGO, mensagem = "Código errado", modifier = Modifier.width(360.dp))
         }
+    }
+
+    // O email e a sincronização são um cartão e "Sair" e "Apagar conta" outro: entre eles há o espaço entre cartões, não só a divisória.
+    @Test @Config(qualifiers = "w360dp-h780dp")
+    fun sairEApagarContaFicamNumCartaoAParte() {
+        regra.setContent {
+            TemaParagemCerta(ModoTema.CLARO) { EcraConta(estado = EstadoConta.Com("ana@exemplo.pt", sincronizadaEm), modifier = Modifier.width(360.dp)) }
+        }
+        val sincronizar = regra.onNodeWithText("Sincronizar agora").getUnclippedBoundsInRoot()
+        val sair = regra.onNodeWithText("Sair").getUnclippedBoundsInRoot()
+        assertTrue("entre o Sincronizar e o Sair: ${sair.top - sincronizar.bottom}", sair.top - sincronizar.bottom >= 24.dp)
     }
 
     @Test fun conta_com_conta() = captureRoboImage("src/test/screenshots/conta_com_conta.png") {

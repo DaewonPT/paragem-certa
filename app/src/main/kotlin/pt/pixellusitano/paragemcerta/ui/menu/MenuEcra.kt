@@ -54,7 +54,7 @@ fun MenuEcra(
                     ItemDeMenu(stringResource(R.string.eu_definicoes), aoAbrirDefinicoes),
                     ItemDeMenu(stringResource(R.string.menu_ajuda), aoAbrirAjuda),
                     ItemDeMenu(stringResource(R.string.menu_reclamar), aoAbrirReclamar),
-                    ItemDeMenu(stringResource(R.string.eu_opiniao), aoEnviarOpiniao, comSeta = false), // abre o email, não outro ecrã
+                    ItemDeMenu(stringResource(R.string.eu_opiniao), aoEnviarOpiniao),
                     ItemDeMenu(stringResource(R.string.menu_sobre), aoAbrirSobre),
                 ),
             )
@@ -62,8 +62,8 @@ fun MenuEcra(
     }
 }
 
-/** Uma linha de [CartaoDeItens]; [comSeta] falso quando abre outra app (o email, uma página) e não outro ecrã. */
-internal class ItemDeMenu(val texto: String, val aoTocar: () -> Unit, val comSeta: Boolean = true)
+/** Uma linha de [CartaoDeItens]; todas levam a seta, abram outro ecrã ou uma página ou o email fora da app. */
+internal class ItemDeMenu(val texto: String, val aoTocar: () -> Unit)
 
 /** As linhas de um menu num só cartão, com divisórias; cada uma é um botão. */
 @Composable
@@ -77,7 +77,7 @@ internal fun CartaoDeItens(itens: List<ItemDeMenu>, modifier: Modifier = Modifie
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 Text(item.texto, Modifier.weight(1f), color = cores.onSurface, style = MaterialTheme.typography.titleMedium)
-                if (item.comSeta) Icon(Icones.Seguinte, null, tint = cores.onSurfaceVariant)
+                Icon(Icones.Seguinte, null, tint = cores.onSurfaceVariant)
             }
         }
     }

@@ -3,7 +3,6 @@ package pt.pixellusitano.paragemcerta.ui.menu
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
@@ -337,7 +336,7 @@ fun Definicoes(
 /** O cartão de uma secção das definições, com a margem do conteúdo. */
 @Composable
 internal fun CartaoDeSecao(conteudo: @Composable ColumnScope.() -> Unit) {
-    CartaoAzulejo(Modifier.fillMaxWidth()) { Column(Modifier.padding(horizontal = 16.dp), content = conteudo) }
+    CartaoAzulejo(Modifier.fillMaxWidth()) { Column(Modifier.padding(horizontal = 16.dp, vertical = 4.dp), content = conteudo) }
 }
 
 @Composable
@@ -381,7 +380,7 @@ private fun Ajuste(texto: String, menos: () -> Unit, mais: () -> Unit) {
     val rotuloMenos = stringResource(R.string.menos)
     val rotuloMais = stringResource(R.string.mais)
     val primaria = MaterialTheme.colorScheme.primary
-    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(texto, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.weight(1f))
         IconButton(onClick = menos, modifier = Modifier.size(48.dp).semantics { contentDescription = "$rotuloMenos: $texto" }) {
             Icon(Icones.Diminuir, null, tint = primaria)

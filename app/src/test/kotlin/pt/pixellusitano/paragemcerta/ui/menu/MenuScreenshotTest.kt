@@ -16,6 +16,7 @@ import androidx.compose.ui.test.assertHasClickAction
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.assertIsNotSelected
 import androidx.compose.ui.test.assertIsOff
@@ -159,6 +160,16 @@ class MenuScreenshotTest {
             resultados.single().layoutInput.style.let { s -> s.fontSize to s.fontWeight }
         }
         assertEquals(1, estilos.distinct().size)
+    }
+
+    // Ao lado dos dois botões de 48 dp cabem as frases dos limites numa só linha a 360 dp.
+    @Test @Config(qualifiers = "w360dp-h2200dp")
+    fun asFrasesDosLimitesCabemNumaLinha() {
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { EcraDefinicoes() } }
+        listOf("Amarelo a partir de 3 min", "Vermelho acima de 8 min").forEach {
+            val caixa = regra.onNodeWithText(it, useUnmergedTree = true).getUnclippedBoundsInRoot()
+            assertTrue("$it: ${caixa.bottom - caixa.top}", caixa.bottom - caixa.top < 30.dp)
+        }
     }
 
     @Test @Config(qualifiers = "w360dp-h2200dp")

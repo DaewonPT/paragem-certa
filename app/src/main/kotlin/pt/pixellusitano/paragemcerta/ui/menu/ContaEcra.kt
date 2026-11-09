@@ -7,7 +7,9 @@ import android.widget.Toast
 import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.text.KeyboardOptions
@@ -217,8 +219,6 @@ fun ContaConteudo(
                                 Modifier.padding(bottom = 12.dp), color = MaterialTheme.colorScheme.onSurfaceVariant,
                             )
                             BotaoPrincipal(aoSincronizar, Modifier.fillMaxWidth(), ativo = !aOcupar) { Text(stringResource(R.string.conta_sincronizar)) }
-                            Ligacao(stringResource(R.string.conta_sair), aoSair)
-                            Ligacao(stringResource(R.string.conta_apagar), { apagar = true }, MaterialTheme.colorScheme.error)
                         }
                         EstadoConta.SemConta -> {
                             Text(stringResource(R.string.conta_nota), Modifier.padding(bottom = 12.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -259,6 +259,14 @@ fun ContaConteudo(
                     }
                 }
             }
+            if (estado is EstadoConta.Com) {
+                // Sair e apagar noutro cartão, longe do Sincronizar, com o espaço que há entre cartões nas Definições.
+                Spacer(Modifier.height(12.dp))
+                CartaoDeSecao {
+                    Ligacao(stringResource(R.string.conta_sair), aoSair)
+                    Ligacao(stringResource(R.string.conta_apagar), { apagar = true }, MaterialTheme.colorScheme.error)
+                }
+            }
             // O leitor de ecrã lê o erro assim que aparece.
             mensagem?.let {
                 Text(it, Modifier.padding(top = 12.dp).semantics { liveRegion = LiveRegionMode.Polite }, color = MaterialTheme.colorScheme.error)
@@ -266,8 +274,8 @@ fun ContaConteudo(
             if (aOcupar) Text(stringResource(R.string.a_carregar), Modifier.padding(top = 12.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
             CartaoDeItens(
                 listOf(
-                    ItemDeMenu(stringResource(R.string.ligacao_termos), { aoAbrir(URL_TERMOS) }, comSeta = false),
-                    ItemDeMenu(stringResource(R.string.ligacao_privacidade), { aoAbrir(URL_PRIVACIDADE) }, comSeta = false),
+                    ItemDeMenu(stringResource(R.string.ligacao_termos), { aoAbrir(URL_TERMOS) }),
+                    ItemDeMenu(stringResource(R.string.ligacao_privacidade), { aoAbrir(URL_PRIVACIDADE) }),
                 ),
                 Modifier.padding(top = 16.dp),
             )

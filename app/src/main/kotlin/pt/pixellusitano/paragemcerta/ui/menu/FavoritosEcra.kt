@@ -205,10 +205,9 @@ private fun LinhaDeFavorito(abrir: Modifier, titulo: @Composable () -> Unit, aoS
             Spacer(Modifier.width(8.dp))
             titulo()
         }
-        if (aoSubir != null) TextButton(onClick = aoSubir) {
-            Icon(Icones.Subir, null, Modifier.size(18.dp))
-            Spacer(Modifier.width(4.dp))
-            Text(stringResource(R.string.eu_subir))
+        // Só o ícone: o texto tirava largura ao nome.
+        if (aoSubir != null) IconButton(onClick = aoSubir, Modifier.size(48.dp)) {
+            Icon(Icones.Subir, stringResource(R.string.eu_subir), tint = MaterialTheme.colorScheme.primary)
         }
         TextButton(onClick = aoRemover) { Text(stringResource(R.string.eu_remover)) }
     }

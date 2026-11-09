@@ -27,6 +27,7 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertWidthIsAtLeast
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.isHeading
 import androidx.compose.ui.test.junit4.v2.createComposeRule
@@ -105,6 +106,14 @@ class BussolaEcraTest {
         regra.onNodeWithContentDescription("Paragem Cais do Sodré, a 120 m, à tua direita").assertExists()
         regra.onNodeWithText("Calibra a bússola: move o telemóvel num 8.").assertDoesNotExist()
         regra.onNodeWithText("Este telemóvel não tem bússola. Aqui vês só a distância e a direção.").assertDoesNotExist()
+    }
+
+    // Como nos outros ecrãs com faixa: o conteúdo começa 16 dp por baixo dela (a faixa acaba 8 dp abaixo do voltar).
+    @Test fun oDiscoComecaA16DpDaFaixa() {
+        regra.setContent { Conteudo(EstadoBussola.Ativa(120.0, rumo = 73.0, angulo = 80.0, semSensor = false, calibrar = false)) }
+        val voltar = regra.onNodeWithContentDescription("Voltar").getUnclippedBoundsInRoot()
+        val disco = regra.onNodeWithContentDescription("Paragem Cais do Sodré, a 120 m, à tua direita").getUnclippedBoundsInRoot()
+        assertTrue("o disco começa a ${disco.top - voltar.bottom} do voltar", disco.top - voltar.bottom >= 24.dp)
     }
 
     @Test fun oCabecalhoEUmTituloComOVoltarDe48dp() {
