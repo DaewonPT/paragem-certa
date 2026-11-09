@@ -258,6 +258,7 @@ fun Navegacao(
                         aoIrPara = { nav.navigate(it) },
                         aoAbrirViagem = { nav.navigate(Viagem) },
                         abrirFavoritos = abrirFavoritos,
+                        aoAbrirConta = if (config.interruptores.conta) ({ nav.navigate(ContaRota) }) else null,
                         painel = { posicao, aoDefinirLocal ->
                             Painel(
                                 repositorio, posicao,

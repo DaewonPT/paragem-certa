@@ -23,7 +23,18 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.border
+import androidx.compose.foundation.shape.CornerSize
+import androidx.compose.material3.IconButton
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
+import pt.pixellusitano.paragemcerta.ui.tema.Azulejo
+import pt.pixellusitano.paragemcerta.ui.tema.PadraoAzulejo
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -206,6 +217,8 @@ fun InicioEcra(
     aoIrPara: (Rotas) -> Unit = {},
     aoAbrirViagem: () -> Unit = {},
     abrirFavoritos: Boolean = false,
+    aoAbrirConta: (() -> Unit)? = null,
+    mapa: (@Composable (LigacaoMapaInicio) -> Unit)? = null,
 ) {
     val contexto = LocalContext.current
     val vm = viewModel { InicioViewModel(repositorio::paragensNaZona, repositorio::veiculos, repositorio::lugarEm, repositorio::veiculosCarris) }
@@ -293,36 +306,50 @@ fun InicioEcra(
         sheetContent = { painel(posicao) { definir = it } },
     ) { _ ->
     Box(Modifier.fillMaxSize()) {
-        Mapa(
-            paragens = desenhadas.first,
-            comRelato = desenhadas.second,
-            enquadrar = emptyList(),
-            veiculos = veiculos,
-            coresLinhas = cores,
-            escuro = LocalEscuro.current,
-            centroInicial = posicao?.let { LatLng(it.first, it.second) } ?: LISBOA,
-            camaraInicial = vm.camara,
-            centrarEm = posicao?.let { LatLng(it.first, it.second) },
-            aoMoverCamara = vm::aoMoverCamara,
-            aoTocarParagem = aoAbrirParagem,
-            // Um cartão de cada vez: tocar num veículo fecha o da estação e vice-versa.
-            aoTocarVeiculo = {
-                giraEscolhida = null
-                vm.escolherVeiculo(it)
-            },
-            modifier = Modifier.fillMaxSize(),
-            aoToqueLongo = vm::toqueLongo,
-            mostrarPosicao = comLocalizacao,
-            centrarAgora = centrarAgora,
-            horaCentrarEm = horaPosicao,
-            gira = gira,
-            aoTocarGira = {
-                vm.escolherVeiculo(null)
-                giraEscolhida = it
-            },
+        var alturaFaixa by remember { mutableIntStateOf(0) }
+        val densidade = LocalDensity.current
+        // A atribuição e o logótipo do mapa ficam logo abaixo da faixa.
+        val ligacao = LigacaoMapaInicio(
+            bussola = false, margemTopo = with(densidade) { alturaFaixa.toDp() } + 8.dp,
+            aoDeixarDeSeguir = {}, aoArrastar = {}, aoRodar = {},
         )
-        Column(Modifier.statusBarsPadding().padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            BarraPesquisa(aoPesquisar)
+        (mapa ?: { l ->
+            Mapa(
+                paragens = desenhadas.first,
+                comRelato = desenhadas.second,
+                enquadrar = emptyList(),
+                veiculos = veiculos,
+                coresLinhas = cores,
+                escuro = LocalEscuro.current,
+                centroInicial = posicao?.let { LatLng(it.first, it.second) } ?: LISBOA,
+                camaraInicial = vm.camara,
+                centrarEm = posicao?.let { LatLng(it.first, it.second) },
+                aoMoverCamara = vm::aoMoverCamara,
+                aoTocarParagem = aoAbrirParagem,
+                // Um cartão de cada vez: tocar num veículo fecha o da estação e vice-versa.
+                aoTocarVeiculo = {
+                    giraEscolhida = null
+                    vm.escolherVeiculo(it)
+                },
+                modifier = Modifier.fillMaxSize(),
+                aoToqueLongo = vm::toqueLongo,
+                mostrarPosicao = comLocalizacao,
+                centrarAgora = centrarAgora,
+                horaCentrarEm = horaPosicao,
+                gira = gira,
+                aoTocarGira = {
+                    vm.escolherVeiculo(null)
+                    giraEscolhida = it
+                },
+                bussola = l.bussola,
+                aoDeixarDeSeguir = l.aoDeixarDeSeguir,
+                aoArrastar = l.aoArrastar,
+                aoRodar = l.aoRodar,
+                margemTopo = l.margemTopo,
+            )
+        })(ligacao)
+        FaixaInicio(aoPesquisar, aoAbrirConta, Modifier.testTag("faixa").onSizeChanged { alturaFaixa = it.height })
+        Column(Modifier.padding(top = with(densidade) { alturaFaixa.toDp() }).padding(horizontal = 12.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             if (interrompida) {
                 AvisoViagem(
                     R.string.viagem_interrompida,
@@ -451,15 +478,41 @@ internal fun DefinirLocalEcra(repositorio: Repositorio, tipo: String, guardar: (
     )
 }
 
+/** O que o Início dá ao mapa: o modo bússola, a margem de cima (a faixa azul) e os avisos de a pessoa o mexer. */
+class LigacaoMapaInicio(
+    val bussola: Boolean,
+    val margemTopo: Dp,
+    val aoDeixarDeSeguir: () -> Unit,
+    val aoArrastar: () -> Unit,
+    val aoRodar: (Double) -> Unit,
+)
+
+/** A faixa azul de azulejos por baixo da barra de estado: o campo da pesquisa e, com a conta ligada, o botão Conta. */
 @Composable
-private fun BarraPesquisa(aoPesquisar: () -> Unit) {
-    Surface(
-        Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button, onClick = aoPesquisar),
-        shape = RoundedCornerShape(14.dp), shadowElevation = 6.dp,
-        border = androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.secondary),
-    ) {
-        Text("🔍  " + stringResource(R.string.pesquisa_dica), color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.titleSmall, modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp))
+private fun FaixaInicio(aoPesquisar: () -> Unit, aoAbrirConta: (() -> Unit)?, modifier: Modifier = Modifier) {
+    val topo = MaterialTheme.shapes.extraLarge.let { it.copy(topStart = CornerSize(0.dp), topEnd = CornerSize(0.dp)) }
+    Box(modifier.fillMaxWidth().clip(topo).background(Azulejo.Cobalto)) {
+        PadraoAzulejo(Modifier.matchParentSize())
+        Row(
+            Modifier.statusBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Surface(
+                Modifier.weight(1f).heightIn(min = 48.dp).clickable(role = Role.Button, onClick = aoPesquisar),
+                shape = MaterialTheme.shapes.medium, color = Color.White,
+            ) {
+                Row(Modifier.padding(horizontal = 14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Icon(Icones.Pesquisa, contentDescription = null, tint = Azulejo.Cinza)
+                    Text(stringResource(R.string.pesquisa_dica), color = Azulejo.Cinza, fontWeight = FontWeight.Bold)
+                }
+            }
+            if (aoAbrirConta != null) {
+                IconButton(
+                    aoAbrirConta,
+                    Modifier.size(48.dp).background(Color.White.copy(alpha = 0.12f), CircleShape).border(1.5.dp, Color.White.copy(alpha = 0.55f), CircleShape),
+                ) { Icon(Icones.Conta, stringResource(R.string.menu_conta), tint = Color.White) }
+            }
+        }
     }
 }
 
@@ -467,7 +520,7 @@ private fun BarraPesquisa(aoPesquisar: () -> Unit) {
 @Composable
 internal fun AvisoViagem(texto: Int, aoAbrir: () -> Unit, modifier: Modifier = Modifier, aoDescartar: (() -> Unit)? = null) {
     Surface(
-        modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), shadowElevation = 6.dp,
+        modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium, shadowElevation = 6.dp,
         color = MaterialTheme.colorScheme.secondaryContainer,
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -501,7 +554,7 @@ private fun CartaoVeiculo(v: Veiculo, aoFechar: () -> Unit) {
     val segundos = Duration.between(v.ultimoSinal, Instant.now()).seconds.coerceAtLeast(0)
     Surface(
         Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp), tonalElevation = 3.dp, shadowElevation = 6.dp,
+        shape = MaterialTheme.shapes.medium, tonalElevation = 3.dp, shadowElevation = 6.dp,
     ) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -523,7 +576,7 @@ private fun CartaoVeiculo(v: Veiculo, aoFechar: () -> Unit) {
 fun CartaoGira(e: EstacaoGira, aoAbrirApp: () -> Unit, aoFechar: () -> Unit) {
     Surface(
         Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp), tonalElevation = 3.dp, shadowElevation = 6.dp,
+        shape = MaterialTheme.shapes.medium, tonalElevation = 3.dp, shadowElevation = 6.dp,
     ) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
