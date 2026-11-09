@@ -258,7 +258,8 @@ fun Mapa(
                             estado.dedoNoMapa = false
                             if (estado.sairNoFim) {
                                 estado.sairNoFim = false
-                                sairDaBussola(mapa, duracaoCamara(animacoesLigadas(contexto)))
+                                // Este ouvinte corre antes do MapLibre: os gestos só se trocam depois de ele ver o dedo sair.
+                                post { sairDaBussola(mapa, duracaoCamara(animacoesLigadas(contexto))) }
                             }
                         }
                     }
@@ -342,6 +343,7 @@ fun Mapa(
         if (estado.bussolaAntes && !bussola) {
             if (estado.dedoNoMapa) estado.sairNoFim = true else sairDaBussola(mapa, duracao)
         }
+        if (bussola) estado.sairNoFim = false
         estado.bussolaAntes = bussola
     }
 
