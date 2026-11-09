@@ -278,6 +278,7 @@ class LinhasEcraTest {
         regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Ecra(agruparLinhas(cm, catalogo, "", Modo.COMBOIO)) } }
         // O meio já se lê no título da secção; o selo de cada linha só se vê (capturas linhas_*).
         regra.onNodeWithContentDescription("Comboio").assertDoesNotExist()
+        regra.onNodeWithContentDescription("Comboio", useUnmergedTree = true).assertExists()
     }
 
     @Test fun linhas_com_perturbacoes() = captureRoboImage("src/test/screenshots/linhas_com_perturbacoes.png") {

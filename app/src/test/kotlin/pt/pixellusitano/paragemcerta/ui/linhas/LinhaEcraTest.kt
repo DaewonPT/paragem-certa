@@ -60,6 +60,7 @@ import pt.pixellusitano.paragemcerta.dados.DetalheLinha
 import pt.pixellusitano.paragemcerta.dados.EstadoChegadas
 import pt.pixellusitano.paragemcerta.dados.LinhaFavorita
 import pt.pixellusitano.paragemcerta.dados.SentidoLinha
+import pt.pixellusitano.paragemcerta.ui.tema.LocalEscuro
 import pt.pixellusitano.paragemcerta.ui.tema.ModoTema
 import pt.pixellusitano.paragemcerta.ui.tema.TemaParagemCerta
 import java.time.Instant
@@ -127,7 +128,7 @@ class LinhaEcraTest {
                     aoUsarComoHabitual = { habituais++ },
                     aoVerHorario = { horarios++ },
                     aoAbrirMapaOficial = if (comMapaOficial) ({ mapasOficiais++ }) else null,
-                    mapa = { Box(Modifier.fillMaxSize().testTag("mapa").background(Color(0xFFDDE5F0)).pointerInput(Unit) { detectTapGestures { toquesNoMapa++ } }) },
+                    mapa = { Box(Modifier.fillMaxSize().testTag("mapa").background(if (LocalEscuro.current) Color(0xFF0C0C0C) else Color(0xFFDDE5F0)).pointerInput(Unit) { detectTapGestures { toquesNoMapa++ } }) },
                     modifier = Modifier.width(360.dp),
                     agora = AGORA_DA_LINHA,
                 )

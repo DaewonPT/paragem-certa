@@ -24,7 +24,7 @@ class WidgetScreenshotTest {
     private val contexto: Context = RuntimeEnvironment.getApplication()
     private val cobalto = 0xFF1F4FA3.toInt()
     private val eletrico = 0xFFFFC629.toInt()
-    private val carrisMetropolitana = 0xFFD62F5F.toInt()
+    private val carrisMetropolitana = 0xFFC61D23.toInt()
     private val linhas = listOf(
         LinhaWidget("728", "Restelo (Estação)", "14:32", aoVivo = true, cor = cobalto),
         LinhaWidget("15E", "Algés", "14:40", aoVivo = false, cor = eletrico),

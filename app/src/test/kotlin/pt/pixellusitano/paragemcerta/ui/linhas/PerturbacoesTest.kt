@@ -301,7 +301,7 @@ class PerturbacoesTest {
 
     @Test fun faixa_perturbacoes_escuro() = captureRoboImage("src/test/screenshots/faixa_perturbacoes_escuro.png") {
         TemaParagemCerta(ModoTema.ESCURO) {
-            // Como no app: a faixa flutua sobre o fundo do tema, que no escuro é onde a sombra não se vê.
+            // Como na app: a faixa flutua sobre o fundo do tema, que no escuro é onde a sombra não se vê.
             Box(Modifier.background(MaterialTheme.colorScheme.background).padding(vertical = 8.dp)) { FaixaPerturbacoes(2, aoAbrir = {}, aoFechar = {}) }
         }
     }
