@@ -11,7 +11,14 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.role
@@ -46,11 +53,37 @@ fun CartaoAzulejo(
     }
 }
 
-/** Uma fatia de um cartão repartido por itens de uma lista preguiçosa: a forma é a de [formaDaFatia] e, a partir da segunda, há uma divisória por dentro. */
+/**
+ * Uma fatia de um cartão repartido por itens de uma lista preguiçosa: desenha só a sua parte de um cartão (os lados em todas, o topo
+ * só na primeira e o fundo só na última), sem sombra, e a partir da segunda tem a divisória por dentro.
+ */
 @Composable
 fun FatiaAzulejo(indice: Int, total: Int, modifier: Modifier = Modifier, conteudo: @Composable ColumnScope.() -> Unit) {
-    CartaoAzulejo(modifier.padding(horizontal = 16.dp), forma = formaDaFatia(indice, total)) {
-        if (indice > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        conteudo()
+    val forma = formaDaFatia(indice, total)
+    val contorno = MaterialTheme.colorScheme.outlineVariant
+    val raio = MaterialTheme.shapes.large
+    Surface(
+        modifier.padding(horizontal = 16.dp).drawWithContent {
+            drawContent()
+            // O contorno do cartão inteiro, com o que sobra para fora desta fatia cortado: só fica a parte que lhe pertence.
+            val fora = 2 * raio.topStart.toPx(size, this)
+            val cima = if (indice == 0) 0f else -fora
+            val baixo = if (indice == total - 1) size.height else size.height + fora
+            val largura = 1.dp.toPx()
+            clipRect {
+                drawPath(
+                    Path().apply {
+                        addRoundRect(RoundRect(Rect(largura / 2, cima + largura / 2, size.width - largura / 2, baixo - largura / 2), CornerRadius(raio.topStart.toPx(size, this@drawWithContent) - largura / 2)))
+                    },
+                    contorno, style = Stroke(largura),
+                )
+            }
+        },
+        shape = forma, color = MaterialTheme.colorScheme.surface,
+    ) {
+        Column {
+            if (indice > 0) HorizontalDivider(color = contorno)
+            conteudo()
+        }
     }
 }

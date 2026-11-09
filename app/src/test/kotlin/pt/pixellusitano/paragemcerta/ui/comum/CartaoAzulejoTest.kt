@@ -22,6 +22,7 @@ import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.hasClickAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import org.robolectric.annotation.Config
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -59,6 +60,26 @@ class CartaoAzulejoTest {
         assertEquals(listOf(false, true), pixeis[0])
         assertEquals(listOf(true, true), pixeis[1])
         assertEquals(listOf(true, false), pixeis[2])
+    }
+
+    // A junção de duas fatias tem uma só linha fina (a divisória), sem contorno duplo nem sombra a mais.
+    @Config(qualifiers = "xxhdpi")
+    @Test fun juncaoDeFatias_temUmaSoLinhaFina() {
+        regra.setContent {
+            Column(Modifier.background(Color.White).testTag("col")) {
+                (0..1).forEach { i -> FatiaAzulejo(i, 2) { Box(Modifier.size(60.dp)) } }
+            }
+        }
+        val img = regra.onNodeWithTag("col").captureToImage().toPixelMap()
+        val junta = with(regra.density) { 60.dp.roundToPx() }
+        val x = with(regra.density) { 16.dp.roundToPx() + 90 } // a meio do cartão (60 dp de largura)
+        val linhaFina = with(regra.density) { 1.dp.roundToPx() }
+        assertEquals(true, img[x, 0].red < 0.93f) // o topo da primeira
+        assertEquals(true, img[x, img.height - 1].red < 0.93f) // o fundo da última
+        val escuras = (junta - 8..junta + 8).count { img[x, it].red < 0.93f }
+        assertEquals(linhaFina, escuras)
+        // Nas laterais há contorno de cada lado em todas as fatias, inclusive na junção.
+        assertEquals(true, img[with(regra.density) { 16.dp.roundToPx() }, junta + 10].red < 0.93f)
     }
 
     @Test fun comCorEContorno_desenhaComEles() {

@@ -42,14 +42,13 @@ import pt.pixellusitano.paragemcerta.dados.CatalogoLinhas
 import pt.pixellusitano.paragemcerta.dados.EstadoCatalogo
 import pt.pixellusitano.paragemcerta.dados.Repositorio
 import pt.pixellusitano.paragemcerta.ui.comum.CampoAzulejo
-import pt.pixellusitano.paragemcerta.ui.comum.CartaoAzulejo
+import pt.pixellusitano.paragemcerta.ui.comum.FatiaAzulejo
 import pt.pixellusitano.paragemcerta.ui.comum.FaixaAzulejo
 import pt.pixellusitano.paragemcerta.ui.comum.ItemLista
 import pt.pixellusitano.paragemcerta.ui.comum.SeloLinha
 import pt.pixellusitano.paragemcerta.ui.comum.SeloModo
 import pt.pixellusitano.paragemcerta.ui.comum.TituloSecao
 import pt.pixellusitano.paragemcerta.ui.comum.bordaDoFiltro
-import pt.pixellusitano.paragemcerta.ui.comum.formaDaFatia
 import pt.pixellusitano.paragemcerta.ui.comum.corDaLinha
 import java.time.LocalDate
 
@@ -160,9 +159,9 @@ fun LinhasConteudo(
                         // Sem nome curto (algumas da CP) o nome da linha é o longo: um selo desse tamanho não cabia.
                         val longo = l.nomeLongo.takeIf { it.isNotEmpty() && it != l.nome }
                         val cor = corDaLinha(l.cor, l.modo)
-                        CartaoAzulejo(
-                            Modifier.padding(start = 16.dp, end = 16.dp, top = if (i == 0) 4.dp else 0.dp, bottom = if (i == linhas.lastIndex) 4.dp else 0.dp).fillMaxWidth(),
-                            forma = formaDaFatia(i, linhas.size),
+                        FatiaAzulejo(
+                            i, linhas.size,
+                            Modifier.padding(top = if (i == 0) 4.dp else 0.dp, bottom = if (i == linhas.lastIndex) 4.dp else 0.dp).fillMaxWidth(),
                         ) {
                             if (i == 0) Text(
                                 operador, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelLarge,
