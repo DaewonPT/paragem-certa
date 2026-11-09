@@ -24,7 +24,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialogDefaults
 import androidx.compose.material3.BasicAlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -68,6 +67,7 @@ import pt.pixellusitano.paragemcerta.core.fotos.FotoDeRua
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import pt.pixellusitano.paragemcerta.dados.Comunidade
 import pt.pixellusitano.paragemcerta.dados.Configuracoes
+import pt.pixellusitano.paragemcerta.ui.comum.BotaoPrincipal
 import pt.pixellusitano.paragemcerta.ui.comum.BotaoSecundario
 import pt.pixellusitano.paragemcerta.ui.tema.Icones
 import java.io.File
@@ -326,7 +326,7 @@ internal fun FolhaEnviarFotoConteudo(
             }
             FlowRow(Modifier.fillMaxWidth().padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End)) {
                 TextButton(onClick = aoFechar) { Text(stringResource(R.string.cancelar)) }
-                Button(onClick = aoEnviar, enabled = pronta && !ocupado) {
+                BotaoPrincipal(aoEnviar, ativo = pronta && !ocupado) {
                     Text(stringResource(if (falhou) R.string.foto_tentar_outra_vez else R.string.foto_botao_enviar))
                 }
             }

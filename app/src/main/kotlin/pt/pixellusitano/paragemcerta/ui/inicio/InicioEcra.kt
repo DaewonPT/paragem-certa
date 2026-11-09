@@ -40,7 +40,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import pt.pixellusitano.paragemcerta.ui.tema.Azulejo
 import androidx.compose.material3.BottomSheetScaffold
-import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -90,6 +89,7 @@ import pt.pixellusitano.paragemcerta.ui.tema.LocalEscuro
 import pt.pixellusitano.paragemcerta.ui.Rotas
 import pt.pixellusitano.paragemcerta.ui.comum.DialogoNome
 import pt.pixellusitano.paragemcerta.ui.comum.FaixaAzulejo
+import pt.pixellusitano.paragemcerta.ui.comum.BotaoPrincipal
 import pt.pixellusitano.paragemcerta.ui.comum.BotaoSecundario
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.foundation.layout.ColumnScope
@@ -741,7 +741,7 @@ internal fun PedidoLocalizacao(aoAceitar: () -> Unit, aoRecusar: () -> Unit) {
             Text(stringResource(R.string.loc_titulo), style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.primary)
             FrisoAzulejo(Modifier.fillMaxWidth())
             Text(stringResource(R.string.loc_texto), style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onBackground)
-            Button(onClick = aoAceitar, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.loc_aceitar)) }
+            BotaoPrincipal(aoAceitar, Modifier.fillMaxWidth()) { Text(stringResource(R.string.loc_aceitar)) }
             TextButton(onClick = aoRecusar, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.loc_recusar)) }
         }
     }
