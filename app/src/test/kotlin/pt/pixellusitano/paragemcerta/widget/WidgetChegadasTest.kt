@@ -1,15 +1,12 @@
 package pt.pixellusitano.paragemcerta.widget
 
 import android.appwidget.AppWidgetManager
-import android.content.BroadcastReceiver
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
-import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.drawable.GradientDrawable
-import android.os.Bundle
 import android.view.View
 import android.widget.FrameLayout
 import android.widget.ImageButton
@@ -27,11 +24,6 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import org.robolectric.annotation.GraphicsMode
-import org.robolectric.shadow.api.Shadow
-import org.robolectric.shadows.ShadowBroadcastPendingResult
-import org.robolectric.shadows.ShadowLooper
-import org.robolectric.util.ReflectionHelpers
-import org.robolectric.util.ReflectionHelpers.ClassParameter
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
@@ -41,8 +33,6 @@ import java.time.Instant
 
 private val COBALTO = Azulejo.Cobalto.toArgb()
 private val ELETRICO = Azulejo.Eletrico.toArgb()
-
-private const val ANDROID = "http://schemas.android.com/apk/res/android"
 
 /** O provider a sério, com o atualizador trocado: é por aqui que os testes fazem o trabalho falhar e contam os pedidos. */
 private class WidgetDeTeste(private val a: AtualizadorWidgets) : WidgetChegadas() {
@@ -59,47 +49,17 @@ class WidgetChegadasTest {
     private fun atualizador(ler: suspend () -> Pair<List<Chegada>, Instant>? = { null }) =
         AtualizadorWidgets(dados, { _, _ -> ler() }, { emptyMap() }, { _, _ -> pedidos++; Resultado.Ok(emptyList()) }, { _, _ -> }, { emptyList() }, { agora })
 
-    /** O onReceive como o Android o chama, com um PendingResult que sabe se levou com o finish(). */
-    private fun entregar(receiver: BroadcastReceiver, intent: Intent): BroadcastReceiver.PendingResult {
-        val pendente = ReflectionHelpers.callStaticMethod<BroadcastReceiver.PendingResult>(
-            ShadowBroadcastPendingResult::class.java, "create",
-            ClassParameter.from(Int::class.java, 0), ClassParameter.from(String::class.java, null),
-            ClassParameter.from(Bundle::class.java, null), ClassParameter.from(Boolean::class.java, false),
-        )
-        ReflectionHelpers.setField(receiver, "mPendingResult", pendente)
-        receiver.onReceive(contexto, intent)
-        return pendente
-    }
-
-    private fun acabou(p: BroadcastReceiver.PendingResult) = Shadow.extract<ShadowBroadcastPendingResult>(p).future.isDone
-
-    private fun esperarPeloFim(p: BroadcastReceiver.PendingResult) {
-        val limite = System.currentTimeMillis() + 5_000
-        while (!acabou(p) && System.currentTimeMillis() < limite) {
-            ShadowLooper.idleMainLooper()
-            Thread.sleep(5)
-        }
-    }
-
     private fun atualizacao(vararg ids: Int) = Intent(AppWidgetManager.ACTION_APPWIDGET_UPDATE).putExtra(AppWidgetManager.EXTRA_APPWIDGET_IDS, ids)
 
     private fun toque(id: Int) = Intent(WidgetChegadas.ACAO_ATUALIZAR).putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, id)
 
-    private fun configuracao() = contexto.resources.getXml(R.xml.widget_chegadas).apply { while (name != "appwidget-provider") next() }
+    private fun configuracao() = configuracao(contexto, R.xml.widget_chegadas)
 
     private fun desenhado(conteudo: ConteudoWidget) = vistas(contexto, 1, conteudo).apply(contexto, FrameLayout(contexto))
 
-    private fun noModo(escuro: Boolean) = contexto.createConfigurationContext(
-        Configuration(contexto.resources.configuration).apply {
-            uiMode = (uiMode and Configuration.UI_MODE_NIGHT_MASK.inv()) or (if (escuro) Configuration.UI_MODE_NIGHT_YES else Configuration.UI_MODE_NIGHT_NO)
-        },
-    )
-
     /** O launcher volta a aplicar os mesmos RemoteViews quando o telemóvel muda de modo, sem nada redesenhar. */
-    private fun aplicadoNoOutroModo(desenhadoEscuro: Boolean, conteudo: ConteudoWidget): View {
-        val ecra = noModo(!desenhadoEscuro)
-        return vistas(noModo(desenhadoEscuro), 1, conteudo).apply(ecra, FrameLayout(ecra))
-    }
+    private fun aplicadoNoOutroModo(desenhadoEscuro: Boolean, conteudo: ConteudoWidget): View =
+        aplicadoNoOutroModo(contexto, desenhadoEscuro) { vistas(it, 1, conteudo) }
 
     private val comChegadas = ConteudoWidget(
         "Cais",
@@ -141,7 +101,7 @@ class WidgetChegadasTest {
             val imagem = Bitmap.createBitmap(48, 48, Bitmap.Config.ARGB_8888).also { botao.draw(Canvas(it)) }
             val pixeis = IntArray(48 * 48).also { imagem.getPixels(it, 0, 48, 0, 0, 48, 48) }
             assertTrue("desenhado escuro=$escuro", Color.White.toArgb() in pixeis)
-            assertFalse("desenhado escuro=$escuro", noModo(escuro).getColor(R.color.widget_texto) in pixeis)
+            assertFalse("desenhado escuro=$escuro", noModo(contexto, escuro).getColor(R.color.widget_texto) in pixeis)
         }
     }
 
@@ -168,7 +128,7 @@ class WidgetChegadasTest {
     @Test fun noEstadoAntigoOSeloCinzentoEscolheOTextoPeloContraste() {
         for (escuro in listOf(false, true)) {
             val v = aplicadoNoOutroModo(escuro, comChegadas.copy(cinzento = true))
-            val cinzento = noModo(escuro).getColor(R.color.widget_cinzento)
+            val cinzento = noModo(contexto, escuro).getColor(R.color.widget_cinzento)
             val selo = v.findViewById<TextView>(R.id.widget_linha_1_nome)
             assertEquals(cinzento, selo.backgroundTintList!!.defaultColor)
             assertEquals(corDoTextoSobre(Color(cinzento)).toArgb(), selo.currentTextColor)
@@ -258,24 +218,24 @@ class WidgetChegadasTest {
     @Test fun oFimDoReceiverEChamadoSempre() {
         dados.escolher(1, "CM:060419", "Cais")
         val rebenta = atualizador(ler = { throw IllegalStateException("a base de dados rebentou") })
-        assertTrue("redesenhar", acabou(entregar(WidgetDeTeste(atualizador()), atualizacao(1))))
-        assertTrue("redesenhar que rebenta", acabou(entregar(WidgetDeTeste(rebenta), atualizacao(1))))
-        assertTrue("tocar que rebenta", acabou(entregar(WidgetDeTeste(rebenta), toque(1))))
+        assertTrue("redesenhar", acabou(entregar(contexto, WidgetDeTeste(atualizador()), atualizacao(1))))
+        assertTrue("redesenhar que rebenta", acabou(entregar(contexto, WidgetDeTeste(rebenta), atualizacao(1))))
+        assertTrue("tocar que rebenta", acabou(entregar(contexto, WidgetDeTeste(rebenta), toque(1))))
         dados.esquecer(1)
-        assertTrue("tocar sem paragem", acabou(entregar(WidgetDeTeste(atualizador()), toque(1))))
+        assertTrue("tocar sem paragem", acabou(entregar(contexto, WidgetDeTeste(atualizador()), toque(1))))
     }
 
     @Test fun oFimEChamadoMesmoSemSeConseguirCriarOAtualizador() {
         val estragado = object : WidgetChegadas() {
             override fun atualizador(contexto: Context): AtualizadorWidgets = throw IllegalStateException("não abriu")
         }
-        assertTrue(acabou(entregar(estragado, atualizacao(1))))
+        assertTrue(acabou(entregar(contexto, estragado, atualizacao(1))))
     }
 
     @Test fun oFimEsperaPeloTrabalho() {
         dados.escolher(1, "CM:060419", "Cais")
         val demora = CompletableDeferred<Unit>()
-        val p = entregar(WidgetDeTeste(atualizador(ler = { demora.await(); null })), atualizacao(1))
+        val p = entregar(contexto, WidgetDeTeste(atualizador(ler = { demora.await(); null })), atualizacao(1))
         assertFalse("ainda a trabalhar", acabou(p))
         demora.complete(Unit)
         esperarPeloFim(p)
@@ -284,13 +244,13 @@ class WidgetChegadasTest {
 
     @Test fun atualizacaoDoAndroidSoRedesenha() {
         dados.escolher(1, "CM:060419", "Cais")
-        entregar(WidgetDeTeste(atualizador()), atualizacao(1))
+        entregar(contexto, WidgetDeTeste(atualizador()), atualizacao(1))
         assertEquals(0, pedidos)
     }
 
     @Test fun toqueVaiARede() {
         dados.escolher(1, "CM:060419", "Cais")
-        val p = entregar(WidgetDeTeste(atualizador()), toque(1))
+        val p = entregar(contexto, WidgetDeTeste(atualizador()), toque(1))
         esperarPeloFim(p)
         assertTrue(acabou(p))
         assertEquals(1, pedidos)

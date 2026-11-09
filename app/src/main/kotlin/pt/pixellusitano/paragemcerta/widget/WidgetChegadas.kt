@@ -13,9 +13,6 @@ import android.view.View
 import android.widget.RemoteViews
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import pt.pixellusitano.paragemcerta.MainActivity
 import pt.pixellusitano.paragemcerta.ParagemCertaApp
 import pt.pixellusitano.paragemcerta.R
@@ -39,23 +36,6 @@ open class WidgetChegadas : AppWidgetProvider() {
     override fun onDeleted(contexto: Context, ids: IntArray) {
         val dados = DadosWidget(contexto)
         ids.forEach(dados::esquecer)
-    }
-
-    /**
-     * Na linha principal, onde os onReceive correm um de cada vez e o immediate entra logo: dois toques seguidos não passam os dois
-     * pela regra dos 30 s. Uma falha aqui não pode deitar a app abaixo, e sem o finish() o Android dava o receiver por encravado.
-     */
-    private fun emSegundoPlano(tarefa: suspend () -> Unit) {
-        val pendente = goAsync()
-        CoroutineScope(Dispatchers.Main.immediate).launch {
-            try {
-                tarefa()
-            } catch (e: Exception) {
-                // o widget fica como estava; o próximo toque ou redesenho tenta outra vez
-            } finally {
-                pendente.finish()
-            }
-        }
     }
 
     companion object {
@@ -126,7 +106,7 @@ fun vistas(contexto: Context, id: Int, conteudo: ConteudoWidget): RemoteViews {
 }
 
 /** O único sítio onde o selo depende da versão: o tint mantém-lhe os cantos redondos (Android 12 ou mais); antes, é um retângulo da cor. */
-private fun pintarSelo(v: RemoteViews, id: Int, cor: Int) {
+internal fun pintarSelo(v: RemoteViews, id: Int, cor: Int) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) v.setColorStateList(id, "setBackgroundTintList", ColorStateList.valueOf(cor))
     else v.setInt(id, "setBackgroundColor", cor)
 }
@@ -138,7 +118,7 @@ private fun rodape(contexto: Context, c: ConteudoWidget): String = when (c.estad
 }
 
 // O id como requestCode: o Android não distingue dois PendingIntent só pelos extras, e cada widget tem a sua paragem.
-private const val FLAGS = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
+internal const val FLAGS = PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT
 
 private fun tocarAtualizar(contexto: Context, id: Int) = PendingIntent.getBroadcast(
     contexto, id,

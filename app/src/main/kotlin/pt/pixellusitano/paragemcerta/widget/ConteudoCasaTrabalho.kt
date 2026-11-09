@@ -5,6 +5,7 @@ import pt.pixellusitano.paragemcerta.ui.comum.LISBOA_FUSO
 import pt.pixellusitano.paragemcerta.ui.inicio.EstadoLocal
 import pt.pixellusitano.paragemcerta.ui.inicio.PosicaoComHora
 import pt.pixellusitano.paragemcerta.ui.inicio.estadoDoLocal
+import pt.pixellusitano.paragemcerta.ui.rotas.paraRota
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 
@@ -32,7 +33,8 @@ sealed interface Destino {
 /** "atualizado às [hora]" ou, quando se calculou a partir da posição guardada, "posição das [hora]". */
 data class Rodape(val hora: String, val daPosicaoGuardada: Boolean)
 
-data class ConteudoCasaTrabalho(val casa: Destino, val trabalho: Destino, val rodape: Rodape?)
+/** [rotaCasa] e [rotaTrabalho]: o destino das Rotas ("nome|lat|lon") que o toque abre; null = sem morada. */
+data class ConteudoCasaTrabalho(val casa: Destino, val trabalho: Destino, val rodape: Rodape?, val rotaCasa: String?, val rotaTrabalho: String?)
 
 private val HORA = DateTimeFormatter.ofPattern("HH:mm").withZone(LISBOA_FUSO)
 
@@ -63,5 +65,5 @@ fun conteudoCasaTrabalho(
         calculadaEm != null -> Rodape(HORA.format(Instant.ofEpochMilli(calculadaEm)), daPosicaoGuardada = false)
         else -> null
     }
-    return ConteudoCasaTrabalho(destino(casa), destino(trabalho), rodape)
+    return ConteudoCasaTrabalho(destino(casa), destino(trabalho), rodape, casa?.lugar?.paraRota(), trabalho?.lugar?.paraRota())
 }

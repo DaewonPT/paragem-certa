@@ -38,7 +38,7 @@
             </intent-filter>
         </activity>
 
-        <!-- O widget só desenha o que está guardado quando o Android o acorda: updatePeriodMillis 0, nada agendado. -->
+        <!-- Os widgets só desenham o que está guardado quando o Android os acorda: updatePeriodMillis 0, nada agendado. -->
         <receiver
             android:name=".widget.WidgetChegadas"
             android:label="@string/widget_nome"
@@ -49,6 +49,18 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/widget_chegadas" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.WidgetCasaTrabalho"
+            android:label="@string/widget_casa_trabalho_nome"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/widget_casa_trabalho" />
         </receiver>
 
         <activity

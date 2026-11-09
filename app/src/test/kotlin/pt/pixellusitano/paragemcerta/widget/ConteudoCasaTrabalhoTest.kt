@@ -39,6 +39,8 @@ class ConteudoCasaTrabalhoTest {
         val c = conteudo(ligacoes = mapOf("CASA" to ok, "TRABALHO" to ok.copy(linha = "728")))
         assertEquals(Destino.Ligacao("Casa", ok), c.casa)
         assertEquals(Destino.Ligacao("Trabalho", ok.copy(linha = "728")), c.trabalho)
+        assertEquals("o toque abre as Rotas até à morada", "Casa|38.7369|-9.1427", c.rotaCasa)
+        assertEquals("Trabalho|38.7058|-9.1431", c.rotaTrabalho)
     }
 
     @Test fun estasPertoA500Metros() {
@@ -53,6 +55,8 @@ class ConteudoCasaTrabalhoTest {
         val c = conteudo(casa = null, trabalho = null)
         assertEquals(Destino.SemMorada, c.casa)
         assertEquals(Destino.SemMorada, c.trabalho)
+        assertEquals(null, c.rotaCasa)
+        assertEquals(null, c.rotaTrabalho)
     }
 
     @Test fun moradaEPosicaoSemLigacaoPedeOToque() {

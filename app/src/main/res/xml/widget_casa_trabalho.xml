@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- updatePeriodMillis 0: nada acorda o widget; só calcula com a app aberta ou no ↻. Sem configure: o Android chama o onUpdate ao pô-lo. -->
+<!-- 4×2 por omissão; encolhido até uma célula (40 dp) passa ao 4×1. -->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/widget_casa_trabalho_descricao"
+    android:initialLayout="@layout/widget_casa_trabalho_4x2"
+    android:minWidth="250dp"
+    android:minHeight="110dp"
+    android:minResizeHeight="40dp"
+    android:previewLayout="@layout/widget_casa_trabalho_4x2"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellWidth="4"
+    android:targetCellHeight="2"
+    android:updatePeriodMillis="0"
+    android:widgetCategory="home_screen" />

@@ -234,6 +234,8 @@ fun InicioEcra(
     abrirFavoritos: Boolean = false,
     aoAbrirConta: (() -> Unit)? = null,
     mapa: (@Composable (LigacaoMapaInicio) -> Unit)? = null,
+    definirLocal: String? = null,
+    aoDefinirLocalAberto: () -> Unit = {},
 ) {
     val contexto = LocalContext.current
     val vm = viewModel { InicioViewModel(repositorio::paragensNaZona, repositorio::veiculos, repositorio::lugarEm, repositorio::veiculosCarris) }
@@ -346,6 +348,13 @@ fun InicioEcra(
         if (abrirFavoritos && !favoritosAbertos) {
             favoritosAbertos = true
             folha.bottomSheetState.expand()
+        }
+    }
+    // O widget "Casa e Trabalho" sem morada: abre já a escolha desse tipo, e avisa para o pedido não se repetir.
+    LaunchedEffect(definirLocal) {
+        if (definirLocal != null) {
+            definir = definirLocal
+            aoDefinirLocalAberto()
         }
     }
     val tipo = definir

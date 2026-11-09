@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- De ponta a ponta: no Android 12 ou mais o clipToOutline da raiz recorta-o nos cantos. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="@color/widget_cobalto" />
+</shape>

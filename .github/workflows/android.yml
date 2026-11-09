@@ -62,8 +62,8 @@ jobs:
             :app:assemblePessoalDebug
 
       # Os serviços (viagem e avisos de chegada) e as permissões do manifesto fundido não podem mudar sem ninguém ver.
-      # O widget é um só receiver e a app não pede alarmes exatos (nada corre com a app fechada).
-      - name: Check merged manifest (trip and arrival-alert services, widget receiver, permissions)
+      # Os widgets são exatamente os dois da app (um terceiro falha aqui) e a app não pede alarmes exatos (nada corre com a app fechada).
+      - name: Check merged manifest (trip and arrival-alert services, widget receivers, permissions)
         run: |
           MANIFESTO=$(find app/build/intermediates/merged_manifests/pessoalDebug -name AndroidManifest.xml)
           [ -f "$MANIFESTO" ] || { echo "::error::Sem manifesto fundido da variante pessoal"; exit 1; }
@@ -76,7 +76,9 @@ jobs:
           permissoes = {p.get(A + "name") for p in raiz if p.tag.startswith("uses-permission")}
           servicos = [s for s in raiz.iter("service") if (s.get(A + "name") or "").endswith(".viagem.ServicoViagem")]
           avisos = [s for s in raiz.iter("service") if (s.get(A + "name") or "").endswith(".aviso.ServicoAvisoChegada")]
-          widgets = [r for r in raiz.iter("receiver") if (r.get(A + "name") or "").endswith(".widget.WidgetChegadas")]
+          # Pela meta-data do provider: o manifesto fundido traz também os receivers das bibliotecas.
+          widgets = sorted((r.get(A + "name") or "").rsplit(".", 1)[-1] for r in raiz.iter("receiver")
+                           if any(m.get(A + "name") == "android.appwidget.provider" for m in r.iter("meta-data")))
           erros = []
           for nome in ("FOREGROUND_SERVICE_LOCATION", "FOREGROUND_SERVICE_SPECIAL_USE", "POST_NOTIFICATIONS"):
               if "android.permission." + nome not in permissoes:
@@ -84,8 +86,8 @@ jobs:
           for nome in ("ACCESS_BACKGROUND_LOCATION", "USE_FULL_SCREEN_INTENT", "REQUEST_IGNORE_BATTERY_OPTIMIZATIONS", "SCHEDULE_EXACT_ALARM", "USE_EXACT_ALARM"):
               if "android.permission." + nome in permissoes:
                   erros.append("a permissão " + nome + " não pode existir")
-          if len(widgets) != 1:
-              erros.append("devia haver um só receiver .widget.WidgetChegadas e há %d" % len(widgets))
+          if widgets != ["WidgetCasaTrabalho", "WidgetChegadas"]:
+              erros.append("os widgets deviam ser WidgetCasaTrabalho e WidgetChegadas e são %s" % widgets)
           if len(servicos) != 1:
               erros.append("devia haver um só ServicoViagem e há %d" % len(servicos))
           else:

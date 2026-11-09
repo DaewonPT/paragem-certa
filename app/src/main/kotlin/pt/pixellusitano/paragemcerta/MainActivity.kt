@@ -18,7 +18,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import pt.pixellusitano.paragemcerta.atualizar.Atualizacoes
 import pt.pixellusitano.paragemcerta.core.atraso.Limites
 import pt.pixellusitano.paragemcerta.dados.AtualizacaoDiaria
@@ -44,6 +46,12 @@ class MainActivity : ComponentActivity() {
     companion object {
         /** A chave da paragem que um widget tocado quer abrir. */
         const val EXTRA_ABRIR_PARAGEM = "pt.pixellusitano.paragemcerta.ABRIR_PARAGEM"
+
+        /** O destino das Rotas ("nome|lat|lon") da Casa ou do Trabalho tocados no widget. */
+        const val EXTRA_ABRIR_ROTA_LOCAL = "pt.pixellusitano.paragemcerta.ABRIR_ROTA_LOCAL"
+
+        /** "CASA" ou "TRABALHO": tocado no widget sem morada, abre o Início a escolhê-la. */
+        const val EXTRA_DEFINIR_LOCAL = "pt.pixellusitano.paragemcerta.DEFINIR_LOCAL"
     }
 
     /** A notificação da viagem foi tocada: a Navegacao abre o ecrã da viagem e desliga isto. */
@@ -52,11 +60,17 @@ class MainActivity : ComponentActivity() {
     /** A chave da paragem de um widget tocado: a Navegacao abre-a e põe isto a null. */
     private var abrirParagem by mutableStateOf<String?>(null)
 
+    /** O mesmo para o widget "Casa e Trabalho": o destino das Rotas, ou o tipo de morada a escolher. */
+    private var abrirRota by mutableStateOf<String?>(null)
+    private var definirLocal by mutableStateOf<String?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         // Só na abertura: depois de rodar o ecrã o intent é o mesmo e o ecrã da viagem não se abria outra vez.
         abrirViagem = savedInstanceState == null && intent.getBooleanExtra(Notificacoes.EXTRA_ABRIR_VIAGEM, false)
         abrirParagem = if (savedInstanceState == null) intent.getStringExtra(EXTRA_ABRIR_PARAGEM) else null
+        abrirRota = if (savedInstanceState == null) intent.getStringExtra(EXTRA_ABRIR_ROTA_LOCAL) else null
+        definirLocal = if (savedInstanceState == null) intent.getStringExtra(EXTRA_DEFINIR_LOCAL) else null
         // Aqui e não na Application: essa corre também no processo :trip, que não pode tocar no WorkManager.
         AtualizacaoDiaria.cancelarTrabalhosAntigos(applicationContext)
         enableEdgeToEdge()
@@ -71,6 +85,7 @@ class MainActivity : ComponentActivity() {
                 launch { semFalhar { ligacoes.fotosDeRua.aoAbrir() } }
                 launch { semFalhar { ligacoes.conta.aoAbrir() } }
                 launch { semFalhar { ligacoes.widgets.aoAbrirApp() } }
+                launch { semFalhar { ligacoes.casaTrabalho.redesenhar() } }
             }
         }
         setContent {
@@ -93,6 +108,8 @@ class MainActivity : ComponentActivity() {
                     Navegacao(
                         ligacoes, abrirViagem, aoAbrirViagem = { abrirViagem = false },
                         abrirParagem = abrirParagem, aoAbrirParagem = { abrirParagem = null },
+                        abrirRota = abrirRota, aoAbrirRota = { abrirRota = null },
+                        definirLocal = definirLocal, aoDefinirLocalAberto = { definirLocal = null },
                     )
                 }
             }
@@ -109,6 +126,8 @@ class MainActivity : ComponentActivity() {
         Atualizacoes.aoSair(applicationContext)
         val ligacoes = (application as ParagemCertaApp).ligacoes
         lifecycleScope.launch { semFalhar { ligacoes.widgets.aoSairDaApp() } }
+        // Só o que está guardado; o Back no Android 8 a 11 cancela o âmbito logo a seguir ao onStop.
+        lifecycleScope.launch { semFalhar { withContext(NonCancellable) { ligacoes.casaTrabalho.redesenhar() } } }
     }
 
     /** A app já estava aberta (SINGLE_TOP) e a notificação da viagem ou um widget foi tocado. */
@@ -116,5 +135,7 @@ class MainActivity : ComponentActivity() {
         super.onNewIntent(intent)
         if (intent.getBooleanExtra(Notificacoes.EXTRA_ABRIR_VIAGEM, false)) abrirViagem = true
         intent.getStringExtra(EXTRA_ABRIR_PARAGEM)?.let { abrirParagem = it }
+        intent.getStringExtra(EXTRA_ABRIR_ROTA_LOCAL)?.let { abrirRota = it }
+        intent.getStringExtra(EXTRA_DEFINIR_LOCAL)?.let { definirLocal = it }
     }
 }

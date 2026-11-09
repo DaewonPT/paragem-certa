@@ -151,15 +151,33 @@ internal fun AbrirParagemDoWidget(nav: NavController, chave: String?, aoAbrir: (
     }
 }
 
+/** A Casa ou o Trabalho tocados no widget: [destino] ("nome|lat|lon") abre as Rotas até lá, como o cartão do Início. */
+@Composable
+internal fun AbrirRotaDoWidget(nav: NavController, destino: String?, aoAbrir: () -> Unit) {
+    LaunchedEffect(destino) {
+        if (destino != null) {
+            nav.navigate(Rotas(destino = destino))
+            aoAbrir()
+        }
+    }
+}
+
+/** O ecrã inicial escolhido nas Definições, ou o Início quando a app abre por fora (a notificação da viagem ou um widget). */
+fun ecraDeArranque(escolhido: EcraInicial, abrirViagem: Boolean, abrirParagem: String?, abrirRota: String?, definirLocal: String?): EcraInicial =
+    if (abrirViagem || abrirParagem != null || abrirRota != null || definirLocal != null) EcraInicial.MAPA else escolhido
+
 /**
  * Ecrãs com a barra de baixo (Início, Rotas, Linhas e Menu). abrirViagem: a notificação da viagem foi tocada, por isso
  * abre-se o ecrã da viagem e avisa-se (aoAbrirViagem) para o pedido não se repetir. abrirParagem: o mesmo para um widget
- * (a chave da paragem dele).
+ * (a chave da paragem dele); abrirRota e definirLocal, para o widget "Casa e Trabalho" (o destino das Rotas, ou o tipo de morada
+ * a escolher no Início).
  */
 @Composable
 fun Navegacao(
     ligacoes: Ligacoes, abrirViagem: Boolean = false, aoAbrirViagem: () -> Unit = {},
     abrirParagem: String? = null, aoAbrirParagem: () -> Unit = {},
+    abrirRota: String? = null, aoAbrirRota: () -> Unit = {},
+    definirLocal: String? = null, aoDefinirLocalAberto: () -> Unit = {},
 ) {
     val nav = rememberNavController()
     val contexto = LocalContext.current
@@ -170,6 +188,11 @@ fun Navegacao(
         }
     }
     AbrirParagemDoWidget(nav, abrirParagem, aoAbrirParagem)
+    AbrirRotaDoWidget(nav, abrirRota, aoAbrirRota)
+    // A morada escolhe-se dentro do Início: vai-se para lá, e é o InicioEcra que a abre e avisa.
+    LaunchedEffect(definirLocal) {
+        if (definirLocal != null) nav.irParaSeparador(Inicio)
+    }
     val atual by nav.currentBackStackEntryAsState()
     val destino = atual?.destination
     val naInicio = destino?.hasRoute(Inicio::class) == true
@@ -191,7 +214,7 @@ fun Navegacao(
     var abrirFavoritos by rememberSaveable { mutableStateOf(false) }
     LaunchedEffect(Unit) {
         if (ecraInicialAplicado) return@LaunchedEffect
-        val ecra = if (abrirViagem || abrirParagem != null) EcraInicial.MAPA else ligacoes.preferencias.ecraInicial.first()
+        val ecra = ecraDeArranque(ligacoes.preferencias.ecraInicial.first(), abrirViagem, abrirParagem, abrirRota, definirLocal)
         ecraInicialAplicado = true
         destinoInicial(ecra).let { if (it !is Inicio) separador(it) }
         abrirFavoritos = ecra == EcraInicial.FAVORITOS
@@ -259,6 +282,8 @@ fun Navegacao(
                         aoIrPara = { nav.navigate(it) },
                         aoAbrirViagem = { nav.navigate(Viagem) },
                         abrirFavoritos = abrirFavoritos,
+                        definirLocal = definirLocal,
+                        aoDefinirLocalAberto = aoDefinirLocalAberto,
                         aoAbrirConta = if (config.interruptores.conta) ({ nav.navigate(ContaRota) }) else null,
                         painel = { posicao, aoDefinirLocal ->
                             Painel(

@@ -4,4 +4,6 @@
     <color name="widget_texto">#FFEAF0FB</color>
     <color name="widget_verde">#FF4ADE80</color>
     <color name="widget_cinzento">#FF8D9AB3</color>
+    <color name="widget_icone">#FF7FB0FF</color>
+    <color name="widget_contorno">#FF33467A</color>
 </resources>

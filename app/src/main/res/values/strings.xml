@@ -603,4 +603,10 @@
     <string name="widget_casa_sem_ligacao">Sem ligação — toca em ↻</string>
     <string name="widget_sem_posicao">Abre a app para saber onde estás</string>
     <string name="widget_posicao_das">posição das %1$s</string>
+    <string name="widget_casa_trabalho_nome">Casa e Trabalho</string>
+    <string name="widget_casa_trabalho_descricao">Como ir para casa e para o trabalho a partir de onde estás.</string>
+    <string name="widget_trocar">Trocar entre Casa e Trabalho</string>
+    <string name="widget_destino_ligacao">%1$s: %2$s, sai às %3$s, %4$s</string>
+    <string name="widget_destino_passada">%1$s: %2$s, saiu às %3$s, %4$s</string>
+    <string name="widget_destino_estado">%1$s: %2$s</string>
 </resources>

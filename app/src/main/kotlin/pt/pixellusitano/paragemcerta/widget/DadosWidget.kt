@@ -36,7 +36,7 @@ class DadosWidget(contexto: Context) {
         return chave to (preferencias.getString("nome_$id", null) ?: return null)
     }
 
-    fun esquecer(id: Int) = preferencias.edit().remove("chave_$id").remove("nome_$id").remove("tentativa_$id").apply()
+    fun esquecer(id: Int) = preferencias.edit().remove("chave_$id").remove("nome_$id").remove("tentativa_$id").remove("mostrado_$id").apply()
 
     fun esquecerTudo() = preferencias.edit().clear().apply()
 
@@ -44,6 +44,11 @@ class DadosWidget(contexto: Context) {
         if (preferencias.contains("tentativa_$id")) Instant.ofEpochMilli(preferencias.getLong("tentativa_$id", 0)) else null
 
     fun marcarTentativa(id: Int, agora: Instant) = preferencias.edit().putLong("tentativa_$id", agora.toEpochMilli()).apply()
+
+    /** O destino à vista num "Casa e Trabalho" 4×1 (0 = Casa, 1 = Trabalho), para o redesenho seguinte não o trocar. */
+    fun mostrar(id: Int, indice: Int) = preferencias.edit().putInt("mostrado_$id", indice).apply()
+
+    fun mostrado(id: Int): Int = preferencias.getInt("mostrado_$id", 0)
 
     /** [tipo]: "CASA" ou "TRABALHO". */
     fun guardarLigacao(tipo: String, l: LigacaoGuardada) = preferencias.edit().putString("ligacao_$tipo", JSON.encodeToString(l)).apply()

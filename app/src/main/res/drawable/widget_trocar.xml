@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- O traço do ícone Trocar da app. Cobalto na pré-visualização; no desenho a cor segue o modo (setColorFilter). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:pathData="M4 8h15M15 4l4 4-4 4"
+        android:strokeColor="#FF1F4FA3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="2" />
+    <path
+        android:pathData="M20 16H5M9 12l-4 4 4 4"
+        android:strokeColor="#FF1F4FA3"
+        android:strokeLineCap="round"
+        android:strokeLineJoin="round"
+        android:strokeWidth="2" />
+</vector>

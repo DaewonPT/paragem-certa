@@ -1,5 +1,7 @@
 package pt.pixellusitano.paragemcerta.dados
 
+import android.appwidget.AppWidgetManager
+import android.content.ComponentName
 import android.content.Context
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.room.Room
@@ -17,7 +19,9 @@ import pt.pixellusitano.paragemcerta.core.rede.userAgent
 import pt.pixellusitano.paragemcerta.ui.inicio.posicaoAtual
 import pt.pixellusitano.paragemcerta.widget.AtualizadorCasaTrabalho
 import pt.pixellusitano.paragemcerta.widget.DadosWidget
+import pt.pixellusitano.paragemcerta.widget.WidgetCasaTrabalho
 import pt.pixellusitano.paragemcerta.widget.criarAtualizadorWidgets
+import pt.pixellusitano.paragemcerta.widget.desenhoDoWidget
 import java.time.Instant
 
 private val Context.lojaPreferencias by preferencesDataStore(name = "preferencias")
@@ -44,8 +48,8 @@ class Ligacoes(contexto: Context) {
         lerLocais = { repositorio.locais().first() },
         planear = { de, para, hora -> repositorio.planear(de, para, hora, false, Filtros()) },
         posicaoAtual = { posicaoAtual(contexto.applicationContext) },
-        desenhar = { _, _ -> },
-        todos = { emptyList() },
+        desenhar = { id, conteudo -> AppWidgetManager.getInstance(contexto).updateAppWidget(id, desenhoDoWidget(contexto.applicationContext, id, conteudo)) },
+        todos = { AppWidgetManager.getInstance(contexto).getAppWidgetIds(ComponentName(contexto, WidgetCasaTrabalho::class.java)).toList() },
     )
     // Por esta ordem: primeiro limpa o ficheiro dos widgets, depois o "Casa e Trabalho" redesenha-se sem nada.
     val conta = Conta(contexto, servidor, repositorio, esquecerWidgets = { widgets.aoApagarDados(); casaTrabalho.redesenhar() })

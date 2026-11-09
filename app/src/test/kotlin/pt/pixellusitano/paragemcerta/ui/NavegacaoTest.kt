@@ -34,6 +34,9 @@ class NavegacaoTest {
     /** O que a MainActivity guarda quando um widget é tocado, e quantas vezes a Navegacao avisou que já abriu. */
     private var pedidoDoWidget by mutableStateOf<String?>(null)
     private var avisos = 0
+    /** O mesmo para os destinos do widget "Casa e Trabalho" ("nome|lat|lon"). */
+    private var rotaDoWidget by mutableStateOf<String?>(null)
+    private var avisosRota = 0
 
     @Before fun montar() {
         regra.setContent {
@@ -49,6 +52,7 @@ class NavegacaoTest {
                 composable<Paragem> { Text("paragem") }
             }
             AbrirParagemDoWidget(nav, pedidoDoWidget, aoAbrir = { pedidoDoWidget = null; avisos++ })
+            AbrirRotaDoWidget(nav, rotaDoWidget, aoAbrir = { rotaDoWidget = null; avisosRota++ })
         }
     }
 
@@ -107,6 +111,26 @@ class NavegacaoTest {
         assertEquals(Linhas, destinoInicial(EcraInicial.LINHAS))
         // Os favoritos são o Início com o painel aberto: o destino é o mesmo, o painel abre-se no InicioEcra.
         assertEquals(Inicio, destinoInicial(EcraInicial.FAVORITOS))
+    }
+
+    // Aberta por fora (notificação ou widget), a app fica no Início: o separador escolhido tapava o que se pediu.
+    @Test fun ecraDeArranqueSoSemPedidosDeFora() {
+        for (e in EcraInicial.entries) assertEquals(e, ecraDeArranque(e, abrirViagem = false, abrirParagem = null, abrirRota = null, definirLocal = null))
+        assertEquals(EcraInicial.MAPA, ecraDeArranque(EcraInicial.LINHAS, abrirViagem = true, abrirParagem = null, abrirRota = null, definirLocal = null))
+        assertEquals(EcraInicial.MAPA, ecraDeArranque(EcraInicial.LINHAS, abrirViagem = false, abrirParagem = "CM:060419", abrirRota = null, definirLocal = null))
+        assertEquals(EcraInicial.MAPA, ecraDeArranque(EcraInicial.ROTAS, abrirViagem = false, abrirParagem = null, abrirRota = "Casa|38.7|-9.1", definirLocal = null))
+        assertEquals(EcraInicial.MAPA, ecraDeArranque(EcraInicial.FAVORITOS, abrirViagem = false, abrirParagem = null, abrirRota = null, definirLocal = "CASA"))
+    }
+
+    @Test fun rotaDoWidgetAbreAsRotasAteLaEAvisa() {
+        regra.runOnIdle { rotaDoWidget = "Casa|38.7369|-9.1427" }
+        regra.runOnIdle {
+            assertEquals(Rotas(destino = "Casa|38.7369|-9.1427"), nav.currentBackStackEntry!!.toRoute<Rotas>())
+            assertEquals(1, avisosRota)
+            assertEquals(null, rotaDoWidget)
+            nav.popBackStack()
+        }
+        regra.runOnIdle { assertTrue("voltar regressa ao que estava aberto", naInicio()) }
     }
 
     @Test fun pesquisaDeLinhaAbreOEcraDaLinha() {

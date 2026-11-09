@@ -97,6 +97,7 @@ class InicioEcraTest {
     private var ligacao: LigacaoMapaInicio? = null
     private var pesquisou = 0
     private var abriuConta = 0
+    private var definirAberto = 0
     private var mostrar by mutableStateOf(true)
 
     @Before fun preparar() {
@@ -120,6 +121,7 @@ class InicioEcraTest {
         dono: Dono? = null,
         painelAlto: Boolean = false,
         abrirFavoritos: Boolean = false,
+        definirLocal: String? = null,
     ) {
         val permissoes = arrayOf(Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION)
         if (comPermissao) shadowOf(app).grantPermissions(*permissoes) else shadowOf(app).denyPermissions(*permissoes)
@@ -142,6 +144,8 @@ class InicioEcraTest {
                             aoPesquisar = { pesquisou++ },
                             painel = { _, _ -> if (painelAlto) Box(Modifier.fillMaxWidth().height(2_000.dp)) },
                             abrirFavoritos = abrirFavoritos,
+                            definirLocal = definirLocal,
+                            aoDefinirLocalAberto = { definirAberto++ },
                             aoAbrirConta = if (contaLigada) ({ abriuConta++ }) else null,
                             mapa = {
                                 ligacao = it
@@ -152,7 +156,7 @@ class InicioEcraTest {
                 }
             }
         }
-        regra.waitUntil(5_000) { ligacao != null }
+        regra.waitUntil(5_000) { ligacao != null || definirAberto > 0 }
     }
 
     // ---- o botão da posição e o modo bússola ----
@@ -313,6 +317,13 @@ class InicioEcraTest {
         regra.onNodeWithContentDescription(centrar).assert(botao)
         entrarNaBussola()
         regra.onNodeWithContentDescription("Voltar ao norte").assert(botao)
+    }
+
+    // O widget "Casa e Trabalho" sem morada: a app abre já a escolher a morada desse tipo, e avisa para não abrir outra vez.
+    @Test fun definirLocalDoWidgetAbreAEscolhaDaCasa() {
+        abrir(definirLocal = "CASA")
+        regra.onNodeWithText("Onde é a tua casa?").assertIsDisplayed()
+        assertEquals(1, definirAberto)
     }
 
     @Test fun pesquisaAbreAPesquisa() {

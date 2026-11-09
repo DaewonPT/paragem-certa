@@ -45,8 +45,8 @@ class AtualizadorCasaTrabalho(
     private val relogio: () -> Instant = Instant::now,
     private val despachoDoPedido: CoroutineDispatcher = Dispatchers.IO,
 ) {
-    /** Só o que está guardado, sem rede. */
-    suspend fun redesenhar() = desenharTodos(lerLocais(), aCalcular = false)
+    /** Só o que está guardado, sem rede; [ids]: os widgets a redesenhar. */
+    suspend fun redesenhar(ids: Collection<Int> = todos()) = desenharTodos(lerLocais(), aCalcular = false, ids)
 
     /** O ↻ de qualquer um destes widgets: a posição atual (ou a guardada), um pedido por destino em paralelo, e redesenha todos. */
     suspend fun atualizar() {
@@ -99,11 +99,11 @@ class AtualizadorCasaTrabalho(
         redesenhar()
     }
 
-    private fun desenharTodos(locais: List<LocalGuardado>, aCalcular: Boolean) {
+    private fun desenharTodos(locais: List<LocalGuardado>, aCalcular: Boolean, ids: Collection<Int> = todos()) {
         val (casa, trabalho) = casaETrabalho(locais)
         val ligacoes = TIPOS.mapNotNull { t -> dados.ligacao(t)?.let { t to it } }.toMap()
         val conteudo = conteudoCasaTrabalho(casa, trabalho, ligacoes, dados.posicao(), dados.daPosicaoGuardada(), relogio(), aCalcular)
-        todos().forEach { desenhar(it, conteudo) }
+        ids.forEach { desenhar(it, conteudo) }
     }
 
     private fun casaETrabalho(locais: List<LocalGuardado>) = TIPOS.map { t -> locais.firstOrNull { it.tipo == t } }

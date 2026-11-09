@@ -9,4 +9,7 @@
     <color name="widget_texto">#FF132A4F</color>
     <color name="widget_verde">#FF15803D</color>
     <color name="widget_cinzento">#FF56647C</color>
+    <!-- Os ícones fora da faixa (Cobalto; no escuro, CeuNoite) e a linha entre a Casa e o Trabalho. -->
+    <color name="widget_icone">#FF1F4FA3</color>
+    <color name="widget_contorno">#FFDCE4F2</color>
 </resources>

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Antes do Android 12 nada recorta os filhos da raiz: o friso do 4×1 fica afastado dos cantos redondos. -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@color/widget_cobalto"
+    android:insetLeft="20dp"
+    android:insetRight="20dp" />
