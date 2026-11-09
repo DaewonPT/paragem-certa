@@ -403,14 +403,14 @@ private fun LinhaParagem(p: ParagemVista) {
         if (p.sai) stringResource(R.string.viagem_sais_aqui) else null,
     )
     Row(
-        Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(horizontal = 16.dp, vertical = 6.dp).semantics(mergeDescendants = true) {},
-        verticalAlignment = Alignment.CenterVertically,
+        Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(horizontal = 16.dp, vertical = 12.dp).semantics(mergeDescendants = true) {},
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
+        // A hora e o nome alinham pela primeira linha de base e o marcador assenta nela: com o nome em duas linhas, ficam ao lado da primeira.
         // Largura mínima, não fixa: com letra grande a hora cresce em vez de partir em duas linhas.
-        Text(p.hora.horaLisboa(), Modifier.widthIn(min = 56.dp), color = cor, fontWeight = FontWeight.ExtraBold, softWrap = false)
-        Box(Modifier.size(12.dp).then(marcador))
-        Column(Modifier.weight(1f)) {
+        Text(p.hora.horaLisboa(), Modifier.alignByBaseline().widthIn(min = 56.dp), color = cor, fontWeight = FontWeight.ExtraBold, softWrap = false)
+        Box(Modifier.alignBy { it.measuredHeight }.size(12.dp).then(marcador))
+        Column(Modifier.weight(1f).alignByBaseline()) {
             Text(p.nome, color = cor, fontWeight = if (p.aqui || p.sai) FontWeight.Bold else FontWeight.Normal)
             if (etiquetas.isNotEmpty()) {
                 Text(

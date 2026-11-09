@@ -9,16 +9,21 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.positionInRoot
+import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
+import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -93,6 +98,23 @@ class ViagemScreenshotTest {
         listOf("Faltam 3 paragens · sais em Oriente", "Silenciar", "Já saí", "Parar").forEach { texto(it).assertIsDisplayed() }
         regra.abrirPainel()
         texto("Partilhar chegada").assertIsDisplayed()
+    }
+
+    // A paragem com "Estás aqui" por baixo do nome é mais alta: a hora fica ao lado do nome, não a meio da fila.
+    @Test fun comLetraA200AHoraAlinhaPelaPrimeiraLinhaDoNome() {
+        regra.setContent {
+            val d = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(d.density, fontScale = 2f)) {
+                TemaParagemCerta(ModoTema.CLARO) { Ecra(ex.aBordo(plano, 1, k = 2)) }
+            }
+        }
+        fun linhaDeBase(texto: String): Float {
+            val no = regra.onAllNodesWithText(texto, useUnmergedTree = true).onFirst().fetchSemanticsNode()
+            val resultados = mutableListOf<TextLayoutResult>()
+            no.config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(resultados)
+            return no.positionInRoot.y + resultados.first().getLineBaseline(0)
+        }
+        assertEquals(linhaDeBase("Alcântara"), linhaDeBase("11:07"), 1f)
     }
 
     @Test fun emHorarioMostraOSelo() {
