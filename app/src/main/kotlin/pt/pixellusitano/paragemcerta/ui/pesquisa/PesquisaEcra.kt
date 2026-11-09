@@ -11,13 +11,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
-import androidx.compose.material3.HorizontalDivider
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -29,10 +27,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -50,8 +48,12 @@ import pt.pixellusitano.paragemcerta.core.modelo.Lugar
 import pt.pixellusitano.paragemcerta.core.modelo.Paragem
 import pt.pixellusitano.paragemcerta.core.modelo.TipoLugar
 import pt.pixellusitano.paragemcerta.dados.Repositorio
+import pt.pixellusitano.paragemcerta.ui.comum.CampoAzulejo
+import pt.pixellusitano.paragemcerta.ui.comum.FaixaAzulejo
+import pt.pixellusitano.paragemcerta.ui.comum.FatiaAzulejo
 import pt.pixellusitano.paragemcerta.ui.comum.ItemLista
 import pt.pixellusitano.paragemcerta.ui.comum.SeloLinha
+import pt.pixellusitano.paragemcerta.ui.comum.TituloSecao
 import pt.pixellusitano.paragemcerta.ui.comum.corDaLinha
 import pt.pixellusitano.paragemcerta.ui.inicio.ultimaPosicao
 
@@ -86,7 +88,7 @@ fun PesquisaEcra(
 
 /**
  * "Para onde vais?": linhas, depois sítios e moradas, depois estações e paragens. Tocar num sítio ou estação escolhe o destino;
- * a ☆ de um sítio ou morada guarda-o nos favoritos ([aoGuardar]). Enquanto [aProcurar], ainda não há resultados finais: nenhuma mensagem de vazio.
+ * a estrela de um sítio ou morada guarda-o nos favoritos ([aoGuardar]). Enquanto [aProcurar], ainda não há resultados finais: nenhuma mensagem de vazio.
  */
 @Composable
 fun PesquisaConteudo(
@@ -108,16 +110,12 @@ fun PesquisaConteudo(
     val sitios = resultados.filterIsInstance<ResultadoPesquisa.DeLugar>()
     val estacoes = resultados.filterIsInstance<ResultadoPesquisa.DeEstacao>()
 
-    Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).statusBarsPadding()) {
-        Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = aoVoltar, Modifier.size(48.dp)) { Icon(Icones.Voltar, stringResource(R.string.voltar)) }
-            OutlinedTextField(
-                value = texto,
-                onValueChange = aoEscrever,
-                singleLine = true,
-                placeholder = { Text(stringResource(R.string.pesquisa_campo)) },
-                modifier = Modifier.weight(1f).focusRequester(foco),
-            )
+    Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+        FaixaAzulejo {
+            Row(Modifier.padding(start = 4.dp, end = 16.dp, top = 8.dp, bottom = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = aoVoltar, Modifier.size(48.dp)) { Icon(Icones.Voltar, stringResource(R.string.voltar), tint = Color.White) }
+                CampoAzulejo(texto, aoEscrever, stringResource(R.string.pesquisa_campo), Modifier.weight(1f).focusRequester(foco))
+            }
         }
         // Sem rede, "experimenta o nome de uma rua" não ajuda: fica só o aviso de ligação, no fim da lista.
         if (texto.trim().length >= 2 && resultados.isEmpty() && !semRede && !aProcurar) {
@@ -125,76 +123,77 @@ fun PesquisaConteudo(
             Text(stringResource(mensagem), color = MaterialTheme.colorScheme.onSurfaceVariant,
                 modifier = Modifier.padding(16.dp))
         }
-        LazyColumn {
-            items(linhas) { r ->
-                ItemLista(onClick = { aoAbrirLinha(r.l) }) {
-                    SeloLinha(r.l.nomeCurto, corDaLinha(r.l.cor, r.l.modo))
-                    Text(r.l.nomeLongo, color = MaterialTheme.colorScheme.onBackground)
+        LazyColumn(contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp)) {
+            itemsIndexed(linhas) { i, r ->
+                FatiaAzulejo(i, linhas.size) {
+                    ItemLista(onClick = { aoAbrirLinha(r.l) }) {
+                        SeloLinha(r.l.nomeCurto, corDaLinha(r.l.cor, r.l.modo))
+                        Text(r.l.nomeLongo, color = MaterialTheme.colorScheme.onBackground)
+                    }
                 }
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
             }
             if (sitios.isNotEmpty()) {
-                item { Cabecalho(stringResource(R.string.pesquisa_sitios)) }
-                items(sitios) { r ->
-                    // A ☆ é irmã da linha, não filha, como o botão "Chegadas": cada uma tem o seu alvo.
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.weight(1f)) {
-                            ItemLista(onClick = { aoIrPara(r.l) }) {
-                                Text("📍", color = MaterialTheme.colorScheme.primary)
-                                Column {
-                                    Text(r.l.nome, color = MaterialTheme.colorScheme.onBackground)
-                                    r.l.zona?.let {
-                                        Text(
-                                            it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall,
-                                            maxLines = 2, overflow = TextOverflow.Ellipsis,
-                                        )
-                                    }
-                                    if (ehLugarDeCodigoPostal(r.l)) {
-                                        Text(
-                                            stringResource(R.string.fonte_geoapi), color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                            style = MaterialTheme.typography.bodySmall,
-                                        )
+                item { TituloSecao(stringResource(R.string.pesquisa_sitios), Modifier.padding(horizontal = 16.dp)) }
+                itemsIndexed(sitios) { i, r ->
+                    FatiaAzulejo(i, sitios.size) {
+                        // A estrela é irmã da linha, não filha, como o botão "Chegadas": cada uma tem o seu alvo.
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.weight(1f)) {
+                                ItemLista(onClick = { aoIrPara(r.l) }) {
+                                    Icon(Icones.Lugar, contentDescription = null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
+                                    Column {
+                                        Text(r.l.nome, color = MaterialTheme.colorScheme.onBackground)
+                                        r.l.zona?.let {
+                                            Text(
+                                                it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall,
+                                                maxLines = 2, overflow = TextOverflow.Ellipsis,
+                                            )
+                                        }
+                                        if (ehLugarDeCodigoPostal(r.l)) {
+                                            Text(
+                                                stringResource(R.string.fonte_geoapi), color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                style = MaterialTheme.typography.bodySmall,
+                                            )
+                                        }
                                     }
                                 }
                             }
-                        }
-                        val guardar = stringResource(R.string.pesquisa_guardar_favorito)
-                        IconButton(onClick = { aoGuardar(r.l) }, modifier = Modifier.semantics { contentDescription = guardar }) {
-                            // O botão já se descreve; sem isto o TalkBack lê também "☆".
-                            Text("☆", Modifier.clearAndSetSemantics {}, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleLarge)
+                            IconButton(onClick = { aoGuardar(r.l) }, Modifier.size(48.dp)) {
+                                Icon(Icones.Estrela, stringResource(R.string.pesquisa_guardar_favorito), tint = MaterialTheme.colorScheme.primary)
+                            }
                         }
                     }
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 }
             }
             if (estacoes.isNotEmpty()) {
-                item { Cabecalho(stringResource(R.string.pesquisa_paragens)) }
-                items(estacoes) { r ->
+                item { TituloSecao(stringResource(R.string.pesquisa_paragens), Modifier.padding(horizontal = 16.dp)) }
+                itemsIndexed(estacoes) { i, r ->
                     val g = r.g
                     val unica = g.itens.singleOrNull()
-                    // O botão é irmão da linha, não filho: assim cada um tem o seu alvo (e o seu foco no TalkBack).
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.weight(1f)) {
-                            ItemLista(onClick = { aoIrPara(Lugar(g.nome, g.lat, g.lon, TipoLugar.PARAGEM)) }) {
-                                Text("🚏", color = MaterialTheme.colorScheme.primary)
-                                Column {
-                                    Text(g.nome, color = MaterialTheme.colorScheme.onBackground)
-                                    Text(
-                                        if (unica != null) subtituloParagem(unica)
-                                        else pluralStringResource(R.plurals.pesquisa_n_paragens, g.itens.size, g.itens.size),
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall,
-                                    )
+                    FatiaAzulejo(i, estacoes.size) {
+                        // O botão é irmão da linha, não filho: assim cada um tem o seu alvo (e o seu foco no TalkBack).
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.weight(1f)) {
+                                ItemLista(onClick = { aoIrPara(Lugar(g.nome, g.lat, g.lon, TipoLugar.PARAGEM)) }) {
+                                    Icon(Icones.Linhas, contentDescription = null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
+                                    Column {
+                                        Text(g.nome, color = MaterialTheme.colorScheme.onBackground)
+                                        Text(
+                                            if (unica != null) subtituloParagem(unica)
+                                            else pluralStringResource(R.plurals.pesquisa_n_paragens, g.itens.size, g.itens.size),
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall,
+                                        )
+                                    }
+                                }
+                            }
+                            if (unica != null) {
+                                val descricao = stringResource(R.string.pesquisa_chegadas_em, unica.nome)
+                                TextButton(onClick = { aoAbrirParagem(unica) }, modifier = Modifier.semantics { contentDescription = descricao }) {
+                                    Text(stringResource(R.string.pesquisa_chegadas))
                                 }
                             }
                         }
-                        if (unica != null) {
-                            val descricao = stringResource(R.string.pesquisa_chegadas_em, unica.nome)
-                            TextButton(onClick = { aoAbrirParagem(unica) }, modifier = Modifier.semantics { contentDescription = descricao }) {
-                                Text(stringResource(R.string.pesquisa_chegadas))
-                            }
-                        }
                     }
-                    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
                 }
             }
             if (semRede) {
@@ -205,14 +204,6 @@ fun PesquisaConteudo(
             }
         }
     }
-}
-
-@Composable
-private fun Cabecalho(texto: String) {
-    Text(
-        texto, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelLarge,
-        modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp),
-    )
 }
 
 /** "Carris Metropolitana · 060419", "CP · 69005": distingue paragens com o mesmo nome. */

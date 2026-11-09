@@ -14,16 +14,13 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -36,10 +33,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
-import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.customActions
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
@@ -54,7 +51,11 @@ import pt.pixellusitano.paragemcerta.core.modelo.TipoLugar
 import pt.pixellusitano.paragemcerta.dados.LocalGuardado
 import pt.pixellusitano.paragemcerta.dados.Repositorio
 import pt.pixellusitano.paragemcerta.dados.ViagemRecente
+import pt.pixellusitano.paragemcerta.ui.comum.CampoAzulejo
+import pt.pixellusitano.paragemcerta.ui.comum.FaixaAzulejo
+import pt.pixellusitano.paragemcerta.ui.comum.FatiaAzulejo
 import pt.pixellusitano.paragemcerta.ui.comum.ItemLista
+import pt.pixellusitano.paragemcerta.ui.comum.TituloSecao
 
 /** Os lugares das viagens recentes para escolher: sem "A minha posição", sem nomes repetidos, no máximo 8. */
 internal fun lugaresRecentes(recentes: List<ViagemRecente>): List<Lugar> =
@@ -82,10 +83,10 @@ internal fun rememberGuardarLocal(repositorio: Repositorio): (Lugar, tipo: Strin
     }
 }
 
-private fun simboloLugar(t: TipoLugar) = when (t) {
-    TipoLugar.PARAGEM -> "🚏"
-    TipoLugar.POSICAO -> "◎"
-    else -> "📍"
+private fun simboloLugar(t: TipoLugar): ImageVector = when (t) {
+    TipoLugar.PARAGEM -> Icones.Linhas
+    TipoLugar.POSICAO -> Icones.Posicao
+    else -> Icones.Lugar
 }
 
 /** Escolha da origem ou do destino: locais guardados, recentes, "A minha posição" e pesquisa a partir de 2 letras.
@@ -118,31 +119,26 @@ fun EscolherLugarEcra(
         semRede = r == null
     }
     val cores = MaterialTheme.colorScheme
+    val minhaPosicao = stringResource(R.string.rotas_minha_posicao)
+    // Lugar nulo = "A minha posição".
+    val principais = buildList {
+        if (comPosicao) add(Triple(Icones.Posicao, minhaPosicao, null as Lugar?))
+        locais.forEach { add(Triple(iconeLocal(it.tipo), it.nome, it.lugar as Lugar?)) }
+    }
 
-    Column(Modifier.fillMaxSize().background(cores.background).statusBarsPadding()) {
-        Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = aoVoltar, Modifier.size(48.dp)) { Icon(Icones.Voltar, stringResource(R.string.voltar)) }
-            OutlinedTextField(
-                value = texto,
-                onValueChange = { texto = it },
-                singleLine = true,
-                label = { Text(titulo) },
-                placeholder = { Text(stringResource(R.string.escolher_procura)) },
-                modifier = Modifier.weight(1f).focusRequester(foco),
-            )
+    Column(Modifier.fillMaxSize().background(cores.background)) {
+        FaixaAzulejo {
+            Row(Modifier.padding(start = 4.dp, end = 16.dp, top = 8.dp, bottom = 16.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = aoVoltar, Modifier.size(48.dp)) { Icon(Icones.Voltar, stringResource(R.string.voltar), tint = Color.White) }
+                CampoAzulejo(texto, { texto = it }, titulo, Modifier.weight(1f).focusRequester(foco), dica = stringResource(R.string.escolher_procura))
+            }
         }
-        LazyColumn {
+        LazyColumn(contentPadding = PaddingValues(top = 8.dp, bottom = 16.dp)) {
             if (texto.trim().length < 2) {
-                if (comPosicao) item { Opcao(Icones.Posicao, stringResource(R.string.rotas_minha_posicao)) { aoEscolher(null) } }
-                items(locais) { l -> Opcao(iconeLocal(l.tipo), l.nome) { aoEscolher(l.lugar) } }
+                itemsIndexed(principais) { i, (icone, nome, lugar) -> Opcao(i, principais.size, icone, nome) { aoEscolher(lugar) } }
                 if (recentes.isNotEmpty()) {
-                    item {
-                        Text(
-                            stringResource(R.string.escolher_recentes), color = cores.onSurfaceVariant,
-                            style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(start = 16.dp, top = 16.dp, bottom = 4.dp),
-                        )
-                    }
-                    items(recentes) { l -> Opcao(Icones.Relogio, l.nome) { aoEscolher(l) } }
+                    item { TituloSecao(stringResource(R.string.escolher_recentes), Modifier.padding(horizontal = 16.dp)) }
+                    itemsIndexed(recentes) { i, l -> Opcao(i, recentes.size, Icones.Relogio, l.nome) { aoEscolher(l) } }
                 }
             } else {
                 val r = resultados
@@ -152,24 +148,26 @@ fun EscolherLugarEcra(
                     val mensagem = if (ehCodigoPostal(texto)) R.string.pesquisa_cp_nao_encontrado else R.string.escolher_sem_resultados
                     item { Text(stringResource(mensagem), color = cores.onSurfaceVariant, modifier = Modifier.padding(16.dp)) }
                 }
-                items(r.orEmpty()) { l -> OpcaoGuardavel(l, aoEscolher = { aoEscolher(l) }, aoGuardar = { tipo -> aoGuardar(l, tipo) }) }
+                val lista = r.orEmpty()
+                itemsIndexed(lista) { i, l -> OpcaoGuardavel(i, lista.size, l, aoEscolher = { aoEscolher(l) }, aoGuardar = { tipo -> aoGuardar(l, tipo) }) }
             }
         }
     }
 }
 
 @Composable
-private fun Opcao(icone: ImageVector, nome: String, aoTocar: () -> Unit) {
-    ItemLista(onClick = aoTocar) {
-        Icon(icone, contentDescription = null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.primary)
-        Text(nome, color = MaterialTheme.colorScheme.onBackground)
+private fun Opcao(indice: Int, total: Int, icone: ImageVector, nome: String, aoTocar: () -> Unit) {
+    FatiaAzulejo(indice, total) {
+        ItemLista(onClick = aoTocar) {
+            Icon(icone, contentDescription = null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
+            Text(nome, color = MaterialTheme.colorScheme.onBackground)
+        }
     }
-    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 }
 
 /** Resultado da pesquisa com "⋯" para o guardar; as mesmas três ações ficam como ações do TalkBack na linha. */
 @Composable
-private fun OpcaoGuardavel(l: Lugar, aoEscolher: () -> Unit, aoGuardar: (String) -> Unit) {
+private fun OpcaoGuardavel(indice: Int, total: Int, l: Lugar, aoEscolher: () -> Unit, aoGuardar: (String) -> Unit) {
     var menu by remember { mutableStateOf(false) }
     val acoes = listOf(
         "CASA" to stringResource(R.string.guardar_como_casa),
@@ -177,41 +175,42 @@ private fun OpcaoGuardavel(l: Lugar, aoEscolher: () -> Unit, aoGuardar: (String)
         "OUTRO" to stringResource(R.string.guardar_como_local),
     )
     val maisOpcoes = stringResource(R.string.mais_opcoes)
-    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-        Box(Modifier.weight(1f)) {
-            // As ações vão no próprio ItemLista: é o nó clicável que o TalkBack foca, não esta linha.
-            ItemLista(
-                onClick = aoEscolher,
-                modifier = Modifier.semantics {
-                    customActions = acoes.map { (tipo, texto) -> CustomAccessibilityAction(texto) { aoGuardar(tipo); true } }
-                },
-            ) {
-                Text(simboloLugar(l.tipo), color = MaterialTheme.colorScheme.primary)
-                Column {
-                    Text(l.nome, color = MaterialTheme.colorScheme.onBackground)
-                    l.zona?.let {
-                        Text(
-                            it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall,
-                            maxLines = 2, overflow = TextOverflow.Ellipsis,
-                        )
-                    }
-                    if (ehLugarDeCodigoPostal(l)) {
-                        Text(
-                            stringResource(R.string.fonte_geoapi), color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            style = MaterialTheme.typography.bodySmall,
-                        )
+    FatiaAzulejo(indice, total) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f)) {
+                // As ações vão no próprio ItemLista: é o nó clicável que o TalkBack foca, não esta linha.
+                ItemLista(
+                    onClick = aoEscolher,
+                    modifier = Modifier.semantics {
+                        customActions = acoes.map { (tipo, texto) -> CustomAccessibilityAction(texto) { aoGuardar(tipo); true } }
+                    },
+                ) {
+                    Icon(simboloLugar(l.tipo), contentDescription = null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
+                    Column {
+                        Text(l.nome, color = MaterialTheme.colorScheme.onBackground)
+                        l.zona?.let {
+                            Text(
+                                it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodySmall,
+                                maxLines = 2, overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        if (ehLugarDeCodigoPostal(l)) {
+                            Text(
+                                stringResource(R.string.fonte_geoapi), color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                style = MaterialTheme.typography.bodySmall,
+                            )
+                        }
                     }
                 }
             }
-        }
-        Box {
-            TextButton(onClick = { menu = true }, modifier = Modifier.semantics { contentDescription = maisOpcoes }) { Text("⋯") }
-            DropdownMenu(menu, onDismissRequest = { menu = false }) {
-                acoes.forEach { (tipo, texto) ->
-                    DropdownMenuItem(text = { Text(texto) }, onClick = { menu = false; aoGuardar(tipo) })
+            Box {
+                IconButton(onClick = { menu = true }, Modifier.size(48.dp)) { Icon(Icones.Mais, maisOpcoes) }
+                DropdownMenu(menu, onDismissRequest = { menu = false }) {
+                    acoes.forEach { (tipo, texto) ->
+                        DropdownMenuItem(text = { Text(texto) }, onClick = { menu = false; aoGuardar(tipo) })
+                    }
                 }
             }
         }
     }
-    HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 }

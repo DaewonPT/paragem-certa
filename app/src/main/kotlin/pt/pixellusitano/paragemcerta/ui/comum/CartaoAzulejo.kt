@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.shape.CornerBasedShape
 import androidx.compose.foundation.shape.CornerSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
@@ -41,5 +43,14 @@ fun CartaoAzulejo(
         }
     } else {
         Surface(modifier, shape = forma, color = cor, border = borda, shadowElevation = 1.dp) { Column(content = conteudo) }
+    }
+}
+
+/** Uma fatia de um cartão repartido por itens de uma lista preguiçosa: a forma é a de [formaDaFatia] e, a partir da segunda, há uma divisória por dentro. */
+@Composable
+fun FatiaAzulejo(indice: Int, total: Int, modifier: Modifier = Modifier, conteudo: @Composable ColumnScope.() -> Unit) {
+    CartaoAzulejo(modifier.padding(horizontal = 16.dp), forma = formaDaFatia(indice, total)) {
+        if (indice > 0) HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        conteudo()
     }
 }

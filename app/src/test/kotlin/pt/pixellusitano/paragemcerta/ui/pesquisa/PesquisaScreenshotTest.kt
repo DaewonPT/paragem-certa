@@ -1,6 +1,10 @@
 package pt.pixellusitano.paragemcerta.ui.pesquisa
 
 import androidx.compose.foundation.layout.width
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
@@ -153,5 +157,33 @@ class PesquisaScreenshotTest {
         }
         regra.onNodeWithText(contexto.getString(R.string.pesquisa_sem_resultados)).assertIsDisplayed()
         regra.onNodeWithText(contexto.getString(R.string.pesquisa_cp_nao_encontrado)).assertDoesNotExist()
+    }
+
+    @Composable
+    private fun conteudoCompleto(modo: ModoTema, letra: Float = 1f) = ComLetra(letra) {
+        TemaParagemCerta(modo) {
+            PesquisaConteudo(
+                texto = "algés",
+                resultados = listOf(
+                    ResultadoPesquisa.DeLinha(linha),
+                    ResultadoPesquisa.DeLugar(estacao),
+                    ResultadoPesquisa.DeEstacao(varios),
+                    ResultadoPesquisa.DeEstacao(um),
+                ),
+                semRede = false,
+                aoEscrever = {}, aoAbrirLinha = {}, aoIrPara = {}, aoAbrirParagem = {}, aoVoltar = {},
+                modifier = Modifier.width(360.dp),
+            )
+        }
+    }
+
+    @Test fun pesquisa_escuro() = captureRoboImage("src/test/screenshots/pesquisa_escuro.png") { conteudoCompleto(ModoTema.ESCURO) }
+
+    @Test fun pesquisa_letra200() = captureRoboImage("src/test/screenshots/pesquisa_letra200.png") { conteudoCompleto(ModoTema.CLARO, 2f) }
+
+    @Composable
+    private fun ComLetra(letra: Float, conteudo: @Composable () -> Unit) {
+        val d = LocalDensity.current
+        CompositionLocalProvider(LocalDensity provides Density(d.density, fontScale = letra), content = conteudo)
     }
 }

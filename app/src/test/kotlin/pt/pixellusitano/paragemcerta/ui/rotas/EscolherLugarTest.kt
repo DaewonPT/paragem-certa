@@ -1,6 +1,12 @@
 package pt.pixellusitano.paragemcerta.ui.rotas
 
 import androidx.compose.ui.semantics.SemanticsActions
+import androidx.compose.ui.semantics.SemanticsProperties
+import androidx.compose.ui.semantics.getOrNull
+import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertWidthIsAtLeast
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
 import androidx.compose.ui.test.assertCountEquals
@@ -64,5 +70,41 @@ class EscolherLugarTest {
         pesquisarCom { null }
         regra.onNodeWithText(contexto.getString(R.string.escolher_sem_rede)).assertIsDisplayed()
         regra.onNodeWithText(contexto.getString(R.string.escolher_sem_resultados)).assertDoesNotExist()
+    }
+
+    private fun abrirSemTexto() = regra.setContent {
+        TemaParagemCerta(ModoTema.CLARO) {
+            EscolherLugarEcra(
+                "Onde é a tua casa?", comPosicao = true, locais = emptyList(),
+                recentes = listOf(Lugar("Café Central", 38.71, -9.14, TipoLugar.LOCAL)),
+                pesquisar = { null }, aoEscolher = {}, aoVoltar = {},
+            )
+        }
+    }
+
+    @Test fun recentesEUmCabecalho() {
+        abrirSemTexto()
+        regra.onNodeWithText(contexto.getString(R.string.escolher_recentes)).assert(SemanticsMatcher.keyIsDefined(SemanticsProperties.Heading))
+    }
+
+    @Test fun rotuloDoCampoFicaDepoisDeEscrever() {
+        abrirSemTexto()
+        regra.onNode(hasSetTextAction()).performTextInput("rua")
+        regra.onNode(hasSetTextAction()).assert(
+            SemanticsMatcher("tem o rótulo e o texto") { no ->
+                no.config.getOrNull(SemanticsProperties.Text)?.joinToString { it.text }.orEmpty().contains("Onde é a tua casa?") &&
+                    no.config.getOrNull(SemanticsProperties.EditableText)?.text == "rua"
+            },
+        )
+    }
+
+    @Test fun maisOpcoesEncontraSePelaDescricaoCom48dp() {
+        pesquisarCom { listOf(Lugar("Rua Augusta", 38.71, -9.137, TipoLugar.MORADA)) }
+        regra.onNodeWithContentDescription("Mais opções").assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp)
+    }
+
+    @Test fun voltarTem48dp() {
+        abrirSemTexto()
+        regra.onNodeWithContentDescription("Voltar").assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp)
     }
 }

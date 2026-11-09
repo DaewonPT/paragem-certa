@@ -23,11 +23,13 @@ fun CampoAzulejo(
     modifier: Modifier = Modifier,
     teclado: KeyboardOptions = KeyboardOptions.Default,
     acoes: KeyboardActions = KeyboardActions.Default,
+    dica: String? = null,
 ) {
     TextField(
         value = valor, onValueChange = aoMudar, modifier = modifier,
         singleLine = true, shape = MaterialTheme.shapes.medium,
         label = { Text(rotulo) },
+        placeholder = dica?.let { { Text(it) } },
         leadingIcon = { Icon(Icones.Pesquisa, contentDescription = null, tint = Azulejo.Cinza) },
         keyboardOptions = teclado, keyboardActions = acoes,
         colors = TextFieldDefaults.colors(
