@@ -23,7 +23,6 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TimePicker
@@ -56,6 +55,7 @@ import pt.pixellusitano.paragemcerta.core.modelo.Modo
 import pt.pixellusitano.paragemcerta.dados.Comunidade
 import pt.pixellusitano.paragemcerta.dados.Preferencias
 import pt.pixellusitano.paragemcerta.dados.Repositorio
+import pt.pixellusitano.paragemcerta.ui.comum.CartaoAzulejo
 import pt.pixellusitano.paragemcerta.ui.comum.LISBOA_FUSO
 import pt.pixellusitano.paragemcerta.ui.inicio.pedirPosicaoAtual
 import pt.pixellusitano.paragemcerta.ui.inicio.ultimaPosicao
@@ -190,7 +190,7 @@ fun RotasConteudo(
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         item {
-            OutlinedCard(Modifier.fillMaxWidth()) {
+            CartaoAzulejo(Modifier.fillMaxWidth()) {
                 CampoLugar(
                     "◎", stringResource(R.string.rotas_de), pedido.origem?.nome ?: stringResource(R.string.rotas_minha_posicao),
                     vazio = false, aoTocar = aoEscolherOrigem,

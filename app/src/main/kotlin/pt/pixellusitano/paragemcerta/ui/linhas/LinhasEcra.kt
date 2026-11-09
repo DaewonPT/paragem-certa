@@ -160,7 +160,7 @@ fun LinhasConteudo(
                         ItemLista(onClick = { aoAbrirLinha(l.ref) }) {
                             // Sem nome curto (algumas da CP) o nome da linha é o longo: um selo desse tamanho não cabia.
                             val longo = l.nomeLongo.takeIf { it.isNotEmpty() && it != l.nome }
-                            if (longo != null) SeloLinha(l.nome, corDaLinha(l.cor, l.modo), l.corTexto?.let { corDaLinha(it, l.modo) } ?: Color.White)
+                            if (longo != null) SeloLinha(l.nome, corDaLinha(l.cor, l.modo), l.corTexto?.let { corDaLinha(it, l.modo) })
                             Text(longo ?: l.nome, color = MaterialTheme.colorScheme.onBackground, maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
                         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)

@@ -323,7 +323,7 @@ private fun CabecalhoDaLinha(estado: EstadoLinha, aoVoltar: () -> Unit, aoFavori
             // Sem nome curto (algumas da CP) o nome da linha é o longo: um selo desse tamanho não cabia.
             val longo = d.nomeLongo.takeIf { it.isNotEmpty() && it != d.nome }
             Row(Modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                if (longo != null) SeloLinha(d.nome, corDaLinha(d.cor, d.modo), d.corTexto?.let { corDaLinha(it, d.modo) } ?: Color.White)
+                if (longo != null) SeloLinha(d.nome, corDaLinha(d.cor, d.modo), d.corTexto?.let { corDaLinha(it, d.modo) })
                 Text(longo ?: d.nome, Modifier.weight(1f), style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onPrimary)
             }
             Text(d.operador, color = MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.85f), modifier = Modifier.padding(horizontal = 12.dp))

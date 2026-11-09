@@ -11,6 +11,10 @@ import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.withTransform
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.unit.dp
@@ -103,6 +107,35 @@ fun FrisoAzulejo(modifier: Modifier = Modifier) {
                     risca,
                 )
                 x += passo * 2
+            }
+        }
+    }
+}
+
+/** Mosaico de azulejos de 44 dp (quadrifólio com círculo ao centro), a branco suave, para pôr por cima de um fundo de cor. */
+@Composable
+fun PadraoAzulejo(modifier: Modifier = Modifier) {
+    Canvas(modifier) {
+        val passo = 44.dp.toPx()
+        val k = passo / 44f
+        val figura = Path().apply {
+            moveTo(22f, 2f); cubicTo(26f, 12f, 32f, 18f, 42f, 22f); cubicTo(32f, 26f, 26f, 32f, 22f, 42f)
+            cubicTo(18f, 32f, 12f, 26f, 2f, 22f); cubicTo(12f, 18f, 18f, 12f, 22f, 2f); close()
+        }
+        val traco = Stroke(1.6.dp.toPx())
+        val cor = Color.White.copy(alpha = 0.15f)
+        clipRect {
+            var y = 0f
+            while (y < size.height) {
+                var x = 0f
+                while (x < size.width) {
+                    withTransform({ translate(x, y); scale(k, k, Offset.Zero) }) {
+                        drawPath(figura, cor, style = Stroke(traco.width / k))
+                        drawCircle(cor, 4f, Offset(22f, 22f), style = Stroke(traco.width / k))
+                    }
+                    x += passo
+                }
+                y += passo
             }
         }
     }

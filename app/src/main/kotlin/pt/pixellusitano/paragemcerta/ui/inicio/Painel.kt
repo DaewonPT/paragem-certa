@@ -13,7 +13,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -30,8 +29,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
-import androidx.compose.ui.semantics.role
-import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -71,6 +68,7 @@ import pt.pixellusitano.paragemcerta.ui.rotas.simboloLocal
 import pt.pixellusitano.paragemcerta.ui.rotas.simboloModo
 import pt.pixellusitano.paragemcerta.ui.rotas.textoDuracao
 import pt.pixellusitano.paragemcerta.dados.Repositorio
+import pt.pixellusitano.paragemcerta.ui.comum.CartaoAzulejo
 import pt.pixellusitano.paragemcerta.ui.comum.FaixaEstado
 import pt.pixellusitano.paragemcerta.ui.comum.LinhaChegada
 import pt.pixellusitano.paragemcerta.ui.comum.SeloLinha
@@ -191,7 +189,7 @@ fun CartaoLocal(
     local: LocalGuardado, estado: EstadoLocal, itinerario: Itinerario?, aCalcular: Boolean, aoTocar: () -> Unit, aoVerMais: () -> Unit,
 ) {
     val sugestao = itinerario.takeIf { estado != EstadoLocal.PERTO }
-    OutlinedCard(Modifier.fillMaxWidth()) {
+    CartaoAzulejo(Modifier.fillMaxWidth()) {
         Column(Modifier.fillMaxWidth().clickable(role = Role.Button, onClick = aoTocar).padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(simboloLocal(local.tipo) + " " + local.nome, style = MaterialTheme.typography.titleSmall, color = MaterialTheme.colorScheme.onSurface)
             val corDetalhe = MaterialTheme.colorScheme.onSurfaceVariant
@@ -217,7 +215,7 @@ fun CartaoLocal(
 
 @Composable
 private fun CartaoAcao(simbolo: String, titulo: String, detalhe: String, aoAbrir: () -> Unit) {
-    OutlinedCard(onClick = aoAbrir, modifier = Modifier.fillMaxWidth().semantics { role = Role.Button }) {
+    CartaoAzulejo(Modifier.fillMaxWidth(), aoTocar = aoAbrir) {
         Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             // O leitor de ecrã lê o título e o detalhe, não o símbolo.
             Text(simbolo, Modifier.clearAndSetSemantics {}, style = MaterialTheme.typography.titleLarge)
@@ -232,7 +230,7 @@ private fun CartaoAcao(simbolo: String, titulo: String, detalhe: String, aoAbrir
 /** A Casa ou o Trabalho ([tipo]) ainda sem morada: como o [CartaoLocal], mas só com duas linhas, para caber ao lado do outro. */
 @Composable
 private fun CartaoPorDefinir(tipo: String, nome: String, modifier: Modifier, linhas: Int, aoDefinir: () -> Unit) {
-    OutlinedCard(modifier) {
+    CartaoAzulejo(modifier) {
         Column(Modifier.fillMaxWidth().heightIn(min = 48.dp).clickable(role = Role.Button, onClick = aoDefinir).padding(12.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                 // O leitor de ecrã lê "Casa, Toca para escolher a morada", sem o símbolo.

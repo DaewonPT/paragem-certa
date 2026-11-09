@@ -2,13 +2,15 @@ package pt.pixellusitano.paragemcerta.ui.comum
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -34,8 +36,12 @@ import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.modelo.Linha
 import pt.pixellusitano.paragemcerta.core.modelo.Modo
 import pt.pixellusitano.paragemcerta.dados.AoVivo
+import pt.pixellusitano.paragemcerta.ui.linhas.textoDoModo
+import pt.pixellusitano.paragemcerta.ui.tema.Azulejo
 import pt.pixellusitano.paragemcerta.ui.tema.CoresAtraso
 import pt.pixellusitano.paragemcerta.ui.tema.LocalEscuro
+import pt.pixellusitano.paragemcerta.ui.tema.contraste
+import pt.pixellusitano.paragemcerta.ui.tema.iconeModo
 import java.time.Duration
 import java.time.Instant
 import java.time.ZoneId
@@ -95,15 +101,28 @@ fun descricaoChegada(c: Chegada, agora: Instant, limites: Limites = Limites(), a
 }
 
 @Composable
-fun SeloLinha(nome: String, cor: Color, corTexto: Color = Color.White) {
+fun SeloLinha(nome: String, cor: Color, corTexto: Color? = null) {
     Text(
         nome,
-        color = corTexto,
+        color = corTexto ?: corDoTextoSobre(cor),
         style = MaterialTheme.typography.labelLarge,
+        fontWeight = FontWeight.Black,
         textAlign = TextAlign.Center,
         maxLines = 1,
-        modifier = Modifier.widthIn(min = 40.dp).background(cor, RoundedCornerShape(6.dp)).padding(horizontal = 6.dp, vertical = 3.dp),
+        modifier = Modifier.widthIn(min = 40.dp).background(cor, MaterialTheme.shapes.small).padding(horizontal = 6.dp, vertical = 3.dp),
     )
+}
+
+/** Branco ou tinta, o que tiver mais contraste com [fundo] (empate: branco). */
+fun corDoTextoSobre(fundo: Color): Color =
+    if (contraste(Color.White, fundo) >= contraste(Azulejo.Tinta, fundo)) Color.White else Azulejo.Tinta
+
+/** O mesmo selo, com o ícone do modo de transporte em vez do número da linha. */
+@Composable
+fun SeloModo(modo: Modo, cor: Color) {
+    Box(Modifier.widthIn(min = 40.dp).background(cor, MaterialTheme.shapes.small).padding(horizontal = 6.dp, vertical = 3.dp), contentAlignment = Alignment.Center) {
+        Icon(iconeModo(modo), contentDescription = stringResource(textoDoModo(modo)), tint = corDoTextoSobre(cor), modifier = Modifier.size(18.dp))
+    }
 }
 
 /** "ao vivo, a 5 paragens" ou, a zero, "ao vivo, a chegar". */
@@ -127,7 +146,7 @@ fun LinhaChegada(c: Chegada, linha: Linha?, agora: Instant, limites: Limites = L
         SeloLinha(
             linha?.nomeCurto ?: c.linhaNome,
             corDaLinha(linha?.cor ?: c.cor, c.modo),
-            linha?.corTexto?.let { corDaLinha(it, c.modo) } ?: Color.White,
+            linha?.corTexto?.let { corDaLinha(it, c.modo) },
         )
         Text(
             c.destino + if (c.acessivel == true) "  ♿" else "",
@@ -137,7 +156,7 @@ fun LinhaChegada(c: Chegada, linha: Linha?, agora: Instant, limites: Limites = L
             overflow = TextOverflow.Ellipsis,
         )
         Column(horizontalAlignment = Alignment.End) {
-            Text(rotuloTempo(c, agora, LISBOA_FUSO), color = cor, fontWeight = FontWeight.ExtraBold, style = MaterialTheme.typography.titleMedium)
+            Text(rotuloTempo(c, agora, LISBOA_FUSO), color = cor, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium)
             if (etiquetaAoVivo != null) Text(etiquetaAoVivo, color = CoresAtraso.cor(EstadoAtraso.A_HORAS, escuro), style = MaterialTheme.typography.labelSmall)
             else Text(rotuloAtraso(c, limites), color = cor, style = MaterialTheme.typography.labelSmall)
         }

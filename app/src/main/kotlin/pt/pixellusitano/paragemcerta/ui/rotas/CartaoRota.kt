@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -37,6 +36,7 @@ import pt.pixellusitano.paragemcerta.core.modelo.Etiqueta
 import pt.pixellusitano.paragemcerta.core.modelo.Itinerario
 import pt.pixellusitano.paragemcerta.core.modelo.Modo
 import pt.pixellusitano.paragemcerta.ui.comunidade.nomeDoTipo
+import pt.pixellusitano.paragemcerta.ui.comum.CartaoAzulejo
 import pt.pixellusitano.paragemcerta.ui.comum.LISBOA_FUSO
 import pt.pixellusitano.paragemcerta.ui.comum.LocalLimites
 import pt.pixellusitano.paragemcerta.ui.comum.SeloLinha
@@ -171,7 +171,7 @@ fun CartaoRota(
         stringResource(R.string.rotas_relato_confirmado, stringResource(nomeDoTipo(tipoRelato)), relato.linha)
     } else null
     val descricao = descricaoRota(it, nomes, comAlerta, limites, proximas, agora, textoRelato)
-    OutlinedCard(onClick = aoAbrir, modifier = Modifier.fillMaxWidth()) {
+    CartaoAzulejo(Modifier.fillMaxWidth(), aoTocar = aoAbrir) {
         Column(
             Modifier.padding(16.dp).clearAndSetSemantics { contentDescription = descricao },
             verticalArrangement = Arrangement.spacedBy(8.dp),
