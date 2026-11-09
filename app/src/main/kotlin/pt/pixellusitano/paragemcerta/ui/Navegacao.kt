@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import android.widget.Toast
 import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.NavigationBar
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.Dispatchers
@@ -26,7 +25,6 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import pt.pixellusitano.paragemcerta.atualizar.Atualizacoes
 import pt.pixellusitano.paragemcerta.atualizar.NovaVersao
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -58,7 +56,6 @@ import pt.pixellusitano.paragemcerta.dados.EcraInicial
 import pt.pixellusitano.paragemcerta.dados.LinhaFavorita
 import pt.pixellusitano.paragemcerta.dados.Ligacoes
 import pt.pixellusitano.paragemcerta.ui.bussola.BussolaEcra
-import pt.pixellusitano.paragemcerta.ui.comum.gelatina
 import pt.pixellusitano.paragemcerta.ui.comunidade.FotoNaBussola
 import pt.pixellusitano.paragemcerta.ui.comunidade.fotoDa
 import pt.pixellusitano.paragemcerta.ui.inicio.InicioEcra
@@ -225,16 +222,22 @@ fun Navegacao(
                     ligacoes.perturbacoes, { minhasLinhas(repositorio) }, ligacoes.preferencias,
                     escondida = !comBarra || dialogos.intValue > 0, aoAbrir = { nav.navigate(PerturbacoesRota) },
                 )
-                if (comBarra) NavigationBar {
-                    NavigationBarItem(selected = naInicio, onClick = { separador(Inicio) },
-                        icon = { Text("🗺", Modifier.gelatina(naInicio)) }, label = { Text(stringResource(R.string.nav_inicio)) })
-                    NavigationBarItem(selected = nasRotas, onClick = { separador(Rotas()) },
-                        icon = { Text("🧭", Modifier.gelatina(nasRotas)) }, label = { Text(stringResource(R.string.nav_rotas)) })
-                    NavigationBarItem(selected = nasLinhas, onClick = { separador(Linhas) },
-                        icon = { Text("🚏", Modifier.gelatina(nasLinhas)) }, label = { Text(stringResource(R.string.nav_linhas)) })
-                    NavigationBarItem(selected = noMenu, onClick = { separador(Menu) },
-                        icon = { Text("☰", Modifier.gelatina(noMenu)) }, label = { Text(stringResource(R.string.nav_menu)) })
-                }
+                if (comBarra) BarraDeBaixo(
+                    atual = when {
+                        naInicio -> Separador.INICIO
+                        nasRotas -> Separador.ROTAS
+                        nasLinhas -> Separador.LINHAS
+                        else -> Separador.MENU
+                    },
+                    aoEscolher = {
+                        when (it) {
+                            Separador.INICIO -> separador(Inicio)
+                            Separador.ROTAS -> separador(Rotas())
+                            Separador.LINHAS -> separador(Linhas)
+                            Separador.MENU -> separador(Menu)
+                        }
+                    },
+                )
             }
         },
     ) { margens ->
