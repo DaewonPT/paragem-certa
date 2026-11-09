@@ -1,6 +1,19 @@
 package pt.pixellusitano.paragemcerta.ui.comum
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toPixelMap
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.test.assert
+import androidx.compose.ui.test.captureToImage
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.unit.dp
+import org.junit.Assert.assertEquals
+import org.robolectric.annotation.GraphicsMode
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
@@ -14,6 +27,7 @@ import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 
 @RunWith(RobolectricTestRunner::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 class CartaoAzulejoTest {
     @get:Rule val regra = createComposeRule()
 
@@ -26,5 +40,19 @@ class CartaoAzulejoTest {
     @Test fun semAoTocar_naoTemNosClicaveis() {
         regra.setContent { CartaoAzulejo { Text("dentro") } }
         regra.onAllNodes(hasClickAction()).assertCountEquals(0)
+    }
+
+    @Test fun comCorEContorno_desenhaComEles() {
+        regra.setContent {
+            Box(Modifier.background(Color.Black)) {
+                CartaoAzulejo(Modifier.testTag("cartao").size(40.dp), aoTocar = {}, cor = Color.Red, contorno = Color.Green) { Box(Modifier.size(40.dp)) }
+            }
+        }
+        regra.onNodeWithTag("cartao").assert(SemanticsMatcher.expectValue(SemanticsProperties.Role, Role.Button))
+        val img = regra.onNodeWithTag("cartao").captureToImage()
+        val centro = img.toPixelMap()[img.width / 2, img.height / 2]
+        val borda = img.toPixelMap()[img.width / 2, 0]
+        assertEquals(Color.Red, centro)
+        assertEquals(Color.Green, borda)
     }
 }

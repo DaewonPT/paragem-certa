@@ -31,9 +31,7 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.border
-import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.material3.IconButton
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
@@ -41,7 +39,6 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import pt.pixellusitano.paragemcerta.ui.tema.Azulejo
-import pt.pixellusitano.paragemcerta.ui.tema.PadraoAzulejo
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -92,6 +89,7 @@ import pt.pixellusitano.paragemcerta.ui.tema.FrisoAzulejo
 import pt.pixellusitano.paragemcerta.ui.tema.LocalEscuro
 import pt.pixellusitano.paragemcerta.ui.Rotas
 import pt.pixellusitano.paragemcerta.ui.comum.DialogoNome
+import pt.pixellusitano.paragemcerta.ui.comum.FaixaAzulejo
 import pt.pixellusitano.paragemcerta.ui.comum.ItemLista
 import pt.pixellusitano.paragemcerta.core.modelo.Lugar
 import android.widget.Toast
@@ -569,11 +567,9 @@ class LigacaoMapaInicio(
 /** A faixa azul de azulejos por baixo da barra de estado: o campo da pesquisa e, com a conta ligada, o botão Conta. */
 @Composable
 private fun FaixaInicio(aoPesquisar: () -> Unit, aoAbrirConta: (() -> Unit)?, modifier: Modifier = Modifier) {
-    val topo = MaterialTheme.shapes.extraLarge.let { it.copy(topStart = CornerSize(0.dp), topEnd = CornerSize(0.dp)) }
-    Box(modifier.fillMaxWidth().clip(topo).background(Azulejo.Cobalto)) {
-        PadraoAzulejo(Modifier.matchParentSize())
+    FaixaAzulejo(modifier) {
         Row(
-            Modifier.statusBarsPadding().padding(horizontal = 16.dp, vertical = 12.dp),
+            Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Surface(

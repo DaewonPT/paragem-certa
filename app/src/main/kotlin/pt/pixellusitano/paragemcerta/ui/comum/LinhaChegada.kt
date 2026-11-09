@@ -101,7 +101,7 @@ fun descricaoChegada(c: Chegada, agora: Instant, limites: Limites = Limites(), a
 }
 
 @Composable
-fun SeloLinha(nome: String, cor: Color, corTexto: Color? = null) {
+fun SeloLinha(nome: String, cor: Color, corTexto: Color? = null, modifier: Modifier = Modifier) {
     Text(
         nome,
         color = corTexto ?: corDoTextoSobre(cor),
@@ -109,7 +109,7 @@ fun SeloLinha(nome: String, cor: Color, corTexto: Color? = null) {
         fontWeight = FontWeight.Black,
         textAlign = TextAlign.Center,
         maxLines = 1,
-        modifier = Modifier.widthIn(min = 40.dp).background(cor, MaterialTheme.shapes.small).padding(horizontal = 6.dp, vertical = 3.dp),
+        modifier = modifier.widthIn(min = 40.dp).background(cor, MaterialTheme.shapes.small).padding(horizontal = 6.dp, vertical = 3.dp),
     )
 }
 
