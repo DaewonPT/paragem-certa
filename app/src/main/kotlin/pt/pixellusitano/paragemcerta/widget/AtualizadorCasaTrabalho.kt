@@ -48,6 +48,12 @@ class AtualizadorCasaTrabalho(
     /** Só o que está guardado, sem rede; [ids]: os widgets a redesenhar. */
     suspend fun redesenhar(ids: Collection<Int> = todos()) = desenharTodos(lerLocais(), aCalcular = false, ids)
 
+    /** Apagar dados do telemóvel: por esta ordem, primeiro limpa o ficheiro dos widgets e depois redesenha-se sem nada. */
+    suspend fun aoApagarDados() {
+        dados.esquecerTudo()
+        redesenhar()
+    }
+
     /** O ↻ de qualquer um destes widgets: a posição atual (ou a guardada), um pedido por destino em paralelo, e redesenha todos. */
     suspend fun atualizar() {
         val agora = relogio()

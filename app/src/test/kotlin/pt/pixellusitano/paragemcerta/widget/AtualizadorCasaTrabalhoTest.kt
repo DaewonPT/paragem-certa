@@ -234,9 +234,7 @@ class AtualizadorCasaTrabalhoTest {
         dados.marcarTentativaCasaTrabalho(inicio)
         desenhos.clear()
 
-        // O que o "Apagar dados do telemóvel" faz, pela mesma ordem: limpa o ficheiro e depois redesenha.
-        dados.esquecerTudo()
-        a.redesenhar()
+        a.aoApagarDados()
 
         assertNull(dados.posicao())
         assertNull(dados.ligacao("CASA"))

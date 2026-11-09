@@ -51,8 +51,7 @@ class Ligacoes(contexto: Context) {
         desenhar = { id, conteudo -> AppWidgetManager.getInstance(contexto).updateAppWidget(id, desenhoDoWidget(contexto.applicationContext, id, conteudo)) },
         todos = { AppWidgetManager.getInstance(contexto).getAppWidgetIds(ComponentName(contexto, WidgetCasaTrabalho::class.java)).toList() },
     )
-    // Por esta ordem: primeiro limpa o ficheiro dos widgets, depois o "Casa e Trabalho" redesenha-se sem nada.
-    val conta = Conta(contexto, servidor, repositorio, esquecerWidgets = { widgets.aoApagarDados(); casaTrabalho.redesenhar() })
+    val conta = Conta(contexto, servidor, repositorio, esquecerWidgets = { widgets.aoApagarDados(); casaTrabalho.aoApagarDados() })
     val comunidade by lazy { Comunidade(servidor, conta, configuracoes, preferencias) }
     val detalheDasLinhas = DetalheDasLinhas(cm, transitous, catalogoLinhas, repositorio)
     val estacoesGira = EstacoesGira(contexto.filesDir, Gira(http), Instant::now)
