@@ -15,12 +15,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.FilterChip
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -50,6 +49,7 @@ import pt.pixellusitano.paragemcerta.ui.comum.SeloLinha
 import pt.pixellusitano.paragemcerta.ui.comum.SeloModo
 import pt.pixellusitano.paragemcerta.ui.comum.TituloSecao
 import pt.pixellusitano.paragemcerta.ui.comum.bordaDoFiltro
+import pt.pixellusitano.paragemcerta.ui.comum.formaDaFatia
 import pt.pixellusitano.paragemcerta.ui.comum.corDaLinha
 import java.time.LocalDate
 
@@ -154,25 +154,23 @@ fun LinhasConteudo(
                         TituloSecao(stringResource(textoDoModo(g.modo)))
                     }
                 }
-                // Limite: as linhas de um operador compõem-se todas de uma vez (o cartão é um só item da lista).
                 g.operadores.forEach { (operador, linhas) ->
-                    item(key = "operador-${g.modo}-$operador") {
-                        CartaoAzulejo(Modifier.padding(horizontal = 16.dp, vertical = 4.dp).fillMaxWidth()) {
-                            Text(
+                    // Uma fatia do cartão do operador por linha, para a lista continuar a compor só o que se vê.
+                    itemsIndexed(linhas, key = { _, l -> l.ref.chave }) { i, l ->
+                        // Sem nome curto (algumas da CP) o nome da linha é o longo: um selo desse tamanho não cabia.
+                        val longo = l.nomeLongo.takeIf { it.isNotEmpty() && it != l.nome }
+                        val cor = corDaLinha(l.cor, l.modo)
+                        CartaoAzulejo(
+                            Modifier.padding(start = 16.dp, end = 16.dp, top = if (i == 0) 4.dp else 0.dp, bottom = if (i == linhas.lastIndex) 4.dp else 0.dp).fillMaxWidth(),
+                            forma = formaDaFatia(i, linhas.size),
+                        ) {
+                            if (i == 0) Text(
                                 operador, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelLarge,
                                 modifier = Modifier.padding(start = 16.dp, top = 12.dp, end = 16.dp),
                             )
-                            linhas.forEach { l ->
-                                // Sem nome curto (algumas da CP) o nome da linha é o longo: um selo desse tamanho não cabia.
-                                val longo = l.nomeLongo.takeIf { it.isNotEmpty() && it != l.nome }
-                                val cor = corDaLinha(l.cor, l.modo)
-                                key(l.ref.chave) {
-                                    ItemLista(onClick = { aoAbrirLinha(l.ref) }) {
-                                        if (longo != null) SeloLinha(l.nome, cor, l.corTexto?.let { corDaLinha(it, l.modo) }) else SeloModo(l.modo, cor)
-                                        Text(longo ?: l.nome, color = MaterialTheme.colorScheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                                    }
-                                }
-                                if (l !== linhas.last()) HorizontalDivider(Modifier.padding(horizontal = 16.dp), color = MaterialTheme.colorScheme.outlineVariant)
+                            ItemLista(onClick = { aoAbrirLinha(l.ref) }) {
+                                if (longo != null) SeloLinha(l.nome, cor, l.corTexto?.let { corDaLinha(it, l.modo) }) else SeloModo(l.modo, cor)
+                                Text(longo ?: l.nome, color = MaterialTheme.colorScheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis)
                             }
                         }
                     }

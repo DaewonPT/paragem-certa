@@ -2,6 +2,7 @@ package pt.pixellusitano.paragemcerta.ui.comum
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
@@ -40,6 +41,24 @@ class CartaoAzulejoTest {
     @Test fun semAoTocar_naoTemNosClicaveis() {
         regra.setContent { CartaoAzulejo { Text("dentro") } }
         regra.onAllNodes(hasClickAction()).assertCountEquals(0)
+    }
+
+    // Três fatias de um cartão repartido: a primeira só tem os cantos de cima redondos, a do meio nenhuns, a última só os de baixo.
+    @Test fun fatiasTemOsCantosCertos() {
+        regra.setContent {
+            Column(Modifier.background(Color.Black)) {
+                (0..2).forEach { i ->
+                    CartaoAzulejo(Modifier.testTag("f$i").size(60.dp), forma = formaDaFatia(i, 3), cor = Color.Red, contorno = Color.Red) { Box(Modifier.size(60.dp)) }
+                }
+            }
+        }
+        val pixeis = (0..2).map { i ->
+            val img = regra.onNodeWithTag("f$i").captureToImage().toPixelMap()
+            listOf(img[0, 0], img[0, img.height - 1]).map { it.red > 0.5f } // canto de cima, canto de baixo: cheio ou vazio (a sombra mexe um pouco no vermelho)
+        }
+        assertEquals(listOf(false, true), pixeis[0])
+        assertEquals(listOf(true, true), pixeis[1])
+        assertEquals(listOf(true, false), pixeis[2])
     }
 
     @Test fun comCorEContorno_desenhaComEles() {
