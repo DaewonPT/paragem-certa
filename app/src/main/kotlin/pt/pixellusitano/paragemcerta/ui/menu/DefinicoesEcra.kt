@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
@@ -41,6 +40,7 @@ import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import pt.pixellusitano.paragemcerta.R
+import pt.pixellusitano.paragemcerta.ui.comum.CabecalhoAzulejo
 import pt.pixellusitano.paragemcerta.atualizar.Atualizacoes
 import pt.pixellusitano.paragemcerta.core.atraso.Limites
 import pt.pixellusitano.paragemcerta.core.modelo.Filtros
@@ -160,19 +160,21 @@ fun DefinicoesConteudo(
     avisosComunidade: Boolean = true,
     aoMudarAvisosComunidade: ((Boolean) -> Unit)? = null,
 ) {
-    Column(modifier.background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState()).statusBarsPadding().padding(16.dp)) {
-        CabecalhoEcra(stringResource(R.string.eu_definicoes), aoVoltar)
-        Definicoes(
-            modo, limites, somAviso, vibracaoAviso, aoMudarModo, aoMudarLimites, aoMudarSom, aoMudarVibracao,
-            avisosComunidade = avisosComunidade, aoMudarAvisosComunidade = aoMudarAvisosComunidade,
-        )
-        CamadasDoMapa(
-            camadaAoVivo, aoMudarCamadaAoVivo, camadaGira, aoMudarCamadaGira, camadaRelatos, aoMudarCamadaRelatos, Modifier.padding(top = 16.dp),
-        )
-        PreferenciasRotas(filtros, aoMudarFiltros, Modifier.padding(top = 24.dp))
-        EcraInicialOpcoes(ecraInicial, aoMudarEcraInicial, Modifier.padding(top = 24.dp))
-        secaoAtualizacoes(Modifier.padding(top = 24.dp))
-        Privacidade(aoApagarDados, Modifier.padding(top = 24.dp), aoApagarConta)
+    Column(modifier.background(MaterialTheme.colorScheme.background)) {
+        CabecalhoAzulejo(stringResource(R.string.eu_definicoes), aoVoltar)
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp)) {
+            Definicoes(
+                modo, limites, somAviso, vibracaoAviso, aoMudarModo, aoMudarLimites, aoMudarSom, aoMudarVibracao,
+                avisosComunidade = avisosComunidade, aoMudarAvisosComunidade = aoMudarAvisosComunidade,
+            )
+            CamadasDoMapa(
+                camadaAoVivo, aoMudarCamadaAoVivo, camadaGira, aoMudarCamadaGira, camadaRelatos, aoMudarCamadaRelatos, Modifier.padding(top = 16.dp),
+            )
+            PreferenciasRotas(filtros, aoMudarFiltros, Modifier.padding(top = 24.dp))
+            EcraInicialOpcoes(ecraInicial, aoMudarEcraInicial, Modifier.padding(top = 24.dp))
+            secaoAtualizacoes(Modifier.padding(top = 24.dp))
+            Privacidade(aoApagarDados, Modifier.padding(top = 24.dp), aoApagarConta)
+        }
     }
 }
 

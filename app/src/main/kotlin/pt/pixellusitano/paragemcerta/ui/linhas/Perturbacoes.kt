@@ -16,7 +16,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -59,7 +58,7 @@ import pt.pixellusitano.paragemcerta.dados.Preferencias
 import pt.pixellusitano.paragemcerta.dados.Repositorio
 import pt.pixellusitano.paragemcerta.ui.comum.ItemLista
 import pt.pixellusitano.paragemcerta.ui.comum.LISBOA_FUSO
-import pt.pixellusitano.paragemcerta.ui.menu.CabecalhoEcra
+import pt.pixellusitano.paragemcerta.ui.comum.CabecalhoAzulejo
 import java.time.Instant
 import java.time.format.DateTimeFormatter
 
@@ -194,8 +193,8 @@ fun PerturbacoesConteudo(
         }
         HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
     }
-    Column(modifier.background(MaterialTheme.colorScheme.background).statusBarsPadding()) {
-        Column(Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) { CabecalhoEcra(stringResource(R.string.perturbacoes_titulo), aoVoltar) }
+    Column(modifier.background(MaterialTheme.colorScheme.background)) {
+        CabecalhoAzulejo(stringResource(R.string.perturbacoes_titulo), aoVoltar)
         LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(bottom = 16.dp)) {
             item(key = "meios") {
                 FlowRow(Modifier.padding(horizontal = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

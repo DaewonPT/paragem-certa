@@ -34,17 +34,6 @@ fun intentOpiniao(versao: String): Intent =
         .putExtra(Intent.EXTRA_SUBJECT, "Paragem Certa — opinião")
         .putExtra(Intent.EXTRA_TEXT, "Versão da app: $versao\n\n")
 
-/** O "←" e o título com o friso, no topo dos ecrãs que se abrem a partir do Menu. */
-@Composable
-internal fun CabecalhoEcra(titulo: String, aoVoltar: () -> Unit) {
-    val voltar = stringResource(R.string.voltar)
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        TextButton(onClick = aoVoltar, modifier = Modifier.semantics { contentDescription = voltar }) { Text("←") }
-        Text(titulo, style = MaterialTheme.typography.titleLarge, color = MaterialTheme.colorScheme.primary)
-    }
-    FrisoAzulejo(Modifier.fillMaxWidth().padding(vertical = 8.dp))
-}
-
 @Composable
 fun MenuEcra(
     aoAbrirFavoritos: () -> Unit,

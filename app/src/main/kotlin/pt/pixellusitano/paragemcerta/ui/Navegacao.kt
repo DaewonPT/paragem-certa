@@ -213,6 +213,11 @@ fun Navegacao(
     // Não empilha a pergunta das notificações sobre outro aviso: fica para a abertura seguinte.
     if (pendente == null && remember { Atualizacoes.novidadesPorMostrar(contexto) } == null) AvisoNotificacoes(dialogos)
     val comBarra = naInicio || nasRotas || nasLinhas || noMenu
+    // Sobre as faixas azuis (o mapa do Início e os cabeçalhos azulejados) os ícones da barra de estado ficam claros.
+    AjustarBarraDeEstado(
+        comFaixa = naInicio || listOf(Favoritos::class, Definicoes::class, Ajuda::class, Reclamar::class, ContaRota::class, PerturbacoesRota::class, Paragem::class, LinhaRota::class)
+            .any { destino?.hasRoute(it) == true },
+    )
 
     Scaffold(
         bottomBar = {

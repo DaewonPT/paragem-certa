@@ -3,7 +3,6 @@ package pt.pixellusitano.paragemcerta.ui.menu
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
@@ -15,6 +14,7 @@ import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.unit.dp
 import pt.pixellusitano.paragemcerta.R
+import pt.pixellusitano.paragemcerta.ui.comum.CabecalhoAzulejo
 
 private val PERGUNTAS = listOf(
     R.string.ajuda_aviso_p to R.string.ajuda_aviso_r,
@@ -27,14 +27,16 @@ private val PERGUNTAS = listOf(
 @Composable
 fun AjudaEcra(aoVoltar: () -> Unit, modifier: Modifier = Modifier) {
     val cores = MaterialTheme.colorScheme
-    Column(modifier.background(cores.background).verticalScroll(rememberScrollState()).statusBarsPadding().padding(16.dp)) {
-        CabecalhoEcra(stringResource(R.string.menu_ajuda), aoVoltar)
-        PERGUNTAS.forEach { (pergunta, resposta) ->
-            Text(
-                stringResource(pergunta), Modifier.padding(top = 16.dp).semantics { heading() },
-                style = MaterialTheme.typography.titleMedium, color = cores.onBackground,
-            )
-            Text(stringResource(resposta), Modifier.padding(top = 4.dp), color = cores.onSurfaceVariant)
+    Column(modifier.background(cores.background)) {
+        CabecalhoAzulejo(stringResource(R.string.menu_ajuda), aoVoltar)
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp)) {
+            PERGUNTAS.forEach { (pergunta, resposta) ->
+                Text(
+                    stringResource(pergunta), Modifier.padding(top = 16.dp).semantics { heading() },
+                    style = MaterialTheme.typography.titleMedium, color = cores.onBackground,
+                )
+                Text(stringResource(resposta), Modifier.padding(top = 4.dp), color = cores.onSurfaceVariant)
+            }
         }
     }
 }

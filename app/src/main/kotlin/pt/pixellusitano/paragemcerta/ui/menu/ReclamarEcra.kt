@@ -4,7 +4,6 @@ import androidx.annotation.StringRes
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
@@ -14,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import pt.pixellusitano.paragemcerta.R
+import pt.pixellusitano.paragemcerta.ui.comum.CabecalhoAzulejo
 import pt.pixellusitano.paragemcerta.core.fontes.servidor.CanalReclamacaoTexto
 
 data class CanalReclamacao(@StringRes val nome: Int, val url: String)
@@ -31,9 +31,11 @@ val CANAIS_RECLAMACAO = listOf(
 @Composable
 fun ReclamarEcra(aoAbrir: (String) -> Unit, aoVoltar: () -> Unit, modifier: Modifier = Modifier, canais: List<CanalReclamacaoTexto> = emptyList()) {
     val lista = canais.ifEmpty { CANAIS_RECLAMACAO.map { CanalReclamacaoTexto(stringResource(it.nome), it.url) } }
-    Column(modifier.background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState()).statusBarsPadding().padding(16.dp)) {
-        CabecalhoEcra(stringResource(R.string.menu_reclamar), aoVoltar)
-        Text(stringResource(R.string.reclamar_nota), Modifier.padding(bottom = 8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
-        lista.forEach { Ligacao(it.nome, { aoAbrir(it.url) }) }
+    Column(modifier.background(MaterialTheme.colorScheme.background)) {
+        CabecalhoAzulejo(stringResource(R.string.menu_reclamar), aoVoltar)
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(16.dp)) {
+            Text(stringResource(R.string.reclamar_nota), Modifier.padding(bottom = 8.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
+            lista.forEach { Ligacao(it.nome, { aoAbrir(it.url) }) }
+        }
     }
 }
