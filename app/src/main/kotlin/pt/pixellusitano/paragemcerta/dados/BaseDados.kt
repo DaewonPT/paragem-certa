@@ -129,7 +129,7 @@ interface ParagensDao {
     @Query("SELECT * FROM paragens WHERE chave = :chave")
     suspend fun porChave(chave: String): ParagemEntidade?
 
-    @Query("SELECT * FROM paragens WHERE fonte = 'CM' AND lat BETWEEN :minLat AND :maxLat AND lon BETWEEN :minLon AND :maxLon LIMIT 400")
+    @Query("SELECT * FROM paragens WHERE fonte = 'CM' AND linhas != '' AND lat BETWEEN :minLat AND :maxLat AND lon BETWEEN :minLon AND :maxLon LIMIT 400")
     suspend fun cmNaZona(minLat: Double, minLon: Double, maxLat: Double, maxLon: Double): List<ParagemEntidade>
 
     @Query("SELECT * FROM paragens WHERE fonte = 'CM' AND nomeNormalizado LIKE '%' || :texto || '%' LIMIT 30")

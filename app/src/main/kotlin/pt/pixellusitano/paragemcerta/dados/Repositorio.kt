@@ -160,7 +160,7 @@ class Repositorio(
                 }
                 is Resultado.Falha -> {
                     val (anteriores, em) = chegadasGuardadas(ref, agora) ?: (emptyList<Chegada>() to null)
-                    emit(EstadoChegadas(anteriores, em, semLigacao = r.codigo == null, tempoRealIndisponivel = r.codigo != null))
+                    emit(EstadoChegadas(anteriores, em.takeIf { anteriores.isNotEmpty() }, semLigacao = r.codigo == null, tempoRealIndisponivel = r.codigo != null))
                     delay(pausaDepoisDeFalha(ref.fonte, tentativa++).toMillis())
                 }
             }

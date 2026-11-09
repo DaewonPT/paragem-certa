@@ -107,7 +107,7 @@ class ParagemTest {
         regra.setContent {
             TemaParagemCerta(ModoTema.CLARO) { Ecra(EstadoChegadas(emptyList(), null, semLigacao = true, tempoRealIndisponivel = false), emptyList()) }
         }
-        regra.onNodeWithText("Sem ligação — ainda não há dados guardados").assertExists()
+        regra.onNodeWithText("Sem ligação — não há chegadas guardadas por mostrar").assertExists()
         regra.onNodeWithText("Não há chegadas nas próximas 2 horas").assertDoesNotExist()
     }
 

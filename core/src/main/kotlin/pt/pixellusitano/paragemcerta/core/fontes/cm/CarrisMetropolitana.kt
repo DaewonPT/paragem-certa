@@ -142,8 +142,12 @@ object CmParser {
 }
 
 class CarrisMetropolitana(private val http: Http, private val base: String = "https://api.carrismetropolitana.pt/v2/") {
+    /** 404 = a paragem não tem serviço: Ok(vazio), não uma falha. */
     suspend fun chegadas(paragemId: String, agora: Instant): Resultado<List<Chegada>> =
-        http.pedir("${base}arrivals/by_stop/$paragemId") { CmParser.chegadas(it, agora) }
+        when (val r = http.pedir("${base}arrivals/by_stop/$paragemId") { CmParser.chegadas(it, agora) }) {
+            is Resultado.Ok -> r
+            is Resultado.Falha -> if (r.codigo == 404) Resultado.Ok(emptyList()) else r
+        }
 
     /** Devolve o corpo em bruto: o repositório tira daí as paragens e as linhas de cada uma. */
     suspend fun paragensJson(): Resultado<String> = http.pedir("${base}stops") { it }

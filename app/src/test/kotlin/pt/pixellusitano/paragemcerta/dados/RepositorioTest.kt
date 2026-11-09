@@ -327,4 +327,33 @@ class RepositorioTest {
         val etapa = etapaEmVeiculo("pt-Carris_3803", "201", "Cais Sodré", manha)
         assertNull(repo(http).proximasPartidas(etapa))
     }
+
+    @Test fun paragemSemServicoNaoFicaIndisponivel() = runTest {
+        val r = repo(HttpPorUrl("arrivals" to listOf({ Resposta(404, "[]") })))
+        r.chegadas(terminal).test {
+            val e = awaitItem()
+            assertEquals(emptyList<Chegada>(), e.chegadas)
+            assertFalse(e.tempoRealIndisponivel); assertFalse(e.semLigacao)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun cacheSoComChegadasPassadasNaoMostraAHoraAntiga() = runTest {
+        repo(HttpPorUrl("arrivals" to listOf({ Resposta(200, fixture("cm-arrivals-060419.json")) }))).atualizarGuardadas(terminal, manha)
+        val falha = HttpPorUrl("arrivals" to listOf({ Resposta(503, "") }))
+        val depois = Repositorio(bd, CarrisMetropolitana(falha), Transitous(falha), GeoApi(falha), relogio = { manha.plusSeconds(86_400) })
+        depois.chegadas(terminal).test {
+            val e = awaitItem()
+            assertTrue(e.tempoRealIndisponivel); assertNull(e.atualizadoEm); assertTrue(e.chegadas.isEmpty())
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun cmNaZonaDeixaDeForaAsParagensSemLinhas() = runTest {
+        bd.paragens().guardar(listOf(
+            ParagemEntidade("CM:1", "CM", "1", "Com linhas", normalizar("Com linhas"), 38.70, -9.14, null, "3708"),
+            ParagemEntidade("CM:2", "CM", "2", "Sem linhas", normalizar("Sem linhas"), 38.70, -9.14, null, ""),
+        ))
+        assertEquals(listOf("CM:1"), bd.paragens().cmNaZona(38.69, -9.15, 38.71, -9.13).map { it.chave })
+    }
 }

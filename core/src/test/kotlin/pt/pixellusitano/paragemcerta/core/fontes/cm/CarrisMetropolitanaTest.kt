@@ -10,6 +10,7 @@ import pt.pixellusitano.paragemcerta.core.HttpFalso
 import pt.pixellusitano.paragemcerta.core.atraso.EstadoAtraso
 import pt.pixellusitano.paragemcerta.core.atraso.estado
 import pt.pixellusitano.paragemcerta.core.fixture
+import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.modelo.Gravidade
 import pt.pixellusitano.paragemcerta.core.rede.Resposta
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
@@ -170,5 +171,15 @@ class CarrisMetropolitanaTest {
         assertEquals(6, forma.size)
         // O GeoJSON dá [lon, lat]; a app usa (lat, lon).
         assertEquals(38.64061 to -9.230475, forma.first())
+    }
+
+    @Test fun paragemSemServicoDaListaVazia() = runTest {
+        val cm = CarrisMetropolitana(HttpFalso({ Resposta(404, "[]") }))
+        assertEquals(Resultado.Ok(emptyList<Chegada>()), cm.chegadas("120161", manha))
+    }
+
+    @Test fun falhasDoServidorNasChegadasContinuamFalhas() = runTest {
+        assertEquals(Resultado.Falha(503, limite = true), CarrisMetropolitana(HttpFalso({ Resposta(503, "") })).chegadas("120161", manha))
+        assertEquals(Resultado.Falha(500, limite = false), CarrisMetropolitana(HttpFalso({ Resposta(500, "") })).chegadas("120161", manha))
     }
 }
