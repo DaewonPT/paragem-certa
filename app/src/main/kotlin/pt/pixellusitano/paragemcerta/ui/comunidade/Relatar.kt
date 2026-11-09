@@ -125,7 +125,7 @@ internal fun FolhaRelatarConteudo(
                             modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
                         ) {
                             Icon(iconeRelato(t), null, Modifier.padding(end = 8.dp))
-                            Text(stringResource(nomeDoTipo(t)))
+                            Text(stringResource(nomeDoTipo(t)), Modifier.weight(1f))
                         }
                     }
                 } else {

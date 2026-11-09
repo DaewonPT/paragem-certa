@@ -1,11 +1,14 @@
 package pt.pixellusitano.paragemcerta.ui.rotas
 
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertWidthIsAtLeast
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.SemanticsMatcher
 import androidx.compose.ui.test.assert
@@ -17,6 +20,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performTextInput
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -101,6 +105,23 @@ class EscolherLugarTest {
     @Test fun maisOpcoesEncontraSePelaDescricaoCom48dp() {
         pesquisarCom { listOf(Lugar("Rua Augusta", 38.71, -9.137, TipoLugar.MORADA)) }
         regra.onNodeWithContentDescription("Mais opções").assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp)
+    }
+
+    // Com letra a 200 %: o voltar continua com 48 dp e à vista, e o campo fica à vista e ao lado dele, sem lhe passar por cima.
+    @Test fun comLetraA200OVoltarEOCampoContinuamAVistaESemSobrepor() {
+        regra.setContent {
+            val d = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(d.density, fontScale = 2f)) {
+                TemaParagemCerta(ModoTema.CLARO) {
+                    EscolherLugarEcra("Onde é a tua casa?", comPosicao = true, locais = emptyList(), recentes = emptyList(), pesquisar = { null }, aoEscolher = {}, aoVoltar = {})
+                }
+            }
+        }
+        val voltar = regra.onNodeWithContentDescription("Voltar").assertIsDisplayed().assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp)
+        val campo = regra.onNode(hasSetTextAction()).assertIsDisplayed()
+        val v = voltar.fetchSemanticsNode().boundsInRoot
+        val c = campo.fetchSemanticsNode().boundsInRoot
+        assertTrue("o campo $c sobrepõe o voltar $v", c.left >= v.right || c.top >= v.bottom)
     }
 
     @Test fun voltarTem48dp() {

@@ -224,7 +224,7 @@ internal fun FolhaCorrigirConteudo(
                         null -> OpcaoCorrigir.entries.forEach { o ->
                             BotaoSecundario({ opcao = o }, Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                                 Icon(o.icone, null, Modifier.padding(end = 8.dp))
-                                Text(stringResource(o.texto))
+                                Text(stringResource(o.texto), Modifier.weight(1f))
                             }
                         }
                         OpcaoCorrigir.NOME -> OutlinedTextField(

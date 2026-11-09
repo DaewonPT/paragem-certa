@@ -58,7 +58,7 @@ class IconesTest {
     @OptIn(ExperimentalLayoutApi::class)
     @Test fun folhaDosIcones() = captureRoboImage("src/test/screenshots/icones_claro.png") {
         TemaParagemCerta(ModoTema.CLARO) {
-            FlowRow(Modifier.width(360.dp).padding(8.dp), maxItemsInEachRow = 4, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            FlowRow(Modifier.width(360.dp).padding(8.dp), maxItemsInEachRow = 4, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                 Icones.todos.forEach { (nome, icone) ->
                     Column(Modifier.width(84.dp).padding(vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
                         Icon(icone, nome)

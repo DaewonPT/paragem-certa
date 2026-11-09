@@ -1,6 +1,9 @@
 package pt.pixellusitano.paragemcerta.ui.rotas
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Rule
 import org.junit.Test
@@ -42,6 +45,11 @@ class EscolherLugarScreenshotTest {
     }
 
     @Test fun escolher_lugar_claro() = captureRoboImage("src/test/screenshots/escolher_lugar_claro.png") { Ecra(ModoTema.CLARO) }
+
+    @Test fun escolher_lugar_letra200() = captureRoboImage("src/test/screenshots/escolher_lugar_letra200.png") {
+        val d = LocalDensity.current
+        CompositionLocalProvider(LocalDensity provides Density(d.density, fontScale = 2f)) { Ecra(ModoTema.CLARO) }
+    }
 
     // Com o campo focado, como ao abrir no telemóvel: vê-se a sugestão sobre o branco do campo.
     @Test fun escolher_lugar_escuro() {

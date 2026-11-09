@@ -11,6 +11,7 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextOverflow
 import pt.pixellusitano.paragemcerta.ui.tema.Azulejo
 import pt.pixellusitano.paragemcerta.ui.tema.Icones
 
@@ -29,7 +30,7 @@ fun CampoAzulejo(
         value = valor, onValueChange = aoMudar, modifier = modifier,
         singleLine = true, shape = MaterialTheme.shapes.medium,
         label = { Text(rotulo) },
-        placeholder = dica?.let { { Text(it) } },
+        placeholder = dica?.let { { Text(it, maxLines = 1, overflow = TextOverflow.Ellipsis) } },
         leadingIcon = { Icon(Icones.Pesquisa, contentDescription = null, tint = Azulejo.Cinza) },
         keyboardOptions = teclado, keyboardActions = acoes,
         colors = TextFieldDefaults.colors(
