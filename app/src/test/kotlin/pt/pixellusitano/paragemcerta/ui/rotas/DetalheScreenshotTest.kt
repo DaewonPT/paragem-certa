@@ -27,6 +27,7 @@ import org.robolectric.annotation.Config
 import org.robolectric.annotation.GraphicsMode
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.TransitousParser
 import pt.pixellusitano.paragemcerta.dados.fixture
+import pt.pixellusitano.paragemcerta.ui.tema.LocalEscuro
 import pt.pixellusitano.paragemcerta.ui.tema.ModoTema
 import pt.pixellusitano.paragemcerta.ui.tema.TemaParagemCerta
 
@@ -38,11 +39,11 @@ class DetalheScreenshotTest {
 
     private val rota = TransitousParser.rotas(fixture("transitous-plan.json"))[0]
 
-    // O MapLibre não desenha no Robolectric: no lugar do mapa fica um retângulo.
+    // O MapLibre não desenha no Robolectric: no lugar do mapa fica um retângulo, no escuro com o fundo do estilo escuro do OpenFreeMap.
     @Composable
     private fun Detalhe(aoComecar: () -> Unit = {}) = DetalheRotaConteudo(
         rota, de = "Cais do Sodré", para = "Oriente",
-        mapa = { Box(Modifier.fillMaxSize().background(Color(0xFFDDE5F0))) },
+        mapa = { Box(Modifier.fillMaxSize().background(if (LocalEscuro.current) Color(0xFF0C0C0C) else Color(0xFFDDE5F0))) },
         aoVoltar = {}, aoComecar = aoComecar, aoPartilhar = {}, aoAbrirTvde = {}, modifier = Modifier.width(360.dp),
     )
 

@@ -75,6 +75,7 @@ import pt.pixellusitano.paragemcerta.dados.Preferencias
 import pt.pixellusitano.paragemcerta.dados.Repositorio
 import pt.pixellusitano.paragemcerta.ui.bussola.RegistoFalso
 import pt.pixellusitano.paragemcerta.ui.mapa.Dono
+import pt.pixellusitano.paragemcerta.ui.tema.LocalEscuro
 import pt.pixellusitano.paragemcerta.ui.tema.ModoTema
 import pt.pixellusitano.paragemcerta.ui.tema.TemaParagemCerta
 import java.io.File
@@ -149,7 +150,8 @@ class InicioEcraTest {
                             aoAbrirConta = if (contaLigada) ({ abriuConta++ }) else null,
                             mapa = {
                                 ligacao = it
-                                Box(Modifier.fillMaxSize().background(Color(0xFFDDE5F0)).testTag("mapa"))
+                                // No escuro, o fundo do estilo escuro do OpenFreeMap: a folha e os botões por cima têm de se ver contra ele.
+                                Box(Modifier.fillMaxSize().background(if (LocalEscuro.current) Color(0xFF0C0C0C) else Color(0xFFDDE5F0)).testTag("mapa"))
                             },
                         )
                     }

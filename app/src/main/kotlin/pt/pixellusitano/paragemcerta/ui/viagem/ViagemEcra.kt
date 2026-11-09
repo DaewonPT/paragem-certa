@@ -52,14 +52,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.drawOutline
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.clipRect
-import androidx.compose.ui.graphics.drawscope.inset
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -84,6 +76,7 @@ import pt.pixellusitano.paragemcerta.dados.Comunidade
 import pt.pixellusitano.paragemcerta.ui.comum.BotaoPrincipal
 import pt.pixellusitano.paragemcerta.ui.comum.BotaoSecundario
 import pt.pixellusitano.paragemcerta.ui.comum.CartaoAzulejo
+import pt.pixellusitano.paragemcerta.ui.comum.contornoDeCima
 import pt.pixellusitano.paragemcerta.ui.comum.LISBOA_FUSO
 import pt.pixellusitano.paragemcerta.ui.comum.SeloLinha
 import pt.pixellusitano.paragemcerta.ui.comum.corDaLinha
@@ -463,15 +456,4 @@ private fun Botoes(estado: EstadoViagem, aoSilenciar: () -> Unit, aoJaSai: () ->
             BotaoSecundario(aoParar) { Text(stringResource(if (estado.terminada) R.string.viagem_concluir else R.string.viagem_parar)) }
         }
     }
-}
-
-/**
- * O contorno da [forma] sem o fundo: na pega, a linha de cima e os cantos da folha.
- * Limite: abaixo da pega os lados da folha não têm contorno; num ecrã mais largo do que a folha, ela separa-se do mapa só por cima.
- */
-private fun Modifier.contornoDeCima(cor: Color, forma: Shape) = drawWithCache {
-    val traco = 1.dp.toPx()
-    // Com o dobro da altura, o fundo do contorno cai fora do desenho e é cortado.
-    val contorno = forma.createOutline(Size(size.width - traco, size.height * 2), layoutDirection, this)
-    onDrawBehind { clipRect { inset(traco / 2) { drawOutline(contorno, cor, style = Stroke(traco)) } } }
 }

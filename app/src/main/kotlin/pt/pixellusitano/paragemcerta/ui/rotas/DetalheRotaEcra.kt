@@ -58,6 +58,7 @@ import pt.pixellusitano.paragemcerta.dados.Preferencias
 import pt.pixellusitano.paragemcerta.ui.comum.LISBOA_FUSO
 import pt.pixellusitano.paragemcerta.ui.comum.LocalLimites
 import pt.pixellusitano.paragemcerta.ui.comum.SeloLinha
+import pt.pixellusitano.paragemcerta.ui.comum.contornoDeCima
 import pt.pixellusitano.paragemcerta.ui.comum.corDaLinha
 import pt.pixellusitano.paragemcerta.ui.inicio.temLocalizacao
 import pt.pixellusitano.paragemcerta.ui.mapa.Mapa
@@ -165,11 +166,13 @@ fun DetalheRotaConteudo(
                 IconButton(onClick = aoVoltar, Modifier.size(48.dp)) { Icon(Icones.Voltar, stringResource(R.string.voltar)) }
             }
         }
-        // A folha com os dados sobe 28 dp por cima do mapa, de topo redondo.
+        // A folha com os dados sobe 28 dp por cima do mapa, de topo redondo e com contorno.
+        val forma = MaterialTheme.shapes.extraLarge.copy(bottomStart = CornerSize(0.dp), bottomEnd = CornerSize(0.dp))
         LazyColumn(
             Modifier.fillMaxSize().padding(top = ALTURA_DO_MAPA - 28.dp)
-                .clip(MaterialTheme.shapes.extraLarge.copy(bottomStart = CornerSize(0.dp), bottomEnd = CornerSize(0.dp)))
-                .background(cores.background),
+                .clip(forma)
+                .background(cores.background)
+                .contornoDeCima(cores.outlineVariant, forma),
             contentPadding = PaddingValues(start = 16.dp, end = 16.dp, top = 20.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {

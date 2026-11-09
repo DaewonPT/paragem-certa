@@ -91,11 +91,11 @@ import pt.pixellusitano.paragemcerta.ui.Rotas
 import pt.pixellusitano.paragemcerta.ui.comum.DialogoNome
 import pt.pixellusitano.paragemcerta.ui.comum.FaixaAzulejo
 import pt.pixellusitano.paragemcerta.ui.comum.BotaoSecundario
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.BottomSheetDefaults
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.BorderStroke
 import pt.pixellusitano.paragemcerta.ui.comum.ItemLista
+import pt.pixellusitano.paragemcerta.ui.comum.contornoDeCima
 import pt.pixellusitano.paragemcerta.core.modelo.Lugar
 import android.widget.Toast
 import androidx.compose.foundation.layout.Spacer
@@ -367,10 +367,8 @@ fun InicioEcra(
         scaffoldState = folha,
         sheetPeekHeight = alturaPainelFechado(maxHeight),
         sheetContainerColor = MaterialTheme.colorScheme.background,
-        // O contorno do topo da folha: no escuro a sombra não a separa do mapa.
         sheetDragHandle = {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+            Box(Modifier.fillMaxWidth().contornoDeCima(MaterialTheme.colorScheme.outlineVariant, BottomSheetDefaults.ExpandedShape), contentAlignment = Alignment.Center) {
                 BottomSheetDefaults.DragHandle()
             }
         },
@@ -677,7 +675,7 @@ private fun BussolaPequena(rumo: () -> Float, aoTocar: () -> Unit, modifier: Mod
 private fun DicaBussola(aoFechar: () -> Unit, modifier: Modifier = Modifier) {
     Surface(
         onClick = aoFechar, modifier = modifier.semantics { liveRegion = LiveRegionMode.Polite },
-        shape = MaterialTheme.shapes.medium, color = Azulejo.Tinta, shadowElevation = 6.dp,
+        shape = MaterialTheme.shapes.medium, color = Azulejo.Tinta, shadowElevation = 6.dp, border = bordaFlutuante(),
     ) {
         Text(
             stringResource(R.string.dica_bussola), Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
