@@ -4,7 +4,7 @@ import androidx.compose.ui.graphics.Color
 import pt.pixellusitano.paragemcerta.core.atraso.EstadoAtraso
 import pt.pixellusitano.paragemcerta.core.modelo.Gravidade
 
-/** Cores do estilo Azulejo (especificação, secção 5.3). */
+/** Cores do estilo Azulejo. */
 object Azulejo {
     val Cobalto = Color(0xFF1F4FA3)
     val Eletrico = Color(0xFFFFC629)
@@ -26,7 +26,7 @@ object Azulejo {
     val FrisoNoite = Color(0xFF2A4F96)
 }
 
-/** Cores dos minutos conforme o atraso (especificação, secção 5.4). */
+/** Cores dos minutos conforme o atraso. */
 object CoresAtraso {
     fun cor(estado: EstadoAtraso, escuro: Boolean): Color = when (estado) {
         EstadoAtraso.A_HORAS -> if (escuro) Color(0xFF4ADE80) else Color(0xFF15803D)

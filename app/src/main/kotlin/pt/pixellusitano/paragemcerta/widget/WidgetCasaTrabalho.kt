@@ -58,6 +58,7 @@ open class WidgetCasaTrabalho : AppWidgetProvider() {
  * pelo mapa; antes, escolhe-se aqui pela altura que ele deu.
  */
 internal fun desenhoDoWidget(contexto: Context, id: Int, conteudo: ConteudoCasaTrabalho): RemoteViews {
+    // Limite: o TalkBack e as animações só se leem aqui; ligar o TalkBack depois deste desenho só pára a troca a partir do desenho seguinte.
     val talkBack = contexto.getSystemService(AccessibilityManager::class.java)?.isTouchExplorationEnabled == true
     val automatica = trocaAutomatica(animacoesLigadas(contexto), talkBack)
     val mostrado = DadosWidget(contexto).mostrado(id)
