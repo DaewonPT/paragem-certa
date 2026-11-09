@@ -53,12 +53,12 @@ object Icones {
         "M4 11h16", "M8 15h.01M16 15h.01", "M7 18v3M17 18v3",
     )
     val Metro = icone(
-        "Metro", "M6 3h12a2 2 0 0 1 2 2v10a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V5a2 2 0 0 1 2-2z",
-        "M4 10h16", "M8 14h.01M16 14h.01", "M8 18l-2 3M16 18l2 3",
+        "Metro", "M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z",
+        "M7 17V8l5 6 5-6v9",
     )
     val Comboio = icone(
-        "Comboio", "M8 3h8a3 3 0 0 1 3 3v9a3 3 0 0 1-3 3H8a3 3 0 0 1-3-3V6a3 3 0 0 1 3-3z",
-        "M9 8h6", "M9 14h.01M15 14h.01", "M8 18l-2 3M16 18l2 3",
+        "Comboio", "M3 18V7a2 2 0 0 1 2-2h7c4 0 7 5 9 9v4z",
+        "M7 9h4v3H7z", "M7 21h.01M17 21h.01",
     )
     val Barco = icone("Barco", "M3 16l2 4h14l2-4z", "M7 16v-6h10v6", "M12 10V4")
     val Eletrico = icone(
