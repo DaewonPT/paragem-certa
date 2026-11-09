@@ -28,7 +28,7 @@ import java.time.Instant
 
 enum class TamanhoWidget { T4x1, T4x2 }
 
-// Limite: a faixa, os dois destinos de duas linhas e o rodapé precisam de uns 140 dp; abaixo disso fica o 4×1, um destino de cada vez.
+// Limite: a faixa, os dois destinos de duas linhas e o rodapé precisam de uns 140 dp; abaixo disso fica o 4×1, um destino de cada vez. Os 140 dp contam com a letra a 100 %: com letra maior, o 4×2 pode cortar até cerca de 140 × escala da letra.
 fun tamanhoPelaAltura(alturaDp: Int): TamanhoWidget = if (alturaDp < 140) TamanhoWidget.T4x1 else TamanhoWidget.T4x2
 
 /** As do Android 12 ou mais, com o limiar de [tamanhoPelaAltura]. Largura 0: com uma largura, um launcher que desse menos caía sempre no 4×1. */

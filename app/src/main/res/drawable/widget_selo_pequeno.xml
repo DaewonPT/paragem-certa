@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Como o widget_selo, com menos raio: nos selos de duas linhas do Casa e Trabalho um raio de 8 dp dava uma pílula. -->
+<!-- Como o widget_selo, com menos raio: os selos do Casa e Trabalho têm uns 17 dp de altura e um raio de 8 dp dava uma pílula. -->
 <shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
     <solid android:color="#FFFFFFFF" />
     <corners android:radius="4dp" />
