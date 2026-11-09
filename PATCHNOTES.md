@@ -2,6 +2,13 @@
 
 A versão mais recente aparece primeiro.
 
+## 0.5.0 — Azulejo
+
+- Aspeto novo: faixa azul com a pesquisa, painel com cartões e ícones próprios.
+- Modo bússola: toca duas vezes no botão da posição e o mapa segue-te e roda para onde apontas o telemóvel.
+- As paragens sem serviço deixam de mostrar "Tempo real indisponível" com horas antigas.
+- A ligação para apoiar a Paragem Certa abre em inglês.
+
 ## 0.4.2 — Ícone novo e apoio
 
 - Ícone novo: o autocarro amarelo sobre o azulejo azul.
