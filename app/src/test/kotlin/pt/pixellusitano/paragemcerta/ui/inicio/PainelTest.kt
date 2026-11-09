@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.height
 import androidx.compose.ui.unit.width
 import androidx.room.Room
 import androidx.test.espresso.Espresso
+import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
@@ -457,6 +458,40 @@ class PainelTest {
         assertEquals(casa, sugeridas[0].first)
         assertEquals(maisCedo, sugeridas[0].second)
         assertEquals(saldanha, sugeridas[0].third)
+    }
+
+    @Test fun widgetQueFalhaNaoDeitaAbaixoOPainel() {
+        val repo = repositorioComRotas()
+        runBlocking {
+            repo.guardarLocal("Casa", Lugar("Casa", 38.7058, -9.1431, TipoLugar.MORADA), "CASA")
+            repo.guardarLocal("Trabalho", Lugar("Trabalho", 38.7101, -9.1402, TipoLugar.MORADA), "TRABALHO")
+        }
+        val linhas = catalogoLinhas()
+        var tentativas = 0
+        regra.setContent {
+            TemaParagemCerta(ModoTema.CLARO) {
+                Painel(repo, saldanha, {}, {}, catalogo = linhas, aoSugerir = { _, _, _ -> tentativas++; throw IllegalStateException("o widget rebentou") })
+            }
+        }
+        // As duas sugestões aparecem: a falha do widget na Casa não impede a do Trabalho nem o cartão.
+        regra.waitUntil(5_000) { regra.onAllNodes(hasText("sai às", substring = true)).fetchSemanticsNodes().size == 2 }
+        regra.waitForIdle()
+        assertEquals(2, tentativas)
+    }
+
+    @Test fun widgetLentoNaoAtrasaOTrabalho() {
+        val repo = repositorioComRotas()
+        runBlocking {
+            repo.guardarLocal("Casa", Lugar("Casa", 38.7058, -9.1431, TipoLugar.MORADA), "CASA")
+            repo.guardarLocal("Trabalho", Lugar("Trabalho", 38.7101, -9.1402, TipoLugar.MORADA), "TRABALHO")
+        }
+        val linhas = catalogoLinhas()
+        regra.setContent {
+            TemaParagemCerta(ModoTema.CLARO) {
+                Painel(repo, saldanha, {}, {}, catalogo = linhas, aoSugerir = { _, _, _ -> awaitCancellation() })
+            }
+        }
+        regra.waitUntil(5_000) { regra.onAllNodes(hasText("sai às", substring = true)).fetchSemanticsNodes().size == 2 }
     }
 
     @Test fun sugestaoDeOutroSitioNaoVaiParaOWidget() {

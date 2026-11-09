@@ -214,9 +214,9 @@ class AtualizadorCasaTrabalhoTest {
         assertEquals(EstadoLigacao.OK, dados.ligacao("CASA")?.estado)
         assertEquals(listOf(1, 2), desenhos.map { it.first })
         assertEquals("210", (ultimo.casa as Destino.Ligacao).ligacao.linha)
-        assertEquals(Destino.TocaAtualizar("Trabalho"), ultimo.trabalho)
+        assertEquals("sem posição guardada o Trabalho continua a pedir que se abra a app", Destino.SemPosicao("Trabalho"), ultimo.trabalho)
         assertEquals(Rodape("18:40", daPosicaoGuardada = false), ultimo.rodape)
-        assertEquals("sem posição guardada fica a do painel, sem hora", PosicaoComHora(atual.lat, atual.lon, 0), dados.posicao())
+        assertNull("a origem do painel não se guarda como posição: não tem hora", dados.posicao())
         assertNull("o painel não conta como toque no ↻", dados.ultimaTentativaCasaTrabalho())
     }
 

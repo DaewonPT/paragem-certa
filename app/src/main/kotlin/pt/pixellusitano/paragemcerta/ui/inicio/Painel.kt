@@ -44,7 +44,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import pt.pixellusitano.paragemcerta.R
@@ -442,7 +444,7 @@ suspend fun melhorLigacao(
 private suspend fun sugerir(
     repositorio: Repositorio, sugestoes: MutableMap<Long, Sugestao>, calculando: MutableSet<Long>,
     local: LocalGuardado, posicao: Pair<Double, Double>, validade: Duration,
-    aoSugerir: suspend (LocalGuardado, Itinerario, Pair<Double, Double>) -> Unit,
+    aoSugerir: (LocalGuardado, Itinerario, Pair<Double, Double>) -> Unit,
 ): Itinerario? {
     val agora = Instant.now()
     sugestoes[local.id]?.takeIf { it.itinerario != null && guardadoValido(it.em, it.origem, agora, posicao, validade) }
@@ -494,9 +496,19 @@ fun Painel(
     val sugestoes = remember { mutableStateMapOf<Long, Sugestao>() }
     val calculando = remember { mutableStateSetOf<Long>() }
     val escopo = rememberCoroutineScope()
+    // À parte e sem deixar sair erros: um widget lento não atrasa o pedido seguinte, e um que falha não deita o Início abaixo.
+    val avisarWidget: (LocalGuardado, Itinerario, Pair<Double, Double>) -> Unit = { l, i, de ->
+        escopo.launch {
+            try {
+                aoSugerir(l, i, de)
+            } catch (e: Exception) {
+                currentCoroutineContext().ensureActive()
+            }
+        }
+    }
     LaunchedEffect(locais, posicao) {
         val p = posicao ?: return@LaunchedEffect
-        for (l in locais) if (estadoDoLocal(l, p) == EstadoLocal.AUTOMATICO) sugerir(repositorio, sugestoes, calculando, l, p, VALIDADE_AUTOMATICO, aoSugerir)
+        for (l in locais) if (estadoDoLocal(l, p) == EstadoLocal.AUTOMATICO) sugerir(repositorio, sugestoes, calculando, l, p, VALIDADE_AUTOMATICO, avisarWidget)
     }
     val blocosLocais = locais.map { l ->
         val estado = estadoDoLocal(l, posicao)
@@ -534,7 +546,7 @@ fun Painel(
         aoTocarLocal = { b ->
             if (posicao != null && toqueCalcula(b.estado, b.itinerario, b.aCalcular)) {
                 // Sem rota (rede em baixo, ou nenhuma) o toque não fica sem resposta: as rotas explicam o que falhou.
-                escopo.launch { if (sugerir(repositorio, sugestoes, calculando, b.local, posicao, VALIDADE_AO_TOQUE, aoSugerir) == null) abrirRotas(b.local) }
+                escopo.launch { if (sugerir(repositorio, sugestoes, calculando, b.local, posicao, VALIDADE_AO_TOQUE, avisarWidget) == null) abrirRotas(b.local) }
             } else abrirRotas(b.local)
         },
         aoVerMaisLocal = { b -> abrirRotas(b.local) },

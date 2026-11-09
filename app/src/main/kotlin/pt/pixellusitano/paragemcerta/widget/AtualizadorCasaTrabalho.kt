@@ -89,12 +89,13 @@ class AtualizadorCasaTrabalho(
         desenharTodos(locais, aCalcular = false)
     }
 
-    /** O painel calculou a sugestão de [local] a partir de [de]: guarda-a e redesenha, sem pedidos novos. */
+    /**
+     * O painel calculou a sugestão de [local]: guarda-a e redesenha, sem pedidos novos. A origem [de] não se guarda como posição:
+     * pode ser a última conhecida do telemóvel, sem hora, e um ↻ mais tarde dá-la-ia como atual.
+     */
     suspend fun aoSugerir(local: LocalGuardado, itinerario: Itinerario, de: Pair<Double, Double>) {
         dados.guardarLigacao(local.tipo, ligacaoDe(itinerario, relogio()))
         dados.marcarDaPosicaoGuardada(false)
-        // Sem posição guardada (o pedido do Início ainda não respondeu), fica a do painel, sem hora: não se sabe de quando é.
-        if (dados.posicao() == null) dados.guardarPosicao(PosicaoComHora(de.first, de.second, hora = 0))
         redesenhar()
     }
 
