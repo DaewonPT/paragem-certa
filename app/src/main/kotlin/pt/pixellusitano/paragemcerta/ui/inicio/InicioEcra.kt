@@ -90,6 +90,11 @@ import pt.pixellusitano.paragemcerta.ui.tema.LocalEscuro
 import pt.pixellusitano.paragemcerta.ui.Rotas
 import pt.pixellusitano.paragemcerta.ui.comum.DialogoNome
 import pt.pixellusitano.paragemcerta.ui.comum.FaixaAzulejo
+import pt.pixellusitano.paragemcerta.ui.comum.BotaoSecundario
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.BottomSheetDefaults
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.BorderStroke
 import pt.pixellusitano.paragemcerta.ui.comum.ItemLista
 import pt.pixellusitano.paragemcerta.core.modelo.Lugar
 import android.widget.Toast
@@ -350,6 +355,13 @@ fun InicioEcra(
         scaffoldState = folha,
         sheetPeekHeight = alturaPainelFechado(maxHeight),
         sheetContainerColor = MaterialTheme.colorScheme.background,
+        // O contorno do topo da folha: no escuro a sombra não a separa do mapa.
+        sheetDragHandle = {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+                BottomSheetDefaults.DragHandle()
+            }
+        },
         sheetContent = { painel(posicao) { definir = it } },
     ) { _ ->
     Box(Modifier.fillMaxSize()) {
@@ -596,8 +608,8 @@ private fun FaixaInicio(aoPesquisar: () -> Unit, aoAbrirConta: (() -> Unit)?, mo
 @Composable
 internal fun AvisoViagem(texto: Int, aoAbrir: () -> Unit, modifier: Modifier = Modifier, aoDescartar: (() -> Unit)? = null) {
     Surface(
-        modifier.fillMaxWidth(), shape = MaterialTheme.shapes.medium, shadowElevation = 6.dp,
-        color = MaterialTheme.colorScheme.secondaryContainer,
+        modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, shadowElevation = 6.dp,
+        color = MaterialTheme.colorScheme.surface, border = bordaFlutuante(),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text(
@@ -625,6 +637,7 @@ private fun BotaoPosicao(modo: ModoPosicao, temBussola: Boolean, aoTocar: () -> 
             if (estado != null) stateDescription = estado
         },
         shape = CircleShape, color = if (bussola) cores.primary else cores.surface, shadowElevation = 6.dp,
+        border = if (bussola) null else bordaFlutuante(),
     ) {
         Box(contentAlignment = Alignment.Center) {
             val icone = when (modo) {
@@ -640,9 +653,9 @@ private fun BotaoPosicao(modo: ModoPosicao, temBussola: Boolean, aoTocar: () -> 
 /** A bússola pequena do modo bússola: aponta para o norte do mapa ([rumo] lido só ao desenhar) e tocá-la sai do modo. */
 @Composable
 private fun BussolaPequena(rumo: () -> Float, aoTocar: () -> Unit, modifier: Modifier = Modifier) {
-    Surface(onClick = aoTocar, modifier = modifier.size(48.dp).semantics { role = Role.Button }, shape = CircleShape, color = Color.White, shadowElevation = 6.dp) {
+    Surface(onClick = aoTocar, modifier = modifier.size(48.dp).semantics { role = Role.Button }, shape = CircleShape, color = MaterialTheme.colorScheme.surface, shadowElevation = 6.dp, border = bordaFlutuante()) {
         Box(contentAlignment = Alignment.Center) {
-            Icon(Icones.Bussola, stringResource(R.string.voltar_ao_norte), Modifier.graphicsLayer { rotationZ = -rumo() }, tint = Azulejo.Cobalto)
+            Icon(Icones.Bussola, stringResource(R.string.voltar_ao_norte), Modifier.graphicsLayer { rotationZ = -rumo() }, tint = MaterialTheme.colorScheme.primary)
         }
     }
 }
@@ -661,43 +674,45 @@ private fun DicaBussola(aoFechar: () -> Unit, modifier: Modifier = Modifier) {
     }
 }
 
+/** O contorno fino das superfícies que flutuam sobre o mapa: no escuro a sombra não se vê e é ele que as separa. */
+@Composable
+private fun bordaFlutuante() = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+
+/** Um cartão sobre o mapa: como o CartaoAzulejo, mas com sombra, e o [fechar] em ícone à direita da primeira linha. */
+@Composable
+private fun CartaoSobreOMapa(aoFechar: () -> Unit, conteudo: @Composable ColumnScope.() -> Unit) {
+    Surface(
+        Modifier.fillMaxWidth(), shape = MaterialTheme.shapes.large, color = MaterialTheme.colorScheme.surface,
+        border = bordaFlutuante(), shadowElevation = 6.dp,
+    ) {
+        Box {
+            Column(Modifier.padding(start = 16.dp, top = 12.dp, bottom = 12.dp, end = 56.dp), content = conteudo)
+            IconButton(aoFechar, Modifier.align(Alignment.TopEnd).size(48.dp)) { Icon(Icones.Fechar, stringResource(R.string.fechar)) }
+        }
+    }
+}
+
 @Composable
 private fun CartaoVeiculo(v: Veiculo, aoFechar: () -> Unit) {
     val segundos = Duration.between(v.ultimoSinal, Instant.now()).seconds.coerceAtLeast(0)
-    Surface(
-        Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium, tonalElevation = 3.dp, shadowElevation = 6.dp,
-    ) {
-        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                // Uma rota que o catálogo não conhece dá um autocarro da Carris sem nome de linha: fica só "Carris · ao vivo".
-                if (v.linhaId.isNotEmpty()) Text(stringResource(R.string.veiculo_linha, v.linhaId), style = MaterialTheme.typography.titleMedium)
-                if (v.daCarris) {
-                    Text(stringResource(R.string.veiculo_carris), style = if (v.linhaId.isEmpty()) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium)
-                }
-                v.destino?.let { Text(stringResource(R.string.veiculo_destino, it)) }
-                Text(stringResource(R.string.veiculo_sinal, segundos), color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            TextButton(onClick = aoFechar) { Text(stringResource(R.string.fechar)) }
+    CartaoSobreOMapa(aoFechar) {
+        // Uma rota que o catálogo não conhece dá um autocarro da Carris sem nome de linha: fica só "Carris · ao vivo".
+        if (v.linhaId.isNotEmpty()) Text(stringResource(R.string.veiculo_linha, v.linhaId), style = MaterialTheme.typography.titleMedium)
+        if (v.daCarris) {
+            Text(stringResource(R.string.veiculo_carris), style = if (v.linhaId.isEmpty()) MaterialTheme.typography.titleMedium else MaterialTheme.typography.bodyMedium)
         }
+        v.destino?.let { Text(stringResource(R.string.veiculo_destino, it)) }
+        Text(stringResource(R.string.veiculo_sinal, segundos), color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 
 /** A estação GIRA tocada no mapa: o nome, o atalho para a app GIRA (onde se vê a disponibilidade) e o crédito da EMEL. */
 @Composable
 fun CartaoGira(e: EstacaoGira, aoAbrirApp: () -> Unit, aoFechar: () -> Unit) {
-    Surface(
-        Modifier.fillMaxWidth(),
-        shape = MaterialTheme.shapes.medium, tonalElevation = 3.dp, shadowElevation = 6.dp,
-    ) {
-        Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text(e.nome, style = MaterialTheme.typography.titleMedium)
-                TextButton(onClick = aoAbrirApp) { Text(stringResource(R.string.gira_ver_disponibilidade)) }
-                Text(stringResource(R.string.gira_credito), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            TextButton(onClick = aoFechar) { Text(stringResource(R.string.fechar)) }
-        }
+    CartaoSobreOMapa(aoFechar) {
+        Text(e.nome, Modifier.heightIn(min = 24.dp), style = MaterialTheme.typography.titleMedium)
+        BotaoSecundario(aoAbrirApp, Modifier.padding(vertical = 8.dp)) { Text(stringResource(R.string.gira_ver_disponibilidade)) }
+        Text(stringResource(R.string.gira_credito), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
 

@@ -9,6 +9,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.assertHeightIsAtLeast
+import androidx.compose.ui.test.assertWidthIsAtLeast
+import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -299,7 +303,7 @@ class CamadasTest {
         regra.onNodeWithText("CC Vasco da Gama").assertExists()
         regra.onNodeWithText("Estações GIRA: EMEL (dados.emel.pt), CC BY-SA 4.0").assertExists()
         regra.onNodeWithText("Ver disponibilidade na app GIRA").assertHasClickAction().performClick()
-        regra.onNodeWithText("Fechar").performClick()
+        regra.onNodeWithContentDescription("Fechar").assertWidthIsAtLeast(48.dp).assertHeightIsAtLeast(48.dp).performClick()
         assertEquals(1, abriu)
         assertEquals(1, fechou)
     }

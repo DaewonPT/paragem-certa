@@ -52,6 +52,20 @@ class InicioScreenshotTest {
         }
     }
 
+    @Test fun cartao_gira_escuro() = captureRoboImage("src/test/screenshots/cartao_gira_escuro.png") {
+        TemaParagemCerta(ModoTema.ESCURO) {
+            Box(Modifier.width(360.dp).background(Color(0xFF0C0C0C)).padding(12.dp)) {
+                CartaoGira(EstacaoGira("105", "CC Vasco da Gama", 38.768548, -9.096222), aoAbrirApp = {}, aoFechar = {})
+            }
+        }
+    }
+
+    @Test fun inicio_interrompida_escuro() = captureRoboImage("src/test/screenshots/inicio_interrompida_escuro.png") {
+        TemaParagemCerta(ModoTema.ESCURO) {
+            Box(Modifier.width(360.dp).background(Color(0xFF0C0C0C)).padding(12.dp)) { AvisoViagem(R.string.viagem_interrompida, {}, aoDescartar = {}) }
+        }
+    }
+
     @Test fun tocarRetomaEDescartarDescarta() {
         val pedidos = mutableListOf<String>()
         regra.setContent {
