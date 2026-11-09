@@ -151,7 +151,8 @@ fun LinhasConteudo(
             grupos.forEach { g ->
                 item(key = "meio-${g.modo}") {
                     Row(Modifier.padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Icon(iconeModo(g.modo), null, Modifier.size(24.dp), tint = MaterialTheme.colorScheme.primary)
+                        // 8 dp em cima: o título tem 12 dp em cima e 4 em baixo, e o ícone centra-se na linha do texto.
+                        Icon(iconeModo(g.modo), null, Modifier.padding(top = 8.dp).size(24.dp), tint = MaterialTheme.colorScheme.primary)
                         TituloSecao(stringResource(textoDoModo(g.modo)))
                     }
                 }

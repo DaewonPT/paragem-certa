@@ -1,6 +1,7 @@
 package pt.pixellusitano.paragemcerta.ui.comum
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -64,10 +65,11 @@ fun CabecalhoAzulejo(
             }
             Row(
                 Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, bottom = 12.dp),
-                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {
-                antesDoTitulo?.invoke()
-                Column(Modifier.weight(1f)) {
+                // Pela primeira linha de base do título: com letra grande e o nome em duas linhas, o selo fica ao lado da primeira.
+                if (antesDoTitulo != null) Box(Modifier.alignByBaseline()) { antesDoTitulo() }
+                Column(Modifier.weight(1f).alignByBaseline()) {
                     Text(
                         titulo, Modifier.semantics { if (titulo.isNotEmpty()) heading() },
                         style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Black, color = Color.White,

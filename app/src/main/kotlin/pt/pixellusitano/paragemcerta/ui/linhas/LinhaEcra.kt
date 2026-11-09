@@ -35,6 +35,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
@@ -233,7 +235,7 @@ fun LinhaConteudo(
     val d = estado.detalhe
     val s = d?.sentidos?.firstOrNull { it.sentido == estado.sentido }
     Column(modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-        CabecalhoDaLinha(estado, aoVoltar, aoFavorita)
+        Box(Modifier.zIndex(1f)) { CabecalhoDaLinha(estado, aoVoltar, aoFavorita) }
         if (d == null || s == null) {
             val texto = when {
                 estado.semLinha -> R.string.linha_ja_nao_existe
@@ -243,7 +245,14 @@ fun LinhaConteudo(
             Text(stringResource(texto), color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(16.dp))
             return@Column
         }
-        Box(Modifier.fillMaxWidth().weight(1f)) { mapa(s) }
+        // O mapa estende-se 28 dp (o raio dos cantos da faixa) por baixo dela, para os cantos assentarem sobre o mapa; a divisão com a lista não muda.
+        Box(
+            Modifier.fillMaxWidth().weight(1f).layout { medida, c ->
+                val extra = 28.dp.roundToPx()
+                val m = medida.measure(c.copy(minHeight = c.minHeight + extra, maxHeight = c.maxHeight + extra))
+                layout(m.width, m.height - extra) { m.place(0, -extra) }
+            },
+        ) { mapa(s) }
         val relatos = estado.relatos.filter { it.expiraEm > agora.toEpochMilli() }
         // O que vem antes das paragens na lista: os sentidos, os relatos (com o título), o mapa oficial e o título das paragens.
         val antesDasParagens = 1 + (if (relatos.isEmpty()) 0 else 1 + relatos.size) + (if (aoAbrirMapaOficial == null) 0 else 1) + 1

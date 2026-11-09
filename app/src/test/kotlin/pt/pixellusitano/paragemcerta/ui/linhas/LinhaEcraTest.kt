@@ -12,6 +12,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.semantics.getOrNull
 import androidx.compose.ui.test.SemanticsMatcher
@@ -30,6 +31,7 @@ import androidx.compose.ui.test.hasScrollAction
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithContentDescription
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollToNode
@@ -120,7 +122,7 @@ class LinhaEcraTest {
                     aoUsarComoHabitual = { habituais++ },
                     aoVerHorario = { horarios++ },
                     aoAbrirMapaOficial = if (comMapaOficial) ({ mapasOficiais++ }) else null,
-                    mapa = { Box(Modifier.fillMaxSize().background(Color(0xFFDDE5F0))) },
+                    mapa = { Box(Modifier.fillMaxSize().testTag("mapa").background(Color(0xFFDDE5F0))) },
                     modifier = Modifier.width(360.dp),
                     agora = AGORA_DA_LINHA,
                 )
@@ -294,6 +296,14 @@ class LinhaEcraTest {
         // O texto do selo tem 6 dp de folga até à borda: o contorno branco está nesse intervalo, à esquerda do texto.
         val aEsquerda = (selo.left.toInt() - 12..selo.left.toInt()).map { img[it, selo.center.y.toInt()] }
         assertTrue("sem contorno branco: $aEsquerda", aEsquerda.any { it.red > 0.9f && it.green > 0.9f && it.blue > 0.9f })
+    }
+
+    // Os cantos redondos de baixo da faixa assentam sobre o mapa: o mapa começa por baixo dela.
+    @Test fun oMapaEstendeSePorBaixoDaFaixa() {
+        mostrar()
+        val mapa = regra.onNodeWithTag("mapa").fetchSemanticsNode().boundsInRoot
+        val operador = regra.onNodeWithText("Carris").fetchSemanticsNode().boundsInRoot
+        assertTrue("o mapa começa em ${mapa.top}, o operador acaba em ${operador.bottom}", mapa.top < operador.bottom)
     }
 
     @Test fun estrelaPedeOFavoritoEDizOQueFaz(){

@@ -4,6 +4,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -12,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.positionInRoot
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.semantics.SemanticsProperties
@@ -104,6 +106,27 @@ class PecasAzulejoTest {
         assertTrue(titulo.getBoundsInRoot().top >= voltar.getBoundsInRoot().bottom)
     }
 
+    @Test fun oSeloAntesDoTituloAlinhaPelaPrimeiraLinhaDeBaseDoTitulo() {
+        regra.setContent {
+            val d = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(d.density, fontScale = 2f)) {
+                TemaParagemCerta(ModoTema.CLARO) {
+                    CabecalhoAzulejo(
+                        "Linha com um nome tão comprido que parte", {}, Modifier.width(360.dp), subtitulo = "Operador",
+                        antesDoTitulo = { Text("15E", style = MaterialTheme.typography.labelLarge) },
+                    )
+                }
+            }
+        }
+        fun linhaDeBase(texto: String): Float {
+            val no = regra.onNodeWithText(texto, useUnmergedTree = true).fetchSemanticsNode()
+            val resultados = mutableListOf<TextLayoutResult>()
+            no.config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(resultados)
+            return no.positionInRoot.y + resultados.first().firstBaseline
+        }
+        assertEquals(linhaDeBase("Linha com um nome tão comprido que parte"), linhaDeBase("15E"), 1f)
+    }
+
     @Test fun campoNoEscuroUsaTinta() {
         regra.setContent { TemaParagemCerta(ModoTema.ESCURO) { CampoAzulejo("Rossio", {}, "Pesquisar") } }
         val nos = regra.onAllNodes(hasSetTextAction()).fetchSemanticsNodes()
@@ -121,6 +144,17 @@ class PecasAzulejoTest {
             .config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(resultados)
         assertTrue("a sugestão não expõe o layout do texto", resultados.isNotEmpty())
         assertEquals(Azulejo.Cinza, resultados.first().layoutInput.style.color)
+    }
+
+    @Test fun sugestaoCompridaDoCampoFicaNumaSoLinha() {
+        regra.setContent {
+            TemaParagemCerta(ModoTema.CLARO) { CampoAzulejo("", {}, "Pesquisar", Modifier.width(220.dp), dica = "Sítio, rua, código postal ou paragem") }
+        }
+        regra.onNode(hasSetTextAction()).performClick()
+        val resultados = mutableListOf<TextLayoutResult>()
+        regra.onNodeWithText("Sítio, rua, código postal ou paragem", useUnmergedTree = true).fetchSemanticsNode()
+            .config.getOrNull(SemanticsActions.GetTextLayoutResult)?.action?.invoke(resultados)
+        assertEquals(1, resultados.single().lineCount)
     }
 
     @Test fun rotuloDoCampoFicaComTexto() {
