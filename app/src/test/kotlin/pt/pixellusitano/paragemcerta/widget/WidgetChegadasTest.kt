@@ -149,6 +149,16 @@ class WidgetChegadasTest {
         assertTrue("linha 3 acaba em $abaixo de ${v.height}", linha3.height > 0 && abaixo <= v.height)
     }
 
+    // Os selos têm a mesma largura mínima, para os destinos ficarem alinhados mesmo com um número de quatro algarismos.
+    @GraphicsMode(GraphicsMode.Mode.NATIVE)
+    @Test fun osSelosTemLarguraMinima() {
+        val v = desenhado(comChegadas.copy(linhas = List(3) { LinhaWidget("15E", "Restelo", "14:32", aoVivo = false, cor = COBALTO) }))
+        v.measure(View.MeasureSpec.makeMeasureSpec(340, View.MeasureSpec.EXACTLY), View.MeasureSpec.makeMeasureSpec(170, View.MeasureSpec.EXACTLY))
+        v.layout(0, 0, 340, 170)
+        val minimo = (48 * contexto.resources.displayMetrics.density).toInt()
+        for (id in listOf(R.id.widget_linha_1_nome, R.id.widget_linha_2_nome, R.id.widget_linha_3_nome)) assertTrue("selo de $id com ${v.findViewById<View>(id).width}", v.findViewById<View>(id).width >= minimo)
+    }
+
     @Test fun naoAcordaSozinho() = assertEquals(0, configuracao().getAttributeIntValue(ANDROID, "updatePeriodMillis", -1))
 
     // O Android faz ComponentName(pacote, configure) sem acrescentar nada: ".widget.X" não abria, e a variante pessoal tem outro pacote.

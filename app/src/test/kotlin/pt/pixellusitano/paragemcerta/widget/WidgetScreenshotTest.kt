@@ -23,10 +23,12 @@ import java.time.Instant
 class WidgetScreenshotTest {
     private val contexto: Context = RuntimeEnvironment.getApplication()
     private val cobalto = 0xFF1F4FA3.toInt()
+    private val eletrico = 0xFFFFC629.toInt()
+    private val carrisMetropolitana = 0xFFD62F5F.toInt()
     private val linhas = listOf(
         LinhaWidget("728", "Restelo (Estação)", "14:32", aoVivo = true, cor = cobalto),
-        LinhaWidget("15E", "Algés", "14:40", aoVivo = false, cor = cobalto),
-        LinhaWidget("3708", "Um destino com um nome muito comprido que não cabe todo", "14:52", aoVivo = true, cor = cobalto),
+        LinhaWidget("15E", "Algés", "14:40", aoVivo = false, cor = eletrico),
+        LinhaWidget("3708", "Um destino com um nome muito comprido que não cabe todo", "14:52", aoVivo = true, cor = carrisMetropolitana),
     )
 
     /** [altura]: um 4×2 num telemóvel comum tem 170 dp, um 4×1 cerca de 80; a mdpi, 1 dp = 1 px. */
@@ -61,6 +63,13 @@ class WidgetScreenshotTest {
 
     @Test fun widget_casa_trabalho_4x2() =
         capturar(vistasCasaTrabalho(contexto, 1, casaTrabalho, TamanhoWidget.T4x2, automatica = true), "widget_casa_trabalho_4x2")
+
+    // Os tamanhos mais baixos: o 4×1 no mínimo em que cabem os botões de 48 dp e o 4×2 no limiar.
+    @Test fun widget_casa_trabalho_4x1_baixo() =
+        capturar(vistasCasaTrabalho(contexto, 1, casaTrabalho, TamanhoWidget.T4x1, automatica = true), "widget_casa_trabalho_4x1_baixo", altura = 52)
+
+    @Test fun widget_casa_trabalho_4x2_limiar() =
+        capturar(vistasCasaTrabalho(contexto, 1, casaTrabalho, TamanhoWidget.T4x2, automatica = true), "widget_casa_trabalho_4x2_limiar", altura = 140)
 
     @Config(qualifiers = "+night")
     @Test fun widget_casa_trabalho_escuro() = capturar(

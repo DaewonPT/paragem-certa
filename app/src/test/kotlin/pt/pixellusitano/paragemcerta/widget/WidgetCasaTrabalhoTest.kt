@@ -68,10 +68,11 @@ class WidgetCasaTrabalhoTest {
 
     // ---- o tamanho ----
 
-    @Test fun tamanhoPelaAlturaMudaNos100Dp() {
+    @Test fun tamanhoPelaAlturaMudaNos140Dp() {
         assertEquals(TamanhoWidget.T4x1, tamanhoPelaAltura(40))
-        assertEquals(TamanhoWidget.T4x1, tamanhoPelaAltura(99))
-        assertEquals(TamanhoWidget.T4x2, tamanhoPelaAltura(100))
+        assertEquals(TamanhoWidget.T4x1, tamanhoPelaAltura(100))
+        assertEquals(TamanhoWidget.T4x1, tamanhoPelaAltura(139))
+        assertEquals(TamanhoWidget.T4x2, tamanhoPelaAltura(140))
         assertEquals(TamanhoWidget.T4x2, tamanhoPelaAltura(170))
     }
 
@@ -83,9 +84,10 @@ class WidgetCasaTrabalhoTest {
             assertEquals(tamanho, tamanhoPelaAltura(chave.height.toInt()))
         }
         assertEquals(SizeF(0f, 40f), CHAVES_TAMANHO.entries.first { it.value == TamanhoWidget.T4x1 }.key)
+        assertEquals(SizeF(0f, 140f), CHAVES_TAMANHO.entries.first { it.value == TamanhoWidget.T4x2 }.key)
     }
 
-    // A MIN_HEIGHT é a altura em paisagem: um 4×2 em retrato pode vir com ela abaixo dos 100 dp.
+    // A MIN_HEIGHT é a altura em paisagem: um 4×2 em retrato pode vir com ela abaixo dos 140 dp.
     @Test fun alturaDoWidgetLeAAlturaEmRetrato() {
         val opcoes = Bundle().apply {
             putInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 80)
@@ -347,10 +349,10 @@ class WidgetCasaTrabalhoTest {
         val casos = listOf(
             Destino.Perto("Casa") to ("Estás perto" to "Casa: estás perto"),
             Destino.SemMorada to ("Toca para escolher a morada" to "Casa: toca para escolher a morada"),
-            Destino.TocaAtualizar("Casa") to ("Toca em ↻" to "Casa: toca em ↻"),
+            Destino.TocaAtualizar("Casa") to ("Toca em ↻" to "Casa: toca em Atualizar"),
             Destino.ACalcular("Casa") to ("A calcular…" to "Casa: a calcular…"),
             Destino.SemTransportes("Casa") to ("Não há transportes para lá agora" to "Casa: não há transportes para lá agora"),
-            Destino.SemLigacao("Casa") to ("Sem ligação — toca em ↻" to "Casa: sem ligação — toca em ↻"),
+            Destino.SemLigacao("Casa") to ("Sem ligação — toca em ↻" to "Casa: sem ligação, toca em Atualizar"),
             Destino.SemPosicao("Casa") to ("Abre a app para saber onde estás" to "Casa: abre a app para saber onde estás"),
         )
         for ((destino, esperado) in casos) {

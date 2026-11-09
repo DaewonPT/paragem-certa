@@ -28,14 +28,14 @@ import java.time.Instant
 
 enum class TamanhoWidget { T4x1, T4x2 }
 
-/** Abaixo de 100 dp não cabem a faixa, os dois destinos e o rodapé: fica o 4×1, um destino de cada vez. */
-fun tamanhoPelaAltura(alturaDp: Int): TamanhoWidget = if (alturaDp < 100) TamanhoWidget.T4x1 else TamanhoWidget.T4x2
+// Limite: a faixa, os dois destinos de duas linhas e o rodapé precisam de uns 140 dp; abaixo disso fica o 4×1, um destino de cada vez.
+fun tamanhoPelaAltura(alturaDp: Int): TamanhoWidget = if (alturaDp < 140) TamanhoWidget.T4x1 else TamanhoWidget.T4x2
 
 /** As do Android 12 ou mais, com o limiar de [tamanhoPelaAltura]. Largura 0: com uma largura, um launcher que desse menos caía sempre no 4×1. */
-val CHAVES_TAMANHO = mapOf(SizeF(0f, 40f) to TamanhoWidget.T4x1, SizeF(0f, 100f) to TamanhoWidget.T4x2)
+val CHAVES_TAMANHO = mapOf(SizeF(0f, 40f) to TamanhoWidget.T4x1, SizeF(0f, 140f) to TamanhoWidget.T4x2)
 
-/** A altura em retrato (a MIN_HEIGHT é a de paisagem); sem opções ainda, a do widget por omissão, um 4×2 (o minHeight do provider). */
-fun alturaDoWidget(opcoes: Bundle): Int = opcoes.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 110)
+/** A altura em retrato (a MIN_HEIGHT é a de paisagem); sem opções ainda, a de um 4×2 (o limiar de [tamanhoPelaAltura]). */
+fun alturaDoWidget(opcoes: Bundle): Int = opcoes.getInt(AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT, 140)
 
 /** Sem animações não há movimento; com o TalkBack, trocar sozinho escondia o destino que tem o foco. */
 fun trocaAutomatica(animacoes: Boolean, talkBack: Boolean): Boolean = animacoes && !talkBack
@@ -87,17 +87,20 @@ fun vistasCasaTrabalho(
     return v
 }
 
-/** O nome do sítio (null sem morada) e, fora das ligações, o texto do estado. */
-private fun lerDestino(d: Destino): Pair<String?, Int?> = when (d) {
-    Destino.SemMorada -> null to R.string.widget_sem_morada
+/** O estado de um destino fora das ligações: o texto à vista e o da descrição (sem o ↻, que o TalkBack não lê). */
+private class Estado(val texto: Int, val descricao: Int = texto)
+
+/** O nome do sítio (null sem morada) e, fora das ligações, o estado. */
+private fun lerDestino(d: Destino): Pair<String?, Estado?> = when (d) {
+    Destino.SemMorada -> null to Estado(R.string.widget_sem_morada)
     is Destino.Ligacao -> d.nome to null
     is Destino.Passada -> d.nome to null
-    is Destino.Perto -> d.nome to R.string.widget_perto
-    is Destino.TocaAtualizar -> d.nome to R.string.widget_toca_atualizar
-    is Destino.ACalcular -> d.nome to R.string.painel_a_calcular
-    is Destino.SemTransportes -> d.nome to R.string.widget_sem_transportes
-    is Destino.SemLigacao -> d.nome to R.string.widget_casa_sem_ligacao
-    is Destino.SemPosicao -> d.nome to R.string.widget_sem_posicao
+    is Destino.Perto -> d.nome to Estado(R.string.widget_perto)
+    is Destino.TocaAtualizar -> d.nome to Estado(R.string.widget_toca_atualizar, R.string.widget_toca_atualizar_descricao)
+    is Destino.ACalcular -> d.nome to Estado(R.string.painel_a_calcular)
+    is Destino.SemTransportes -> d.nome to Estado(R.string.widget_sem_transportes)
+    is Destino.SemLigacao -> d.nome to Estado(R.string.widget_casa_sem_ligacao, R.string.widget_casa_sem_ligacao_descricao)
+    is Destino.SemPosicao -> d.nome to Estado(R.string.widget_sem_posicao)
 }
 
 /** [rota]: o destino das Rotas, null sem morada; [quando]: o "atualizado às…" que vai também na descrição. */
@@ -112,11 +115,11 @@ private fun desenharDestino(contexto: Context, v: RemoteViews, id: Int, ids: Ids
     v.setTextColor(ids.texto, if (d is Destino.Ligacao) tinta else cinzento)
     val l = (d as? Destino.Ligacao)?.ligacao ?: (d as? Destino.Passada)?.ligacao
     val descricao = if (l == null) {
-        val texto = contexto.getString(checkNotNull(estado))
-        v.setTextViewText(ids.texto, texto)
+        val e = checkNotNull(estado)
+        v.setTextViewText(ids.texto, contexto.getString(e.texto))
         v.setViewVisibility(ids.selo, View.GONE)
         v.setViewVisibility(ids.seloIcone, View.GONE)
-        contexto.getString(R.string.widget_destino_estado, nome, texto.replaceFirstChar { it.lowercase() })
+        contexto.getString(R.string.widget_destino_estado, nome, contexto.getString(e.descricao).replaceFirstChar { it.lowercase() })
     } else {
         val passada = d is Destino.Passada
         val corSelo = if (passada) cinzento else l.cor
@@ -139,7 +142,7 @@ private fun desenharDestino(contexto: Context, v: RemoteViews, id: Int, ids: Ids
             }
             else -> {
                 v.setImageViewResource(ids.seloIcone, iconeDoModo(l.modo))
-                v.setInt(ids.seloIcone, "setBackgroundResource", R.drawable.widget_selo)
+                v.setInt(ids.seloIcone, "setBackgroundResource", R.drawable.widget_selo_pequeno)
                 pintarSelo(v, ids.seloIcone, corSelo)
                 v.setInt(ids.seloIcone, "setColorFilter", sobreOSelo)
             }
