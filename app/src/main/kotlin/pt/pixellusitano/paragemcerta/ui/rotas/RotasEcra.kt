@@ -256,6 +256,17 @@ fun RotasConteudo(
                     }
                 }
                 is EstadoRotas.Prontas -> {
+                    // As páginas ficam por cima das rotas: chegam-se sem percorrer a lista e não fogem do dedo (a página nova começa de cima).
+                    if (estado.anterior != null || estado.seguinte != null || estado.aCarregarPagina || estado.erroPagina) item {
+                        Column(Modifier.fillMaxWidth().then(recuo), horizontalAlignment = Alignment.CenterHorizontally) {
+                            if (estado.aCarregarPagina) LinearProgressIndicator(Modifier.fillMaxWidth())
+                            else Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                if (estado.anterior != null) TextButton(onClick = aoMaisCedo) { Text(stringResource(R.string.rotas_mais_cedo)) }
+                                if (estado.seguinte != null) TextButton(onClick = aoMaisTarde) { Text(stringResource(R.string.rotas_mais_tarde)) }
+                            }
+                            if (estado.erroPagina) Aviso(stringResource(R.string.rotas_erro_pagina), Modifier)
+                        }
+                    }
                     itemsIndexed(estado.itinerarios) { i, it ->
                         Box(recuo) {
                             CartaoRota(
@@ -265,16 +276,6 @@ fun RotasConteudo(
                                 partidas = estado.partidas[i], agora = agora,
                                 relato = relatoDoCartao(it, relatos),
                             )
-                        }
-                    }
-                    if (estado.anterior != null || estado.seguinte != null || estado.aCarregarPagina || estado.erroPagina) item {
-                        Column(Modifier.fillMaxWidth().then(recuo), horizontalAlignment = Alignment.CenterHorizontally) {
-                            if (estado.aCarregarPagina) LinearProgressIndicator(Modifier.fillMaxWidth())
-                            else Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                if (estado.anterior != null) TextButton(onClick = aoMaisCedo) { Text(stringResource(R.string.rotas_mais_cedo)) }
-                                if (estado.seguinte != null) TextButton(onClick = aoMaisTarde) { Text(stringResource(R.string.rotas_mais_tarde)) }
-                            }
-                            if (estado.erroPagina) Aviso(stringResource(R.string.rotas_erro_pagina), Modifier)
                         }
                     }
                 }

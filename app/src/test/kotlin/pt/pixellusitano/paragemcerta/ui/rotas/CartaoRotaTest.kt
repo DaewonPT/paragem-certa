@@ -1,10 +1,12 @@
 package pt.pixellusitano.paragemcerta.ui.rotas
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.getUnclippedBoundsInRoot
 import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -26,7 +28,7 @@ import pt.pixellusitano.paragemcerta.ui.tema.TemaParagemCerta
 import java.time.Instant
 
 @RunWith(RobolectricTestRunner::class)
-@Config(qualifiers = "w360dp-h780dp") // ecrã alto: o fim da lista (os botões das páginas) cabe sem deslizar
+@Config(qualifiers = "w360dp-h780dp") // ecrã alto: a lista inteira (os botões das páginas e uma rota) cabe sem deslizar
 class CartaoRotaTest {
     @get:Rule val regra = createComposeRule()
 
@@ -125,6 +127,14 @@ class CartaoRotaTest {
         assertEquals(0, cedo)
         regra.onNodeWithText(contexto.getString(R.string.rotas_mais_cedo)).performClick()
         assertEquals(1, cedo)
+    }
+
+    @Test fun botoesDasPaginasFicamAntesDasRotas() {
+        // No topo chegam-se sem percorrer as rotas e, depois do toque, continuam debaixo do dedo (a página nova começa de cima).
+        lista(prontas.copy(anterior = "EARLIER|1", seguinte = "LATER|2"))
+        val botao = regra.onNodeWithText(contexto.getString(R.string.rotas_mais_tarde)).getUnclippedBoundsInRoot()
+        val cartao = saiDe().getUnclippedBoundsInRoot()
+        assertTrue("os botões (fundo ${botao.bottom}) deviam ficar por cima do cartão (topo ${cartao.top})", botao.bottom <= cartao.top)
     }
 
     @Test fun semCursorNaoMostraOsBotoes() {

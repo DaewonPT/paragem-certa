@@ -69,7 +69,7 @@ class RotasScreenshotTest {
         TemaParagemCerta(ModoTema.CLARO) { Rotas(comPartidas) }
     }
 
-    /** O fim da lista (só uma rota, para caber no ecrã): "Mais cedo" e "Mais tarde" e o aviso de que a página não carregou. */
+    /** Os botões das páginas (só uma rota, para caber no ecrã): "Mais cedo" e "Mais tarde" por cima da rota, com o aviso de que a página não carregou. */
     @Test fun rotas_paginas() = captureRoboImage("src/test/screenshots/rotas_paginas.png") {
         val uma = rotas.take(1)
         TemaParagemCerta(ModoTema.CLARO) {
