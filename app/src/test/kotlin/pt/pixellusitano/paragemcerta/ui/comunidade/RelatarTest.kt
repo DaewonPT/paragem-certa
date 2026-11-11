@@ -1,5 +1,7 @@
 package pt.pixellusitano.paragemcerta.ui.comunidade
 
+import pt.pixellusitano.paragemcerta.ui.comum.textoDoAviso
+import pt.pixellusitano.paragemcerta.R
 import android.Manifest
 import android.location.Location
 import androidx.compose.foundation.layout.Box
@@ -20,6 +22,7 @@ import androidx.room.Room
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -374,7 +377,8 @@ class RelatarTest {
         http.rotas["/api/relatos"] = { Resposta(503, """{"erro":"em_pausa"}""") }
         abrirParagem()
         relatarDesvio()
-        assertEquals("Algumas funções estão em pausa até à meia-noite", toast())
+        assertFalse(toast().contains("%"))
+        assertEquals(textoDoAviso(contexto, R.string.servidor_em_pausa), toast())
     }
 
     @Test fun servidorDesligadoEscondeOBotao() {
@@ -410,11 +414,13 @@ class RelatarTest {
         http.rotas["/api/relatos"] = { Resposta(503, """{"erro":"em_pausa"}""") }
         abrirParagem()
         relatarDesvio()
-        assertEquals("Algumas funções estão em pausa até à meia-noite", toast())
+        assertFalse(toast().contains("%"))
+        assertEquals(textoDoAviso(contexto, R.string.servidor_em_pausa), toast())
         // Durante a pausa o pedido nem sai: a falha é Falha(null, true, "em_pausa"), que sem código parece falta de rede mas não é.
         ShadowToast.reset()
         relatarDesvio()
-        assertEquals("Algumas funções estão em pausa até à meia-noite", toast())
+        assertFalse(toast().contains("%"))
+        assertEquals(textoDoAviso(contexto, R.string.servidor_em_pausa), toast())
         assertEquals(1, http.a("/api/relatos").size)
     }
 

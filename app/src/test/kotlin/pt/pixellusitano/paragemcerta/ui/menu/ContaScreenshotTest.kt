@@ -1,5 +1,7 @@
 package pt.pixellusitano.paragemcerta.ui.menu
 
+import pt.pixellusitano.paragemcerta.ui.comum.textoDoAviso
+import pt.pixellusitano.paragemcerta.R
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -350,6 +352,8 @@ class ContaScreenshotTest {
         regra.onNodeWithText("Entrar com email").performClick()
         regra.onNodeWithText("Email").performTextInput("ana@exemplo.pt")
         regra.onNodeWithText("Enviar código").performClick()
-        esperarPor("Algumas funções estão em pausa até à meia-noite")
+        val texto = textoDoAviso(contexto, R.string.servidor_em_pausa)
+        assertFalse(texto.contains("%"))
+        esperarPor(texto)
     }
 }

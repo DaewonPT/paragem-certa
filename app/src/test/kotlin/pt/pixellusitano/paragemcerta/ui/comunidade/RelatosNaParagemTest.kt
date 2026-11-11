@@ -1,5 +1,7 @@
 package pt.pixellusitano.paragemcerta.ui.comunidade
 
+import pt.pixellusitano.paragemcerta.ui.comum.textoDoAviso
+import pt.pixellusitano.paragemcerta.R
 import android.Manifest
 import android.location.Location
 import androidx.compose.foundation.layout.Box
@@ -411,11 +413,13 @@ class RelatosNaParagemTest {
         abrir()
         esperarPor("Desvio na 736")
         regra.onNodeWithText("Ainda está").performClick()
-        assertEquals("Algumas funções estão em pausa até à meia-noite", toast())
+        assertFalse(toast().contains("%"))
+        assertEquals(textoDoAviso(contexto, R.string.servidor_em_pausa), toast())
         // Segundo toque: a pausa responde sem pedir (Falha(null, true, "em_pausa")) e continua a ser pausa, não falta de rede.
         ShadowToast.reset()
         regra.onNodeWithText("Ainda está").performClick()
-        assertEquals("Algumas funções estão em pausa até à meia-noite", toast())
+        assertFalse(toast().contains("%"))
+        assertEquals(textoDoAviso(contexto, R.string.servidor_em_pausa), toast())
         regra.waitForIdle()
         assertEquals(1, http.a("/api/votos").size)
         assertEquals(1, http.a("/api/comunidade").size)

@@ -1,5 +1,6 @@
 package pt.pixellusitano.paragemcerta.ui.menu
 
+import pt.pixellusitano.paragemcerta.ui.comum.textoDoAviso
 import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
@@ -117,7 +118,7 @@ fun ContaEcra(
         estado = estado,
         googleDisponivel = webClientId.isNotBlank(),
         passo = passo,
-        mensagem = mensagem?.let { stringResource(it) },
+        mensagem = mensagem?.let { textoDoAviso(contexto, it) },
         aOcupar = aOcupar,
         aoEntrarComGoogle = {
             trabalhar {

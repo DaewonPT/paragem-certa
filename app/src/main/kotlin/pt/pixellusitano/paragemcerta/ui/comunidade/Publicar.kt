@@ -1,5 +1,6 @@
 package pt.pixellusitano.paragemcerta.ui.comunidade
 
+import pt.pixellusitano.paragemcerta.ui.comum.textoDoAviso
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
@@ -125,4 +126,4 @@ fun erroDaComunidade(f: Resultado.Falha): Int = when {
     else -> R.string.comunidade_erro
 }
 
-internal fun avisar(c: Context, @StringRes texto: Int) = Toast.makeText(c, texto, Toast.LENGTH_LONG).show()
+internal fun avisar(c: Context, @StringRes texto: Int) = Toast.makeText(c, textoDoAviso(c, texto), Toast.LENGTH_LONG).show()

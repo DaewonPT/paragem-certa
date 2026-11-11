@@ -239,7 +239,11 @@ class ServidorParagemCerta(
         val r = pedir()
         // Um 503 sem erro (um 1102 passageiro, por exemplo) é uma falha como as outras: não pausa nada.
         if (entrada || r !is Resultado.Falha || !(r.emPausa || (r.codigo == 429 && r.erro == null))) return r
-        pausaAte = agora.atZone(ZoneOffset.UTC).toLocalDate().plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant()
+        pausaAte = fimDaPausa(agora)
         return r.copy(limite = true, erro = "em_pausa")
     }
 }
+
+/** A próxima 00:00 UTC depois de [agora]: quando a quota grátis do servidor volta. */
+fun fimDaPausa(agora: Instant): Instant =
+    agora.atZone(ZoneOffset.UTC).toLocalDate().plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant()

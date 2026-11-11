@@ -444,4 +444,10 @@ class ServidorTest {
         assertEquals(Resultado.Ok(DadosComunidade()), s.comunidade(listOf("CM:060419")))
         assertEquals(2, http.pedidos.size)
     }
+
+    @Test fun fimDaPausaEAProximaMeiaNoiteUtc() {
+        assertEquals(Instant.parse("2026-11-11T00:00:00Z"), fimDaPausa(Instant.parse("2026-11-10T21:00:00Z")))
+        assertEquals(Instant.parse("2026-07-16T00:00:00Z"), fimDaPausa(Instant.parse("2026-07-15T23:30:00Z")))
+        assertEquals(Instant.parse("2026-07-16T00:00:00Z"), fimDaPausa(Instant.parse("2026-07-15T00:00:00Z").plusSeconds(1)))
+    }
 }
