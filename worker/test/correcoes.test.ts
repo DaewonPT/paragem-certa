@@ -1,6 +1,6 @@
 import { env } from "cloudflare:workers";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { criarConta, LIGADO, pedir, sha256 } from "./ajudas";
+import { criarConta, LIGADO, pedir, marcaDe } from "./ajudas";
 
 type Correcao = { paragem: string; tipo: string; lat?: number; lon?: number; nome?: string };
 
@@ -197,7 +197,7 @@ describe("correções aos dados", () => {
 
   it("contaBloqueadaDa403", async () => {
     await env.DB.prepare("INSERT INTO bloqueios (email_hash, motivo, criado_em) VALUES (?, 'teste', ?)")
-      .bind(await sha256("ana@exemplo.pt"), Date.now())
+      .bind(await marcaDe("ana@exemplo.pt"), Date.now())
       .run();
     expect(await erroDe(await corrigir(ana, NOME))).toEqual({ estado: 403, erro: "conta_bloqueada" });
     expect((await corrigir(rui, NOME)).status).toBe(201);

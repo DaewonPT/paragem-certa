@@ -35,14 +35,15 @@ function chavesPublicas(env: Env, equipa: string): JWTVerifyGetKey {
  * Quem o Access deixou passar, se for o autor: só o cabeçalho Cf-Access-Jwt-Assertion (nunca o cookie
  * CF_Authorization, que um pedido feito noutro sítio pode trazer), assinado RS256 pelas chaves da equipa, com o `iss`
  * da equipa, a audiência do pc-admin, dentro da validade e com o email do autor. Fecha tudo (`null`) se faltar
- * ACCESS_EQUIPA, ACCESS_AUD ou EMAIL_AUTOR, ou se alguma coisa falhar.
+ * ACCESS_EQUIPA, ACCESS_AUD, EMAIL_AUTOR ou CHAVE_MARCA_EMAIL, ou se alguma coisa falhar.
  */
 export async function verificarAcesso(pedido: Request, env: Env): Promise<{ email: string } | null> {
   const equipa = env.ACCESS_EQUIPA?.trim().replace(/\/+$/, "");
   const audiencia = env.ACCESS_AUD?.trim();
   const autor = env.EMAIL_AUTOR?.trim().toLowerCase();
+  const chaveDaMarca = env.CHAVE_MARCA_EMAIL?.trim();
   const token = pedido.headers.get("cf-access-jwt-assertion");
-  if (!equipa?.startsWith("https://") || !audiencia || !autor || !token || token.length > TAMANHO_MAXIMO) return null;
+  if (!equipa?.startsWith("https://") || !audiencia || !autor || !chaveDaMarca || !token || token.length > TAMANHO_MAXIMO) return null;
   try {
     const { payload } = await jwtVerify(token, chavesPublicas(env, equipa), {
       algorithms: ["RS256"],

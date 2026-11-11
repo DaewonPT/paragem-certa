@@ -167,6 +167,7 @@ describe("base do servidor", () => {
       expect(c.r2_buckets).toBeUndefined();
       expect(c.secrets.required).not.toContain("CF_PURGE_TOKEN");
       expect(c.secrets.required).not.toContain("CF_ZONA");
+      expect(c.secrets.required).toContain("CHAVE_MARCA_EMAIL");
     }
   });
 
@@ -254,9 +255,9 @@ describe("política de privacidade, termos e guia do autor", () => {
   it("privacidadeDizQuandoSaemONomeEOEmailDaDenuncia", async () => {
     const { pt, en } = await politica();
     expect(pt).toContain("O nome e o email de quem denuncia");
-    expect(pt).toContain("Até a decisão lhe ser enviada; depois só fica a marca (hash) do email");
+    expect(pt).toContain("Até a decisão lhe ser enviada; depois só fica a marca do email (um hash com chave secreta)");
     expect(en).toContain("The name and email of whoever files a report");
-    expect(en).toContain("Until the decision is sent to them; after that only a hash of the email remains");
+    expect(en).toContain("Until the decision is sent to them; after that only a hash of the email made with a secret key remains");
   });
 
   it("privacidadeDizOQueFicaDepoisDeApagarAConta", async () => {

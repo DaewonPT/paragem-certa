@@ -87,7 +87,7 @@ describe("pc-admin: o Access", () => {
   it("semConfiguracaoDoAccessFechaTudo", async () => {
     const jwt = await tokenAccess();
     await pagina(await pedirAdmin("/", { jwt }));
-    for (const segredo of ["ACCESS_AUD", "ACCESS_EQUIPA", "EMAIL_AUTOR"] as const) {
+    for (const segredo of ["ACCESS_AUD", "ACCESS_EQUIPA", "EMAIL_AUTOR", "CHAVE_MARCA_EMAIL"] as const) {
       for (const valor of [undefined, "", "  "]) {
         await semAcesso(await pedirAdmin("/", { jwt, segredos: { [segredo]: valor } }));
       }
@@ -220,7 +220,7 @@ describe("pc-admin: separado do Worker público", () => {
     expect(migrations_dir).toBe("migrations");
     expect(admin.d1_databases[0]).toEqual(d1Publico);
     expect(admin.r2_buckets).toEqual(publico.r2_buckets);
-    expect(admin.secrets.required).toEqual(expect.arrayContaining(["ACCESS_EQUIPA", "ACCESS_AUD", "EMAIL_AUTOR"]));
+    expect(admin.secrets.required).toEqual(expect.arrayContaining(["ACCESS_EQUIPA", "ACCESS_AUD", "EMAIL_AUTOR", "CHAVE_MARCA_EMAIL"]));
   });
 
   it("workerPublicoNaoServeOAdmin", async () => {

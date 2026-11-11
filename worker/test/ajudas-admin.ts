@@ -2,6 +2,7 @@ import { createExecutionContext, waitOnExecutionContext } from "cloudflare:test"
 import { env } from "cloudflare:workers";
 import { exportJWK, generateKeyPair, SignJWT, type CryptoKey } from "jose";
 import admin from "../src/admin/index";
+import { CHAVE_MARCA_TESTE } from "./ajudas";
 
 const paginaDeRevisao: Required<Pick<ExportedHandler<Env>, "fetch">> = admin;
 
@@ -32,6 +33,7 @@ export async function segredosAdmin(): Promise<Partial<Env>> {
     ACCESS_EQUIPA: EQUIPA,
     ACCESS_AUD: AUDIENCIA,
     EMAIL_AUTOR: AUTOR,
+    CHAVE_MARCA_EMAIL: CHAVE_MARCA_TESTE,
   };
 }
 

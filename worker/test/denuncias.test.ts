@@ -2,7 +2,7 @@ import { env } from "cloudflare:workers";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { enviarOuGuardar, mensagensEnviadas, REMETENTE_AVISOS } from "../src/email";
 import { decisaoDaDenuncia, explicacao, REGRAS } from "../src/explicacoes";
-import { criarConta, limitador, LIGADO, pedir, sha256 } from "./ajudas";
+import { criarConta, limitador, LIGADO, pedir, marcaDe } from "./ajudas";
 
 const DIA = 24 * 60 * 60_000;
 const INICIO = Date.UTC(2026, 10, 3, 8, 0);
@@ -63,7 +63,7 @@ describe("denúncias e recibo", () => {
           explicacao: "Está lá escrito um insulto.",
           nome: "Ana",
           email: "ana@exemplo.pt",
-          email_hash: await sha256("ana@exemplo.pt"),
+          email_hash: await marcaDe("ana@exemplo.pt"),
           criada_em: INICIO,
           decidida_em: null,
         },
@@ -139,7 +139,7 @@ describe("denúncias e recibo", () => {
 
   it("contaBloqueadaPodeDenunciar", async () => {
     const conteudo = await relato("r1");
-    await env.DB.prepare("INSERT INTO bloqueios (email_hash, motivo, criado_em) VALUES (?, 'teste', ?)").bind(await sha256("ana@exemplo.pt"), Date.now()).run();
+    await env.DB.prepare("INSERT INTO bloqueios (email_hash, motivo, criado_em) VALUES (?, 'teste', ?)").bind(await marcaDe("ana@exemplo.pt"), Date.now()).run();
     // Nem os termos são pedidos: quem denuncia pode ainda não os ter aceitado.
     const teo = await criarConta("teo", "teo@exemplo.pt", { termos: "0" });
     expect((await denunciar(ana, corpo(conteudo))).status).toBe(204);

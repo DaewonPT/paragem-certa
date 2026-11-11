@@ -138,11 +138,13 @@ jobs:
             RESPONSAVEL
             GOOGLE_WEB_CLIENT_ID
             EMAIL_AUTOR
+            CHAVE_MARCA_EMAIL
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           RESPONSAVEL: ${{ secrets.RESPONSAVEL }}
           GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID }}
           EMAIL_AUTOR: ${{ secrets.EMAIL_AUTOR }}
+          CHAVE_MARCA_EMAIL: ${{ secrets.CHAVE_MARCA_EMAIL }}
 
       # O pc-admin (a página de revisão) é outro Worker, com a sua configuração. Vai pelo wrangler do projeto (versão
       # fixa no package-lock), sempre com `-c wrangler.admin.jsonc`, para o código e os segredos nunca irem parar ao
@@ -157,9 +159,10 @@ jobs:
           ACCESS_EQUIPA: ${{ secrets.ACCESS_EQUIPA }}
           ACCESS_AUD: ${{ secrets.ACCESS_AUD }}
           EMAIL_AUTOR: ${{ secrets.EMAIL_AUTOR }}
+          CHAVE_MARCA_EMAIL: ${{ secrets.CHAVE_MARCA_EMAIL }}
         run: |
           node -e '
-            const nomes = ["RESEND_API_KEY", "ACCESS_EQUIPA", "ACCESS_AUD", "EMAIL_AUTOR"];
+            const nomes = ["RESEND_API_KEY", "ACCESS_EQUIPA", "ACCESS_AUD", "EMAIL_AUTOR", "CHAVE_MARCA_EMAIL"];
             const segredos = {};
             for (const nome of nomes) {
               if (!process.env[nome]) throw new Error(`falta o segredo ${nome} no GitHub`);

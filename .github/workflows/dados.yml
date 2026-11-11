@@ -121,8 +121,10 @@ jobs:
             RESPONSAVEL
             GOOGLE_WEB_CLIENT_ID
             EMAIL_AUTOR
+            CHAVE_MARCA_EMAIL
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           RESPONSAVEL: ${{ secrets.RESPONSAVEL }}
           GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID }}
           EMAIL_AUTOR: ${{ secrets.EMAIL_AUTOR }}
+          CHAVE_MARCA_EMAIL: ${{ secrets.CHAVE_MARCA_EMAIL }}

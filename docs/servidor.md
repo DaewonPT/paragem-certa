@@ -173,6 +173,7 @@ Quando rejeitas ou apagas uma foto aprovada, o servidor pede à Cloudflare para 
 1. **`CF_PURGE_TOKEN`:** My Profile → API Tokens → Create Token → Custom token, com uma só permissão, **Zone → Cache Purge → Purge**, e só para a zona `pixellusitano.com` (Zone Resources → Include → Specific zone). Não uses o token do passo 7. Guarda-o num sítio privado.
 2. **`CF_ZONA`:** o id da zona `pixellusitano.com`, no painel da zona (Overview, na coluna da direita, "Zone ID").
 3. **`EMAIL_AUTOR`:** o teu email. Recebe o aviso das denúncias de perigo e o resumo diário, e é o único que o `pc-admin` deixa entrar. Tem de ser o mesmo endereço que puseres na política do Access (passo 14).
+4. **`CHAVE_MARCA_EMAIL`:** uma chave secreta com que os dois Workers fazem a marca (hash) dos emails das denúncias, decisões e bloqueios. Tem de ser exatamente a mesma nos dois, e sem ela o servidor recusa em vez de usar um hash simples. Gera uma ao acaso (por exemplo, `openssl rand -hex 32`) e guarda-a num sítio privado: se a mudares, os bloqueios que já existem deixam de apanhar as contas.
 
 Um comando por segredo e por Worker (cada um pede o valor e tu colas com o botão direito, como no passo 5, ou usa o `secret bulk` do passo 5):
 
@@ -180,17 +181,19 @@ Um comando por segredo e por Worker (cada um pede o valor e tu colas com o botã
 npx wrangler secret put CF_PURGE_TOKEN
 npx wrangler secret put CF_ZONA
 npx wrangler secret put EMAIL_AUTOR
+npx wrangler secret put CHAVE_MARCA_EMAIL
 npx wrangler secret put CF_PURGE_TOKEN -c wrangler.admin.jsonc
 npx wrangler secret put CF_ZONA -c wrangler.admin.jsonc
 npx wrangler secret put EMAIL_AUTOR -c wrangler.admin.jsonc
+npx wrangler secret put CHAVE_MARCA_EMAIL -c wrangler.admin.jsonc
 ```
 
 Os três primeiros são do Worker principal (`paragem-certa`); os três com `-c wrangler.admin.jsonc` são do `pc-admin`. O `pc-admin` ainda não existe: no primeiro deles a wrangler pergunta se o crias, e respondes **sim** (como no passo 5).
 
 No fim do passo 14, cada Worker tem de ter estes seis segredos (`npx wrangler secret list` e `npx wrangler secret list -c wrangler.admin.jsonc` mostram os nomes, nunca os valores):
 
-- `paragem-certa`: `RESEND_API_KEY`, `RESPONSAVEL`, `GOOGLE_WEB_CLIENT_ID` (passo 5), `CF_PURGE_TOKEN`, `CF_ZONA` e `EMAIL_AUTOR` (este passo);
-- `pc-admin`: `RESEND_API_KEY`, `ACCESS_EQUIPA` e `ACCESS_AUD` (passo 14), `EMAIL_AUTOR`, `CF_PURGE_TOKEN` e `CF_ZONA` (este passo).
+- `paragem-certa`: `RESEND_API_KEY`, `RESPONSAVEL`, `GOOGLE_WEB_CLIENT_ID` (passo 5), `CF_PURGE_TOKEN`, `CF_ZONA`, `EMAIL_AUTOR` e `CHAVE_MARCA_EMAIL` (este passo);
+- `pc-admin`: `RESEND_API_KEY`, `ACCESS_EQUIPA` e `ACCESS_AUD` (passo 14), `EMAIL_AUTOR`, `CHAVE_MARCA_EMAIL`, `CF_PURGE_TOKEN` e `CF_ZONA` (este passo).
 
 ## 14. A página de revisão (`pc-admin`) e o Cloudflare Access
 
@@ -218,7 +221,7 @@ Numa denúncia, se quiseres bloquear a conta, bloqueia antes de carregares em De
 
 ## 15. Segredos novos no GitHub
 
-Para o trabalho `publicar` (passo 7) enviar os segredos aos dois Workers, junta no GitHub (Settings → Secrets and variables → Actions → New repository secret) cinco segredos novos, com os mesmos valores dos passos 13 e 14: `CF_PURGE_TOKEN`, `CF_ZONA`, `EMAIL_AUTOR`, `ACCESS_AUD` e `ACCESS_EQUIPA`. O `RESEND_API_KEY` já lá está desde o passo 7. Em `ACCESS_AUD` vai a AUD verdadeira (ponto 5 do passo 14), nunca o `por-preencher`.
+Para o trabalho `publicar` (passo 7) enviar os segredos aos dois Workers, junta no GitHub (Settings → Secrets and variables → Actions → New repository secret) seis segredos novos, com os mesmos valores dos passos 13 e 14: `CF_PURGE_TOKEN`, `CF_ZONA`, `EMAIL_AUTOR`, `CHAVE_MARCA_EMAIL`, `ACCESS_AUD` e `ACCESS_EQUIPA`. O `RESEND_API_KEY` já lá está desde o passo 7. Em `ACCESS_AUD` vai a AUD verdadeira (ponto 5 do passo 14), nunca o `por-preencher`.
 
 ## 16. Ligar a comunidade, as fotos e as correções
 

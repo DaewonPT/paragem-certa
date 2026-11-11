@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { describe, expect, it } from "vitest";
 import { interruptores, marcaDoEmail, normalizarEmail, portaoDeEscrita, quemEscreve } from "../src/portao";
-import { criarConta, LIGADO, limitador, pedidoComToken, pedir, sha256 } from "./ajudas";
+import { criarConta, LIGADO, limitador, pedidoComToken, pedir, marcaDe, sha256, CHAVE_MARCA_TESTE } from "./ajudas";
 
 /** O ambiente de teste com as três funções ligadas; cada teste muda o que precisa. */
 function ligado(extra: Partial<Env> = {}): Env {
@@ -71,7 +71,7 @@ describe("portão das escritas da comunidade", () => {
   it("contaBloqueadaDa403", async () => {
     const token = await criarConta("ana", "ana@exemplo.pt");
     const tokenDoRui = await criarConta("rui", "rui@exemplo.pt");
-    await bloquear(await sha256("ana@exemplo.pt"));
+    await bloquear(await marcaDe("ana@exemplo.pt"));
 
     const bloqueada = await portaoDeEscrita(pedidoComToken(token), ligado(), "comunidade");
     expect(await recusa(bloqueada)).toEqual({ estado: 403, erro: "conta_bloqueada" });
@@ -86,7 +86,7 @@ describe("portão das escritas da comunidade", () => {
 
   it("bloqueioSobreviveAApagarAConta", async () => {
     const token = await criarConta("ana", "ana@exemplo.pt");
-    await bloquear(await sha256("ana@exemplo.pt"));
+    await bloquear(await marcaDe("ana@exemplo.pt"));
 
     expect((await pedir("/api/conta", { metodo: "DELETE", token })).status).toBe(204);
     expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM contas WHERE id = 'ana'").first("n")).toBe(0);
@@ -97,8 +97,8 @@ describe("portão das escritas da comunidade", () => {
   });
 
   it("bloqueioApanhaEnderecoComMais", async () => {
-    await bloquear(await marcaDoEmail("ana@gmail.com"));
-    await bloquear(await marcaDoEmail("rui+x@exemplo.pt"));
+    await bloquear(await marcaDoEmail("ana@gmail.com", CHAVE_MARCA_TESTE));
+    await bloquear(await marcaDoEmail("rui+x@exemplo.pt", CHAVE_MARCA_TESTE));
 
     // Maiúsculas, pontos, "+etiqueta" e googlemail.com: tudo a mesma caixa de correio.
     const variantes: [string, string][] = [
@@ -133,7 +133,20 @@ describe("portão das escritas da comunidade", () => {
       ["a.na@meugmail.com", "a.na@meugmail.com"],
     ];
     for (const [entrada, esperado] of casos) expect(normalizarEmail(entrada), entrada).toBe(esperado);
-    expect(await marcaDoEmail("A.Na+2@googlemail.com")).toBe(await sha256("ana@gmail.com"));
+    expect(await marcaDoEmail("A.Na+2@googlemail.com", CHAVE_MARCA_TESTE)).toBe(await marcaDe("ana@gmail.com"));
+  });
+
+  it("marcaComChaveNaoEOSha256Simples", async () => {
+    const m = await marcaDoEmail("Ana@Exemplo.pt", "chave-de-teste");
+    expect(m).toMatch(/^[0-9a-f]{64}$/);
+    expect(m).not.toBe(await sha256(normalizarEmail("Ana@Exemplo.pt")));
+    expect(m).toBe(await marcaDoEmail(" ana@exemplo.pt ", "chave-de-teste")); // o mesmo email normalizado dá a mesma marca
+    expect(m).not.toBe(await marcaDoEmail("Ana@Exemplo.pt", "outra-chave"));
+  });
+
+  it("marcaSemChaveFalha", async () => {
+    await expect(marcaDoEmail("ana@exemplo.pt", "")).rejects.toThrow("CHAVE_MARCA_EMAIL");
+    await expect(marcaDoEmail("ana@exemplo.pt", "  ")).rejects.toThrow("CHAVE_MARCA_EMAIL");
   });
 
   it("termosAntigosNaoChegam", async () => {
@@ -148,18 +161,18 @@ describe("portão das escritas da comunidade", () => {
   it("tudoCertoDevolveQuemEscreve", async () => {
     const token = await criarConta("ana", "ana@exemplo.pt");
     const resultado = await portaoDeEscrita(pedidoComToken(token), ligado(), "comunidade");
-    expect(resultado).toEqual({ contaId: "ana", email: "ana@exemplo.pt", emailHash: await sha256("ana@exemplo.pt") });
+    expect(resultado).toEqual({ contaId: "ana", email: "ana@exemplo.pt", emailHash: await marcaDe("ana@exemplo.pt") });
   });
 
   it("quemEscreveNaoPedeInterruptorNemTermos", async () => {
     // As denúncias usam só `quemEscreve`: uma conta bloqueada, sem os termos novos, pode denunciar.
     const token = await criarConta("ana", "Ana+x@exemplo.pt", { termos: "0" });
-    await bloquear(await sha256("ana@exemplo.pt"));
+    await bloquear(await marcaDe("ana@exemplo.pt"));
     const semInterruptores = ligado({ TESTE_INTERRUPTORES: undefined });
     expect(await quemEscreve(pedidoComToken(token), semInterruptores)).toEqual({
       contaId: "ana",
       email: "Ana+x@exemplo.pt",
-      emailHash: await sha256("ana@exemplo.pt"),
+      emailHash: await marcaDe("ana@exemplo.pt"),
     });
     expect(await recusa(await quemEscreve(pedidoComToken(), semInterruptores))).toEqual({ estado: 401, erro: "sem_sessao" });
   });

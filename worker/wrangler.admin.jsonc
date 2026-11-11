@@ -20,5 +20,5 @@
   // Definidos pelo autor com `wrangler secret put -c wrangler.admin.jsonc`; nunca ficam no repositório.
   // ACCESS_EQUIPA é o endereço da equipa do Zero Trust (https://<equipa>.cloudflareaccess.com) e ACCESS_AUD a etiqueta
   // de audiência da aplicação do Access. Sem eles, ou sem EMAIL_AUTOR, a página não mostra nada a ninguém.
-  "secrets": { "required": ["RESEND_API_KEY", "ACCESS_EQUIPA", "ACCESS_AUD", "EMAIL_AUTOR"] }
+  "secrets": { "required": ["RESEND_API_KEY", "ACCESS_EQUIPA", "ACCESS_AUD", "EMAIL_AUTOR", "CHAVE_MARCA_EMAIL"] }
 }

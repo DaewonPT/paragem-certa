@@ -1,6 +1,6 @@
 import config from "../public/dados/config.json";
 import { erro } from "./respostas";
-import { contaDaSessao, sha256Hex } from "./sessoes";
+import { contaDaSessao } from "./sessoes";
 
 declare global {
   interface Env {
@@ -47,8 +47,12 @@ export function normalizarEmail(email: string): string {
 }
 
 /** O `email_hash` dos bloqueios, das denúncias e das decisões: só se faz por aqui, para todos darem a mesma marca. */
-export async function marcaDoEmail(email: string): Promise<string> {
-  return sha256Hex(normalizarEmail(email));
+export async function marcaDoEmail(email: string, chave: string | undefined): Promise<string> {
+  // Sem chave não há marca: nunca se volta ao SHA-256 simples, que qualquer lista de emails desfaria.
+  if (!chave?.trim()) throw new Error("falta CHAVE_MARCA_EMAIL");
+  const k = await crypto.subtle.importKey("raw", new TextEncoder().encode(chave), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const marca = await crypto.subtle.sign("HMAC", k, new TextEncoder().encode(normalizarEmail(email)));
+  return [...new Uint8Array(marca)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 /**
@@ -62,7 +66,7 @@ export async function quemEscreve(pedido: Request, env: Env): Promise<Escritor |
   if (!success) return erro("devagar", 429);
   const conta = await env.DB.prepare("SELECT email FROM contas WHERE id = ?").bind(sessao.contaId).first<{ email: string }>();
   if (!conta) return erro("sem_sessao", 401);
-  return { contaId: sessao.contaId, email: conta.email, emailHash: await marcaDoEmail(conta.email) };
+  return { contaId: sessao.contaId, email: conta.email, emailHash: await marcaDoEmail(conta.email, env.CHAVE_MARCA_EMAIL) };
 }
 
 /**

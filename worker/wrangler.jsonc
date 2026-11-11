@@ -34,5 +34,5 @@
   // Definidos pelo autor com `wrangler secret put`; nunca ficam no repositório.
   // GOOGLE_WEB_CLIENT_ID é o id do cliente Web da consola da Google (o `aud` dos tokens).
   // EMAIL_AUTOR recebe os avisos de denúncias de perigo.
-  "secrets": { "required": ["RESEND_API_KEY", "RESPONSAVEL", "GOOGLE_WEB_CLIENT_ID", "EMAIL_AUTOR"] }
+  "secrets": { "required": ["RESEND_API_KEY", "RESPONSAVEL", "GOOGLE_WEB_CLIENT_ID", "EMAIL_AUTOR", "CHAVE_MARCA_EMAIL"] }
 }

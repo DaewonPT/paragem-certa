@@ -4,7 +4,7 @@ import { AVISOS } from "../src/admin/paginas";
 import { mensagensEnviadas } from "../src/email";
 import { REGRAS } from "../src/explicacoes";
 import { marcaDoEmail } from "../src/portao";
-import { criarConta, LIGADO, pedir, sha256 } from "./ajudas";
+import { criarConta, LIGADO, pedir, marcaDe, CHAVE_MARCA_TESTE } from "./ajudas";
 import { pedirAdmin } from "./ajudas-admin";
 
 const DIA = 24 * 60 * 60_000;
@@ -77,7 +77,7 @@ async function correcaoDoRui(id = "k1", paragem = "CM:9"): Promise<void> {
 /** Uma denúncia aberta da Ana, como a rota pública a guarda. */
 async function denunciaDaAna(id: string, conteudo: string, motivo = "falso"): Promise<void> {
   await env.DB.prepare("INSERT INTO denuncias (id, conteudo, motivo, nome, email, email_hash, criada_em) VALUES (?, ?, ?, 'Ana', 'ana@exemplo.pt', ?, ?)")
-    .bind(id, conteudo, motivo, await sha256("ana@exemplo.pt"), INICIO)
+    .bind(id, conteudo, motivo, await marcaDe("ana@exemplo.pt"), INICIO)
     .run();
 }
 
@@ -208,7 +208,7 @@ describe("pc-admin: correções e relatos", () => {
     voltou(await acao("/correcoes/k1/rejeitar", razao));
 
     expect(await contar("correcoes")).toBe(0);
-    expect(await decisoes()).toMatchObject([{ acao: "correcao_rejeitada", conteudo: "correcao:k1", email_hash: await sha256("rui@exemplo.pt"), motivo: razao.motivo, regra: razao.regra }]);
+    expect(await decisoes()).toMatchObject([{ acao: "correcao_rejeitada", conteudo: "correcao:k1", email_hash: await marcaDe("rui@exemplo.pt"), motivo: razao.motivo, regra: razao.regra }]);
     expect(mensagensEnviadas).toHaveLength(1);
     expect(mensagensEnviadas[0].para).toBe("rui@exemplo.pt");
     for (const texto of ["O que fizemos", "correção", REGRAS.correcoes_verdadeiras, razao.motivo]) expect(mensagensEnviadas[0].texto, texto).toContain(texto);
@@ -224,7 +224,7 @@ describe("pc-admin: correções e relatos", () => {
 
     expect(await contar("relatos")).toBe(0);
     expect(await contar("confirmacoes")).toBe(0);
-    expect(await decisoes()).toMatchObject([{ acao: "relato_apagado", conteudo: "relato:relato-1", denuncia_id: null, email_hash: await sha256("rui@exemplo.pt") }]);
+    expect(await decisoes()).toMatchObject([{ acao: "relato_apagado", conteudo: "relato:relato-1", denuncia_id: null, email_hash: await marcaDe("rui@exemplo.pt") }]);
     expect(mensagensEnviadas).toHaveLength(1);
     expect(mensagensEnviadas[0].para).toBe("rui@exemplo.pt");
     for (const texto of ["relato", "736", "Regra em causa", REGRAS.so_o_que_viste, razao.motivo, "sem denúncia"]) expect(mensagensEnviadas[0].texto, texto).toContain(texto);
@@ -242,7 +242,7 @@ describe("pc-admin: denúncias", () => {
     voltou(await acao("/denuncias/denuncia-1/decidir", { ...razao, acao: "remover" }));
 
     expect(await contar("relatos")).toBe(0);
-    expect(await decisoes()).toMatchObject([{ acao: "relato_apagado", conteudo: "relato:relato-1", denuncia_id: "denuncia-1", email_hash: await sha256("rui@exemplo.pt") }]);
+    expect(await decisoes()).toMatchObject([{ acao: "relato_apagado", conteudo: "relato:relato-1", denuncia_id: "denuncia-1", email_hash: await marcaDe("rui@exemplo.pt") }]);
     expect(mensagensEnviadas).toHaveLength(2);
     const aQuemRelatou = mensagensEnviadas.find((m) => m.para === "rui@exemplo.pt")!;
     const aQuemDenunciou = mensagensEnviadas.find((m) => m.para === "ana@exemplo.pt")!;
@@ -251,7 +251,7 @@ describe("pc-admin: denúncias", () => {
     for (const texto of ["Olá Ana", "relato:relato-1", "Removemos o conteúdo", razao.motivo, "decisão automática", "ANACOM"]) expect(aQuemDenunciou.texto, texto).toContain(texto);
     // Depois da decisão enviada fica só o hash de quem denunciou.
     expect(await env.DB.prepare("SELECT nome, email, email_hash, decidida_em FROM denuncias WHERE id = 'denuncia-1'").first()).toEqual({
-      nome: null, email: null, email_hash: await sha256("ana@exemplo.pt"), decidida_em: INICIO,
+      nome: null, email: null, email_hash: await marcaDe("ana@exemplo.pt"), decidida_em: INICIO,
     });
     expect((await acao("/denuncias/denuncia-1/decidir", { ...razao, acao: "remover" })).status).toBe(404);
     expect(mensagensEnviadas).toHaveLength(2);
@@ -300,8 +300,8 @@ describe("pc-admin: contas", () => {
 
     voltou(await acao("/contas/teo/bloquear", razao));
 
-    const hash = await marcaDoEmail("te.o+paragem@gmail.com");
-    expect(hash).toBe(await sha256("teo@gmail.com"));
+    const hash = await marcaDoEmail("te.o+paragem@gmail.com", CHAVE_MARCA_TESTE);
+    expect(hash).toBe(await marcaDe("teo@gmail.com"));
     expect(await decisoes()).toMatchObject([{ acao: "conta_bloqueada", denuncia_id: "denuncia-1", email_hash: hash, motivo: razao.motivo, regra: razao.regra }]);
     expect(JSON.stringify(await decisoes())).not.toContain("@");
     expect(await env.DB.prepare("SELECT email_hash, motivo FROM bloqueios").all()).toMatchObject({ results: [{ email_hash: hash, motivo: razao.motivo }] });

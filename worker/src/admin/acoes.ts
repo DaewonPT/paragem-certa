@@ -25,8 +25,8 @@ function razaoDe(campos: URLSearchParams, denunciaId: string | null = null): Raz
 }
 
 /** A marca do email de quem foi afetado; se a conta saiu a meio, a decisão fica na mesma, sem marca. */
-async function marca(email: string | null): Promise<string> {
-  return email ? marcaDoEmail(email) : "";
+async function marca(env: Env, email: string | null): Promise<string> {
+  return email ? marcaDoEmail(email, env.CHAVE_MARCA_EMAIL) : "";
 }
 
 /**
@@ -57,7 +57,7 @@ async function apagarRelato(env: Env, id: string, razao: Razao, agora: number): 
   if (!relato) return 404;
   const [apagou] = await env.DB.batch([
     env.DB.prepare("DELETE FROM relatos WHERE id = ?").bind(id),
-    decisao(env, "relato_apagado", `relato:${id}`, razao, await marca(relato.email), agora),
+    decisao(env, "relato_apagado", `relato:${id}`, razao, await marca(env, relato.email), agora),
   ]);
   if (apagou.meta.changes === 0) return 404;
   const oQue = `Apagámos o teu relato "${relato.tipo.replaceAll("_", " ")}"${relato.linha ? ` da linha ${relato.linha}` : ""} na paragem ${relato.paragem}`;
@@ -86,7 +86,7 @@ async function rejeitarCorrecao(env: Env, id: string, razao: Razao, agora: numbe
   if (!correcao) return 404;
   const [apagou] = await env.DB.batch([
     env.DB.prepare("DELETE FROM correcoes WHERE id = ? AND estado = 'pendente'").bind(id),
-    decisao(env, "correcao_rejeitada", `correcao:${id}`, razao, await marca(correcao.email), agora),
+    decisao(env, "correcao_rejeitada", `correcao:${id}`, razao, await marca(env, correcao.email), agora),
   ]);
   if (apagou.meta.changes === 0) return 404;
   const oQue = `Rejeitámos a tua correção (${TIPOS_DE_CORRECAO[correcao.tipo] ?? correcao.tipo}) da paragem ${correcao.paragem}`;
@@ -136,7 +136,7 @@ async function bloquear(env: Env, contaId: string, campos: URLSearchParams, agor
   if (!(await env.DB.prepare("SELECT 1 FROM denuncias WHERE id = ? LIMIT 1").bind(denunciaId).first())) return 400;
   const conta = await env.DB.prepare("SELECT email FROM contas WHERE id = ? LIMIT 1").bind(contaId).first<{ email: string }>();
   if (!conta) return 404;
-  const emailHash = await marcaDoEmail(conta.email);
+  const emailHash = await marcaDoEmail(conta.email, env.CHAVE_MARCA_EMAIL);
   const [novo] = await env.DB.batch([
     env.DB.prepare("INSERT INTO bloqueios (email_hash, motivo, criado_em) VALUES (?, ?, ?) ON CONFLICT DO NOTHING").bind(emailHash, razao.motivo, agora),
     decisao(env, "conta_bloqueada", "", razao, emailHash, agora),

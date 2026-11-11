@@ -3,6 +3,9 @@ import { env } from "cloudflare:workers";
 import worker from "../src/index";
 import { criarSessao } from "../src/sessoes";
 
+/** A chave da marca do email nos testes: a mesma nos dois Workers. */
+export const CHAVE_MARCA_TESTE = "chave-de-teste-da-marca";
+
 const servidor: Required<Pick<ExportedHandler<Env>, "fetch" | "scheduled">> = worker;
 
 interface Opcoes {
@@ -28,7 +31,7 @@ export async function pedir(caminho: string, opcoes: Opcoes = {}): Promise<Respo
       headers: cabecalhos,
       body: opcoes.corpo === undefined ? undefined : corpo,
     }),
-    { ...env, RESEND_API_KEY: undefined, LIMITE_AUTH: limitador(Infinity), ...opcoes.segredos } as Env,
+    { ...env, RESEND_API_KEY: undefined, LIMITE_AUTH: limitador(Infinity), CHAVE_MARCA_EMAIL: CHAVE_MARCA_TESTE, ...opcoes.segredos } as Env,
     ctx,
   );
   await waitOnExecutionContext(ctx);
@@ -40,7 +43,7 @@ export async function correrCron(opcoes: { segredos?: Partial<Env>; agora?: numb
   const ctx = createExecutionContext();
   await servidor.scheduled(
     createScheduledController({ cron: "0 3 * * *", scheduledTime: opcoes.agora ?? Date.now() }),
-    { ...env, RESEND_API_KEY: undefined, LIMITE_AUTH: limitador(Infinity), ...opcoes.segredos } as Env,
+    { ...env, RESEND_API_KEY: undefined, LIMITE_AUTH: limitador(Infinity), CHAVE_MARCA_EMAIL: CHAVE_MARCA_TESTE, ...opcoes.segredos } as Env,
     ctx,
   );
   await waitOnExecutionContext(ctx);
@@ -50,6 +53,13 @@ export async function correrCron(opcoes: { segredos?: Partial<Env>; agora?: numb
 export async function sha256(texto: string): Promise<string> {
   const resumo = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(texto));
   return [...new Uint8Array(resumo)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+/** A marca esperada de um email já normalizado, feita à parte do código do servidor (HMAC-SHA-256 com a chave de teste). */
+export async function marcaDe(emailNormalizado: string): Promise<string> {
+  const chave = await crypto.subtle.importKey("raw", new TextEncoder().encode(CHAVE_MARCA_TESTE), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
+  const marca = await crypto.subtle.sign("HMAC", chave, new TextEncoder().encode(emailNormalizado));
+  return [...new Uint8Array(marca)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
 /** Um pedido com o token de sessão, para chamar `contaDaSessao` diretamente. */
@@ -74,6 +84,7 @@ export const LIGADO: Partial<Env> = {
   AMBIENTE: "teste",
   TESTE_INTERRUPTORES: JSON.stringify({ comunidade: true, correcoes: true }),
   LIMITADOR: limitador(Infinity),
+  CHAVE_MARCA_EMAIL: CHAVE_MARCA_TESTE,
 };
 
 const DIA = 24 * 60 * 60_000;
