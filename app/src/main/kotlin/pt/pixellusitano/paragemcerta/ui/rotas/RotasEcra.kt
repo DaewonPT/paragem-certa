@@ -113,6 +113,7 @@ fun RotasEcra(
     val filtros by vm.filtros.collectAsStateWithLifecycle()
     val alertas by vm.alertas.collectAsStateWithLifecycle()
     val aberto by vm.aberto.collectAsStateWithLifecycle()
+    val seguida by vm.seguida.collectAsStateWithLifecycle()
     // Os relatos confirmados das linhas das rotas que estão no ecrã: um pedido por lista de rotas (a cache de 2 min evita repetir),
     // só quando a pessoa pede as rotas; com a comunidade desligada a Comunidade não pede nada e a lista fica vazia.
     val linhas = remember(estado) { linhasDasRotas((estado as? EstadoRotas.Prontas)?.itinerarios.orEmpty()) }
@@ -149,6 +150,8 @@ fun RotasEcra(
             preferencias = preferencias,
             aoComecou = aoAbrirViagem,
             aoVoltar = { vm.abrir(null) },
+            seguida = seguida,
+            aoSeguir = vm::seguir,
             comunidadeLigada = comunidadeLigada,
         )
         null -> RotasConteudo(

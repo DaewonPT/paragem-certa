@@ -114,6 +114,13 @@ class RotasViewModel(
     private val _aberto = MutableStateFlow<Itinerario?>(null)
     val aberto: StateFlow<Itinerario?> = _aberto.asStateFlow()
 
+    /**
+     * A etapa do [aberto] cujo autocarro se mostra no mapa; null = nenhuma. Fica aqui, e não no estado guardado do ecrã, para
+     * se perder com o processo, tal como o [aberto]: senão voltava sozinha na rota seguinte que se abrisse.
+     */
+    private val _seguida = MutableStateFlow<Int?>(null)
+    val seguida: StateFlow<Int?> = _seguida.asStateFlow()
+
     private var posicao: Pair<Double, Double>? = null
     private var procura: Job? = null
 
@@ -163,6 +170,11 @@ class RotasViewModel(
 
     fun abrir(i: Itinerario?) {
         _aberto.value = i
+        _seguida.value = null
+    }
+
+    fun seguir(etapa: Int) {
+        _seguida.value = etapa
     }
 
     fun maisCedo() = pagina(seguinte = false)

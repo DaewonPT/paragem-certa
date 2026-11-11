@@ -314,6 +314,17 @@ class RotasViewModelTest {
         assertEquals(cais.lat, pedidos.single().first.lat, 0.0)
     }
 
+    @Test fun abrirOutraRotaEsqueceOAutocarroSeguido() = runTest(despachante) {
+        val vm = vm()
+        val (a, b) = TransitousParser.rotas(fixture("transitous-plan.json"))
+        vm.abrir(a)
+        vm.seguir(1)
+        assertEquals(1, vm.seguida.value)
+        vm.abrir(null)
+        vm.abrir(b)
+        assertNull(vm.seguida.value)
+    }
+
     private val lisboa = ZoneId.of("Europe/Lisbon")
     private val nove = ZonedDateTime.of(2026, 11, 1, 9, 0, 0, 0, lisboa)
 

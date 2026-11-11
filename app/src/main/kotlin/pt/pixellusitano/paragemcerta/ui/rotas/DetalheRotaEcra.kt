@@ -113,17 +113,19 @@ fun Itinerario.comNomes(de: String, para: String): Itinerario = copy(
     },
 )
 
-/** [comunidadeLigada]: o interruptor `comunidade` da config, para a viagem saber se pode pedir os relatos ao servidor. */
+/**
+ * [seguida]: a etapa cujo autocarro se mostra no mapa, só uma de cada vez (null = nenhuma); [aoSeguir] escolhe outra.
+ * [comunidadeLigada]: o interruptor `comunidade` da config, para a viagem saber se pode pedir os relatos ao servidor.
+ */
 @Composable
 fun DetalheRotaEcra(
     it: Itinerario, de: String, para: String, repositorio: Repositorio, preferencias: Preferencias, aoComecou: () -> Unit, aoVoltar: () -> Unit,
+    seguida: Int?, aoSeguir: (Int) -> Unit,
     comunidadeLigada: Boolean = false,
 ) {
     val contexto = LocalContext.current
     val escuro = LocalEscuro.current
     var preparar by rememberSaveable { mutableStateOf(false) }
-    // A etapa cujo autocarro se mostra no mapa, só uma de cada vez; null = nenhuma.
-    var seguida by rememberSaveable { mutableStateOf<Int?>(null) }
     val etapaSeguida = seguida?.let(it.etapas::getOrNull)
     val (autocarro, estadoAutocarro) = rememberAutocarro(repositorio, seguida, etapaSeguida)
     var centrar by remember { mutableIntStateOf(0) }
@@ -151,7 +153,7 @@ fun DetalheRotaEcra(
         },
         seguida = seguida,
         estadoAutocarro = estadoAutocarro,
-        aoVerAutocarro = { i -> if (seguida == i) centrar++ else seguida = i },
+        aoVerAutocarro = { i -> if (seguida == i) centrar++ else aoSeguir(i) },
         aoVoltar = aoVoltar,
         aoComecar = { preparar = true },
         aoPartilhar = {
@@ -262,10 +264,11 @@ fun DetalheRotaConteudo(
             item {
                 CartaoAzulejo(Modifier.fillMaxWidth()) {
                     it.etapas.forEachIndexed { i, e ->
+                        val daCm = e.embarqueCm() != null
                         LinhaEtapa(
                             e, paraNome = if (i == it.etapas.lastIndex) para else e.para.nome,
-                            aoVerAutocarro = { aoVerAutocarro(i) }.takeIf { e.embarqueCm() != null },
-                            estadoAutocarro = estadoAutocarro.takeIf { i == seguida },
+                            aoVerAutocarro = { aoVerAutocarro(i) }.takeIf { daCm },
+                            estadoAutocarro = estadoAutocarro.takeIf { daCm && i == seguida },
                         )
                         HorizontalDivider(color = cores.outlineVariant)
                     }
