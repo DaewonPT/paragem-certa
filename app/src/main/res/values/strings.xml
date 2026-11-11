@@ -229,7 +229,7 @@
     <string name="detalhe_tvde">Abrir app de TVDE</string>
     <string name="detalhe_onde_esta_autocarro">Onde está o autocarro?</string>
     <string name="detalhe_autocarro_a_procurar">A procurar o autocarro…</string>
-    <string name="detalhe_autocarro_sem_posicao">Ainda não há posição ao vivo deste autocarro.</string>
+    <string name="detalhe_autocarro_sem_posicao">Não há posição ao vivo deste autocarro.</string>
     <string name="detalhe_autocarro_no_mapa">No mapa, em cima.</string>
     <string name="locais_vazio">Ainda não tens sítios. Toca sem largar num ponto do mapa, ou guarda um resultado quando escolhes para onde vais.</string>
     <string name="locais_opcoes">Opções de %1$s</string>

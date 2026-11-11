@@ -21,11 +21,12 @@ internal fun Etapa.embarqueCm(): String? =
     if (aPe || linhaNome == null) null else paragens.firstOrNull()?.id?.let(::cmParagemDeTransitous)
 
 /**
- * O autocarro da etapa: o mesmo que o modo viagem segue (viagemAoVivo), com uma posição de há 60 s no máximo (ou até 60 s à
- * frente, como no modo viagem: os relógios não batem certo); senão null.
+ * O autocarro da etapa: o mesmo que o modo viagem segue (viagemAoVivo) ou, depois de passar na paragem e sair das chegadas, o
+ * da viagem [guardada] (a do autocarro que já se viu no mapa), com uma posição de há 60 s no máximo (ou até 60 s à frente,
+ * como no modo viagem: os relógios não batem certo); senão null.
  */
-internal fun autocarroDaEtapa(chegadas: List<Chegada>, veiculos: List<Veiculo>, etapa: Etapa, agora: Instant): Veiculo? {
-    val viagem = viagemAoVivo(chegadas, etapa) ?: return null
+internal fun autocarroDaEtapa(chegadas: List<Chegada>, veiculos: List<Veiculo>, etapa: Etapa, agora: Instant, guardada: String? = null): Veiculo? {
+    val viagem = viagemAoVivo(chegadas, etapa) ?: guardada ?: return null
     return veiculos.firstOrNull { it.viagem == viagem && abs(Duration.between(it.ultimoSinal, agora).seconds) <= VEICULO_IDADE_S }
 }
 

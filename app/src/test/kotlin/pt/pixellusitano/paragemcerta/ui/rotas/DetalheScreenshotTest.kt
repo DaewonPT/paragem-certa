@@ -133,7 +133,7 @@ class DetalheScreenshotTest {
         val procurar = regra.onNodeWithText("A procurar o autocarro…").performScrollTo().fetchSemanticsNode()
         assertEquals(LiveRegionMode.Polite, procurar.config.getOrNull(SemanticsProperties.LiveRegion))
         estado = EstadoAutocarro.SEM_POSICAO
-        regra.onNodeWithText("Ainda não há posição ao vivo deste autocarro.").assertExists()
+        regra.onNodeWithText("Não há posição ao vivo deste autocarro.").assertExists()
         estado = EstadoAutocarro.NO_MAPA
         regra.onNodeWithText("No mapa, em cima.").assertExists()
     }

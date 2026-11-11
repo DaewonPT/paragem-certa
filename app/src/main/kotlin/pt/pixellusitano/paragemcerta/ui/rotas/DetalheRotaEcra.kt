@@ -186,7 +186,7 @@ fun DetalheRotaEcra(
 /**
  * O autocarro da [etapa] seguida ([i]) e o que dizer dele. Com o ecrã visível pede as chegadas da paragem de embarque a cada
  * 30 s e recolhe os veículos da CM (15 s); sem etapa, ou fora do ecrã, não pede nada. Numa falha nada muda: fica o último
- * autocarro conhecido.
+ * autocarro conhecido. Depois de o ver no mapa segue a viagem dele, mesmo quando passa na paragem e sai das chegadas.
  */
 @Composable
 private fun rememberAutocarro(repositorio: Repositorio, i: Int?, etapa: Etapa?): Pair<Veiculo?, EstadoAutocarro> {
@@ -206,9 +206,11 @@ private fun rememberAutocarro(repositorio: Repositorio, i: Int?, etapa: Etapa?):
     }
     val veiculos by remember(paragem != null) { if (paragem != null) repositorio.veiculos() else emptyFlow() }
         .collectAsStateWithLifecycle<List<Veiculo>?>(null) // null = ainda sem resposta
+    var guardada by remember(i) { mutableStateOf<String?>(null) }
     val autocarro = remember(etapa, chegadas, veiculos) {
-        etapa?.let { autocarroDaEtapa(chegadas, veiculos.orEmpty(), it, Instant.now()) }
+        etapa?.let { autocarroDaEtapa(chegadas, veiculos.orEmpty(), it, Instant.now(), guardada) }
     }
+    LaunchedEffect(autocarro?.viagem) { autocarro?.viagem?.let { guardada = it } }
     return autocarro to estadoAutocarro(autocarro, voltas, veiculos != null)
 }
 

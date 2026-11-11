@@ -55,6 +55,16 @@ class AutocarroDaEtapaTest {
         assertNull(autocarroDaEtapa(emptyList(), listOf(veiculo("T1", agora)), etapa(), agora))
     }
 
+    @Test fun depoisDePassarNaParagemContinuaOAutocarroQueJaSeViu() {
+        // As chegadas já não o trazem; a viagem guardada (a do autocarro que esteve no mapa) continua a contar.
+        val v = veiculo("T1", agora)
+        assertEquals(v, autocarroDaEtapa(emptyList(), listOf(v), etapa(), agora, guardada = "T1"))
+        assertNull(autocarroDaEtapa(emptyList(), listOf(veiculo("T1", agora.minusSeconds(61))), etapa(), agora, guardada = "T1"))
+        // Enquanto as chegadas o trazem, manda a regra do modo viagem.
+        val t2 = veiculo("T2", agora)
+        assertEquals(t2, autocarroDaEtapa(listOf(chegada("3708", partida, "T2")), listOf(v, t2), etapa(), agora, guardada = "T1"))
+    }
+
     @Test fun soAsEtapasDaCmComLinhaTemPosicaoAoVivo() {
         assertEquals("020047", etapa().embarqueCm())
         assertNull(etapa(primeira = "pt-Carris_3804").embarqueCm())
