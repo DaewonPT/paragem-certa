@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.semantics
 import pt.pixellusitano.paragemcerta.ui.comum.BotaoPrincipal
 import pt.pixellusitano.paragemcerta.ui.comum.BotaoSecundario
@@ -346,8 +347,10 @@ private fun LinhaEtapa(e: Etapa, paraNome: String, aoVerAutocarro: (() -> Unit)?
                 ).joinToString(" · "),
                 color = cores.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium,
             )
-            aoVerAutocarro?.let {
-                BotaoSecundario(it) {
+            aoVerAutocarro?.let { ver ->
+                val acao = stringResource(R.string.detalhe_ver_autocarro, e.linhaNome.orEmpty())
+                // Com duas etapas da CM há dois botões iguais: a ação diz a linha a quem salta de controlo em controlo.
+                BotaoSecundario(ver, Modifier.semantics { onClick(label = acao) { ver(); true } }) {
                     // Com letra grande o ícone sai: ao lado dele, o "autocarro?" partia a meio.
                     if (LocalDensity.current.fontScale < 1.5f) Icon(Icones.Lugar, null, Modifier.padding(end = 8.dp).size(ladoDoIcone(18)))
                     Text(stringResource(R.string.detalhe_onde_esta_autocarro))

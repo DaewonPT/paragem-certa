@@ -228,6 +228,7 @@
     <string name="detalhe_partilhar">Partilhar rota</string>
     <string name="detalhe_tvde">Abrir app de TVDE</string>
     <string name="detalhe_onde_esta_autocarro">Onde está o autocarro?</string>
+    <string name="detalhe_ver_autocarro">ver o %1$s no mapa</string>
     <string name="detalhe_autocarro_a_procurar">A procurar o autocarro…</string>
     <string name="detalhe_autocarro_sem_posicao">Não há posição ao vivo deste autocarro.</string>
     <string name="detalhe_autocarro_no_mapa">No mapa, em cima.</string>

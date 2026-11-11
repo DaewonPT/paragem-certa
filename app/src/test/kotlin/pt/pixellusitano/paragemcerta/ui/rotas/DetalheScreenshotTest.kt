@@ -26,6 +26,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.onRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import com.github.takahirom.roborazzi.captureRoboImage
@@ -122,6 +123,11 @@ class DetalheScreenshotTest {
         val minimo = with(regra.density) { 48.dp.toPx() }
         assertTrue("alvo de ${alvo.width} x ${alvo.height} px", alvo.width >= minimo - 0.5f && alvo.height >= minimo - 0.5f)
         botao.performClick()
+        assertEquals(2, tocada)
+        // O leitor de ecrã ouve a linha na ação ("Toca duas vezes para ver o 3708 no mapa"), e a ação faz o mesmo que o toque.
+        tocada = null
+        assertEquals("ver o 3708 no mapa", botao.fetchSemanticsNode().config[SemanticsActions.OnClick].label)
+        botao.performSemanticsAction(SemanticsActions.OnClick)
         assertEquals(2, tocada)
         // Sem etapa seguida não há texto de estado.
         regra.onAllNodesWithText("A procurar o autocarro…").assertCountEquals(0)
