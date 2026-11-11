@@ -409,6 +409,9 @@
     <string name="conta_erro_codigo">Código errado</string>
     <string name="conta_erro_expirou">O código expirou. Pede outro.</string>
     <string name="conta_erro_muitos">Pediste muitos códigos. Tenta daqui a uma hora.</string>
+    <string name="conta_erro_limite_do_dia">Os códigos por email de hoje acabaram. Entra com o Google ou tenta amanhã.</string>
+    <string name="conta_erro_limite_do_dia_sem_google">Os códigos por email de hoje acabaram. Tenta amanhã.</string>
+    <string name="conta_erro_espera">Muitos pedidos seguidos. Espera um minuto e tenta outra vez.</string>
     <string name="conta_erro_sem_ligacao">Sem ligação</string>
     <string name="conta_erro_email">Esse email não parece certo.</string>
     <string name="conta_erro_envio">Não foi possível enviar o código. Tenta outra vez mais tarde ou entra com o Google.</string>

@@ -109,6 +109,14 @@ class ServidorTest {
         assertEquals(Resultado.Falha(429, limite = true, erro = "muitos_pedidos"), servidor(http).pedirCodigo("ana@exemplo.pt"))
     }
 
+    @Test fun limiteDoDiaVemNaFalhaENaoPausa() = runTest {
+        val http = HttpFalso({ Resposta(429, """{"erro":"limite_do_dia"}""") }, { Resposta(200, comunidadeVazia) })
+        val s = servidor(http)
+        assertEquals(Resultado.Falha(429, limite = true, erro = "limite_do_dia"), s.pedirCodigo("ana@exemplo.pt"))
+        assertEquals(Resultado.Ok(DadosComunidade()), s.comunidade(listOf("CM:060419")))
+        assertEquals(2, http.pedidos.size)
+    }
+
     @Test fun semRedeDaFalhaSemCodigo() = runTest {
         val http = HttpFalso({ throw IOException("sem rede") })
         assertEquals(Resultado.Falha(null, limite = false), servidor(http).pedirCodigo("ana@exemplo.pt"))

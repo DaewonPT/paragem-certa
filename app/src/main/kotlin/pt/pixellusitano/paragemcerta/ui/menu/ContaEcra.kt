@@ -136,7 +136,7 @@ fun ContaEcra(
             trabalhar {
                 when (val r = conta.pedirCodigo(email)) {
                     is Resultado.Ok -> passo = PassoEntrada.CODIGO
-                    is Resultado.Falha -> mensagem = erroDoPedido(r)
+                    is Resultado.Falha -> mensagem = erroDoPedido(r, webClientId.isNotBlank())
                 }
             }
         },
@@ -317,8 +317,12 @@ private tailrec fun Context.atividade(): Activity? = when (this) {
 }
 
 // Em todas: em_pausa = o servidor passou a quota grátis do dia, seja qual for o código.
-// 400 = email que o servidor não aceita, 429 = mais de 3 códigos por hora, o resto (502 da Resend…) = não saiu.
-@StringRes private fun erroDoPedido(f: Resultado.Falha) = if (f.emPausa) R.string.servidor_em_pausa else when (f.codigo) {
+// 400 = email que o servidor não aceita; três 429: espera_um_pouco = travão curto por IP, limite_do_dia = acabaram os códigos
+// do dia (todos os utilizadores), o resto = mais de 3 códigos por hora; o resto (502 da Resend…) = não saiu.
+@StringRes private fun erroDoPedido(f: Resultado.Falha, comGoogle: Boolean) = if (f.emPausa) R.string.servidor_em_pausa
+else if (f.erro == "espera_um_pouco") R.string.conta_erro_espera
+else if (f.erro == "limite_do_dia") (if (comGoogle) R.string.conta_erro_limite_do_dia else R.string.conta_erro_limite_do_dia_sem_google)
+else when (f.codigo) {
     null -> R.string.conta_erro_sem_ligacao
     400 -> R.string.conta_erro_email
     429 -> R.string.conta_erro_muitos
@@ -326,14 +330,18 @@ private tailrec fun Context.atividade(): Activity? = when (this) {
 }
 
 // 401 = código errado, 410 = expirado ou já gasto as 5 tentativas.
-@StringRes private fun erroDoCodigo(f: Resultado.Falha) = if (f.emPausa) R.string.servidor_em_pausa else when (f.codigo) {
+@StringRes private fun erroDoCodigo(f: Resultado.Falha) = if (f.emPausa) R.string.servidor_em_pausa
+else if (f.erro == "espera_um_pouco") R.string.conta_erro_espera
+else when (f.codigo) {
     null -> R.string.conta_erro_sem_ligacao
     401 -> R.string.conta_erro_codigo
     410 -> R.string.conta_erro_expirou
     else -> R.string.conta_erro_generico
 }
 
-@StringRes private fun erroDoGoogle(f: Resultado.Falha) = if (f.emPausa) R.string.servidor_em_pausa else when (f.codigo) {
+@StringRes private fun erroDoGoogle(f: Resultado.Falha) = if (f.emPausa) R.string.servidor_em_pausa
+else if (f.erro == "espera_um_pouco") R.string.conta_erro_espera
+else when (f.codigo) {
     null -> R.string.conta_erro_sem_ligacao
     401 -> R.string.conta_erro_google
     else -> R.string.conta_erro_generico

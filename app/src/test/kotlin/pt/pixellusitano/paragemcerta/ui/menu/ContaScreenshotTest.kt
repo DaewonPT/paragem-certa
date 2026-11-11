@@ -336,6 +336,47 @@ class ContaScreenshotTest {
     }
 
     @Test @Config(qualifiers = "w360dp-h780dp")
+    fun limiteDoDiaSugereOGoogle() {
+        servidor.pedirCodigo = Resposta(429, """{"erro":"limite_do_dia"}""")
+        abrirEcra()
+        regra.onNodeWithText("Entrar com email").performClick()
+        regra.onNodeWithText("Email").performTextInput("ana@exemplo.pt")
+        regra.onNodeWithText("Enviar código").performClick()
+        esperarPor("Os códigos por email de hoje acabaram. Entra com o Google ou tenta amanhã.")
+        assertFalse(existe("Código de 6 dígitos"))
+    }
+
+    @Test @Config(qualifiers = "w360dp-h780dp")
+    fun limiteDoDiaSemGoogleDizSoAmanha() {
+        servidor.pedirCodigo = Resposta(429, """{"erro":"limite_do_dia"}""")
+        abrirEcra(webClientId = "")
+        regra.onNodeWithText("Entrar com email").performClick()
+        regra.onNodeWithText("Email").performTextInput("ana@exemplo.pt")
+        regra.onNodeWithText("Enviar código").performClick()
+        esperarPor("Os códigos por email de hoje acabaram. Tenta amanhã.")
+        assertFalse(existe("Código de 6 dígitos"))
+    }
+
+    @Test @Config(qualifiers = "w360dp-h780dp")
+    fun travaoPorIpPedeUmMinuto() {
+        servidor.pedirCodigo = Resposta(429, """{"erro":"espera_um_pouco"}""")
+        abrirEcra()
+        regra.onNodeWithText("Entrar com email").performClick()
+        regra.onNodeWithText("Email").performTextInput("ana@exemplo.pt")
+        regra.onNodeWithText("Enviar código").performClick()
+        esperarPor("Muitos pedidos seguidos. Espera um minuto e tenta outra vez.")
+        assertFalse(existe("Código de 6 dígitos"))
+    }
+
+    @Test @Config(qualifiers = "w360dp-h780dp")
+    fun travaoPorIpAoConfirmarPedeUmMinuto() {
+        servidor.confirmar = Resposta(429, """{"erro":"espera_um_pouco"}""")
+        abrirEcra()
+        entrarPorEmail()
+        esperarPor("Muitos pedidos seguidos. Espera um minuto e tenta outra vez.")
+    }
+
+    @Test @Config(qualifiers = "w360dp-h780dp")
     fun semRedeDizSemLigacao() {
         servidor.semRede = true
         abrirEcra()
