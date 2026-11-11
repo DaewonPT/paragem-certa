@@ -32,12 +32,12 @@ fun estado(programada: Instant, prevista: Instant?, l: Limites = Limites()): Est
     }
 }
 
-/** "agora", "N min" (arredondado para baixo) até 60 min, ou a hora "HH:mm" acima disso e sempre que não há tempo real. */
+/** "a chegar", "N min" (arredondado para baixo) até 60 min, ou a hora "HH:mm" acima disso e sempre que não há tempo real. */
 fun rotuloTempo(c: Chegada, agora: Instant, zona: ZoneId): String {
     val prevista = c.prevista ?: return HORA.format(c.programada.atZone(zona))
     val segundos = Duration.between(agora, prevista).seconds
     return when {
-        segundos < 60 -> "agora"
+        segundos < 60 -> "a chegar"
         segundos <= 60 * 60 -> "${segundos / 60} min"
         else -> HORA.format(prevista.atZone(zona))
     }

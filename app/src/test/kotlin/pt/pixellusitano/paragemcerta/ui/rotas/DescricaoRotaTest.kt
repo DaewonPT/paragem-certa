@@ -42,14 +42,14 @@ class DescricaoRotaTest {
         )
     }
 
-    @Test fun partidasAgoraEUmMinuto() {
+    @Test fun partidasAChegarEUmMinuto() {
         val partidas = listOf(
             partida("2026-11-01T11:10:00Z", "2026-11-01T11:10:20Z"),
             partida("2026-11-01T11:11:00Z", "2026-11-01T11:11:30Z"),
             partida("2026-11-01T11:37:00Z", null),
         )
         val d = descricaoRota(rota, emptyList(), comAlerta = false, Limites(), partidas, agora)
-        assertTrue(d, d.endsWith("Próximas partidas: agora, daqui a 1 minuto, às 11:37."))
+        assertTrue(d, d.endsWith("Próximas partidas: a chegar, daqui a 1 minuto, às 11:37."))
     }
 
     @Test fun semPartidasNaoAcrescentaNada() {

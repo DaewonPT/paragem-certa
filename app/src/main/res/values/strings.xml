@@ -206,6 +206,7 @@
     <string name="rotas_sai_de">Sai de %1$s</string>
     <string name="rotas_parte_de">Parte de %1$s dentro de</string>
     <string name="rotas_parte_de_as">Parte de %1$s às</string>
+    <string name="rotas_parte_de_ja">Parte de %1$s:</string>
     <string name="rotas_mais_cedo">Mais cedo</string>
     <string name="rotas_mais_tarde">Mais tarde</string>
     <string name="rotas_erro_pagina">Não foi possível carregar mais rotas</string>

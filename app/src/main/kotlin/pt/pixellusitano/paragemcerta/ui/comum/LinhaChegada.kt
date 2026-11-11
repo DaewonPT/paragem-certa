@@ -90,7 +90,7 @@ fun descricaoChegada(c: Chegada, agora: Instant, limites: Limites = Limites(), a
         else -> {
             val s = Duration.between(agora, c.prevista).seconds
             when {
-                s < 60 -> "a chegar agora"
+                s < 60 -> "a chegar"
                 s <= 3600 -> "daqui a ${minutos(s / 60)}"
                 else -> "às ${HORA.format(c.prevista!!.atZone(LISBOA_FUSO))}"
             }

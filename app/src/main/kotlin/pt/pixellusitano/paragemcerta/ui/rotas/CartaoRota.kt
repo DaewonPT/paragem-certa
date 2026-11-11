@@ -83,9 +83,11 @@ private fun minutosPara(c: Chegada, agora: Instant): Long? {
     return if (segundos <= 3600) maxOf(segundos / 60, 0) else null
 }
 
-/** Os tempos de "Parte de X dentro de …": os minutos até 1 h, depois a hora; o booleano diz se é tempo real. */
-internal fun textoPartidas(partidas: List<Chegada>, agora: Instant): List<Pair<String, Boolean>> =
-    partidas.map { c -> (minutosPara(c, agora)?.toString() ?: (c.prevista ?: c.programada).horaLisboa()) to (c.prevista != null) }
+/** Os tempos de "Parte de X dentro de …": "a chegar" a menos de 1 min, os minutos até 1 h, depois a hora; o booleano diz se é tempo real. */
+internal fun textoPartidas(partidas: List<Chegada>, agora: Instant): List<Pair<String, Boolean>> = partidas.map { c ->
+    val m = minutosPara(c, agora)
+    (if (m == 0L) "a chegar" else m?.toString() ?: (c.prevista ?: c.programada).horaLisboa()) to (c.prevista != null)
+}
 
 /** "daqui a 3 minutos, 18 minutos, às 11:37": o "daqui a" abre cada grupo de minutos seguidos. */
 private fun frasePartidas(partidas: List<Chegada>, agora: Instant): String {
@@ -94,7 +96,7 @@ private fun frasePartidas(partidas: List<Chegada>, agora: Instant): String {
         val m = minutosPara(c, agora)
         val frase = when (m) {
             null -> "às ${(c.prevista ?: c.programada).horaLisboa()}"
-            0L -> "agora"
+            0L -> "a chegar"
             else -> (if (emMinutos) "" else "daqui a ") + minutos(m)
         }
         frase.also { emMinutos = m != null && m > 0 }
@@ -210,9 +212,13 @@ fun CartaoRota(
                 color = cores.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium,
             )
             if (primeira != null && proximas.isNotEmpty()) {
-                // "dentro de 3, 18" lê-se bem; "dentro de 11:37" não: se a 1.ª partida é uma hora, "às 11:37".
+                // "dentro de 3, 18" lê-se bem; "dentro de 11:37" e "dentro de a chegar" não: aí "às 11:37" e "Parte de X: a chegar".
                 val parteDe = stringResource(
-                    if (minutosPara(proximas.first(), agora) != null) R.string.rotas_parte_de else R.string.rotas_parte_de_as,
+                    when (minutosPara(proximas.first(), agora)) {
+                        null -> R.string.rotas_parte_de_as
+                        0L -> R.string.rotas_parte_de_ja
+                        else -> R.string.rotas_parte_de
+                    },
                     primeira.de.nome,
                 ) + " "
                 val aHoras = CoresAtraso.cor(EstadoAtraso.A_HORAS, LocalEscuro.current)

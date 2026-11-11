@@ -36,7 +36,7 @@ class AtrasoTest {
 
     @Test fun rotulos() {
         val lx = ZoneId.of("Europe/Lisbon")
-        assertEquals("agora", rotuloTempo(c(0), t0.plusSeconds(-20), lx))
+        assertEquals("a chegar", rotuloTempo(c(0), t0.plusSeconds(-20), lx))
         assertEquals("3 min", rotuloTempo(c(180), t0, lx))
         assertEquals("2 min", rotuloTempo(c(150), t0, lx))
         assertEquals("14:00", rotuloTempo(c(0), t0.minusSeconds(70 * 60), lx))

@@ -54,9 +54,9 @@ class CartaoRotaTest {
         val agoraMesmo = partida("2026-11-01T11:10:00Z", "2026-11-01T11:10:20Z")
         val umaHora = partida("2026-11-01T12:10:00Z", "2026-11-01T12:10:00Z")
         val depoisDeUmaHora = partida("2026-11-01T12:11:00Z", "2026-11-01T12:11:00Z")
-        // Menos de um minuto é "0"; até 60 min mostram-se os minutos; acima, a hora (ainda ao vivo).
+        // Menos de um minuto é "a chegar"; até 60 min mostram-se os minutos; acima, a hora (ainda ao vivo).
         assertEquals(
-            listOf("0" to true, "60" to true, "12:11" to true),
+            listOf("a chegar" to true, "60" to true, "12:11" to true),
             textoPartidas(listOf(agoraMesmo, umaHora, depoisDeUmaHora), agora),
         )
     }
@@ -83,6 +83,13 @@ class CartaoRotaTest {
         // Só horário (Metro, CP): "dentro de 11:37" não é português; com horas lê-se "às 11:37".
         cartao(listOf(horario, partida("2026-11-01T11:52:00Z", null)))
         regra.onNodeWithText("Parte de Cais Sodré às 11:37, 11:52", useUnmergedTree = true).assertIsDisplayed()
+        regra.onNodeWithText("dentro de", substring = true, useUnmergedTree = true).assertDoesNotExist()
+    }
+
+    @Test fun aMenosDeUmMinutoDizAChegar() {
+        // "dentro de a chegar" não é português: com a 1.ª partida a menos de 1 min, "Parte de X: a chegar".
+        cartao(listOf(partida("2026-11-01T11:10:00Z", "2026-11-01T11:10:20Z"), aoVivo18, horario))
+        regra.onNodeWithText("Parte de Cais Sodré: a chegar, 18, 11:37", useUnmergedTree = true).assertIsDisplayed()
         regra.onNodeWithText("dentro de", substring = true, useUnmergedTree = true).assertDoesNotExist()
     }
 
