@@ -8,6 +8,7 @@ A versão mais recente aparece primeiro.
 - Avisos mais claros quando o servidor chega ao limite do dia, com a hora a que volta.
 - A app pede menos à rede: as sugestões de Casa e Trabalho já não se repetem sempre que voltas ao Início.
 - Quando o autocarro está mesmo a chegar, a app diz "a chegar" em vez de "0" ou "agora".
+- No detalhe de uma rota, "Onde está o autocarro?" mostra no mapa o autocarro da Carris Metropolitana que vais apanhar.
 
 ## 0.5.1 — Azulejo em toda a app
 

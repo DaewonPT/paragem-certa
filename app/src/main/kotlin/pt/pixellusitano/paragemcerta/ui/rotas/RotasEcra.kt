@@ -145,6 +145,7 @@ fun RotasEcra(
             rota,
             de = pedido.origem?.nome ?: stringResource(R.string.rotas_minha_posicao),
             para = pedido.destino?.nome.orEmpty(),
+            repositorio = repositorio,
             preferencias = preferencias,
             aoComecou = aoAbrirViagem,
             aoVoltar = { vm.abrir(null) },

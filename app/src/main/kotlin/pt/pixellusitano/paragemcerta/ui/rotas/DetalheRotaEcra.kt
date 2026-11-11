@@ -35,7 +35,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -48,14 +50,29 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.LiveRegionMode
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.emptyFlow
 import org.maplibre.android.geometry.LatLng
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.core.atraso.estado
+import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.modelo.Etapa
+import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.Itinerario
+import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
+import pt.pixellusitano.paragemcerta.core.modelo.Veiculo
+import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import pt.pixellusitano.paragemcerta.dados.Preferencias
+import pt.pixellusitano.paragemcerta.dados.Repositorio
+import pt.pixellusitano.paragemcerta.viagem.CM_INTERVALO
 import pt.pixellusitano.paragemcerta.ui.comum.LISBOA_FUSO
 import pt.pixellusitano.paragemcerta.ui.comum.LocalLimites
 import pt.pixellusitano.paragemcerta.ui.comum.SeloLinha
@@ -69,6 +86,7 @@ import pt.pixellusitano.paragemcerta.ui.tema.CoresAtraso
 import pt.pixellusitano.paragemcerta.ui.tema.LocalEscuro
 import pt.pixellusitano.paragemcerta.ui.viagem.PreparacaoViagem
 import java.time.Duration
+import java.time.Instant
 
 /** Sem desenho da fonte, o troço vai em linha reta de uma ponta à outra. */
 private fun Etapa.pontos() = desenho.ifEmpty { listOf(de.lat to de.lon, para.lat to para.lon) }
@@ -98,24 +116,42 @@ fun Itinerario.comNomes(de: String, para: String): Itinerario = copy(
 /** [comunidadeLigada]: o interruptor `comunidade` da config, para a viagem saber se pode pedir os relatos ao servidor. */
 @Composable
 fun DetalheRotaEcra(
-    it: Itinerario, de: String, para: String, preferencias: Preferencias, aoComecou: () -> Unit, aoVoltar: () -> Unit,
+    it: Itinerario, de: String, para: String, repositorio: Repositorio, preferencias: Preferencias, aoComecou: () -> Unit, aoVoltar: () -> Unit,
     comunidadeLigada: Boolean = false,
 ) {
     val contexto = LocalContext.current
     val escuro = LocalEscuro.current
     var preparar by rememberSaveable { mutableStateOf(false) }
+    // A etapa cujo autocarro se mostra no mapa, só uma de cada vez; null = nenhuma.
+    var seguida by rememberSaveable { mutableStateOf<Int?>(null) }
+    val etapaSeguida = seguida?.let(it.etapas::getOrNull)
+    val (autocarro, estadoAutocarro) = rememberAutocarro(repositorio, seguida, etapaSeguida)
+    var centrar by remember { mutableIntStateOf(0) }
+    var centrado by remember(seguida) { mutableStateOf(false) }
+    LaunchedEffect(seguida, autocarro != null) {
+        if (autocarro != null && !centrado) {
+            centrado = true
+            centrar++
+        }
+    }
     DetalheRotaConteudo(
         it, de, para,
         mapa = {
             val percursos = it.percursos()
             val inicio = percursos.first().pontos.first()
             Mapa(
-                paragens = emptyList(), enquadrar = emptyList(), veiculos = emptyList(), coresLinhas = emptyMap(),
+                paragens = emptyList(), enquadrar = emptyList(), veiculos = listOfNotNull(autocarro),
+                coresLinhas = if (autocarro == null || etapaSeguida == null) emptyMap()
+                else mapOf(autocarro.linhaId to hex(corDaLinha(etapaSeguida.cor, etapaSeguida.modo))),
                 escuro = escuro, centroInicial = LatLng(inicio.first, inicio.second), camaraInicial = null, centrarEm = null,
                 aoMoverCamara = { _, _, _, _, _ -> }, aoTocarParagem = {}, aoTocarVeiculo = {},
                 modifier = Modifier.fillMaxSize(), percursos = percursos, mostrarPosicao = temLocalizacao(contexto),
+                centrarNoVeiculo = centrar,
             )
         },
+        seguida = seguida,
+        estadoAutocarro = estadoAutocarro,
+        aoVerAutocarro = { i -> if (seguida == i) centrar++ else seguida = i },
         aoVoltar = aoVoltar,
         aoComecar = { preparar = true },
         aoPartilhar = {
@@ -145,6 +181,35 @@ fun DetalheRotaEcra(
     }
 }
 
+/**
+ * O autocarro da [etapa] seguida ([i]) e o que dizer dele. Com o ecrã visível pede as chegadas da paragem de embarque a cada
+ * 30 s e recolhe os veículos da CM (15 s); sem etapa, ou fora do ecrã, não pede nada. Numa falha nada muda: fica o último
+ * autocarro conhecido.
+ */
+@Composable
+private fun rememberAutocarro(repositorio: Repositorio, i: Int?, etapa: Etapa?): Pair<Veiculo?, EstadoAutocarro> {
+    val paragem = etapa?.embarqueCm()
+    val ciclo = LocalLifecycleOwner.current.lifecycle
+    var chegadas by remember(i) { mutableStateOf(emptyList<Chegada>()) }
+    var voltas by remember(i) { mutableIntStateOf(0) }
+    LaunchedEffect(i) {
+        if (paragem == null) return@LaunchedEffect
+        ciclo.repeatOnLifecycle(Lifecycle.State.STARTED) {
+            while (true) {
+                (repositorio.chegadasAgora(RefParagem(Fonte.CM, paragem)) as? Resultado.Ok)?.let { chegadas = it.valor }
+                voltas++
+                delay(CM_INTERVALO.toMillis())
+            }
+        }
+    }
+    val veiculos by remember(paragem != null) { if (paragem != null) repositorio.veiculos() else emptyFlow() }
+        .collectAsStateWithLifecycle<List<Veiculo>?>(null) // null = ainda sem resposta
+    val autocarro = remember(etapa, chegadas, veiculos) {
+        etapa?.let { autocarroDaEtapa(chegadas, veiculos.orEmpty(), it, Instant.now()) }
+    }
+    return autocarro to estadoAutocarro(autocarro, voltas, veiculos != null)
+}
+
 @Composable
 fun DetalheRotaConteudo(
     it: Itinerario,
@@ -156,6 +221,10 @@ fun DetalheRotaConteudo(
     aoPartilhar: () -> Unit,
     aoAbrirTvde: () -> Unit,
     modifier: Modifier = Modifier,
+    /** A etapa cujo autocarro se procura (null = nenhuma) e o que já se sabe dele; o toque em "Onde está o autocarro?" dá o índice da etapa. */
+    seguida: Int? = null,
+    estadoAutocarro: EstadoAutocarro = EstadoAutocarro.A_PROCURAR,
+    aoVerAutocarro: (Int) -> Unit = {},
 ) {
     val cores = MaterialTheme.colorScheme
     Box(modifier.fillMaxSize().background(cores.background)) {
@@ -193,7 +262,11 @@ fun DetalheRotaConteudo(
             item {
                 CartaoAzulejo(Modifier.fillMaxWidth()) {
                     it.etapas.forEachIndexed { i, e ->
-                        LinhaEtapa(e, paraNome = if (i == it.etapas.lastIndex) para else e.para.nome)
+                        LinhaEtapa(
+                            e, paraNome = if (i == it.etapas.lastIndex) para else e.para.nome,
+                            aoVerAutocarro = { aoVerAutocarro(i) }.takeIf { e.embarqueCm() != null },
+                            estadoAutocarro = estadoAutocarro.takeIf { i == seguida },
+                        )
                         HorizontalDivider(color = cores.outlineVariant)
                     }
                     Hora(it.chegada.horaLisboa(), cores.onSurface) {
@@ -227,8 +300,9 @@ private fun Hora(hora: String, cor: Color, conteudo: @Composable () -> Unit) {
     }
 }
 
+/** [aoVerAutocarro]: só nas etapas da CM, com o botão "Onde está o autocarro?"; [estadoAutocarro]: só na etapa seguida. */
 @Composable
-private fun LinhaEtapa(e: Etapa, paraNome: String) {
+private fun LinhaEtapa(e: Etapa, paraNome: String, aoVerAutocarro: (() -> Unit)?, estadoAutocarro: EstadoAutocarro?) {
     val cores = MaterialTheme.colorScheme
     val minutos = minutosDe(Duration.between(e.partida, e.chegada)).toInt()
     if (e.aPe) {
@@ -267,6 +341,27 @@ private fun LinhaEtapa(e: Etapa, paraNome: String) {
                 ).joinToString(" · "),
                 color = cores.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium,
             )
+            aoVerAutocarro?.let {
+                BotaoSecundario(it) {
+                    // Com letra grande o ícone sai: ao lado dele, o "autocarro?" partia a meio.
+                    if (LocalDensity.current.fontScale < 1.5f) Icon(Icones.Lugar, null, Modifier.padding(end = 8.dp).size(ladoDoIcone(18)))
+                    Text(stringResource(R.string.detalhe_onde_esta_autocarro))
+                }
+            }
+            estadoAutocarro?.let {
+                Text(
+                    stringResource(
+                        when (it) {
+                            EstadoAutocarro.A_PROCURAR -> R.string.detalhe_autocarro_a_procurar
+                            EstadoAutocarro.SEM_POSICAO -> R.string.detalhe_autocarro_sem_posicao
+                            EstadoAutocarro.NO_MAPA -> R.string.detalhe_autocarro_no_mapa
+                        },
+                    ),
+                    // Educado: o leitor de ecrã diz cada mudança sem cortar o que estiver a ler.
+                    Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+                    color = cores.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium,
+                )
+            }
         }
     }
 }

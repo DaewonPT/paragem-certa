@@ -207,6 +207,11 @@ fun Mapa(
     aoRodar: (rumo: Double) -> Unit = {},
     /** A distância do topo a que ficam a atribuição e o logótipo. */
     margemTopo: Dp = 180.dp,
+    /**
+     * Contador: cada vez que sobe, a câmara vai para o primeiro dos [veiculos], mesmo que a pessoa tenha mexido no mapa (o
+     * [centrarEm] aí já não move a câmara).
+     */
+    centrarNoVeiculo: Int = 0,
 ) {
     val contexto = LocalContext.current
     val ciclo = LocalLifecycleOwner.current.lifecycle
@@ -468,6 +473,14 @@ fun Mapa(
         if (pontos.size < 2) return@LaunchedEffect
         val limites = LatLngBounds.Builder().includes(pontos.map { (lat, lon) -> LatLng(lat, lon) }).build()
         mapa.easeCamera(CameraUpdateFactory.newLatLngBounds(limites, 80))
+    }
+
+    // Depois do enquadramento do percurso: com o mapa a abrir, o veículo pedido ganha.
+    LaunchedEffect(centrarNoVeiculo, estado.mapa) {
+        val mapa = estado.mapa ?: return@LaunchedEffect
+        val v = veiculos.firstOrNull()
+        if (centrarNoVeiculo <= 0 || v == null) return@LaunchedEffect
+        mapa.easeCamera(CameraUpdateFactory.newLatLngZoom(LatLng(v.lat, v.lon), 15.5))
     }
 
     AndroidView(factory = { vista }, modifier = modifier)
