@@ -10,7 +10,7 @@ import { pedirAdmin } from "./ajudas-admin";
 const DIA = 24 * 60 * 60_000;
 const INICIO = Date.UTC(2026, 10, 3, 8, 0);
 const HOJE = "2026-11-03";
-const RAZAO = { motivo: "Aparece a cara de uma pessoa", regra: "fotos_so_a_paragem" };
+const RAZAO = { motivo: "Aparece a cara de uma pessoa", regra: "lei" };
 
 let ana: string;
 let rui: string;

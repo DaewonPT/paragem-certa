@@ -7,8 +7,6 @@
 export const REGRAS: Record<string, string> = {
   so_o_que_viste: "Relata só o que viste, junto da paragem ou a bordo da linha. Os relatos têm tipos fixos, sem texto livre.",
   falso_ou_varias_contas: "Não relates o que é falso nem uses várias contas para confirmar o teu próprio relato.",
-  fotos_so_a_paragem: "As fotos mostram só a paragem: sem pessoas identificáveis, sem matrículas legíveis e sem conteúdo ofensivo.",
-  licenca_das_fotos: 'Ao enviares uma foto, aceitas a licença CC BY-SA 4.0 e que seja creditada como "Passageiro da Paragem Certa".',
   correcoes_verdadeiras: "As correções descrevem só o que existe no local.",
   lei: "Não publiques nada que a lei proíba.",
 };

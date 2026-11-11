@@ -25,7 +25,7 @@
 
 <h2>O essencial</h2>
 <ul>
-  <li>A app funciona sem conta. A conta é opcional: serve para sincronizar os teus favoritos entre telemóveis e, nas funções da comunidade, para relatar, confirmar e enviar fotos e correções.</li>
+  <li>A app funciona sem conta. A conta é opcional: serve para sincronizar os teus favoritos entre telemóveis e, nas funções da comunidade, para relatar, confirmar e enviar correções.</li>
   <li>Sem anúncios, sem rastreio e sem estatísticas.</li>
   <li>A tua posição GPS nunca vai para o servidor da Paragem Certa. Mas um relato regista que a tua conta estava junto dessa paragem a essa hora (ver a tabela).</li>
   <li>A idade mínima para ter conta é 13 anos.</li>
@@ -41,7 +41,7 @@
     <tr><td>Favoritos: paragens, linhas e sítios, incluindo a Casa e o Trabalho, com nome e coordenadas</td><td>Sincronizar entre os teus telemóveis</td><td>Até apagares a conta</td></tr>
     <tr><td>Versão dos termos que aceitaste e a data</td><td>Provar que aceitaste as regras antes de publicares</td><td>Até apagares a conta</td></tr>
     <tr><td>Relatos e confirmações: tipo, paragem, linha, hora e a tua conta. Nunca a posição GPS</td><td>Mostrar problemas aos outros passageiros e evitar abusos</td><td>O relato deixa de se ver quando expira e é apagado 30 dias depois, com as confirmações</td></tr>
-    <tr><td>Fotos e correções aos dados</td><td>Mostrar a foto ou a correção depois de aprovada pelo autor</td><td>Fotos rejeitadas: apagadas na decisão. Não revistas: apagadas aos 30 dias. Aprovadas e correções: até apagares a conta</td></tr>
+    <tr><td>Correções aos dados</td><td>Mostrar a correção depois de aprovada pelo autor</td><td>Até apagares a conta</td></tr>
     <tr><td>Denúncias, decisões e bloqueios, só com a marca (hash) do email</td><td>Cumprir a lei e impedir que alguém bloqueado volte só por apagar a conta</td><td>12 meses, mesmo depois de a conta ser apagada</td></tr>
     <tr><td>O nome e o email de quem denuncia</td><td>Enviar a quem denuncia o recibo e a decisão</td><td>Até a decisão lhe ser enviada; depois só fica a marca (hash) do email</td></tr>
     <tr><td>Emails por enviar (recibos e decisões que não saíram porque o limite diário de emails estava cheio ou o envio falhou)</td><td>Não perder um recibo nem uma decisão</td><td>Até saírem, no máximo 30 dias</td></tr>
@@ -49,10 +49,9 @@
     <tr><td>Cópias de segurança da base de dados</td><td>Recuperar de uma avaria</td><td>7 dias</td></tr>
   </tbody>
 </table>
-<p>Apagar a conta apaga os relatos, as confirmações, as fotos (incluindo as aprovadas), as correções, os favoritos guardados no servidor e a ligação das sessões. Os favoritos que estão no teu telemóvel ficam no telemóvel.</p>
+<p>Apagar a conta apaga os relatos, as confirmações, as correções, os favoritos guardados no servidor e a ligação das sessões. Os favoritos que estão no teu telemóvel ficam no telemóvel.</p>
 <p>Se apagares a conta com uma denúncia tua ainda por decidir, o nome e o email dessa denúncia ficam até ela ser decidida (no máximo 12 meses, o prazo das denúncias). Os emails por enviar para o teu endereço ficam até saírem, no máximo 30 dias, mesmo depois de apagares a conta.</p>
-<p>De uma foto rejeitada fica só, durante 1 dia, a marca de que a tua conta enviou uma foto (para o limite de 1 por dia); a foto em si é apagada na decisão.</p>
-<p>O que ocultas com "Ocultar este relato" e "Ocultar esta foto" fica só no teu telemóvel: o servidor não o sabe.</p>
+<p>O que ocultas com "Ocultar este relato" fica só no teu telemóvel: o servidor não o sabe.</p>
 
 <h2>Porque podemos tratar estes dados</h2>
 <ul>
@@ -61,11 +60,10 @@
 </ul>
 
 <h2>Onde ficam os dados</h2>
-<p>A base de dados e as fotos ficam guardadas na União Europeia. Os pedidos à API são tratados no ponto da Cloudflare mais próximo de ti, normalmente na União Europeia, mas isso não é garantido.</p>
-<p>As fotos aprovadas servem-se por fotos.pixellusitano.com, através da cache da Cloudflare. Quando apagamos uma foto, pedimos a limpeza da cache; se essa limpeza falhar, a cópia pode continuar visível até 24 horas.</p>
+<p>A base de dados fica guardada na União Europeia. Os pedidos à API são tratados no ponto da Cloudflare mais próximo de ti, normalmente na União Europeia, mas isso não é garantido.</p>
 
 <h2>Quem mais recebe dados</h2>
-<p>O servidor corre na <strong>Cloudflare</strong> (alojamento, base de dados e fotos). As posições ao vivo dos autocarros da Carris passam pelo servidor da Paragem Certa: ele lê-as à Carris e dá-as à app, e não guarda nada de quem as pede. A Carris só recebe pedidos do servidor, sem nada sobre ti. Além disso:</p>
+<p>O servidor corre na <strong>Cloudflare</strong> (alojamento e base de dados). As posições ao vivo dos autocarros da Carris passam pelo servidor da Paragem Certa: ele lê-as à Carris e dá-as à app, e não guarda nada de quem as pede. A Carris só recebe pedidos do servidor, sem nada sobre ti. Além disso:</p>
 <ul>
   <li><strong>Google</strong>, quando entras com o Google: trata o início de sessão. A Paragem Certa recebe o teu email verificado e um identificador.</li>
   <li><strong>Resend</strong>: envia os emails de entrada, os recibos e as decisões, por isso recebe o teu email. Os emails podem sair dos EUA, e a Resend guarda lá os registos desses envios.</li>
@@ -98,7 +96,7 @@
 
 <h2>The essentials</h2>
 <ul>
-  <li>The app works without an account. An account is optional: it syncs your favourites between phones and, in the community features, lets you report, confirm and send photos and corrections.</li>
+  <li>The app works without an account. An account is optional: it syncs your favourites between phones and, in the community features, lets you report, confirm and send corrections.</li>
   <li>No ads, no tracking, no statistics.</li>
   <li>Your GPS position never goes to the Paragem Certa server. However, a report records that your account was near that stop at that time (see the table).</li>
   <li>The minimum age for an account is 13.</li>
@@ -114,7 +112,7 @@
     <tr><td>Favourites: stops, lines and places, including Home and Work, with name and coordinates</td><td>Sync between your phones</td><td>Until you delete the account</td></tr>
     <tr><td>The version of the terms you accepted and the date</td><td>Prove you accepted the rules before posting</td><td>Until you delete the account</td></tr>
     <tr><td>Reports and confirmations: type, stop, line, time and your account. Never the GPS position</td><td>Show problems to other passengers and prevent abuse</td><td>A report stops showing when it expires and is deleted 30 days later, with its confirmations</td></tr>
-    <tr><td>Photos and data corrections</td><td>Show the photo or correction once the author approves it</td><td>Rejected photos: deleted at the decision. Not reviewed: deleted after 30 days. Approved photos and corrections: until you delete the account</td></tr>
+    <tr><td>Data corrections</td><td>Show the correction once the author approves it</td><td>Until you delete the account</td></tr>
     <tr><td>Reports of abuse, decisions and blocks, with only a hash of the email</td><td>Comply with the law and stop someone who was blocked from returning just by deleting the account</td><td>12 months, even after the account is deleted</td></tr>
     <tr><td>The name and email of whoever files a report of abuse</td><td>Send them the receipt and the decision</td><td>Until the decision is sent to them; after that only a hash of the email remains</td></tr>
     <tr><td>Queued emails (receipts and decisions that did not go out because the daily email limit was full or sending failed)</td><td>Not lose a receipt or a decision</td><td>Until they are sent, 30 days at most</td></tr>
@@ -122,10 +120,9 @@
     <tr><td>Database backups</td><td>Recover from a failure</td><td>7 days</td></tr>
   </tbody>
 </table>
-<p>Deleting the account deletes the reports, confirmations, photos (including approved ones), corrections, the favourites stored on the server and the sessions. The favourites on your phone stay on your phone.</p>
+<p>Deleting the account deletes the reports, confirmations, corrections, the favourites stored on the server and the sessions. The favourites on your phone stay on your phone.</p>
 <p>If you delete the account while a report you filed is still undecided, the name and email on that report stay until it is decided (12 months at most, the time limit for reports). Queued emails to your address stay until they are sent, 30 days at most, even after you delete the account.</p>
-<p>Of a rejected photo only a record that your account sent one stays, for 1 day (for the limit of 1 per day); the photo itself is deleted at the decision.</p>
-<p>What you hide with "Hide this report" and "Hide this photo" stays only on your phone: the server does not know it.</p>
+<p>What you hide with "Hide this report" stays only on your phone: the server does not know it.</p>
 
 <h2>Why we may process this data</h2>
 <ul>
@@ -134,11 +131,10 @@
 </ul>
 
 <h2>Where the data is kept</h2>
-<p>The database and the photos are stored in the European Union. API requests are handled at the Cloudflare location closest to you, normally in the European Union, but that is not guaranteed.</p>
-<p>Approved photos are served from fotos.pixellusitano.com, through the Cloudflare cache. When we delete a photo we ask for the cache to be cleared; if that fails, the copy can stay visible for up to 24 hours.</p>
+<p>The database is stored in the European Union. API requests are handled at the Cloudflare location closest to you, normally in the European Union, but that is not guaranteed.</p>
 
 <h2>Who else receives data</h2>
-<p>The server runs on <strong>Cloudflare</strong> (hosting, database and photos). The live positions of Carris buses go through the Paragem Certa server: it reads them from Carris and hands them to the app, and it stores nothing about who asks for them. Carris only receives requests from the server, with nothing about you. In addition:</p>
+<p>The server runs on <strong>Cloudflare</strong> (hosting and database). The live positions of Carris buses go through the Paragem Certa server: it reads them from Carris and hands them to the app, and it stores nothing about who asks for them. Carris only receives requests from the server, with nothing about you. In addition:</p>
 <ul>
   <li><strong>Google</strong>, when you sign in with Google: handles the sign-in. Paragem Certa receives your verified email and an identifier.</li>
   <li><strong>Resend</strong>: sends the sign-in emails, receipts and decisions, so it receives your email. Emails may be sent from the United States, and Resend keeps the records of those emails there.</li>

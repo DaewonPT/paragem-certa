@@ -142,7 +142,7 @@ async function bloquear(env: Env, contaId: string, campos: URLSearchParams, agor
     decisao(env, "conta_bloqueada", "", razao, emailHash, agora),
   ]);
   if (novo.meta.changes === 0) return 404;
-  const oQue = "Bloqueámos a tua conta nas funções da comunidade (relatar, confirmar relatos, enviar fotos e correções)";
+  const oQue = "Bloqueámos a tua conta nas funções da comunidade (relatar, confirmar relatos e enviar correções)";
   return explicar(env, conta.email, oQue, "durante 12 meses", razao, agora);
 }
 

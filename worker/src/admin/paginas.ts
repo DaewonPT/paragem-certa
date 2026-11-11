@@ -137,7 +137,7 @@ ${comRazao(`/relatos/${r.id}/apagar`, "Apagar")}</li>`)}
 ${secao("Contas bloqueadas", bloqueios.results as Bloqueio[], (b) => html`<li>${b.email_hash} · ${hora(b.criado_em)} · ${b.motivo} ${botao(`/bloqueios/${b.email_hash}/desbloquear`, "Desbloquear")}</li>`)}
 ${secao("Emails por enviar", emails.results as EmailPorEnviar[], (e) => html`<li>${e.id} · para ${e.para} · ${hora(e.criado_em)} · ${e.assunto}<pre>${e.texto}</pre>${botao(`/emails/${e.id}/enviar`, "Enviar agora")}</li>`)}
 <h2>Apagar conta por email</h2>
-<p>Para os pedidos de apagar-conta.html: apaga todas as contas desse email, com as fotos (também no R2 e na cache), relatos e correções.</p>
+<p>Para os pedidos de apagar-conta.html: apaga todas as contas desse email, com os relatos, as confirmações e as correções.</p>
 <form method="post" action="/contas/apagar"><input type="email" name="email" required aria-label="Email da conta" placeholder="Email da conta"> <button>Apagar conta</button></form>
 </body>
 </html>

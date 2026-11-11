@@ -281,14 +281,14 @@ describe("textos das explicações", () => {
   });
 
   it("explicacaoSemDenunciaDizQueFoiDoAutor", () => {
-    const { texto } = explicacao({ oQue: "Rejeitámos a tua foto", duracao: "para sempre", porque: "Tinha pessoas.", regra: REGRAS.fotos_so_a_paragem, deDenuncia: false });
+    const { texto } = explicacao({ oQue: "Rejeitámos a tua correção", duracao: "para sempre", porque: "Descrevia o que não existe.", regra: REGRAS.lei, deDenuncia: false });
     expect(texto).toContain("A decisão foi do autor da Paragem Certa, sem denúncia.");
     expect(texto).not.toContain("de outra pessoa");
     expect(texto).not.toContain("..");
   });
 
   it("regrasTemTodosOsIdsDoPlano", () => {
-    expect(Object.keys(REGRAS).sort()).toEqual(["correcoes_verdadeiras", "falso_ou_varias_contas", "fotos_so_a_paragem", "lei", "licenca_das_fotos", "so_o_que_viste"]);
+    expect(Object.keys(REGRAS).sort()).toEqual(["correcoes_verdadeiras", "falso_ou_varias_contas", "lei", "so_o_que_viste"]);
     for (const texto of Object.values(REGRAS)) expect(texto.length).toBeGreaterThan(10);
   });
 

@@ -267,6 +267,12 @@ describe("política de privacidade, termos e guia do autor", () => {
     expect(en).toContain("Queued emails to your address stay until they are sent, 30 days at most, even after you delete the account");
   });
 
+  it("apagarContaDizUmMes", () => {
+    const [pt, en] = apagarContaHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").split("Delete your Paragem Certa account");
+    expect(pt).toContain("no prazo de um mês");
+    expect(en).toContain("within one month");
+  });
+
   it("apagarContaDizOQueFicaDeUmaDenunciaPorDecidir", () => {
     const [pt, en] = apagarContaHtml.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").split("Delete your Paragem Certa account");
     expect(pt).toContain("Se apagares a conta com uma denúncia tua ainda por decidir, o nome e o email dessa denúncia ficam até ela ser decidida");
@@ -275,16 +281,14 @@ describe("política de privacidade, termos e guia do autor", () => {
     expect(en).toContain("Queued emails to your address stay until they are sent, 30 days at most");
   });
 
-  it("privacidadeDizDasFotosRejeitadasDoOcultarEDoDominioDasFotos", async () => {
+  it("privacidadeDizQueOcultarFicaNoTelemovel", async () => {
     const { pt, en } = await politica();
-    expect(pt).toContain("De uma foto rejeitada fica só, durante 1 dia, a marca de que a tua conta enviou uma foto");
-    expect(pt).toContain('O que ocultas com "Ocultar este relato" e "Ocultar esta foto" fica só no teu telemóvel');
-    expect(pt).toContain("As fotos aprovadas servem-se por fotos.pixellusitano.com, através da cache da Cloudflare");
-    expect(pt).toContain("a cópia pode continuar visível até 24 horas");
-    expect(en).toContain("Of a rejected photo only a record that your account sent one stays, for 1 day");
-    expect(en).toContain("What you hide with \"Hide this report\" and \"Hide this photo\" stays only on your phone");
-    expect(en).toContain("Approved photos are served from fotos.pixellusitano.com, through the Cloudflare cache");
-    expect(en).toContain("the copy can stay visible for up to 24 hours");
+    expect(pt).toContain('O que ocultas com "Ocultar este relato" fica só no teu telemóvel');
+    expect(en).toContain('What you hide with "Hide this report" stays only on your phone');
+    for (const t of [pt, en]) {
+      expect(t).not.toContain("fotos.pixellusitano.com");
+      expect(t).not.toMatch(/Ocultar esta foto|Hide this photo|CC BY-SA/);
+    }
   });
 
   it("politicaFalaDaCarrisEDaEmel", async () => {
@@ -334,16 +338,14 @@ describe("política de privacidade, termos e guia do autor", () => {
   it("termosTemTodasAsRegrasDasDecisoes", () => {
     // Estes textos vão tal e qual nos emails das decisões (explicacoes.ts): têm de ser os dos termos, palavra por palavra.
     const { pt, en } = emDuasLinguas(termosHtml);
-    expect(Object.keys(REGRAS)).toHaveLength(6);
+    expect(Object.keys(REGRAS)).toHaveLength(4);
     for (const [chave, regra] of Object.entries(REGRAS)) expect(pt, chave).toContain(regra);
     expect(pt).toContain("Não publiques nada que a lei proíba.");
     expect(pt).toContain("24 horas");
-    // Em inglês não há o texto dos emails (só em português), mas as seis regras têm de estar lá, traduzidas.
+    // Em inglês não há o texto dos emails (só em português), mas as quatro regras têm de estar lá, traduzidas.
     for (const frase of [
       "Report only what you saw",
       "Do not report false things",
-      "Photos show only the stop",
-      "you accept the CC BY-SA 4.0 licence",
       "Corrections describe only what exists on site.",
       "Do not publish anything that the law prohibits.",
       "24 hours",
@@ -354,11 +356,11 @@ describe("política de privacidade, termos e guia do autor", () => {
 
   it("termosDizOQueFazUmBloqueioOsVotosEAsDenuncias", () => {
     const { pt, en } = emDuasLinguas(termosHtml);
-    expect(pt).toContain("Uma conta bloqueada não relata, não confirma, não envia fotos nem correções durante 12 meses");
+    expect(pt).toContain("Uma conta bloqueada não relata, não confirma nem envia correções durante 12 meses");
     expect(pt).toContain('O "Ainda está" de quem relatou não renova o tempo');
     expect(pt).toContain("Os votos de uma conta só contam depois de ela ter 24 horas");
     expect(pt).toContain("no máximo 5 denúncias por dia");
-    expect(en).toContain("A blocked account cannot report, confirm, send photos or send corrections for 12 months");
+    expect(en).toContain("A blocked account cannot report, confirm or send corrections for 12 months");
     expect(en).toContain('"Still there" from the person who reported does not renew the time');
     expect(en).toContain("An account's votes only count once it is 24 hours old");
     expect(en).toContain("at most 5 reports of abuse per day");
