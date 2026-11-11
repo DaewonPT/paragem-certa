@@ -3,6 +3,7 @@ package pt.pixellusitano.paragemcerta.ui.comunidade
 import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Color
+import android.os.Looper
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertCountEquals
@@ -21,6 +22,7 @@ import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -193,6 +195,16 @@ class FotoDeRuaTest {
         abrir()
         esperarPor("Não foi possível carregar a foto.")
         regra.onNodeWithText(creditoRua).assertIsDisplayed() // o crédito e a ligação à página continuam
+    }
+
+    @Test fun fotoDeRuaLeSeForaDaLinhaDoEcra() {
+        ligar()
+        var hilo: Thread? = null
+        carregarFoto = { hilo = Thread.currentThread(); jpeg() }
+        abrir()
+        esperarPor(creditoRua)
+        regra.waitUntil(5_000) { hilo != null }
+        assertNotEquals(Looper.getMainLooper().thread, hilo)
     }
 
     // ---- a bússola ----
