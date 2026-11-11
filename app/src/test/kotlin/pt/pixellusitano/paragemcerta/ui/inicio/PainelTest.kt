@@ -32,6 +32,7 @@ import androidx.compose.ui.unit.height
 import androidx.compose.ui.unit.width
 import androidx.room.Room
 import androidx.test.espresso.Espresso
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
@@ -62,6 +63,7 @@ import pt.pixellusitano.paragemcerta.core.modelo.Lugar
 import pt.pixellusitano.paragemcerta.core.modelo.Modo
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
 import pt.pixellusitano.paragemcerta.core.modelo.TipoLugar
+import pt.pixellusitano.paragemcerta.core.rede.Http
 import pt.pixellusitano.paragemcerta.core.rede.Resposta
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import pt.pixellusitano.paragemcerta.dados.BaseDados
@@ -112,7 +114,7 @@ class PainelTest {
         ch(3, 0, lisboa), ch(5, 1, costa), ch(12, 0, lisboa), ch(15, 1, costa), ch(30, 1, costa), ch(8, 1, "Fonte da Telha", linha = "3711"),
     )
 
-    private fun repositorio(http: HttpPorUrl): Repositorio {
+    private fun repositorio(http: Http): Repositorio {
         val bd = Room.inMemoryDatabaseBuilder(RuntimeEnvironment.getApplication(), BaseDados::class.java)
             .allowMainThreadQueries().setQueryExecutor { it.run() }.setTransactionExecutor { it.run() }.build()
         bds += bd
@@ -504,5 +506,87 @@ class PainelTest {
         regra.waitUntil(5_000) { regra.onAllNodes(hasText("sai às", substring = true)).fetchSemanticsNodes().isNotEmpty() }
         regra.waitForIdle()
         assertTrue(sugeridas.isEmpty())
+    }
+
+    // O Início sai e volta (outro separador, uma paragem aberta) e a posição muda com um GPS novo.
+    private var mostrar by mutableStateOf(true)
+    private var aqui by mutableStateOf(saldanha)
+
+    private fun painelQueSaiEVolta(repo: Repositorio) {
+        val linhas = catalogoLinhas()
+        regra.setContent {
+            TemaParagemCerta(ModoTema.CLARO) {
+                if (mostrar) Painel(repo, aqui, {}, {}, catalogo = linhas, aoSugerir = { l, i, de -> sugeridas += Triple(l, i, de) })
+            }
+        }
+    }
+
+    private fun httpComRotas() = HttpPorUrl("plan" to listOf({ Resposta(200, fixture("transitous-plan.json")) }), "map/stops" to listOf({ Resposta(200, "[]") }))
+    private fun planos(http: HttpPorUrl) = http.pedidos.count { "plan" in it }
+    private fun comCasa(repo: Repositorio) = repo.also {
+        runBlocking { it.guardarLocal("Casa", Lugar("Casa", 38.7058, -9.1431, TipoLugar.MORADA), "CASA") }
+    }
+
+    /** A resposta do plan só chega quando o [portao] abrir (o pedido conta logo, como um que já saiu). */
+    private class HttpComPortao(val http: HttpPorUrl, val portao: CompletableDeferred<Unit>) : Http {
+        override suspend fun get(url: String): Resposta = http.get(url).also { if ("plan" in url) portao.await() }
+    }
+
+    private val saiAs = hasText("sai às", substring = true)
+
+    @Test fun voltarAoInicioNaoPedeARotaOutraVez() {
+        val http = httpComRotas()
+        painelQueSaiEVolta(comCasa(repositorio(http)))
+        regra.waitUntil(5_000) { regra.onAllNodes(saiAs).fetchSemanticsNodes().isNotEmpty() }
+
+        mostrar = false
+        regra.waitForIdle()
+        mostrar = true
+        regra.waitForIdle()
+        regra.onNode(saiAs).assertIsDisplayed()
+        assertEquals(http.pedidos.toString(), 1, planos(http))
+    }
+
+    /** Com o plan da Casa a meio, o GPS dá uma posição [dLat] graus a norte do Saldanha; depois o plan responde. */
+    private fun moverAMeio(dLat: Double): HttpPorUrl {
+        val http = httpComRotas()
+        val portao = CompletableDeferred<Unit>()
+        painelQueSaiEVolta(comCasa(repositorio(HttpComPortao(http, portao))))
+        regra.waitUntil(5_000) { planos(http) == 1 }
+        aqui = saldanha.first + dLat to saldanha.second
+        regra.waitForIdle()
+        portao.complete(Unit)
+        regra.waitUntil(5_000) { sugeridas.isNotEmpty() }
+        regra.waitForIdle()
+        return http
+    }
+
+    @Test fun posicaoNovaPertoNaoPedeOutraVez() {
+        val http = moverAMeio(0.00045) // ~50 m
+        assertEquals(http.pedidos.toString(), 1, planos(http))
+        assertEquals(1, sugeridas.size)
+    }
+
+    @Test fun posicaoAMaisDe200mPedeOutraVez() {
+        val http = moverAMeio(0.0027) // ~300 m
+        assertEquals(http.pedidos.toString(), 2, planos(http))
+        // Só a rota de onde se está agora chega ao widget: a de 300 m atrás já não serve.
+        assertEquals(listOf(saldanha.first + 0.0027 to saldanha.second), sugeridas.map { it.third })
+    }
+
+    @Test fun sairAMeioGuardaASugestao() {
+        val http = httpComRotas()
+        val portao = CompletableDeferred<Unit>()
+        painelQueSaiEVolta(comCasa(repositorio(HttpComPortao(http, portao))))
+        regra.waitUntil(5_000) { planos(http) == 1 }
+
+        mostrar = false
+        regra.waitForIdle()
+        portao.complete(Unit)
+        regra.waitUntil(5_000) { sugeridas.size == 1 }
+        mostrar = true
+        regra.waitForIdle()
+        regra.onNode(saiAs).assertIsDisplayed()
+        assertEquals(http.pedidos.toString(), 1, planos(http))
     }
 }
