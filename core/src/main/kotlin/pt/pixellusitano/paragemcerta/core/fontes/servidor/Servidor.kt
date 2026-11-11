@@ -124,7 +124,8 @@ private val JSON = Json { ignoreUnknownKeys = true }
  *
  * Quando a quota grátis do dia acaba (503 `em_pausa`, ou o 429 sem JSON da página 1027 da Cloudflare) os pedidos à API
  * param até à próxima 00:00 UTC e devolvem `Falha(null, true, "em_pausa")` sem pedir. Ficam de fora o `config()`
- * (um ficheiro estático, não gasta quota) e as rotas de `/api/auth/` (entrar, sair), onde o 429 é da regra WAF de 10 s e não da quota.
+ * (um ficheiro estático, não gasta quota) e as rotas de `/api/auth/` (entrar, sair), onde o 429 com JSON (`espera_um_pouco`) é o
+ * travão `LIMITE_AUTH` do Worker e não a quota; aí o 429 sem JSON chega à app, que o trata como pausa.
  * Uma fonte externa em baixo (a Carris) dá 502 `fonte_falhou`: falha normal, nunca pausa.
  */
 class ServidorParagemCerta(

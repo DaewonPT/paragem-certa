@@ -397,4 +397,22 @@ class ContaScreenshotTest {
         assertFalse(texto.contains("%"))
         esperarPor(texto)
     }
+
+    @Test @Config(qualifiers = "w360dp-h780dp")
+    fun quotaAcabadaAoPedirCodigoDizPausa() {
+        servidor.pedirCodigo = Resposta(429, "<html>1027</html>") // página da Cloudflare, sem JSON
+        abrirEcra()
+        regra.onNodeWithText("Entrar com email").performClick()
+        regra.onNodeWithText("Email").performTextInput("ana@exemplo.pt")
+        regra.onNodeWithText("Enviar código").performClick()
+        esperarPor(textoDoAviso(contexto, R.string.servidor_em_pausa))
+    }
+
+    @Test @Config(qualifiers = "w360dp-h780dp")
+    fun quotaAcabadaAoConfirmarCodigoDizPausa() {
+        servidor.confirmar = Resposta(429, "<html>1027</html>")
+        abrirEcra()
+        entrarPorEmail()
+        esperarPor(textoDoAviso(contexto, R.string.servidor_em_pausa))
+    }
 }

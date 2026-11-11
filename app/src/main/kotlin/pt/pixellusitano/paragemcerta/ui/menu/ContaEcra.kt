@@ -316,10 +316,13 @@ private tailrec fun Context.atividade(): Activity? = when (this) {
     else -> null
 }
 
-// Em todas: em_pausa = o servidor passou a quota grátis do dia, seja qual for o código.
-// 400 = email que o servidor não aceita; três 429: espera_um_pouco = travão curto por IP, limite_do_dia = acabaram os códigos
-// do dia (todos os utilizadores), o resto = mais de 3 códigos por hora; o resto (502 da Resend…) = não saiu.
-@StringRes private fun erroDoPedido(f: Resultado.Falha, comGoogle: Boolean) = if (f.emPausa) R.string.servidor_em_pausa
+// Em todas: em_pausa = o servidor passou a quota grátis do dia, seja qual for o código; em /api/auth/ o núcleo não pausa,
+// por isso o 429 sem JSON (página da Cloudflare) também conta como pausa.
+// 400 = email que o servidor não aceita; três 429 com JSON: espera_um_pouco = travão curto por IP, limite_do_dia = acabaram
+// os códigos do dia (todos os utilizadores), muitos_pedidos = mais de 3 códigos por hora; o resto (502 da Resend…) = não saiu.
+private fun Resultado.Falha.quotaSemJson() = codigo == 429 && erro == null
+
+@StringRes private fun erroDoPedido(f: Resultado.Falha, comGoogle: Boolean) = if (f.emPausa || f.quotaSemJson()) R.string.servidor_em_pausa
 else if (f.erro == "espera_um_pouco") R.string.conta_erro_espera
 else if (f.erro == "limite_do_dia") (if (comGoogle) R.string.conta_erro_limite_do_dia else R.string.conta_erro_limite_do_dia_sem_google)
 else when (f.codigo) {
@@ -330,7 +333,7 @@ else when (f.codigo) {
 }
 
 // 401 = código errado, 410 = expirado ou já gasto as 5 tentativas.
-@StringRes private fun erroDoCodigo(f: Resultado.Falha) = if (f.emPausa) R.string.servidor_em_pausa
+@StringRes private fun erroDoCodigo(f: Resultado.Falha) = if (f.emPausa || f.quotaSemJson()) R.string.servidor_em_pausa
 else if (f.erro == "espera_um_pouco") R.string.conta_erro_espera
 else when (f.codigo) {
     null -> R.string.conta_erro_sem_ligacao
@@ -339,7 +342,7 @@ else when (f.codigo) {
     else -> R.string.conta_erro_generico
 }
 
-@StringRes private fun erroDoGoogle(f: Resultado.Falha) = if (f.emPausa) R.string.servidor_em_pausa
+@StringRes private fun erroDoGoogle(f: Resultado.Falha) = if (f.emPausa || f.quotaSemJson()) R.string.servidor_em_pausa
 else if (f.erro == "espera_um_pouco") R.string.conta_erro_espera
 else when (f.codigo) {
     null -> R.string.conta_erro_sem_ligacao
