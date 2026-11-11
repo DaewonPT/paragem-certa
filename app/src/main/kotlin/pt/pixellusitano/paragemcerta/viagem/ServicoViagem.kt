@@ -66,14 +66,14 @@ private const val GPS_PRECISO_MS = 1_000L
 private const val SEM_PRECISAO = 999f
 // O mesmo teto da guarda do motor (2 h de atraso + 30 min): o telemóvel fica acordado enquanto a viagem puder correr.
 private val BLOQUEIO_MAX = Duration.ofHours(2).plusMinutes(30)
-private val CM_INTERVALO = Duration.ofSeconds(30)
+internal val CM_INTERVALO = Duration.ofSeconds(30)
 private const val CM_TOLERANCIA_S = 90L
 private const val CM_VIAGEM_S = 60L
 /** Quem continua à espera 2 min depois da partida ao vivo do autocarro perdeu-o. */
 private val CM_PERDIDO = Duration.ofMinutes(2)
 // vehicles tem 306 KB (42 KB comprimido): só a bordo, na reta final ou sem GPS, e no máximo a cada 15 s.
 private val VEICULOS_INTERVALO = Duration.ofSeconds(15)
-private const val VEICULO_IDADE_S = 60L
+internal const val VEICULO_IDADE_S = 60L
 private const val VEICULO_PERTO_M = 150.0
 // Os relatos confirmados e as perturbações nas linhas da viagem: um pedido de cada a cada 5 min; os relatos até 20 linhas
 // (o máximo do /api/avisos).
