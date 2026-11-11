@@ -2,6 +2,12 @@
 
 A versão mais recente aparece primeiro.
 
+## 0.5.2 — Rotas mais à mão
+
+- "Mais cedo" e "Mais tarde" passam para o topo das rotas.
+- Avisos mais claros quando o servidor chega ao limite do dia, com a hora a que volta.
+- A app pede menos à rede: as sugestões de Casa e Trabalho já não se repetem sempre que voltas ao Início.
+
 ## 0.5.1 — Azulejo em toda a app
 
 - Todos os ecrãs com o aspeto novo: faixa azul, cartões e ícones próprios.
