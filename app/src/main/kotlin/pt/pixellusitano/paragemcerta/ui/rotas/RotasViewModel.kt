@@ -121,6 +121,10 @@ class RotasViewModel(
     private val _seguida = MutableStateFlow<Int?>(null)
     val seguida: StateFlow<Int?> = _seguida.asStateFlow()
 
+    /** Se a preparação da viagem do [aberto] está à vista; pelo mesmo motivo que a [seguida], vive aqui e não no estado guardado. */
+    private val _preparar = MutableStateFlow(false)
+    val preparar: StateFlow<Boolean> = _preparar.asStateFlow()
+
     private var posicao: Pair<Double, Double>? = null
     private var procura: Job? = null
 
@@ -171,10 +175,15 @@ class RotasViewModel(
     fun abrir(i: Itinerario?) {
         _aberto.value = i
         _seguida.value = null
+        _preparar.value = false
     }
 
     fun seguir(etapa: Int) {
         _seguida.value = etapa
+    }
+
+    fun preparar(sim: Boolean) {
+        _preparar.value = sim
     }
 
     fun maisCedo() = pagina(seguinte = false)

@@ -41,7 +41,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -122,11 +121,11 @@ fun Itinerario.comNomes(de: String, para: String): Itinerario = copy(
 fun DetalheRotaEcra(
     it: Itinerario, de: String, para: String, repositorio: Repositorio, preferencias: Preferencias, aoComecou: () -> Unit, aoVoltar: () -> Unit,
     seguida: Int?, aoSeguir: (Int) -> Unit,
+    preparar: Boolean, aoPreparar: (Boolean) -> Unit,
     comunidadeLigada: Boolean = false,
 ) {
     val contexto = LocalContext.current
     val escuro = LocalEscuro.current
-    var preparar by rememberSaveable { mutableStateOf(false) }
     val etapaSeguida = seguida?.let(it.etapas::getOrNull)
     val (autocarro, estadoAutocarro) = rememberAutocarro(repositorio, seguida, etapaSeguida)
     var centrar by remember { mutableIntStateOf(0) }
@@ -156,7 +155,7 @@ fun DetalheRotaEcra(
         estadoAutocarro = estadoAutocarro,
         aoVerAutocarro = { i -> if (seguida == i) centrar++ else aoSeguir(i) },
         aoVoltar = aoVoltar,
-        aoComecar = { preparar = true },
+        aoComecar = { aoPreparar(true) },
         aoPartilhar = {
             val envio = Intent(Intent.ACTION_SEND).setType("text/plain")
                 .putExtra(Intent.EXTRA_TEXT, textoPartilha(it, de, para, LISBOA_FUSO))
@@ -175,10 +174,10 @@ fun DetalheRotaEcra(
         PreparacaoViagem(
             remember(it, de, para) { it.comNomes(de, para) }, preferencias,
             aoComecou = {
-                preparar = false
+                aoPreparar(false)
                 aoComecou()
             },
-            aoCancelar = { preparar = false },
+            aoCancelar = { aoPreparar(false) },
             comunidadeLigada = comunidadeLigada,
         )
     }
