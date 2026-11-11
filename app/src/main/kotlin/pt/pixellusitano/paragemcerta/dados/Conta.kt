@@ -5,7 +5,7 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
@@ -118,11 +118,22 @@ class Conta(
         return r
     }
 
-    /** Com a app aberta: sincroniza já e depois 2 s a seguir a cada alteração. Quem chama cancela ao sair da app. */
+    /**
+     * Com a app aberta: sincroniza já só se houver sessão e (houver alterações por enviar, ou nunca sincronizou, ou a última
+     * foi há 15 min ou mais), e depois 2 s a seguir a cada alteração (também só com alterações por enviar: os favoritos que
+     * ficaram só no telemóvel não contam). Quem chama cancela ao sair da app.
+     */
     @OptIn(FlowPreview::class)
     suspend fun aoAbrir() {
-        if (sessao != null) sincronizar()
-        repositorio.porEnviar().filter { it > 0 }.debounce(ESPERA_MS).collect { if (sessao != null) sincronizar() }
+        sessao?.let { s ->
+            val desde = s.sincronizadaEm?.let { relogio().epochSecond - it }
+            if (repositorio.porSincronizar(s.soNoTelemovel).isNotEmpty() || desde == null || desde < 0 || desde >= INTERVALO_AO_ABRIR_S) sincronizar()
+        }
+        // O primeiro valor é o que já lá estava ao abrir; só conta o que muda depois.
+        repositorio.porEnviar().drop(1).debounce(ESPERA_MS).collect {
+            val s = sessao
+            if (s != null && repositorio.porSincronizar(s.soNoTelemovel).isNotEmpty()) sincronizar()
+        }
     }
 
     /** Envia primeiro o que falta (para não se perder na conta), apaga a sessão no servidor se houver rede e esquece-a cá. */
@@ -177,5 +188,6 @@ class Conta(
     private companion object {
         const val MAX_ALTERACOES = 500
         const val ESPERA_MS = 2_000L
+        const val INTERVALO_AO_ABRIR_S = 15 * 60L
     }
 }

@@ -4,6 +4,7 @@ import androidx.room.Room
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.test.TestScope
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -97,7 +98,7 @@ class ContaTest {
     private val http = HttpPorUrl("geocode" to listOf({ Resposta(200, "[]") }))
     private val repo = Repositorio(bd, CarrisMetropolitana(http), Transitous(http), GeoApi(http))
     private val servidor = ServidorDeTeste()
-    private val agora = Instant.parse("2026-11-02T08:00:00Z")
+    private var agora = Instant.parse("2026-11-02T08:00:00Z")
     private var widgetsEsquecidos = 0
     private fun conta() = Conta(contexto, ServidorParagemCerta(servidor), repo, relogio = { agora }, esquecerWidgets = { widgetsEsquecidos++ })
     private val ficheiro get() = File(contexto.noBackupFilesDir, "conta.json")
@@ -341,16 +342,62 @@ class ContaTest {
     @Test fun sincronizaAoAbrirEDoisSegundosDepoisDeUmaAlteracao() = runTest {
         val c = conta()
         entrar(c)
+        agora = agora.plusSeconds(16 * 60)
         backgroundScope.launch { c.aoAbrir() }
         runCurrent()
         // A resposta converte-se em Dispatchers.Default, fora do tempo virtual: espera que a sincronização de abrir largue a vez.
         c.comSessao { Resultado.Ok(it) }
+        runCurrent() // o coletor só começa depois da sincronização; o primeiro valor que lê (o que já lá estava) é descartado
         assertEquals(2, servidor.sincronizacoes.size) // a de entrar e a de abrir
         repo.alternarFavorita(cais)
         advanceTimeBy(1_500)
         assertEquals(2, servidor.sincronizacoes.size)
         advanceTimeBy(1_000)
         assertEquals(listOf("CM:060419"), servidor.sincronizacoes.last().second.map { it.chave })
+    }
+
+    private suspend fun TestScope.abrir(c: Conta) {
+        backgroundScope.launch { c.aoAbrir() }
+        runCurrent()
+        c.comSessao { Resultado.Ok(it) } // espera que a sincronização de abrir largue a vez
+        runCurrent()
+    }
+
+    @Test fun naoSincronizaAoAbrirSeSincronizouHaMenosDe15Min() = runTest {
+        val c = conta()
+        entrar(c)
+        agora = agora.plusSeconds(14 * 60)
+        abrir(c)
+        advanceTimeBy(3_000)
+        assertEquals(1, servidor.sincronizacoes.size)
+    }
+
+    @Test fun sincronizaAoAbrirComAlteracoesPorEnviar() = runTest {
+        val c = conta()
+        entrar(c)
+        repo.alternarFavorita(cais)
+        abrir(c)
+        assertEquals(2, servidor.sincronizacoes.size)
+        assertEquals(listOf("CM:060419"), servidor.sincronizacoes.last().second.map { it.chave })
+    }
+
+    @Test fun sincronizaAoAbrirPassados15Min() = runTest {
+        val c = conta()
+        entrar(c)
+        agora = agora.plusSeconds(15 * 60)
+        abrir(c)
+        assertEquals(2, servidor.sincronizacoes.size)
+    }
+
+    @Test fun semJuntarNaoSincronizaAoAbrir() = runTest {
+        repo.alternarFavorita(cais)
+        val c = conta()
+        entrar(c, "rui@exemplo.pt", juntar = false)
+        val antes = servidor.sincronizacoes.size
+        agora = agora.plusSeconds(5 * 60)
+        abrir(c)
+        advanceTimeBy(3_000)
+        assertEquals(antes, servidor.sincronizacoes.size)
     }
 
     @Test fun apagarContaMantemOsFavoritos() = runTest {
