@@ -1,5 +1,5 @@
 import { env } from "cloudflare:workers";
-import { afterEach, beforeEach, describe, expect, it, vi, type MockInstance } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AVISOS } from "../src/admin/paginas";
 import { mensagensEnviadas } from "../src/email";
 import { REGRAS } from "../src/explicacoes";
@@ -10,12 +10,8 @@ import { pedirAdmin } from "./ajudas-admin";
 const DIA = 24 * 60 * 60_000;
 const INICIO = Date.UTC(2026, 10, 3, 8, 0);
 const HOJE = "2026-11-03";
-const PURGA: Partial<Env> = { CF_PURGE_TOKEN: "t", CF_ZONA: "z" };
-const URL_PURGE = "https://api.cloudflare.com/client/v4/zones/z/purge_cache";
 const RAZAO = { motivo: "Aparece a cara de uma pessoa", regra: "fotos_so_a_paragem" };
 
-let fetchEspiado: MockInstance<typeof fetch>;
-let purgeResponde: number;
 let ana: string;
 let rui: string;
 
@@ -23,12 +19,8 @@ beforeEach(async () => {
   vi.useFakeTimers({ toFake: ["Date"] });
   vi.setSystemTime(INICIO);
   mensagensEnviadas.length = 0;
-  purgeResponde = 200;
-  // Nada de internet: só o purge da Cloudflare responde (com `purgeResponde`); o resto falha.
-  fetchEspiado = vi.spyOn(globalThis, "fetch").mockImplementation(async (url) => {
-    if (String(url) === URL_PURGE) return new Response("{}", { status: purgeResponde });
-    throw new Error("sem internet nos testes");
-  });
+  // Nada de internet nos testes.
+  vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("sem internet nos testes"));
   ana = await criarConta("ana", "ana@exemplo.pt");
   rui = await criarConta("rui", "rui@exemplo.pt");
 });
@@ -38,30 +30,9 @@ afterEach(() => {
   vi.restoreAllMocks();
 });
 
-/** Um JPEG mínimo e sem metadados; `marca` dá a cada foto o seu SHA-256. */
-function jpeg(marca: number): Uint8Array {
-  return Uint8Array.from([0xff, 0xd8, 0xff, 0xda, 0x00, 0x08, 0x01, 0x01, 0x00, 0x00, 0x3f, 0x00, 0x12, 0x34, marca, 0xff, 0xd9]);
-}
-
-function enviarFoto(token: string, paragem: string, marca: number): Promise<Response> {
-  return pedir(`/api/fotos?paragem=${encodeURIComponent(paragem)}`, { token, corpo: jpeg(marca), segredos: LIGADO, cabecalhos: { "content-type": "image/jpeg" } });
-}
-
-/** Uma foto enviada pela app (fica pendente no bucket privado). */
-async function fotoPendente(token = rui, paragem = "CM:1", marca = 1): Promise<{ id: string; chave: string }> {
-  const resposta = await enviarFoto(token, paragem, marca);
-  expect(resposta.status).toBe(201);
-  const { id } = (await resposta.json()) as { id: string };
-  return { id, chave: (await linhaFoto(id))!.chave! };
-}
-
-async function linhaFoto(id: string): Promise<{ estado: string; chave: string | null; decidida_em: number | null } | null> {
-  return env.DB.prepare("SELECT estado, chave, decidida_em FROM fotos WHERE id = ?").bind(id).first();
-}
-
 /** Uma ação da página de revisão, da própria origem e com o token do autor. */
-function acao(caminho: string, corpo: Record<string, string> = {}, segredos: Partial<Env> = PURGA): Promise<Response> {
-  return pedirAdmin(caminho, { metodo: "POST", corpo, segredos });
+function acao(caminho: string, corpo: Record<string, string> = {}): Promise<Response> {
+  return pedirAdmin(caminho, { metodo: "POST", corpo });
 }
 
 /** 303 de volta à página, com estes avisos (ou nenhum). */
@@ -77,7 +48,7 @@ async function pagina(caminho = "/"): Promise<string> {
   return resposta.text();
 }
 
-async function comunidade(...paragens: string[]): Promise<{ fotos: unknown[]; emRevisao: string[]; correcoes: unknown[] }> {
+async function comunidade(...paragens: string[]): Promise<{ correcoes: unknown[] }> {
   const resposta = await pedir(`/api/comunidade?paragens=${encodeURIComponent(paragens.join(","))}`, { metodo: "GET", segredos: LIGADO });
   expect(resposta.status).toBe(200);
   return resposta.json();
@@ -91,19 +62,16 @@ async function contar(sql: string, ...valores: unknown[]): Promise<number> {
   return (await env.DB.prepare(`SELECT COUNT(*) AS n FROM ${sql}`).bind(...valores).first<number>("n"))!;
 }
 
-function purges(): string[][] {
-  return fetchEspiado.mock.calls.filter(([url]) => String(url) === URL_PURGE).map(([, opcoes]) => JSON.parse(String(opcoes?.body)).files);
-}
-
-async function chavesNoR2(bucket: R2Bucket): Promise<string[]> {
-  return (await bucket.list()).objects.map((objeto) => objeto.key);
-}
-
 async function relatoDoRui(id = "relato-1", paragem = "CM:1"): Promise<void> {
   await env.DB.batch([
     env.DB.prepare("INSERT INTO relatos (id, tipo, paragem, linha, conta_id, criado_em, expira_em) VALUES (?1, 'desvio', ?2, '736', 'rui', ?3, ?4)").bind(id, paragem, INICIO, INICIO + DIA),
     env.DB.prepare("INSERT INTO confirmacoes (relato_id, conta_id, voto, em) VALUES (?1, 'rui', 'ainda_esta', ?2), (?1, 'ana', 'ainda_esta', ?2)").bind(id, INICIO),
   ]);
+}
+
+/** Uma correção do Rui por rever. */
+async function correcaoDoRui(id = "k1", paragem = "CM:9"): Promise<void> {
+  await env.DB.prepare("INSERT INTO correcoes (id, paragem, conta_id, tipo, nome, criada_em) VALUES (?, ?, 'rui', 'nome', 'Largo Novo', ?)").bind(id, paragem, INICIO).run();
 }
 
 /** Uma denúncia aberta da Ana, como a rota pública a guarda. */
@@ -112,136 +80,6 @@ async function denunciaDaAna(id: string, conteudo: string, motivo = "falso"): Pr
     .bind(id, conteudo, motivo, await sha256("ana@exemplo.pt"), INICIO)
     .run();
 }
-
-describe("pc-admin: fotos", () => {
-  it("aprovarCopiaParaOBucketPublico", async () => {
-    const { id, chave } = await fotoPendente();
-
-    voltou(await acao(`/fotos/${id}/aprovar`));
-
-    const publica = await env.FOTOS.get(chave);
-    expect(publica?.httpMetadata).toMatchObject({ contentType: "image/jpeg", cacheControl: "public, max-age=86400" });
-    expect(new Uint8Array(await publica!.arrayBuffer())).toEqual(jpeg(1));
-    expect(await env.FOTOS_PENDENTES.get(chave)).toBeNull();
-    expect(await linhaFoto(id)).toEqual({ estado: "aprovada", chave, decidida_em: INICIO });
-    expect(await comunidade("CM:1")).toMatchObject({ fotos: [{ paragem: "CM:1", id, url: `https://fotos.pixellusitano.com/${chave}`, data: "2026-11-03" }], emRevisao: [] });
-    // Aprovar não é uma restrição: nenhum email, nenhuma decisão. Um segundo clique já não encontra nada por rever.
-    expect(mensagensEnviadas).toEqual([]);
-    expect(await decisoes()).toEqual([]);
-    expect((await acao(`/fotos/${id}/aprovar`)).status).toBe(404);
-  });
-
-  it("rejeitarApagaEExplica", async () => {
-    const { id, chave } = await fotoPendente();
-
-    voltou(await acao(`/fotos/${id}/rejeitar`, RAZAO));
-
-    expect(await env.FOTOS_PENDENTES.head(chave)).toBeNull();
-    expect(await env.FOTOS.head(chave)).toBeNull();
-    expect(await linhaFoto(id)).toEqual({ estado: "rejeitada", chave: null, decidida_em: INICIO });
-    const feitas = await decisoes();
-    expect(feitas).toHaveLength(1);
-    expect(feitas[0]).toMatchObject({
-      acao: "foto_rejeitada", conteudo: `foto:${id}`, denuncia_id: null, email_hash: await sha256("rui@exemplo.pt"), motivo: RAZAO.motivo, regra: RAZAO.regra, criada_em: INICIO,
-    });
-    expect(JSON.stringify(feitas)).not.toContain("@");
-    expect(mensagensEnviadas).toHaveLength(1);
-    const [mensagem] = mensagensEnviadas;
-    expect(mensagem.para).toBe("rui@exemplo.pt");
-    expect(mensagem.assunto).toBe("Decisão sobre o teu conteúdo na Paragem Certa");
-    for (const texto of ["O que fizemos", "foto", "Não houve nenhuma decisão automática", RAZAO.motivo, REGRAS.fotos_so_a_paragem, "sem denúncia", "ANACOM"]) {
-      expect(mensagem.texto, texto).toContain(texto);
-    }
-
-    // Um segundo clique não decide nem explica outra vez.
-    expect((await acao(`/fotos/${id}/rejeitar`, RAZAO)).status).toBe(404);
-    expect(await decisoes()).toHaveLength(1);
-    expect(mensagensEnviadas).toHaveLength(1);
-  });
-
-  it("rejeitadaAindaContaParaOLimite", async () => {
-    const { id } = await fotoPendente(rui, "CM:1", 1);
-    voltou(await acao(`/fotos/${id}/rejeitar`, RAZAO));
-
-    const outra = await enviarFoto(rui, "CM:2", 2);
-    expect(outra.status).toBe(429);
-    expect(await outra.json()).toEqual({ erro: "muitos_pedidos" });
-    // A paragem fica livre logo para outra conta.
-    expect((await enviarFoto(ana, "CM:1", 3)).status).toBe(201);
-  });
-
-  it("apagarFotoAprovadaLimpaACache", async () => {
-    const { id, chave } = await fotoPendente();
-    voltou(await acao(`/fotos/${id}/aprovar`));
-    expect(purges()).toEqual([]);
-
-    voltou(await acao(`/fotos/${id}/apagar`, RAZAO));
-
-    expect(purges()).toEqual([[`https://fotos.pixellusitano.com/${chave}`]]);
-    const [, opcoes] = fetchEspiado.mock.calls.find(([url]) => String(url) === URL_PURGE)!;
-    expect(new Headers(opcoes?.headers).get("authorization")).toBe("Bearer t");
-    expect(await chavesNoR2(env.FOTOS)).toEqual([]);
-    expect(await chavesNoR2(env.FOTOS_PENDENTES)).toEqual([]);
-    expect(await comunidade("CM:1")).toMatchObject({ fotos: [], emRevisao: [] });
-    expect(await linhaFoto(id)).toEqual({ estado: "rejeitada", chave: null, decidida_em: INICIO });
-    expect(await decisoes()).toMatchObject([{ acao: "foto_apagada", conteudo: `foto:${id}`, email_hash: await sha256("rui@exemplo.pt") }]);
-    expect(mensagensEnviadas).toHaveLength(1);
-    expect(mensagensEnviadas[0]).toMatchObject({ para: "rui@exemplo.pt" });
-    expect(mensagensEnviadas[0].texto).toContain("Apagámos");
-  });
-
-  it("cacheQueFalhaAvisaOAutor", async () => {
-    const { id, chave } = await fotoPendente();
-    voltou(await acao(`/fotos/${id}/aprovar`));
-    purgeResponde = 500;
-
-    voltou(await acao(`/fotos/${id}/apagar`, RAZAO), "cache_falhou");
-
-    expect(await pagina("/?aviso=cache_falhou")).toContain("A cache não limpou: a foto desaparece em 24 h.");
-    // A foto foi apagada na mesma, e a pessoa recebeu a explicação.
-    expect(await env.FOTOS.head(chave)).toBeNull();
-    expect((await linhaFoto(id))?.estado).toBe("rejeitada");
-    expect(mensagensEnviadas).toHaveLength(1);
-  });
-
-  it("r2EmBaixoNaoMudaNada", async () => {
-    const { id, chave } = await fotoPendente();
-    const r2EmBaixo = {
-      delete: async () => {
-        throw new Error("R2 em baixo");
-      },
-    } as unknown as R2Bucket;
-
-    voltou(await acao(`/fotos/${id}/rejeitar`, RAZAO, { FOTOS_PENDENTES: r2EmBaixo }), "apagar_falhou");
-
-    expect(await linhaFoto(id)).toEqual({ estado: "pendente", chave, decidida_em: null });
-    expect(await decisoes()).toEqual([]);
-    expect(mensagensEnviadas).toEqual([]);
-  });
-
-  it("fluxoCompletoDeUmaFoto", async () => {
-    // Enviada pela app → aparece na página de revisão → aprovada → na paragem → apagada → some.
-    const { id } = await fotoPendente(rui, "CM:1", 1);
-    expect(await comunidade("CM:1")).toMatchObject({ fotos: [], emRevisao: ["CM:1"] });
-    const html = await pagina();
-    expect(html).toContain(`src="/foto/${id}"`);
-    expect(new Uint8Array(await (await pedirAdmin(`/foto/${id}`)).arrayBuffer())).toEqual(jpeg(1));
-
-    voltou(await acao(`/fotos/${id}/aprovar`));
-    expect((await comunidade("CM:1")).fotos).toHaveLength(1);
-    voltou(await acao(`/fotos/${id}/apagar`, RAZAO));
-    expect(await comunidade("CM:1")).toMatchObject({ fotos: [], emRevisao: [] });
-
-    // Outra: rejeitada → chega o email com a explicação.
-    mensagensEnviadas.length = 0;
-    const outra = await fotoPendente(ana, "CM:2", 2);
-    voltou(await acao(`/fotos/${outra.id}/rejeitar`, RAZAO));
-    expect(mensagensEnviadas).toHaveLength(1);
-    expect(mensagensEnviadas[0].para).toBe("ana@exemplo.pt");
-    expect(mensagensEnviadas[0].texto).toContain(REGRAS.fotos_so_a_paragem);
-    expect(await comunidade("CM:2")).toMatchObject({ fotos: [], emRevisao: [] });
-  });
-});
 
 describe("pc-admin: avisos e formulários", () => {
   it("avisoDesconhecidoNaoAparece", async () => {
@@ -258,16 +96,15 @@ describe("pc-admin: avisos e formulários", () => {
   });
 
   it("regraDesconhecidaDa400", async () => {
-    const { id } = await fotoPendente();
+    await correcaoDoRui();
     await relatoDoRui();
     await denunciaDaAna("denuncia-1", "relato:relato-1");
     const invalidos: [string, Record<string, string>][] = [
-      [`/fotos/${id}/rejeitar`, { ...RAZAO, regra: "inventada" }],
-      [`/fotos/${id}/rejeitar`, { ...RAZAO, regra: "toString" }],
-      [`/fotos/${id}/rejeitar`, { motivo: RAZAO.motivo }],
-      [`/fotos/${id}/rejeitar`, { ...RAZAO, motivo: "   " }],
-      [`/fotos/${id}/rejeitar`, { ...RAZAO, motivo: "a".repeat(501) }],
-      [`/fotos/${id}/apagar`, { ...RAZAO, regra: "inventada" }],
+      ["/correcoes/k1/rejeitar", { ...RAZAO, regra: "inventada" }],
+      ["/correcoes/k1/rejeitar", { ...RAZAO, regra: "toString" }],
+      ["/correcoes/k1/rejeitar", { motivo: RAZAO.motivo }],
+      ["/correcoes/k1/rejeitar", { ...RAZAO, motivo: "   " }],
+      ["/correcoes/k1/rejeitar", { ...RAZAO, motivo: "a".repeat(501) }],
       ["/relatos/relato-1/apagar", { ...RAZAO, regra: "" }],
       ["/denuncias/denuncia-1/decidir", { ...RAZAO, acao: "apagar_tudo" }],
       ["/denuncias/denuncia-1/decidir", { acao: "remover", motivo: "x", regra: "inventada" }],
@@ -283,7 +120,7 @@ describe("pc-admin: avisos e formulários", () => {
       expect(resposta.headers.get("content-security-policy")).toContain("default-src 'none'");
     }
     // 500 caracteres ainda passam.
-    voltou(await acao(`/fotos/${id}/rejeitar`, { ...RAZAO, motivo: "a".repeat(500) }));
+    voltou(await acao("/correcoes/k1/rejeitar", { ...RAZAO, motivo: "a".repeat(500) }));
 
     expect(await contar("relatos WHERE id = 'relato-1'")).toBe(1);
     expect(await contar("denuncias WHERE decidida_em IS NULL")).toBe(1);
@@ -293,22 +130,22 @@ describe("pc-admin: avisos e formulários", () => {
   });
 
   it("acoesDeOutraOrigemNaoFazemNada", async () => {
-    const { id, chave } = await fotoPendente();
+    await correcaoDoRui();
     await relatoDoRui();
     for (const [caminho, corpo] of [
-      [`/fotos/${id}/aprovar`, {}],
-      [`/fotos/${id}/rejeitar`, RAZAO],
+      ["/correcoes/k1/aprovar", {}],
+      ["/correcoes/k1/rejeitar", RAZAO],
       ["/relatos/relato-1/apagar", RAZAO],
       ["/contas/rui/bloquear", RAZAO],
       ["/contas/apagar", { email: "rui@exemplo.pt" }],
     ] as [string, Record<string, string>][]) {
       for (const origem of ["https://outro.test", null, "null"]) {
-        expect((await pedirAdmin(caminho, { metodo: "POST", corpo, origem, segredos: PURGA })).status, `${caminho} ${origem}`).toBe(403);
+        expect((await pedirAdmin(caminho, { metodo: "POST", corpo, origem })).status, `${caminho} ${origem}`).toBe(403);
       }
       // Nem sem o token do Access.
-      expect((await pedirAdmin(caminho, { metodo: "POST", corpo, jwt: null, segredos: PURGA })).status, caminho).toBe(403);
+      expect((await pedirAdmin(caminho, { metodo: "POST", corpo, jwt: null })).status, caminho).toBe(403);
     }
-    expect(await linhaFoto(id)).toEqual({ estado: "pendente", chave, decidida_em: null });
+    expect(await contar("correcoes WHERE estado = 'pendente'")).toBe(1);
     expect(await contar("relatos")).toBe(1);
     expect(await contar("bloqueios")).toBe(0);
     expect(await contar("contas")).toBe(2);
@@ -317,16 +154,15 @@ describe("pc-admin: avisos e formulários", () => {
   });
 
   it("paginaTemOsBotoes", async () => {
-    const { id } = await fotoPendente();
+    await correcaoDoRui();
     await relatoDoRui();
     await denunciaDaAna("denuncia-1", "relato:relato-1");
-    await env.DB.prepare("INSERT INTO correcoes (id, paragem, conta_id, tipo, nome, criada_em) VALUES ('k1', 'CM:9', 'rui', 'nome', 'Largo Novo', ?)").bind(INICIO).run();
     await env.DB.prepare("INSERT INTO bloqueios (email_hash, motivo, criado_em) VALUES ('hash-1', 'Relatos falsos', ?)").bind(INICIO).run();
     await env.DB.prepare("INSERT INTO emails_por_enviar (id, para, assunto, texto, criado_em) VALUES ('email-1', 'ze@exemplo.pt', 'A', 'B', ?)").bind(INICIO).run();
 
     const html = await pagina();
     for (const acaoDoFormulario of [
-      `/fotos/${id}/aprovar`, `/fotos/${id}/rejeitar`, "/contas/rui/bloquear",
+      "/contas/rui/bloquear",
       "/correcoes/k1/aprovar", "/correcoes/k1/rejeitar",
       "/denuncias/denuncia-1/decidir", "/relatos/relato-1/apagar",
       "/bloqueios/hash-1/desbloquear", "/emails/email-1/enviar", "/contas/apagar",
@@ -335,7 +171,7 @@ describe("pc-admin: avisos e formulários", () => {
     }
     for (const regra of Object.keys(REGRAS)) expect(html, regra).toContain(`<option value="${regra}">`);
     expect(html).toContain('name="denuncia" value="denuncia-1"');
-    // Só na denúncia: a foto, a correção e o relato do rui não trazem "Bloquear conta".
+    // Só na denúncia: a correção e o relato do rui não trazem "Bloquear conta".
     expect(html.split('action="/contas/rui/bloquear"').length - 1).toBe(1);
   });
 });
@@ -419,17 +255,6 @@ describe("pc-admin: denúncias", () => {
     });
     expect((await acao("/denuncias/denuncia-1/decidir", { ...razao, acao: "remover" })).status).toBe(404);
     expect(mensagensEnviadas).toHaveLength(2);
-
-    // Uma foto aprovada denunciada sai do R2 e da cache.
-    mensagensEnviadas.length = 0;
-    const { id, chave } = await fotoPendente();
-    voltou(await acao(`/fotos/${id}/aprovar`));
-    await denunciaDaAna("denuncia-2", `foto:${id}`, "dados_pessoais");
-    voltou(await acao("/denuncias/denuncia-2/decidir", { ...RAZAO, acao: "remover" }));
-    expect(await chavesNoR2(env.FOTOS)).toEqual([]);
-    expect(purges()).toEqual([[`https://fotos.pixellusitano.com/${chave}`]]);
-    expect((await decisoes()).at(-1)).toMatchObject({ acao: "foto_apagada", conteudo: `foto:${id}`, denuncia_id: "denuncia-2" });
-    expect(mensagensEnviadas.map((m) => m.para).sort()).toEqual(["ana@exemplo.pt", "rui@exemplo.pt"]);
   });
 
   it("denunciaDeConteudoQueJaSaiuDecideNaMesma", async () => {
@@ -501,44 +326,25 @@ describe("pc-admin: contas", () => {
     expect(await decisoes()).toHaveLength(2);
   });
 
-  it("adminApagaContaPorEmailLimpaR2EACache", async () => {
-    const pendente = await fotoPendente(rui, "CM:1", 1);
-    await env.FOTOS.put("aprovada-do-rui.jpg", jpeg(9));
-    await env.DB.batch([
-      env.DB.prepare("INSERT INTO fotos (id, paragem, conta_id, chave, estado, criada_em) VALUES ('f-aprovada', 'CM:2', 'rui', 'aprovada-do-rui.jpg', 'aprovada', ?)").bind(INICIO - 2 * DIA),
-      env.DB.prepare("INSERT INTO correcoes (id, paragem, conta_id, tipo, nome, criada_em) VALUES ('k1', 'CM:1', 'rui', 'nome', 'Outro', ?)").bind(INICIO),
-    ]);
+  it("adminApagaContaPorEmail", async () => {
+    await correcaoDoRui();
+    await env.DB.prepare("INSERT INTO correcoes (id, paragem, conta_id, tipo, nome, criada_em) VALUES ('k-ana', 'CM:8', 'ana', 'nome', 'Outro', ?)").bind(INICIO).run();
     await relatoDoRui();
-    const daAna = await fotoPendente(ana, "CM:3", 3);
 
     // Do pedido feito em apagar-conta.html: o email como a pessoa o escreveu.
     voltou(await acao("/contas/apagar", { email: " RUI@Exemplo.pt " }), "conta_apagada");
 
-    for (const tabela of ["relatos", "fotos", "correcoes", "sessoes", "aceites_termos"]) expect(await contar(`${tabela} WHERE conta_id = 'rui'`), tabela).toBe(0);
+    for (const tabela of ["relatos", "correcoes", "sessoes", "aceites_termos"]) expect(await contar(`${tabela} WHERE conta_id = 'rui'`), tabela).toBe(0);
     expect(await contar("contas WHERE id = 'rui'")).toBe(0);
     expect(await contar("confirmacoes")).toBe(0);
-    expect(await chavesNoR2(env.FOTOS)).toEqual([]);
-    expect(await chavesNoR2(env.FOTOS_PENDENTES)).toEqual([daAna.chave]);
-    expect(await chavesNoR2(env.FOTOS_PENDENTES)).not.toContain(pendente.chave);
-    expect(purges()).toEqual([["https://fotos.pixellusitano.com/aprovada-do-rui.jpg"]]);
     // Sem decisão nem email: o autor responde ao pedido.
     expect(await decisoes()).toEqual([]);
     expect(mensagensEnviadas).toEqual([]);
     expect(await contar("contas WHERE id = 'ana'")).toBe(1);
+    expect(await contar("correcoes WHERE conta_id = 'ana'")).toBe(1);
 
     voltou(await acao("/contas/apagar", { email: "ninguem@exemplo.pt" }), "conta_nao_existe");
     voltou(await acao("/contas/apagar", { email: "rui@exemplo.pt" }), "conta_nao_existe");
-
-    // O R2 em baixo: nada se apaga e o autor sabe.
-    const r2EmBaixo = {
-      delete: async () => {
-        throw new Error("R2 em baixo");
-      },
-    } as unknown as R2Bucket;
-    voltou(await acao("/contas/apagar", { email: "ana@exemplo.pt" }, { FOTOS: r2EmBaixo }), "apagar_falhou");
-    expect(await contar("contas WHERE id = 'ana'")).toBe(1);
-    expect(await contar("fotos WHERE conta_id = 'ana'")).toBe(1);
-    expect(await pagina("/?aviso=apagar_falhou")).toContain(AVISOS.apagar_falhou);
   });
 
   it("apagarContaPorEmailApagaTodasAsContasDesseEmail", async () => {
@@ -554,10 +360,10 @@ describe("pc-admin: contas", () => {
 
 describe("pc-admin: emails por enviar", () => {
   it("tetoCheioGuardaAExplicacao", async () => {
-    const { id } = await fotoPendente();
+    await correcaoDoRui();
     await env.DB.prepare("INSERT INTO contadores (dia, nome, quantos) VALUES (?, 'emails', 30)").bind(HOJE).run();
 
-    voltou(await acao(`/fotos/${id}/rejeitar`, RAZAO), "email_falhou");
+    voltou(await acao("/correcoes/k1/rejeitar", RAZAO), "email_falhou");
 
     expect(mensagensEnviadas).toEqual([]);
     const guardado = await env.DB.prepare("SELECT id, para, assunto, texto FROM emails_por_enviar").first<{ id: string; para: string; assunto: string; texto: string }>();

@@ -20,16 +20,15 @@ beforeEach(async () => {
 
 describe("resumo diário ao autor", () => {
   it("resumoSoComAlgoPorRever", async () => {
-    // Já decidido não conta: uma foto aprovada, uma rejeitada, uma correção aprovada e uma denúncia decidida.
+    // Já decidido não conta: uma correção aprovada e uma denúncia decidida.
     await env.DB.batch([
-      env.DB.prepare("INSERT INTO fotos (id, paragem, conta_id, chave, estado, criada_em) VALUES ('f1', 'CM:1', 'rui', 'a.jpg', 'aprovada', 1), ('f2', 'CM:2', 'rui', NULL, 'rejeitada', 1)"),
       env.DB.prepare("INSERT INTO correcoes (id, paragem, conta_id, tipo, estado, criada_em, decidida_em) VALUES ('k1', 'CM:1', 'rui', 'ja_nao_existe', 'aprovada', 1, 1)"),
-      env.DB.prepare("INSERT INTO denuncias (id, conteudo, motivo, email_hash, criada_em, decidida_em) VALUES ('d1', 'foto:f1', 'perigo', 'h', 1, 1)"),
+      env.DB.prepare("INSERT INTO denuncias (id, conteudo, motivo, email_hash, criada_em, decidida_em) VALUES ('d1', 'relato:r1', 'perigo', 'h', 1, 1)"),
     ]);
     await resumoAoAutor(ambiente(), AGORA);
     expect(mensagensEnviadas).toEqual([]);
 
-    await env.DB.prepare("INSERT INTO fotos (id, paragem, conta_id, chave, estado, criada_em) VALUES ('f3', 'CM:3', 'rui', 'b.jpg', 'pendente', 1)").run();
+    await env.DB.prepare("INSERT INTO correcoes (id, paragem, conta_id, tipo, criada_em) VALUES ('k2', 'CM:3', 'rui', 'ja_nao_existe', 1)").run();
     // Sem EMAIL_AUTOR não há a quem mandar.
     await resumoAoAutor(ambiente({ EMAIL_AUTOR: undefined }), AGORA);
     await resumoAoAutor(ambiente({ EMAIL_AUTOR: "  " }), AGORA);
@@ -38,8 +37,7 @@ describe("resumo diário ao autor", () => {
     await resumoAoAutor(ambiente(), AGORA);
     expect(mensagensEnviadas).toHaveLength(1);
     expect(mensagensEnviadas[0]).toMatchObject({ para: AUTOR, assunto: ASSUNTO });
-    expect(mensagensEnviadas[0].texto).toContain("1 foto por rever");
-    expect(mensagensEnviadas[0].texto).not.toContain("correç");
+    expect(mensagensEnviadas[0].texto).toContain("1 correção por rever");
     // Conta para o teto dos 30 do dia.
     expect(await env.DB.prepare("SELECT quantos FROM contadores WHERE dia = ? AND nome = 'emails'").bind(HOJE).first("quantos")).toBe(1);
   });
@@ -56,14 +54,13 @@ describe("resumo diário ao autor", () => {
     expect(mensagensEnviadas).toHaveLength(1);
     const { texto } = mensagensEnviadas[0];
     for (const parte of ["2 denúncias abertas", "1 de perigo", "2 correções por rever", "1 email por enviar"]) expect(texto, parte).toContain(parte);
-    expect(texto).not.toContain("foto");
     // Nada de quem enviou nem de quem denunciou.
     expect(texto).not.toContain("rui");
   });
 
   it("cronMandaOResumo", async () => {
     // Criada a essa hora, para os prazos do mesmo Cron não a apagarem.
-    await env.DB.prepare("INSERT INTO fotos (id, paragem, conta_id, chave, estado, criada_em) VALUES ('f1', 'CM:1', 'rui', 'a.jpg', 'pendente', ?)").bind(AGORA).run();
+    await env.DB.prepare("INSERT INTO correcoes (id, paragem, conta_id, tipo, criada_em) VALUES ('k1', 'CM:1', 'rui', 'ja_nao_existe', ?)").bind(AGORA).run();
 
     await correrCron({ agora: AGORA, segredos: { EMAIL_AUTOR: AUTOR } });
 

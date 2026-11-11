@@ -38,13 +38,6 @@ async function relato(id: string, estado = "ativo"): Promise<string> {
   return `relato:${id}`;
 }
 
-async function foto(id: string, estado: string): Promise<string> {
-  await env.DB.prepare("INSERT INTO fotos (id, paragem, conta_id, chave, estado, criada_em) VALUES (?1, ?2, 'rui', ?3, ?4, ?5)")
-    .bind(id, `CM:${id}`, `${id}.jpg`, estado, Date.now())
-    .run();
-  return `foto:${id}`;
-}
-
 function corpo(conteudo: string, extra: Record<string, unknown> = {}): Record<string, unknown> {
   return { conteudo, motivo: "falso", nome: "Ana", boaFe: true, ...extra };
 }
@@ -116,6 +109,7 @@ describe("denúncias e recibo", () => {
       corpo(conteudo, { explicacao: "a".repeat(501) }),
       corpo(conteudo, { explicacao: 7 }),
       corpo("outra:1"),
+      corpo("foto:f1"),
       corpo("relato:<script>"),
       corpo("relato:"),
       corpo(`relato:${"a".repeat(65)}`),
@@ -132,20 +126,15 @@ describe("denúncias e recibo", () => {
   });
 
   it("conteudoQueNaoExisteDa404", async () => {
-    await foto("f1", "pendente");
-    await foto("f2", "rejeitada");
-    for (const conteudo of ["relato:nao-existe", "foto:nao-existe", "foto:f1", "foto:f2"]) {
-      expect(await erroDe(await denunciar(ana, corpo(conteudo))), conteudo).toEqual({ estado: 404, erro: "nao_existe" });
-    }
+    expect(await erroDe(await denunciar(ana, corpo("relato:nao-existe")))).toEqual({ estado: 404, erro: "nao_existe" });
     expect(await linhas("denuncias")).toBe(0);
     expect(mensagensEnviadas).toHaveLength(0);
   });
 
-  it("relatoEmQualquerEstadoEFotoAprovadaPodemSerDenunciados", async () => {
+  it("relatoEmQualquerEstadoPodeSerDenunciado", async () => {
     expect((await denunciar(ana, corpo(await relato("r1", "terminado")))).status).toBe(204);
     expect((await denunciar(ana, corpo(await relato("r2")))).status).toBe(204);
-    expect((await denunciar(ana, corpo(await foto("f1", "aprovada")))).status).toBe(204);
-    expect(await linhas("denuncias")).toBe(3);
+    expect(await linhas("denuncias")).toBe(2);
   });
 
   it("contaBloqueadaPodeDenunciar", async () => {
@@ -159,12 +148,13 @@ describe("denúncias e recibo", () => {
     expect(mensagensEnviadas.map((m) => m.para)).toEqual(["ana@exemplo.pt", "teo@exemplo.pt"]);
   });
 
-  it("denunciarDesligadoSoSeAsDuasFuncoesEstiveremDesligadas", async () => {
+  it("denunciarSoComAComunidadeLigada", async () => {
     const conteudo = await relato("r1");
     expect(await erroDe(await denunciar(ana, corpo(conteudo), {}))).toEqual({ estado: 403, erro: "desligado" });
-    const so = (funcoes: object): Partial<Env> => ({ ...LIGADO, TESTE_INTERRUPTORES: JSON.stringify({ comunidade: false, fotos: false, correcoes: false, ...funcoes }) });
+    const so = (funcoes: object): Partial<Env> => ({ ...LIGADO, TESTE_INTERRUPTORES: JSON.stringify({ comunidade: false, correcoes: false, ...funcoes }) });
     expect((await denunciar(ana, corpo(conteudo), so({}))).status).toBe(403);
-    expect((await denunciar(ana, corpo(conteudo), so({ fotos: true }))).status).toBe(204);
+    expect((await denunciar(ana, corpo(conteudo), so({ correcoes: true }))).status).toBe(403);
+    expect((await denunciar(ana, corpo(conteudo), so({ comunidade: true }))).status).toBe(204);
     expect(await linhas("denuncias")).toBe(1);
   });
 

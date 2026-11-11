@@ -13,25 +13,23 @@ function quantos(n: number, singular: string, plural: string): string {
 }
 
 /**
- * O email diário ao autor, pelo Cron: quantas fotos, correções e denúncias há por rever e quantos emails
+ * O email diário ao autor, pelo Cron: quantas correções e denúncias há por rever e quantos emails
  * ficaram por enviar. Nada se nada houver ou sem EMAIL_AUTOR. Só números: nada de quem enviou ou denunciou.
  * Conta para o teto dos 30 emails do dia (se não couber, fica em Emails por enviar, como os outros).
  */
 export async function resumoAoAutor(env: Env, agora = Date.now()): Promise<void> {
   const autor = env.EMAIL_AUTOR?.trim();
   if (!autor) return;
-  // Todas pelos índices: fotos_estado, correcoes_estado, denuncias_abertas e a chave dos emails por enviar.
+  // Todas pelos índices: correcoes_estado, denuncias_abertas e a chave dos emails por enviar.
   const contagens = await env.DB.batch([
-    contar(env, "fotos WHERE estado = 'pendente'"),
     contar(env, "correcoes WHERE estado = 'pendente'"),
     contar(env, "denuncias WHERE decidida_em IS NULL"),
     contar(env, "denuncias WHERE decidida_em IS NULL AND motivo = 'perigo'"),
     contar(env, "emails_por_enviar"),
   ]);
-  const [fotos, correcoes, denuncias, perigo, emails] = contagens.map((resultado) => (resultado.results[0] as { n: number }).n);
+  const [correcoes, denuncias, perigo, emails] = contagens.map((resultado) => (resultado.results[0] as { n: number }).n);
 
   const linhas = [
-    fotos && quantos(fotos, "foto por rever", "fotos por rever"),
     correcoes && quantos(correcoes, "correção por rever", "correções por rever"),
     denuncias && `${quantos(denuncias, "denúncia aberta", "denúncias abertas")}${perigo ? ` (${quantos(perigo, "de perigo", "de perigo")})` : ""}`,
     emails && quantos(emails, "email por enviar", "emails por enviar"),

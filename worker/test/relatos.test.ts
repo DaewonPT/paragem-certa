@@ -323,9 +323,9 @@ describe("relatos e votos", () => {
   it("relatosDaLinhaSemComunidadeDa403", async () => {
     const desligado = { estado: 403, erro: "desligado" };
     expect(await erroDe(await lerComunidadeDeLinhas(["736"], {}))).toEqual(desligado);
-    // As fotos ou as correções ligadas não chegam: os relatos por linha são só da comunidade.
-    const soFotos = { ...LIGADO, TESTE_INTERRUPTORES: JSON.stringify({ fotos: true, correcoes: true }) };
-    expect(await erroDe(await lerComunidadeDeLinhas(["736"], soFotos))).toEqual(desligado);
+    // As correções ligadas não chegam: os relatos por linha são só da comunidade.
+    const soCorrecoes = { ...LIGADO, TESTE_INTERRUPTORES: JSON.stringify({ correcoes: true }) };
+    expect(await erroDe(await lerComunidadeDeLinhas(["736"], soCorrecoes))).toEqual(desligado);
   });
 
   it("relatosDaLinhaTemOLimiteDe100", async () => {
@@ -376,11 +376,11 @@ describe("relatos e votos", () => {
     expect(await erroDe(await pedir("/api/votos", { token: rui, corpo: { relato: id, voto: "ainda_esta" } }))).toEqual(desligado);
     expect(await erroDe(await lerComunidade([PARAGEM], {}))).toEqual(desligado);
 
-    // Com só as fotos ligadas a leitura responde, mas sem os relatos.
-    const soFotos = { ...LIGADO, TESTE_INTERRUPTORES: JSON.stringify({ fotos: true }) };
-    const resposta = await lerComunidade([PARAGEM], soFotos);
+    // Com só as correções ligadas a leitura responde, mas sem os relatos.
+    const soCorrecoes = { ...LIGADO, TESTE_INTERRUPTORES: JSON.stringify({ correcoes: true }) };
+    const resposta = await lerComunidade([PARAGEM], soCorrecoes);
     expect(resposta.status).toBe(200);
-    expect(await resposta.json()).toEqual({ relatos: [], fotos: [], emRevisao: [], correcoes: [] });
+    expect(await resposta.json()).toEqual({ relatos: [], correcoes: [] });
   });
 
   it("muitasParagensDa400", async () => {

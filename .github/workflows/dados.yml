@@ -120,13 +120,9 @@ jobs:
             RESEND_API_KEY
             RESPONSAVEL
             GOOGLE_WEB_CLIENT_ID
-            CF_PURGE_TOKEN
-            CF_ZONA
             EMAIL_AUTOR
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           RESPONSAVEL: ${{ secrets.RESPONSAVEL }}
           GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID }}
-          CF_PURGE_TOKEN: ${{ secrets.CF_PURGE_TOKEN }}
-          CF_ZONA: ${{ secrets.CF_ZONA }}
           EMAIL_AUTOR: ${{ secrets.EMAIL_AUTOR }}

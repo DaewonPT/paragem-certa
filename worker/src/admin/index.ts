@@ -4,7 +4,7 @@ import { paginaDeRevisao, type Aviso } from "./paginas";
 
 // Em todas as respostas, a 403 incluída: nada de scripts, nada de molduras noutros sítios, nada guardado em cache.
 const CABECALHOS = {
-  "content-security-policy": "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'",
+  "content-security-policy": "default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'",
   "x-content-type-options": "nosniff",
   "cache-control": "no-store",
 };
@@ -20,15 +20,6 @@ function voltar(avisos: Aviso[]): Response {
   return new Response(null, { status: 303, headers: { ...CABECALHOS, location: busca ? `/?${busca}` : "/" } });
 }
 
-/** GET /foto/<id>: a foto por rever (ou a aprovada) para o autor ver; a rejeitada já não tem ficheiro. */
-async function foto(env: Env, id: string): Promise<Response> {
-  const linha = await env.DB.prepare("SELECT chave, estado FROM fotos WHERE id = ? AND chave IS NOT NULL LIMIT 1")
-    .bind(id)
-    .first<{ chave: string; estado: string }>();
-  const objeto = linha && (await (linha.estado === "aprovada" ? env.FOTOS : env.FOTOS_PENDENTES).get(linha.chave));
-  return objeto ? resposta(objeto.body, 200, "image/jpeg") : resposta("Não existe", 404, TEXTO);
-}
-
 async function responder(pedido: Request, env: Env): Promise<Response> {
   // Antes de tudo: sem o token do Access do autor não se vê nem se faz nada.
   if (!(await verificarAcesso(pedido, env))) return resposta("Sem acesso", 403, TEXTO);
@@ -39,8 +30,6 @@ async function responder(pedido: Request, env: Env): Promise<Response> {
 
   if (pedido.method === "GET") {
     if (url.pathname === "/") return resposta(await paginaDeRevisao(env, url.searchParams.getAll("aviso")), 200, "text/html; charset=utf-8");
-    const id = /^\/foto\/([^/]+)$/.exec(url.pathname)?.[1];
-    if (id) return foto(env, id);
   }
 
   if (pedido.method === "POST") {

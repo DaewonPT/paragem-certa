@@ -6,11 +6,9 @@ const DIA = 24 * 60 * 60_000;
 
 /** O que as ações dizem ao voltar (`/?aviso=<chave>`): só estas chaves se mostram, sempre com este texto. */
 export const AVISOS = {
-  cache_falhou: "A cache não limpou: a foto desaparece em 24 h.",
   email_falhou: "O email não saiu: ficou em Emails por enviar.",
   conta_apagada: "Conta apagada.",
   conta_nao_existe: "Não há nenhuma conta com esse email.",
-  apagar_falhou: "O R2 falhou: nada foi apagado. Tenta outra vez.",
 } satisfies Record<string, string>;
 export type Aviso = keyof typeof AVISOS;
 
@@ -62,8 +60,7 @@ function bloquearConta(contaId: string | null, denunciaId: string): Html | strin
   return comRazao(`/contas/${contaId}/bloquear`, "Bloquear conta", html`<input type="hidden" name="denuncia" value="${denunciaId}">`);
 }
 
-type Foto = { id: string; paragem: string; criada_em: number; conta_id: string; email: string | null };
-type Correcao = Foto & { tipo: string; lat: number | null; lon: number | null; nome: string | null };
+type Correcao = { id: string; paragem: string; criada_em: number; conta_id: string; email: string | null; tipo: string; lat: number | null; lon: number | null; nome: string | null };
 type Denuncia = {
   id: string; conteudo: string; motivo: string; explicacao: string; nome: string | null; email: string | null; criada_em: number;
   conta_id: string | null; conta_email: string | null;
@@ -72,14 +69,13 @@ type Relato = { id: string; tipo: string; paragem: string; linha: string; criado
 type Bloqueio = { email_hash: string; motivo: string; criado_em: number };
 type EmailPorEnviar = { id: string; para: string; assunto: string; texto: string; criado_em: number };
 
-// A conta do conteúdo denunciado: "relato:<id>" ou "foto:<id>" (os ids procuram-se pela chave primária).
+// A conta do conteúdo denunciado: "relato:<id>" (o id procura-se pela chave primária).
 const SQL_DENUNCIAS = `
   SELECT d.id, d.conteudo, d.motivo, d.explicacao, d.nome, d.email, d.criada_em,
-         COALESCE(r.conta_id, f.conta_id) AS conta_id, c.email AS conta_email
+         r.conta_id, c.email AS conta_email
   FROM denuncias d
   LEFT JOIN relatos r ON substr(d.conteudo, 1, 7) = 'relato:' AND r.id = substr(d.conteudo, 8)
-  LEFT JOIN fotos f ON substr(d.conteudo, 1, 5) = 'foto:' AND f.id = substr(d.conteudo, 6)
-  LEFT JOIN contas c ON c.id = COALESCE(r.conta_id, f.conta_id)
+  LEFT JOIN contas c ON c.id = r.conta_id
   WHERE d.decidida_em IS NULL AND (d.motivo = 'perigo') = ?
   ORDER BY d.criada_em LIMIT ?`;
 
@@ -88,16 +84,7 @@ const SQL_DENUNCIAS = `
  * `avisos` vem do endereço: só as chaves de AVISOS aparecem, com o texto fixo delas.
  */
 export async function paginaDeRevisao(env: Env, avisos: string[] = [], agora = Date.now()): Promise<string> {
-  const [fotos, aprovadas, correcoes, perigo, outras, relatos, bloqueios, emails, ativas] = await env.DB.batch([
-    env.DB.prepare(
-      `SELECT f.id, f.paragem, f.criada_em, f.conta_id, c.email FROM fotos f LEFT JOIN contas c ON c.id = f.conta_id
-       WHERE f.estado = 'pendente' ORDER BY f.criada_em LIMIT ?`,
-    ).bind(LIMITE),
-    // Para se poder apagar uma aprovada sem esperar por uma denúncia.
-    env.DB.prepare(
-      `SELECT f.id, f.paragem, f.criada_em, f.conta_id, c.email FROM fotos f LEFT JOIN contas c ON c.id = f.conta_id
-       WHERE f.estado = 'aprovada' ORDER BY f.criada_em DESC LIMIT ?`,
-    ).bind(LIMITE),
+  const [correcoes, perigo, outras, relatos, bloqueios, emails, ativas] = await env.DB.batch([
     env.DB.prepare(
       `SELECT k.id, k.paragem, k.tipo, k.lat, k.lon, k.nome, k.criada_em, k.conta_id, c.email FROM correcoes k LEFT JOIN contas c ON c.id = k.conta_id
        WHERE k.estado = 'pendente' ORDER BY k.criada_em LIMIT ?`,
@@ -128,7 +115,6 @@ export async function paginaDeRevisao(env: Env, avisos: string[] = [], agora = D
 <style>
 body { font-family: system-ui, sans-serif; max-width: 60rem; margin: 1rem auto; padding: 0 1rem; }
 li { margin: 0.75rem 0; }
-img { display: block; max-width: 20rem; max-height: 20rem; }
 pre { white-space: pre-wrap; }
 .perigo { color: #b00020; }
 .aviso { padding: 0.5rem; border: 2px solid #b00020; }
@@ -139,12 +125,6 @@ form { display: inline-block; margin: 0.25rem 0.5rem 0.25rem 0; }
 <h1>Paragem Certa · revisão</h1>
 ${conhecidos.map((aviso) => html`<p class="aviso">${AVISOS[aviso]}</p>`)}
 <p>Contas com sessão usada nos últimos 30 dias: ${(ativas.results[0] as { n: number }).n}</p>
-${secao("Fotos por rever", fotos.results as Foto[], (f) => html`<li>${f.id} · ${f.paragem} · ${hora(f.criada_em)} · ${quem(f.conta_id, f.email)}
-<img src="/foto/${f.id}" alt="Foto enviada para ${f.paragem}">
-${botao(`/fotos/${f.id}/aprovar`, "Aprovar")} ${comRazao(`/fotos/${f.id}/rejeitar`, "Rejeitar")}</li>`)}
-${secao("Fotos aprovadas (as mais recentes)", aprovadas.results as Foto[], (f) => html`<li>${f.id} · ${f.paragem} · ${hora(f.criada_em)} · ${quem(f.conta_id, f.email)}
-<img src="/foto/${f.id}" alt="Foto aprovada de ${f.paragem}">
-${comRazao(`/fotos/${f.id}/apagar`, "Apagar")}</li>`)}
 ${secao("Correções por rever", correcoes.results as Correcao[], (k) => html`<li>${k.id} · ${k.paragem} · ${hora(k.criada_em)} · ${quem(k.conta_id, k.email)}<br>
 ${k.tipo === "posicao" ? html`Posição: ${k.lat}, ${k.lon}` : k.tipo === "nome" ? html`Nome: ${k.nome}` : html`Já não existe`}<br>
 ${botao(`/correcoes/${k.id}/aprovar`, "Aprovar")} ${comRazao(`/correcoes/${k.id}/rejeitar`, "Rejeitar")}</li>`)}

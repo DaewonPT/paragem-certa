@@ -10,8 +10,8 @@ const MAX_NOME = 80;
 const MAX_EXPLICACAO = 500;
 
 const MOTIVOS = new Set(["falso", "ofensivo", "dados_pessoais", "perigo", "outro"]);
-/** "relato:<id>" ou "foto:<id>"; sem nada que estrague o email nem a página de revisão. */
-const FORMATO_CONTEUDO = /^(relato|foto):[A-Za-z0-9-]{1,64}$/;
+/** "relato:<id>"; sem nada que estrague o email nem a página de revisão. */
+const FORMATO_CONTEUDO = /^relato:[A-Za-z0-9-]{1,64}$/;
 
 /** O comprimento em UTF-16 limita o trabalho antes de contar os caracteres de verdade (um emoji ocupa dois). */
 function cabe(texto: string, max: number): boolean {
@@ -25,7 +25,7 @@ function cabe(texto: string, max: number): boolean {
  */
 export async function denunciar(pedido: Request, env: Env): Promise<Response> {
   const ligado = interruptores(env);
-  if (!ligado.comunidade && !ligado.fotos) return erro("desligado", 403);
+  if (!ligado.comunidade) return erro("desligado", 403);
   const quem = await quemEscreve(pedido, env);
   if (quem instanceof Response) return quem;
 
@@ -42,12 +42,7 @@ export async function denunciar(pedido: Request, env: Env): Promise<Response> {
     return erro("pedido_invalido", 400);
   }
 
-  const [tipo, id] = conteudo.split(":");
-  const existe = await env.DB.prepare(
-    tipo === "relato" ? "SELECT 1 FROM relatos WHERE id = ? LIMIT 1" : "SELECT 1 FROM fotos WHERE id = ? AND estado = 'aprovada' LIMIT 1",
-  )
-    .bind(id)
-    .first();
+  const existe = await env.DB.prepare("SELECT 1 FROM relatos WHERE id = ? LIMIT 1").bind(conteudo.split(":")[1]).first();
   if (!existe) return erro("nao_existe", 404);
 
   const agora = Date.now();

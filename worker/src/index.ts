@@ -5,7 +5,6 @@ import { aceitarTermos, apagarConta } from "./conta";
 import { criarCorrecao } from "./correcoes";
 import { denunciar } from "./denuncias";
 import { sincronizar } from "./favoritos";
-import { enviarFoto } from "./fotos";
 import { entrarComGoogle, novoNonce } from "./google";
 import { FonteFalhou } from "./fontes";
 import { aplicarPrazos } from "./prazos";
@@ -38,7 +37,6 @@ export default {
         if (pathname === "/api/termos") return await aceitarTermos(pedido, env);
         if (pathname === "/api/relatos") return await criarRelato(pedido, env);
         if (pathname === "/api/votos") return await votar(pedido, env);
-        if (pathname === "/api/fotos") return await enviarFoto(pedido, env);
         if (pathname === "/api/correcoes") return await criarCorrecao(pedido, env);
         if (pathname === "/api/denuncias") return await denunciar(pedido, env);
       }

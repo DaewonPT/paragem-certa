@@ -120,7 +120,7 @@ describe("pc-admin: a página", () => {
     await conta("conta-teo", "teo@exemplo.pt");
     await env.DB.batch([
       env.DB.prepare("INSERT INTO sessoes (hash, conta_id, criada_em, usada_em) VALUES ('velha', 'conta-rui', ?1, ?1)").bind(agora - 31 * DIA),
-      env.DB.prepare("INSERT INTO fotos (id, paragem, conta_id, chave, estado, criada_em) VALUES ('foto-pendente-1', 'CM:111', 'conta-rui', 'a.jpg', 'pendente', ?)").bind(agora),
+      env.DB.prepare("INSERT INTO relatos (id, tipo, paragem, linha, conta_id, criado_em, expira_em) VALUES ('relato-rui-1', 'desvio', 'CM:111', '15E', 'conta-rui', ?1, ?2)").bind(agora, agora + DIA),
       env.DB.prepare("INSERT INTO correcoes (id, paragem, conta_id, tipo, nome, criada_em) VALUES ('correcao-1', 'CM:222', 'conta-eva', 'nome', 'Largo Novo', ?)").bind(agora),
       env.DB.prepare("INSERT INTO relatos (id, tipo, paragem, linha, conta_id, criado_em, expira_em) VALUES ('relato-ativo-1', 'desvio', 'CM:333', '736', 'conta-teo', ?1, ?2)").bind(agora, agora + DIA),
       env.DB.prepare("INSERT INTO relatos (id, tipo, paragem, conta_id, criado_em, expira_em) VALUES ('relato-expirado-1', 'elevador', 'CM:444', 'conta-teo', ?1, ?2)").bind(agora - 2 * DIA, agora - DIA),
@@ -128,7 +128,7 @@ describe("pc-admin: a página", () => {
         "INSERT INTO denuncias (id, conteudo, motivo, explicacao, nome, email, email_hash, criada_em) VALUES ('denuncia-falso-1', 'relato:relato-ativo-1', 'falso', 'Não há desvio', 'Ana Denunciante', 'ana@exemplo.pt', 'h1', ?)",
       ).bind(agora - 60_000),
       env.DB.prepare(
-        "INSERT INTO denuncias (id, conteudo, motivo, nome, email, email_hash, criada_em) VALUES ('denuncia-perigo-1', 'foto:foto-pendente-1', 'perigo', 'Ana Denunciante', 'ana@exemplo.pt', 'h2', ?)",
+        "INSERT INTO denuncias (id, conteudo, motivo, nome, email, email_hash, criada_em) VALUES ('denuncia-perigo-1', 'relato:relato-rui-1', 'perigo', 'Ana Denunciante', 'ana@exemplo.pt', 'h2', ?)",
       ).bind(agora),
       env.DB.prepare(
         "INSERT INTO denuncias (id, conteudo, motivo, nome, email, email_hash, criada_em, decidida_em) VALUES ('denuncia-decidida-1', 'relato:relato-ativo-1', 'ofensivo', NULL, NULL, 'h3', ?1, ?1)",
@@ -140,7 +140,7 @@ describe("pc-admin: a página", () => {
     const html = await pagina(await pedirAdmin("/"));
     expect(html).toContain('lang="pt"');
     for (const texto of [
-      "foto-pendente-1", 'src="/foto/foto-pendente-1"', "conta-rui", "rui@exemplo.pt",
+      "relato-rui-1", "conta-rui", "rui@exemplo.pt",
       "correcao-1", "Largo Novo", "conta-eva", "eva@exemplo.pt",
       "relato-ativo-1", "conta-teo", "teo@exemplo.pt",
       "Não há desvio", "Ana Denunciante", "ana@exemplo.pt",
@@ -154,7 +154,7 @@ describe("pc-admin: a página", () => {
     // As de perigo primeiro, mesmo sendo mais recentes.
     expect(html.indexOf("denuncia-perigo-1")).toBeGreaterThan(-1);
     expect(html.indexOf("denuncia-perigo-1")).toBeLessThan(html.indexOf("denuncia-falso-1"));
-    // O conteúdo denunciado resolve-se para a conta de quem o enviou: a foto do rui e o relato do teo.
+    // O conteúdo denunciado resolve-se para a conta de quem o enviou: o relato do rui e o relato do teo.
     const item = (id: string) => html.slice(html.indexOf(id), html.indexOf("</li>", html.indexOf(id)));
     expect(item("denuncia-perigo-1")).toContain("conta-rui · rui@exemplo.pt");
     expect(item("denuncia-perigo-1")).toContain("PSP ou à PJ");
@@ -193,34 +193,11 @@ describe("pc-admin: a página", () => {
       const csp = resposta.headers.get("content-security-policy") ?? "";
       expect(csp).toContain("default-src 'none'");
       expect(csp).toContain("frame-ancestors 'none'");
+      expect(csp).not.toContain("img-src");
       expect(csp).not.toContain("script-src");
       expect(resposta.headers.get("x-content-type-options")).toBe("nosniff");
       expect(resposta.headers.get("cache-control")).toBe("no-store");
     }
-  });
-
-  it("fotoPendenteSoParaOAutor", async () => {
-    const bytes = new Uint8Array([0xff, 0xd8, 0xff, 1, 2, 3, 0xff, 0xd9]);
-    const aprovada = new Uint8Array([0xff, 0xd8, 0xff, 9, 9, 0xff, 0xd9]);
-    await conta("conta-rui", "rui@exemplo.pt");
-    await env.FOTOS_PENDENTES.put("pendente.jpg", bytes);
-    await env.FOTOS.put("aprovada.jpg", aprovada);
-    await env.DB.batch([
-      env.DB.prepare("INSERT INTO fotos (id, paragem, conta_id, chave, estado, criada_em) VALUES ('f1', 'CM:1', 'conta-rui', 'pendente.jpg', 'pendente', 1)"),
-      env.DB.prepare("INSERT INTO fotos (id, paragem, conta_id, chave, estado, criada_em) VALUES ('f2', 'CM:2', 'conta-rui', 'aprovada.jpg', 'aprovada', 1)"),
-      env.DB.prepare("INSERT INTO fotos (id, paragem, conta_id, chave, estado, criada_em) VALUES ('f3', 'CM:3', 'conta-rui', NULL, 'rejeitada', 1)"),
-    ]);
-
-    const resposta = await pedirAdmin("/foto/f1");
-    expect(resposta.status).toBe(200);
-    expect(resposta.headers.get("content-type")).toBe("image/jpeg");
-    expect(resposta.headers.get("cache-control")).toBe("no-store");
-    expect(new Uint8Array(await resposta.arrayBuffer())).toEqual(bytes);
-    expect(new Uint8Array(await (await pedirAdmin("/foto/f2")).arrayBuffer())).toEqual(aprovada);
-    expect((await pedirAdmin("/foto/f3")).status).toBe(404);
-    expect((await pedirAdmin("/foto/nao-existe")).status).toBe(404);
-
-    await semAcesso(await pedirAdmin("/foto/f1", { jwt: null }));
   });
 });
 

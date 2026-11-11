@@ -1,6 +1,5 @@
 import { env } from "cloudflare:workers";
-import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { limparCache } from "../src/cache";
+import { beforeEach, describe, expect, it } from "vitest";
 import { correrCron } from "./ajudas";
 
 const DIA = 24 * 60 * 60_000;
@@ -13,10 +12,6 @@ beforeEach(async () => {
   ]);
 });
 
-afterEach(() => {
-  vi.restoreAllMocks();
-});
-
 async function contar(sql: string, ...valores: unknown[]): Promise<number> {
   return (await env.DB.prepare(`SELECT COUNT(*) AS n FROM ${sql}`).bind(...valores).first<number>("n"))!;
 }
@@ -25,16 +20,6 @@ function inserirRelato(id: string, paragem: string, expiraEm: number): Promise<u
   return env.DB.prepare("INSERT INTO relatos (id, tipo, paragem, linha, conta_id, criado_em, expira_em) VALUES (?, 'desvio', ?, '736', 'ana', ?, ?)")
     .bind(id, paragem, expiraEm - 3 * 60 * 60_000, expiraEm)
     .run();
-}
-
-function inserirFoto(id: string, paragem: string, estado: string, chave: string | null, criadaEm: number): Promise<unknown> {
-  return env.DB.prepare("INSERT INTO fotos (id, paragem, conta_id, chave, estado, criada_em) VALUES (?, ?, 'ana', ?, ?, ?)")
-    .bind(id, paragem, chave, estado, criadaEm)
-    .run();
-}
-
-async function noBucket(bucket: R2Bucket, chave: string): Promise<boolean> {
-  return (await bucket.head(chave)) !== null;
 }
 
 describe("prazos no Cron", () => {
@@ -49,26 +34,6 @@ describe("prazos no Cron", () => {
     expect(await contar("confirmacoes WHERE relato_id = 'velho'")).toBe(0);
     expect(await contar("relatos WHERE id = 'recente'")).toBe(1);
     expect(await contar("confirmacoes WHERE relato_id = 'recente'")).toBe(1);
-  });
-
-  it("cronApagaFotosPorRever30DiasNoR2", async () => {
-    await inserirFoto("velha", "CM:1", "pendente", "velha.jpg", AGORA - 30 * DIA - 1);
-    await inserirFoto("recente", "CM:2", "pendente", "recente.jpg", AGORA - 29 * DIA);
-    await inserirFoto("aprovada", "CM:3", "aprovada", "aprovada.jpg", AGORA - 400 * DIA);
-    await env.FOTOS_PENDENTES.put("velha.jpg", "jpeg");
-    await env.FOTOS_PENDENTES.put("recente.jpg", "jpeg");
-    // Uma aprovação a meio já tinha copiado a velha para o bucket público: também sai de lá.
-    await env.FOTOS.put("velha.jpg", "jpeg");
-    await env.FOTOS.put("aprovada.jpg", "jpeg");
-
-    await correrCron({ agora: AGORA });
-
-    expect(await contar("fotos WHERE id = 'velha'")).toBe(0);
-    expect(await noBucket(env.FOTOS_PENDENTES, "velha.jpg")).toBe(false);
-    expect(await noBucket(env.FOTOS, "velha.jpg")).toBe(false);
-    expect(await contar("fotos WHERE id IN ('recente', 'aprovada')")).toBe(2);
-    expect(await noBucket(env.FOTOS_PENDENTES, "recente.jpg")).toBe(true);
-    expect(await noBucket(env.FOTOS, "aprovada.jpg")).toBe(true);
   });
 
   it("cronApagaDenunciasDecisoesEBloqueiosAos12Meses", async () => {
@@ -88,16 +53,6 @@ describe("prazos no Cron", () => {
     expect(await contar("denuncias WHERE id = 'd2'")).toBe(1);
     expect(await contar("decisoes WHERE id = 'x2'")).toBe(1);
     expect(await contar("bloqueios WHERE email_hash = 'h2'")).toBe(1);
-  });
-
-  it("cronApagaFotosRejeitadasAoFimDeUmDia", async () => {
-    await inserirFoto("velha", "CM:1", "rejeitada", null, AGORA - DIA - 1);
-    await inserirFoto("recente", "CM:1", "rejeitada", null, AGORA - 23 * 60 * 60_000);
-
-    await correrCron({ agora: AGORA });
-
-    expect(await contar("fotos WHERE id = 'velha'")).toBe(0);
-    expect(await contar("fotos WHERE id = 'recente'")).toBe(1);
   });
 
   it("cronApagaEmailsPorEnviarAos30Dias", async () => {
@@ -138,37 +93,5 @@ describe("prazos no Cron", () => {
     expect(contadores.results.map((linha) => linha.dia)).toEqual(["2030-01-08", "2030-01-09", "2030-01-10"]);
     const envios = await env.DB.prepare("SELECT dia FROM envios_email ORDER BY dia").all<{ dia: string }>();
     expect(envios.results.map((linha) => linha.dia)).toEqual(["2030-01-08", "2030-01-10"]);
-  });
-});
-
-describe("limpar a cache", () => {
-  it("limparCacheMandaAsUrlsEmGruposDe100", async () => {
-    const fetchFalso = vi.spyOn(globalThis, "fetch").mockImplementation(async () => new Response('{"success":true}', { status: 200 }));
-    const urls = Array.from({ length: 150 }, (_, i) => `https://fotos.pixellusitano.com/${i}.jpg`);
-
-    expect(await limparCache({ ...env, CF_PURGE_TOKEN: "t", CF_ZONA: "z" } as Env, urls)).toBe(true);
-
-    expect(fetchFalso).toHaveBeenCalledTimes(2);
-    const grupos = fetchFalso.mock.calls.map(([endereco, opcoes]) => {
-      expect(String(endereco)).toBe("https://api.cloudflare.com/client/v4/zones/z/purge_cache");
-      expect(opcoes?.method).toBe("POST");
-      expect(new Headers(opcoes?.headers).get("authorization")).toBe("Bearer t");
-      return (JSON.parse(String(opcoes?.body)) as { files: string[] }).files;
-    });
-    expect(grupos).toEqual([urls.slice(0, 100), urls.slice(100)]);
-  });
-
-  it("limparCacheSemTokenOuComFalha", async () => {
-    const fetchFalso = vi.spyOn(globalThis, "fetch").mockImplementation(async () => new Response("{}", { status: 500 }));
-    const url = ["https://fotos.pixellusitano.com/a.jpg"];
-
-    // Sem o token (wrangler dev, testes) ou sem nada para limpar não se pede nada.
-    expect(await limparCache({ ...env, CF_PURGE_TOKEN: undefined } as unknown as Env, url)).toBe(true);
-    expect(await limparCache({ ...env, CF_PURGE_TOKEN: "t", CF_ZONA: "z" } as Env, [])).toBe(true);
-    expect(fetchFalso).not.toHaveBeenCalled();
-
-    expect(await limparCache({ ...env, CF_PURGE_TOKEN: "t", CF_ZONA: "z" } as Env, url)).toBe(false);
-    fetchFalso.mockRejectedValue(new Error("sem rede"));
-    expect(await limparCache({ ...env, CF_PURGE_TOKEN: "t", CF_ZONA: "z" } as Env, url)).toBe(false);
   });
 });

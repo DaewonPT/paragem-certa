@@ -6,13 +6,13 @@ import { criarSessao } from "../src/sessoes";
 const servidor: Required<Pick<ExportedHandler<Env>, "fetch" | "scheduled">> = worker;
 
 interface Opcoes {
-  /** POST por omissão; um objeto vai como JSON, um texto vai como está (para testar JSON estragado), um Uint8Array vai em bruto (as fotos). */
+  /** POST por omissão; um objeto vai como JSON, um texto vai como está (para testar JSON estragado), um Uint8Array vai em bruto. */
   metodo?: string;
   corpo?: unknown;
   token?: string;
   /** Sobrepõe os segredos do ambiente de teste. */
   segredos?: Partial<Env>;
-  /** Cabeçalhos a mais (o content-type de uma foto, por exemplo). */
+  /** Cabeçalhos a mais. */
   cabecalhos?: Record<string, string>;
 }
 
@@ -69,10 +69,10 @@ export function limitador(deixa: number): RateLimit & { chaves: string[] } {
   };
 }
 
-/** Segredos que ligam as três funções da comunidade (só valem com AMBIENTE "teste" e sem RESEND_API_KEY) e um limitador que deixa tudo passar. */
+/** Segredos que ligam as funções da comunidade (só valem com AMBIENTE "teste" e sem RESEND_API_KEY) e um limitador que deixa tudo passar. */
 export const LIGADO: Partial<Env> = {
   AMBIENTE: "teste",
-  TESTE_INTERRUPTORES: JSON.stringify({ comunidade: true, fotos: true, correcoes: true }),
+  TESTE_INTERRUPTORES: JSON.stringify({ comunidade: true, correcoes: true }),
   LIMITADOR: limitador(Infinity),
 };
 

@@ -22,12 +22,6 @@
       "migrations_dir": "migrations"
     }
   ],
-  // As fotos da comunidade, na UE: o pendente é privado (só o Worker e o pc-admin o leem); o outro serve as aprovadas
-  // em fotos.pixellusitano.com. Os buckets são criados pelo autor com `wrangler r2 bucket create … --jurisdiction eu`.
-  "r2_buckets": [
-    { "binding": "FOTOS_PENDENTES", "bucket_name": "pc-fotos-pendentes", "jurisdiction": "eu" },
-    { "binding": "FOTOS", "bucket_name": "pc-fotos", "jurisdiction": "eu" }
-  ],
   // No máximo 10 escritas da comunidade por minuto e por conta (a chave é o id da conta).
   // LIMITE_AUTH: 5 pedidos de entrada (/api/auth/) em 10 segundos por IP, aproximado (a Cloudflare junta as contas em segundo
   // plano e deixa passar rajadas). Fica aqui porque a única regra grátis de limite de pedidos da zona é a do site.
@@ -39,6 +33,6 @@
   "triggers": { "crons": ["0 3 * * *"] },
   // Definidos pelo autor com `wrangler secret put`; nunca ficam no repositório.
   // GOOGLE_WEB_CLIENT_ID é o id do cliente Web da consola da Google (o `aud` dos tokens).
-  // CF_PURGE_TOKEN e CF_ZONA limpam a cache das fotos apagadas; EMAIL_AUTOR recebe os avisos de denúncias de perigo.
-  "secrets": { "required": ["RESEND_API_KEY", "RESPONSAVEL", "GOOGLE_WEB_CLIENT_ID", "CF_PURGE_TOKEN", "CF_ZONA", "EMAIL_AUTOR"] }
+  // EMAIL_AUTOR recebe os avisos de denúncias de perigo.
+  "secrets": { "required": ["RESEND_API_KEY", "RESPONSAVEL", "GOOGLE_WEB_CLIENT_ID", "EMAIL_AUTOR"] }
 }

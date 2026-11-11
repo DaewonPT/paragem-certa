@@ -87,11 +87,10 @@ describe("base do servidor", () => {
       env.DB.prepare("INSERT INTO aceites_termos (conta_id, versao_termos, aceite_em) VALUES ('c1', '1', 1)"),
       env.DB.prepare("INSERT INTO relatos (id, tipo, paragem, linha, conta_id, criado_em, expira_em) VALUES ('r1', 'desvio', 'CM:060419', '736', 'c1', 1, 2)"),
       env.DB.prepare("INSERT INTO confirmacoes (relato_id, conta_id, voto, em) VALUES ('r1', 'c1', 'ainda_esta', 1)"),
-      env.DB.prepare("INSERT INTO fotos (id, paragem, conta_id, chave, criada_em) VALUES ('f1', 'CM:060419', 'c1', 'abc.jpg', 1)"),
       env.DB.prepare("INSERT INTO correcoes (id, paragem, conta_id, tipo, nome, criada_em) VALUES ('k1', 'CM:060419', 'c1', 'nome', 'Outro nome', 1)"),
     ]);
     await env.DB.prepare("DELETE FROM contas WHERE id = 'c1'").run();
-    for (const tabela of ["sessoes", "favoritos", "aceites_termos", "relatos", "confirmacoes", "fotos", "correcoes"]) {
+    for (const tabela of ["sessoes", "favoritos", "aceites_termos", "relatos", "confirmacoes", "correcoes"]) {
       const linha = await env.DB.prepare(`SELECT COUNT(*) AS n FROM ${tabela}`).first<{ n: number }>();
       expect(linha?.n, tabela).toBe(0);
     }
@@ -118,15 +117,6 @@ describe("base do servidor", () => {
     // Outra linha, ou outro tipo, é outro relato.
     await env.DB.prepare("INSERT INTO relatos (id, tipo, paragem, linha, conta_id, criado_em, expira_em) VALUES ('r3', 'desvio', 'CM:060419', '15E', 'c1', 1, 2)").run();
     await env.DB.prepare("INSERT INTO relatos (id, tipo, paragem, conta_id, criado_em, expira_em) VALUES ('r4', 'elevador', 'CM:060419', 'c1', 1, 2)").run();
-  });
-
-  it("fotoRejeitadaNaoOcupaAParagem", async () => {
-    await env.DB.prepare("INSERT INTO contas (id, email, criada_em) VALUES ('c1', 'a@exemplo.pt', 1)").run();
-    await env.DB.prepare("INSERT INTO fotos (id, paragem, conta_id, chave, estado, criada_em) VALUES ('f1', 'CM:060419', 'c1', NULL, 'rejeitada', 1)").run();
-    await env.DB.prepare("INSERT INTO fotos (id, paragem, conta_id, chave, estado, criada_em) VALUES ('f2', 'CM:060419', 'c1', 'a.jpg', 'pendente', 2)").run();
-    await expect(
-      env.DB.prepare("INSERT INTO fotos (id, paragem, conta_id, chave, estado, criada_em) VALUES ('f3', 'CM:060419', 'c1', 'b.jpg', 'pendente', 3)").run(),
-    ).rejects.toThrow(/UNIQUE/);
   });
 
   it("d1NoLimiteDa503EmPausa", async () => {
@@ -163,7 +153,7 @@ describe("base do servidor", () => {
   it("configTemOsInterruptoresDesligados", () => {
     // O estado publicado dos interruptores. A app traz uma cópia deste ficheiro: muda os dois ao mesmo tempo (docs/servidor.md, passos 9 e 16).
     expect(config.versao).toBe(1);
-    expect(config.interruptores).toEqual({ conta: true, comunidade: false, fotos: false, correcoes: false, carrisAoVivo: false, metro: false });
+    expect(config.interruptores).toEqual({ conta: true, comunidade: false, correcoes: false, carrisAoVivo: false, metro: false });
     expect(config.emails.codigosPorDia).toBe(70);
     expect(config.canaisReclamacao).toHaveLength(5);
     for (const canal of config.canaisReclamacao) {
@@ -172,19 +162,12 @@ describe("base do servidor", () => {
     }
   });
 
-  // Estes dois também correm um a seguir ao outro: o reset() do apply-migrations.ts tem de esvaziar os dois buckets de R2.
-  it("r2DasFotosGuardaELe", async () => {
-    await env.FOTOS_PENDENTES.put("a.jpg", new Uint8Array([1, 2, 3]), { httpMetadata: { contentType: "image/jpeg" } });
-    await env.FOTOS.put("b.jpg", new Uint8Array([4]));
-    const lido = await env.FOTOS_PENDENTES.get("a.jpg");
-    expect(new Uint8Array(await lido!.arrayBuffer())).toEqual(new Uint8Array([1, 2, 3]));
-    expect(lido!.httpMetadata?.contentType).toBe("image/jpeg");
-    expect(await env.FOTOS.get("a.jpg")).toBeNull();
-  });
-
-  it("r2DasFotosComecaVazioEmCadaTeste", async () => {
-    expect((await env.FOTOS_PENDENTES.list()).objects).toEqual([]);
-    expect((await env.FOTOS.list()).objects).toEqual([]);
+  it("semR2NemTokenDaCache", () => {
+    for (const c of [lerJsonc(env.TEST_CONFIG), lerJsonc(env.TEST_ADMIN_CONFIG)]) {
+      expect(c.r2_buckets).toBeUndefined();
+      expect(c.secrets.required).not.toContain("CF_PURGE_TOKEN");
+      expect(c.secrets.required).not.toContain("CF_ZONA");
+    }
   });
 
   it("limitadorDeTesteDeixaNPedidosERegistaAsChaves", async () => {
@@ -242,14 +225,13 @@ describe("base do servidor", () => {
   });
 
   it("configTemAsRegrasDaComunidade", () => {
-    expect(config.interruptores).toEqual({ conta: true, comunidade: false, fotos: false, correcoes: false, carrisAoVivo: false, metro: false });
+    expect(config.interruptores).toEqual({ conta: true, comunidade: false, correcoes: false, carrisAoVivo: false, metro: false });
     expect(config.versaoTermos).toBe("1");
     expect(config.comunidade).toEqual({
       confirmadoCom: 2,
       desapareceCom: 2,
       duracaoMinutos: { vai_cheio: 30, nao_passou: 45, acidente: 120, desvio: 180, evento: 240, elevador: 1440, problema_paragem: 10080 },
-      porContaPorDia: { relatos: 20, fotos: 1, correcoes: 10 },
-      fotosPorDia: 100,
+      porContaPorDia: { relatos: 20, correcoes: 10 },
     });
     expect(config.emails).toEqual({ codigosPorDia: 70, outrosPorDia: 30 });
   });

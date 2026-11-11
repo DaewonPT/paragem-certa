@@ -1,5 +1,4 @@
 import { correcoesDaComunidade } from "./correcoes";
-import { fotosDaComunidade } from "./fotos";
 import { interruptores } from "./portao";
 import { FORMATO_LINHA, FORMATO_PARAGEM, relatosPublicos } from "./relatos";
 import { erro, json } from "./respostas";
@@ -23,7 +22,7 @@ export interface PerturbacaoPublica {
 
 /**
  * GET /api/comunidade?paragens=K1,K2 (1–100): o ecrã da paragem e o mapa. Sem sessão, sem cache no servidor e sem
- * limite por IP. Cada parte desligada vem vazia; com as três desligadas, 403.
+ * limite por IP. Cada parte desligada vem vazia; com as duas desligadas, 403.
  * Com `linhas=L1,L2` (1–20) em vez de `paragens`: os relatos ativos dessas linhas, confirmados e por confirmar (o ecrã da
  * linha); só a `comunidade` o liga, 403 sem ela.
  */
@@ -36,14 +35,13 @@ export async function lerComunidade(pedido: Request, env: Env): Promise<Response
     if (!linhas) return erro("pedido_invalido", 400);
     return json({ relatos: await relatosPublicos(env, "linha", linhas, false) });
   }
-  if (!ligado.comunidade && !ligado.fotos && !ligado.correcoes) return erro("desligado", 403);
+  if (!ligado.comunidade && !ligado.correcoes) return erro("desligado", 403);
   const paragens = lista(procura.get("paragens"), MAX_PARAGENS, FORMATO_PARAGEM);
   if (!paragens) return erro("pedido_invalido", 400);
 
   const relatos = ligado.comunidade ? await relatosPublicos(env, "paragem", paragens, false) : [];
-  const { fotos, emRevisao } = ligado.fotos ? await fotosDaComunidade(env, paragens) : { fotos: [], emRevisao: [] };
   const correcoes = ligado.correcoes ? await correcoesDaComunidade(env, paragens) : [];
-  return json({ relatos, fotos, emRevisao, correcoes });
+  return json({ relatos, correcoes });
 }
 
 /**

@@ -4,7 +4,6 @@
   "interruptores": {
     "conta": true,
     "comunidade": false,
-    "fotos": false,
     "correcoes": false,
     "carrisAoVivo": false,
     "metro": false
@@ -21,8 +20,7 @@
       "elevador": 1440,
       "problema_paragem": 10080
     },
-    "porContaPorDia": { "relatos": 20, "fotos": 1, "correcoes": 10 },
-    "fotosPorDia": 100
+    "porContaPorDia": { "relatos": 20, "correcoes": 10 }
   },
   "emails": {
     "codigosPorDia": 70,

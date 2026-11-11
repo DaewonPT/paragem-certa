@@ -137,15 +137,11 @@ jobs:
             RESEND_API_KEY
             RESPONSAVEL
             GOOGLE_WEB_CLIENT_ID
-            CF_PURGE_TOKEN
-            CF_ZONA
             EMAIL_AUTOR
         env:
           RESEND_API_KEY: ${{ secrets.RESEND_API_KEY }}
           RESPONSAVEL: ${{ secrets.RESPONSAVEL }}
           GOOGLE_WEB_CLIENT_ID: ${{ secrets.GOOGLE_WEB_CLIENT_ID }}
-          CF_PURGE_TOKEN: ${{ secrets.CF_PURGE_TOKEN }}
-          CF_ZONA: ${{ secrets.CF_ZONA }}
           EMAIL_AUTOR: ${{ secrets.EMAIL_AUTOR }}
 
       # O pc-admin (a página de revisão) é outro Worker, com a sua configuração. Vai pelo wrangler do projeto (versão
@@ -161,11 +157,9 @@ jobs:
           ACCESS_EQUIPA: ${{ secrets.ACCESS_EQUIPA }}
           ACCESS_AUD: ${{ secrets.ACCESS_AUD }}
           EMAIL_AUTOR: ${{ secrets.EMAIL_AUTOR }}
-          CF_PURGE_TOKEN: ${{ secrets.CF_PURGE_TOKEN }}
-          CF_ZONA: ${{ secrets.CF_ZONA }}
         run: |
           node -e '
-            const nomes = ["RESEND_API_KEY", "ACCESS_EQUIPA", "ACCESS_AUD", "EMAIL_AUTOR", "CF_PURGE_TOKEN", "CF_ZONA"];
+            const nomes = ["RESEND_API_KEY", "ACCESS_EQUIPA", "ACCESS_AUD", "EMAIL_AUTOR"];
             const segredos = {};
             for (const nome of nomes) {
               if (!process.env[nome]) throw new Error(`falta o segredo ${nome} no GitHub`);

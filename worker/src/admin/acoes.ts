@@ -1,8 +1,6 @@
-import { limparCache } from "../cache";
 import { apagarContaPorId } from "../conta";
 import { enviarNoTeto, enviarOuGuardar } from "../email";
 import { decisaoDaDenuncia, explicacao, REGRAS } from "../explicacoes";
-import { URL_FOTOS } from "../fotos";
 import { marcaDoEmail } from "../portao";
 import type { Aviso } from "./paginas";
 
@@ -47,52 +45,6 @@ async function explicar(env: Env, email: string | null, oQue: string, duracao: s
   if (!email) return [];
   const { assunto, texto } = explicacao({ oQue, duracao, porque: razao.motivo, regra: REGRAS[razao.regra], deDenuncia: razao.denunciaId !== null });
   return (await enviarOuGuardar(env, email, assunto, texto, agora)) === "enviado" ? [] : ["email_falhou"];
-}
-
-/**
- * Copia a foto para o bucket público e só depois a marca como aprovada; se entretanto foi rejeitada (ou o Cron a
- * apagou), a cópia pública sai logo. A pendente só sai no fim: até lá, repetir não perde nada.
- */
-async function aprovarFoto(env: Env, id: string, agora: number): Promise<Desfecho> {
-  const foto = await env.DB.prepare("SELECT chave FROM fotos WHERE id = ? AND estado = 'pendente' AND chave IS NOT NULL LIMIT 1").bind(id).first<{ chave: string }>();
-  const ficheiro = foto && (await env.FOTOS_PENDENTES.get(foto.chave));
-  if (!foto || !ficheiro) return 404;
-  await env.FOTOS.put(foto.chave, await ficheiro.arrayBuffer(), { httpMetadata: { contentType: "image/jpeg", cacheControl: "public, max-age=86400" } });
-  const aprovada = await env.DB.prepare("UPDATE fotos SET estado = 'aprovada', decidida_em = ?1 WHERE id = ?2 AND estado = 'pendente'").bind(agora, id).run();
-  if (aprovada.meta.changes === 0) {
-    await env.FOTOS.delete(foto.chave);
-    return 404;
-  }
-  await env.FOTOS_PENDENTES.delete(foto.chave);
-  return [];
-}
-
-/**
- * Rejeitar (pendente) ou apagar (aprovada) uma foto: primeiro o ficheiro, nos dois buckets (uma aprovação a meio pode
- * tê-lo nos dois), e se o R2 falhar nada muda. A linha fica 'rejeitada' e sem chave: conta para o limite da conta até
- * o Cron a apagar, 1 dia depois. A aprovada esteve no ar: pede-se à Cloudflare que a esqueça.
- */
-async function tirarFoto(env: Env, id: string, estado: "pendente" | "aprovada", razao: Razao, agora: number): Promise<Desfecho> {
-  const foto = await env.DB.prepare(
-    "SELECT f.paragem, f.chave, c.email FROM fotos f LEFT JOIN contas c ON c.id = f.conta_id WHERE f.id = ?1 AND f.estado = ?2 AND f.chave IS NOT NULL LIMIT 1",
-  )
-    .bind(id, estado)
-    .first<{ paragem: string; chave: string; email: string | null }>();
-  if (!foto) return 404;
-  try {
-    await Promise.all([env.FOTOS_PENDENTES.delete(foto.chave), env.FOTOS.delete(foto.chave)]);
-  } catch {
-    return ["apagar_falhou"];
-  }
-  const apagada = estado === "aprovada";
-  const [mudou] = await env.DB.batch([
-    env.DB.prepare("UPDATE fotos SET estado = 'rejeitada', chave = NULL, decidida_em = ?1 WHERE id = ?2 AND estado = ?3").bind(agora, id, estado),
-    decisao(env, apagada ? "foto_apagada" : "foto_rejeitada", `foto:${id}`, razao, await marca(foto.email), agora),
-  ]);
-  if (mudou.meta.changes === 0) return 404;
-  const avisos: Aviso[] = apagada && !(await limparCache(env, [`${URL_FOTOS}/${foto.chave}`])) ? ["cache_falhou"] : [];
-  const oQue = `${apagada ? "Apagámos" : "Rejeitámos"} a foto que enviaste da paragem ${foto.paragem}`;
-  return [...avisos, ...(await explicar(env, foto.email, oQue, "de vez", razao, agora))];
 }
 
 /** Apaga um relato, em qualquer estado; os votos saem com ele (ON DELETE CASCADE). */
@@ -142,7 +94,7 @@ async function rejeitarCorrecao(env: Env, id: string, razao: Razao, agora: numbe
 }
 
 /**
- * Remover (o relato ou a foto, com a explicação a dizer que veio de uma denúncia) ou manter; em ambos os casos quem
+ * Remover (o relato, com a explicação a dizer que veio de uma denúncia) ou manter; em ambos os casos quem
  * denunciou recebe a decisão (DSA, art. 16) e, fechada a denúncia, dela fica só a marca do email.
  * Se o conteúdo já saiu (por outra denúncia, ou a conta foi apagada), a denúncia decide-se na mesma.
  */
@@ -157,13 +109,9 @@ async function decidirDenuncia(env: Env, id: string, campos: URLSearchParams, ag
 
   const avisos: Aviso[] = [];
   if (acao === "remover") {
-    // "relato:<id>" ou "foto:<id>": o formato foi confirmado ao denunciar. Só as fotos aprovadas se podem denunciar.
-    const [tipo, alvo] = denuncia.conteudo.split(":");
-    const feito = tipo === "relato" ? await apagarRelato(env, alvo, razao, agora) : await tirarFoto(env, alvo, "aprovada", razao, agora);
-    if (Array.isArray(feito)) {
-      if (feito.includes("apagar_falhou")) return feito;
-      avisos.push(...feito);
-    }
+    // "relato:<id>": o formato foi confirmado ao denunciar.
+    const feito = await apagarRelato(env, denuncia.conteudo.split(":")[1], razao, agora);
+    if (Array.isArray(feito)) avisos.push(...feito);
   }
 
   const fechada = await env.DB.prepare("UPDATE denuncias SET nome = NULL, email = NULL, decidida_em = ?1 WHERE id = ?2 AND decidida_em IS NULL")
@@ -209,17 +157,14 @@ async function desbloquear(env: Env, emailHash: string, agora: number): Promise<
 
 /**
  * O pedido de "Apagar conta" por email (apagar-conta.html): todas as contas desse email, pela mesma função do
- * DELETE /api/conta (R2, cache e D1). Sem decisão nem email: o autor responde ao pedido.
+ * DELETE /api/conta. Sem decisão nem email: o autor responde ao pedido.
  */
 async function apagarContasDoEmail(env: Env, campos: URLSearchParams): Promise<Desfecho> {
   const email = campos.get("email")?.trim().toLowerCase() ?? "";
   if (email.length > 254 || !/^[^\s@]+@[^\s@]+$/.test(email)) return 400;
   const { results } = await env.DB.prepare("SELECT id FROM contas WHERE email = ? LIMIT ?").bind(email, MAX_CONTAS_DO_EMAIL).all<{ id: string }>();
   if (results.length === 0) return ["conta_nao_existe"];
-  for (const { id } of results) {
-    // O R2 falhou: essa conta fica inteira; repetir apaga o resto.
-    if (!(await apagarContaPorId(env, id))) return ["apagar_falhou"];
-  }
+  for (const { id } of results) await apagarContaPorId(env, id);
   return ["conta_apagada"];
 }
 
@@ -249,12 +194,6 @@ export async function fazerAcao(pedido: Request, env: Env, caminho: string): Pro
   if (caminho === "/contas/apagar") return apagarContasDoEmail(env, campos);
   const [, onde, id, verbo] = /^\/([a-z]+)\/([^/]+)\/([a-z]+)$/.exec(caminho) ?? [];
   switch (`${onde}/${verbo}`) {
-    case "fotos/aprovar":
-      return aprovarFoto(env, id, agora);
-    case "fotos/rejeitar":
-      return comRazao(campos, (razao) => tirarFoto(env, id, "pendente", razao, agora));
-    case "fotos/apagar":
-      return comRazao(campos, (razao) => tirarFoto(env, id, "aprovada", razao, agora));
     case "correcoes/aprovar":
       return aprovarCorrecao(env, id, agora);
     case "correcoes/rejeitar":

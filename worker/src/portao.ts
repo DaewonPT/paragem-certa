@@ -9,7 +9,7 @@ declare global {
   }
 }
 
-export type Funcao = "comunidade" | "fotos" | "correcoes";
+export type Funcao = "comunidade" | "correcoes";
 export type Escritor = { contaId: string; email: string; emailHash: string };
 
 /**
@@ -19,7 +19,6 @@ export type Escritor = { contaId: string; email: string; emailHash: string };
 export function interruptores(env: Env): {
   conta: boolean;
   comunidade: boolean;
-  fotos: boolean;
   correcoes: boolean;
   carrisAoVivo: boolean;
   metro: boolean;
