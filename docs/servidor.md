@@ -169,6 +169,8 @@ npx wrangler r2 bucket delete pc-fotos-pendentes --jurisdiction eu
 npx wrangler r2 bucket delete pc-fotos --jurisdiction eu
 ```
 
+Se a wrangler do PC usar o `CLOUDFLARE_API_TOKEN` (e não o `wrangler login`), depois do ponto 2 do passo 11 o token já não tem a permissão do R2 e o apagar pode ser recusado. Nesse caso, apaga os buckets vazios no painel: R2 Object Storage → o bucket → Settings → Delete bucket.
+
 - Um bucket só se apaga vazio. Se a wrangler disser que não está, abre-o no painel, apaga o que lá estiver (a `teste.jpg` de 08/11, se ficou) e repete.
 - No fim, o painel do R2 não mostra nenhum bucket. Sem buckets, o R2 não cobra nada. Nunca voltes a criar um: o R2 não tem teto de gasto.
 
