@@ -190,7 +190,7 @@ fun DetalheRotaEcra(
  * autocarro conhecido. Depois de o ver no mapa segue a viagem dele, mesmo quando passa na paragem e sai das chegadas.
  */
 @Composable
-private fun rememberAutocarro(repositorio: Repositorio, i: Int?, etapa: Etapa?): Pair<Veiculo?, EstadoAutocarro> {
+internal fun rememberAutocarro(repositorio: Repositorio, i: Int?, etapa: Etapa?): Pair<Veiculo?, EstadoAutocarro> {
     val paragem = etapa?.embarqueCm()
     val ciclo = LocalLifecycleOwner.current.lifecycle
     var chegadas by remember(i) { mutableStateOf(emptyList<Chegada>()) }
