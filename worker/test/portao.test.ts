@@ -136,6 +136,12 @@ describe("portão das escritas da comunidade", () => {
     expect(await marcaDoEmail("A.Na+2@googlemail.com", CHAVE_MARCA_TESTE)).toBe(await marcaDe("ana@gmail.com"));
   });
 
+  it("chaveComEspacosOuNovaLinhaDaAMesmaMarca", async () => {
+    const m = await marcaDoEmail("ana@exemplo.pt", "chave-de-teste");
+    expect(await marcaDoEmail("ana@exemplo.pt", "chave-de-teste\n")).toBe(m);
+    expect(await marcaDoEmail("ana@exemplo.pt", "  chave-de-teste  ")).toBe(m);
+  });
+
   it("marcaComChaveNaoEOSha256Simples", async () => {
     const m = await marcaDoEmail("Ana@Exemplo.pt", "chave-de-teste");
     expect(m).toMatch(/^[0-9a-f]{64}$/);
