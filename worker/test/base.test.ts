@@ -391,7 +391,7 @@ describe("limite das entradas por IP", () => {
     }
     const recusado = await chamar("/api/auth/google/nonce", { cabecalhos: ip, segredos: { LIMITE_AUTH: limite } });
     expect(recusado.status).toBe(429);
-    expect(await recusado.json()).toEqual({ erro: "muitos_pedidos" });
+    expect(await recusado.json()).toEqual({ erro: "espera_um_pouco" });
     expect(limite.chaves).toEqual(Array(6).fill("203.0.113.7"));
     // O sexto nem chegou à base: só há os cinco nonces que passaram.
     const { n } = (await env.DB.prepare("SELECT COUNT(*) AS n FROM nonces").first<{ n: number }>())!;

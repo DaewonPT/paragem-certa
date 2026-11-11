@@ -211,7 +211,7 @@ describe("entrar com código por email", () => {
     expect((await pedirCodigo()).status).toBe(204);
     const seguinte = await pedirCodigo("bia@exemplo.pt");
     expect(seguinte.status).toBe(429);
-    expect(await seguinte.json()).toEqual({ erro: "muitos_pedidos" });
+    expect(await seguinte.json()).toEqual({ erro: "limite_do_dia" });
     expect(mensagensEnviadas).toHaveLength(1);
 
     // O pedido recusado não deixa código nem gasta o teto; o contador fica no teto.

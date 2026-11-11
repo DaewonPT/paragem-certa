@@ -43,8 +43,8 @@ export async function contaDaSessao(pedido: Request, env: Env): Promise<{ contaI
   if (!sessao) return null;
   const agora = Date.now();
   if (agora - sessao.criada_em >= TOTAL || agora - sessao.usada_em >= SEM_USO) return null;
-  // No máximo uma escrita por hora e por sessão: poupa as 100 000 escritas diárias do D1.
-  if (agora - sessao.usada_em >= HORA) {
+  // No máximo uma escrita por dia e por sessão: poupa as 100 000 escritas diárias do D1.
+  if (agora - sessao.usada_em >= DIA) {
     await env.DB.prepare("UPDATE sessoes SET usada_em = ? WHERE hash = ?").bind(agora, hash).run();
   }
   return { contaId: sessao.conta_id };

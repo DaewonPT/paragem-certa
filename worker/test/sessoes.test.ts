@@ -59,14 +59,14 @@ describe("sessões", () => {
     expect(await contaDaSessao(pedidoComToken(token), env)).toEqual({ contaId: "c1" });
   });
 
-  it("usadaEmSoAtualizaUmaVezPorHora", async () => {
+  it("usadaEmSoAtualizaUmaVezPorDia", async () => {
     const token = await criarSessao(env, "c1");
-    const haMeiaHora = Date.now() - 30 * MINUTO;
-    await env.DB.prepare("UPDATE sessoes SET usada_em = ?").bind(haMeiaHora).run();
+    const haMeiaDia = Date.now() - 12 * HORA;
+    await env.DB.prepare("UPDATE sessoes SET usada_em = ?").bind(haMeiaDia).run();
     await contaDaSessao(pedidoComToken(token), env);
-    expect((await linhaDaSessao()).usada_em).toBe(haMeiaHora);
+    expect((await linhaDaSessao()).usada_em).toBe(haMeiaDia);
 
-    await env.DB.prepare("UPDATE sessoes SET usada_em = ?").bind(Date.now() - 2 * HORA).run();
+    await env.DB.prepare("UPDATE sessoes SET usada_em = ?").bind(Date.now() - 25 * HORA).run();
     await contaDaSessao(pedidoComToken(token), env);
     expect((await linhaDaSessao()).usada_em).toBeGreaterThan(Date.now() - MINUTO);
   });

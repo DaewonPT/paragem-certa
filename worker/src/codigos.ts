@@ -65,7 +65,7 @@ export async function pedirCodigo(pedido: Request, env: Env): Promise<Response> 
     .run();
   if (contado.meta.changes === 0) {
     await env.DB.prepare("DELETE FROM codigos WHERE email = ? AND hash = ?").bind(email, hash).run();
-    return erro("muitos_pedidos", 429);
+    return erro("limite_do_dia", 429);
   }
 
   try {
