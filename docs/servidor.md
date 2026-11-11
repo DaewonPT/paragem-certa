@@ -6,16 +6,18 @@ Precisas de: a conta da Cloudflare (com a zona `pixellusitano.com`), uma conta n
 
 **Regra de ouro:** nenhuma chave, token, nome ou id do cliente da Google vai para o repositório. Colas cada valor no sítio indicado.
 
-**Quando:** só com a 0.4.0 ou mais recente. A política de privacidade já descreve a comunidade, as fotos e os dados ao vivo da Carris, que só existem nessa altura. Antes de publicar, relê-a contra o que a app faz mesmo.
+**Modelo D:** o servidor nunca custa dinheiro. Nunca ligues o Workers Paid nem cries buckets no R2 (ver «Custos e limites»).
+
+**Quando:** só com a 0.4.0 ou mais recente. A política de privacidade já descreve a comunidade, as correções e os dados ao vivo da Carris, que só existem nessa altura. Antes de publicar, relê-a contra o que a app faz mesmo.
 
 `AMBIENTE`, `TESTE_GOOGLE_JWKS`, `TESTE_ACCESS_JWKS` e `TESTE_INTERRUPTORES` são só para os testes: nunca os ponhas como variáveis nem segredos de nenhum dos dois Workers publicados (`paragem-certa` e `pc-admin`).
 
-A ordem conta: o `wrangler.jsonc` exige seis segredos (`secrets.required`), por isso o `wrangler deploy` falha enquanto algum faltar. Precisa também do R2 ativo (passo 10). Os buckets já não fazem falhar o deploy: se ainda não existirem, o deploy cria-os sozinho na UE (mesmo que depois falhe por faltar um segredo) e o passo 11 dá erro a dizer que já existem; nesse caso, passa à frente. Os passos 3 e 4 têm de vir antes do 5, e os passos 10 a 13 (R2, buckets e os segredos novos) antes da primeira publicação do passo 6. O `pc-admin`, a página de revisão, é outro Worker e só se publica no passo 14.
+A ordem conta: o `wrangler.jsonc` exige cinco segredos (`secrets.required`), e o `wrangler.admin.jsonc` do `pc-admin` outros cinco, por isso o `wrangler deploy` falha enquanto algum faltar. Os passos 3 e 4 têm de vir antes do 5, e os passos 10 e 13 (Zero Trust e os segredos `EMAIL_AUTOR` e `CHAVE_MARCA_EMAIL`) antes da primeira publicação do passo 6. O servidor não usa o R2: os passos 11 e 12 só apagam o que ficou da 0.4.0, depois de o Servidor publicar sem ele. O `pc-admin`, a página de revisão, é outro Worker e só se publica no passo 14.
 
 ## Publicar a 0.4.0, por esta ordem
 
 1 a 3. Já estão feitos: o ramo `versao-0-4` está no GitHub e já entrou no `main`, as capturas estão em `app/src/test/screenshots` e o Android passou a verde no `main` (05/11/2026). Começa no ponto 4.
-4. Este guia, por esta ordem: passos 1, 2, 3, 4 e 5; depois 10, 11, 12 e 13; só então o 6; depois 7, 14 e 15 (o 8 já está feito no servidor). O 9 e o 16 ligam os interruptores e ficam para o ponto 6. O 17 e o 18 são para quando for preciso: lê-os já, mas não há nada para fazer. Relê a política de privacidade antes.
+4. Este guia, por esta ordem: passos 1, 2, 3, 4 e 5; depois 10 e 13; só então o 6; depois 7, 14 e 15 (o 8 já está feito no servidor). O 11 e o 12 só apagam o R2 que ficou da 0.4.0. O 9 e o 16 ligam os interruptores e ficam para o ponto 6. O 17 e o 18 são para quando for preciso: lê-os já, mas não há nada para fazer. Relê a política de privacidade antes.
 5. Envia para o GitHub o que mudaste no PC (pelo menos os `database_id` do passo 2): `git push origin main`. Depois **Servidor → Run workflow**, no `main`, que põe no ar o `linhas.json` e o `fotos-de-rua.json`. Quando ficar verde, cria a variável `SERVIDOR_PUBLICADO` = `sim` (passo 20). Confirma que `https://paragemcerta.pixellusitano.com/dados/linhas.json` responde.
 6. Liga os interruptores em `worker/public/dados/config.json` (passos 9 e 16), ajusta os testes do servidor, faz commit e `git push origin main`. Esse push abre sozinho uma corrida do Servidor (só testes): espera que acabe e só então **Servidor → Run workflow**, no `main`. Confirma em `https://paragemcerta.pixellusitano.com/dados/config.json` e só depois liga os mesmos em `app/src/main/assets/config.json` (com os testes da app), faz commit e `git push origin main`. O `carrisAoVivo` fica `false` até haver o OK escrito da Carris (passo 19). Se deixares algum desligado, tira a linha dele do `## 0.4.0` do `PATCHNOTES.md`: esse texto é o do aviso de atualização.
 7. Faz commit do `app/src/main/assets/config.json` e do `PATCHNOTES.md` no `main` e envia-o (`git push`). Espera que o workflow **Android** fique verde no `main`. Depois, no terminal: `git checkout main`, `git pull`, `git tag v0.4.0` e `git push origin v0.4.0`. O CI assina o APK e cria a Release com o texto do `## 0.4.0` do `PATCHNOTES.md`; os telemóveis com a 0.3.2 recebem o aviso de atualização.
@@ -107,7 +109,7 @@ Confirma, quando o certificado estiver pronto (pode demorar uns minutos):
    - `CLOUDFLARE_ACCOUNT_ID`: o id do passo 1;
    - `RESEND_API_KEY`, `RESPONSAVEL` e `GOOGLE_WEB_CLIENT_ID`: os mesmos valores do passo 5.
 
-   Os cinco da etapa da comunidade juntam-se no passo 15.
+   Os quatro da etapa da comunidade juntam-se no passo 15.
 3. Para publicar: **Actions → Servidor → Run workflow**, no ramo `main`. Da primeira vez, só no ponto 5 de «Publicar a 0.4.0», depois do passo 15: antes disso faltam segredos e o `publicar` pára a meio. O trabalho `publicar` (no GitHub aparece como «Publish to Cloudflare») espera pelo trabalho dos testes e dos tipos («Tests and types»), aplica as migrações na base remota, faz o deploy do Worker principal e a seguir o do `pc-admin`, enviando outra vez os segredos de cada um. Só corre assim, à mão e no `main`: um commit ou um pedido de alterações nunca publica nada.
 4. O segredo `GOOGLE_WEB_CLIENT_ID` também serve ao `android.yml`: a Release assinada leva o id no APK. Sem ele, o botão do Google não aparece.
 
@@ -116,7 +118,7 @@ Confirma, quando o certificado estiver pronto (pode demorar uns minutos):
 Não há nada para fazer neste passo. Não se usa uma regra de limite de pedidos da Cloudflare porque o plano grátis só deixa uma por zona e a da zona `pixellusitano.com` é a do site (`/api/feedback`). Em vez dela, o Worker tem o limitador `LIMITE_AUTH` (5 pedidos para `/api/auth/` em 10 segundos por IP, responde `429`), mas é aproximado: a Cloudflare conta-o em cada instância e junta as contas em segundo plano, por isso rajadas passam quase todas (testado a 08/11/2026: 2 recusas em 60 pedidos a uns 3 por segundo). Não conta com ele como travão.
 
 - Uma entrada normal faz 2 ou 3 pedidos. Sem limite, um só IP podia gastar sozinho as 100 000 escritas por dia da base grátis (cada pedido de `/api/auth/google/nonce` escreve uma linha) e parar as entradas e a sincronização de toda a gente até à meia-noite UTC. Quem partilhar o IP e passar o limite espera 10 segundos.
-- Na prática, quem fizer isto gasta ao mesmo ritmo os 100 000 pedidos por dia do Worker, como com as leituras, que não têm limite por IP. A defesa é a do passo 18: ver o IP e bloqueá-lo com uma Custom rule (o plano grátis tem 5).
+- Na prática, quem fizer isto gasta ao mesmo ritmo os 100 000 pedidos por dia dos Workers da conta (partilhados com o `pc-admin` e o site), como com as leituras, que não têm limite por IP. A defesa é a do passo 18: ver o IP e bloqueá-lo com uma Custom rule (o plano grátis tem 5).
 
 Os limites de email por endereço (3 por hora) e por dia (70) são contados no servidor e não dependem deste.
 
@@ -130,70 +132,72 @@ A entrada "Conta" do Menu só aparece com o interruptor ligado.
 
 Experimenta de ponta a ponta antes de anunciar: entrar com um código por email, entrar com o Google, ver os favoritos aparecerem num segundo telemóvel e apagar a conta.
 
-## 10. Ativar o R2 e o Zero Trust
+## 10. Ativar o Zero Trust
 
-A comunidade usa o R2 (as fotos) e o Zero Trust (a página de revisão). Os dois pedem um cartão. Faz estes passos antes da primeira publicação do passo 6.
+A página de revisão usa o Zero Trust. Pede um cartão, mas o plano Free não cobra nada. Faz este passo antes da primeira publicação do passo 6.
 
-1. No painel da Cloudflare, abre **R2 Object Storage** e ativa o R2. O plano grátis chega (10 GB), mas o R2 **não tem teto de gasto**: se passares o limite, cobra.
-2. Abre **Zero Trust**, escolhe o nome da equipa (passa a ser o endereço `https://<equipa>.cloudflareaccess.com`) e o plano **Free**. Também pede dados de pagamento. Guarda o nome da equipa: precisas dele no passo 14.
-3. **Alerta de gasto em 1 $:** Manage Account → Billing → Billable Usage, cria um alerta de gasto de 1 $. O de omissão é de 10 $. O alerta só avisa por email, e só no dia seguinte; não corta nada. Os outros travões são do servidor: uma foto por conta e por dia, no máximo 100 por dia e 500 KB cada.
+1. Abre **Zero Trust** no painel da Cloudflare, escolhe o nome da equipa (passa a ser o endereço `https://<equipa>.cloudflareaccess.com`) e o plano **Free**. Também pede dados de pagamento. Guarda o nome da equipa: precisas dele no passo 14.
+2. **Alerta de gasto em 1 $:** Manage Account → Billing → Billable Usage, cria um alerta de gasto de 1 $. O de omissão é de 10 $. O alerta só avisa por email, e só no dia seguinte; não corta nada. Com o modelo D nada deve cobrar: se o alerta chegar, alguma coisa paga foi ligada por engano.
 
-## 11. Buckets das fotos, na UE
+## 11. Tirar o endereço `fotos.pixellusitano.com` (só uma vez)
 
-Na pasta `worker/`:
+O servidor já não usa o R2: as fotos que as pessoas enviavam saíram da app, e o interruptor `fotos` nunca foi ligado, por isso nunca se guardou nenhuma. Os passos 11, 12 e 13 apagam o que ficou da 0.4.0 no painel da Cloudflare. Faz-os só depois de o **Servidor → Run workflow** (passo 7) publicar os dois Workers sem R2 e de, no painel, nenhum dos dois mostrar binding de R2 (Workers & Pages → o Worker → Bindings).
+
+A ordem conta, e não é a dos números dos passos:
+
+1. No GitHub, apaga os segredos `CF_PURGE_TOKEN` e `CF_ZONA` (passo 15).
+2. Tira a permissão R2 do `CLOUDFLARE_API_TOKEN` (My Profile → API Tokens → o token do passo 7 → Edit), se a tiver.
+3. `wrangler secret delete` dos dois, nos dois Workers (passo 13).
+4. Revoga o token da cache (passo 13).
+5. Remove o domínio `fotos.pixellusitano.com` do `pc-fotos` (este passo).
+6. Apaga os buckets `pc-fotos` e `pc-fotos-pendentes` (passo 12).
+7. Tira as linhas `CF_*` dos teus ficheiros de segredos.
+8. Mantém o alerta de 1 $ (passo 10).
+
+Este passo é o ponto 5:
+
+1. R2 Object Storage → `pc-fotos` → Settings → **Custom Domains** → no menu ao lado de `fotos.pixellusitano.com`, **Remove**.
+2. Na zona `pixellusitano.com` → DNS → Records, confirma que já não há o registo `fotos`; se ficou, apaga-o.
+3. `curl.exe -I https://fotos.pixellusitano.com/teste.jpg` já não pode dar `200`.
+
+## 12. Apagar os buckets das fotos (só uma vez)
+
+Depois do passo 11, na pasta `worker/`:
 
 ```
-npx wrangler r2 bucket create pc-fotos-pendentes --jurisdiction eu
-npx wrangler r2 bucket create pc-fotos --jurisdiction eu
+npx wrangler r2 bucket delete pc-fotos-pendentes --jurisdiction eu
+npx wrangler r2 bucket delete pc-fotos --jurisdiction eu
 ```
 
-- `pc-fotos-pendentes` é privado: as fotos novas entram aqui e só os dois Workers as leem. O `pc-fotos` serve as fotos aprovadas (passo 12).
-- A jurisdição só se escolhe agora, na criação, e não muda depois (como a da base, no passo 2). Se te enganares, cria outro bucket.
-- Os nomes têm de ser estes, tal e qual: estão no `wrangler.jsonc` e no `wrangler.admin.jsonc`.
-- Depois de criar cada bucket, a wrangler pergunta "Would you like Wrangler to add it on your behalf?": responde **não** (`n`). Os dois já estão no `wrangler.jsonc` e no `wrangler.admin.jsonc`, com a jurisdição `eu`. Se disseres que sim, ela junta lá outra ligação sem jurisdição.
+- Um bucket só se apaga vazio. Se a wrangler disser que não está, abre-o no painel, apaga o que lá estiver (a `teste.jpg` de 08/11, se ficou) e repete.
+- No fim, o painel do R2 não mostra nenhum bucket. Sem buckets, o R2 não cobra nada. Nunca voltes a criar um: o R2 não tem teto de gasto.
 
-## 12. O endereço das fotos: `fotos.pixellusitano.com`
+Daqui em diante, nunca publiques a partir de um ramo ou tag anteriores à 0.5.2, nem voltes um Worker a uma versão anterior: a configuração antiga volta a criar os buckets.
 
-1. No painel: R2 Object Storage → `pc-fotos` → Settings → **Custom Domains** → Add → escreve `fotos.pixellusitano.com` → **Continue** → vê o registo DNS que vai ser criado → **Connect Domain**. A Cloudflare cria o registo DNS e o certificado. Espera uns minutos até o estado passar de Initializing a **Active** (atualiza a página). Só depois fazes o ponto 3. Se ficar parado em Initializing, usa **Retry connection** no menu ao lado do domínio.
-2. Nos **dois** buckets, em Settings → **Public Development URL** (o endereço `r2.dev`), deixa desligado. O `pc-fotos-pendentes` não pode ter nenhum endereço público.
-3. Confirma que o endereço próprio funciona com um bucket da UE (por verificar: é a única coisa desta etapa que ainda ninguém experimentou). Põe lá uma foto de teste, qualquer JPEG pequeno sem pessoas, guardada como `teste.jpg` na pasta `worker/` (fora de `public/`), e pede-a:
+## 13. Os segredos `EMAIL_AUTOR` e `CHAVE_MARCA_EMAIL`
 
-   ```
-   npx wrangler r2 object put pc-fotos/teste.jpg --file teste.jpg --content-type image/jpeg --cache-control "public, max-age=86400" --jurisdiction eu --remote
-   curl.exe -I https://fotos.pixellusitano.com/teste.jpg
-   ```
+Para os avisos ao autor e para a marca dos emails, os dois Workers precisam de mais dois segredos:
 
-   A resposta tem de ser `200` e trazer `cache-control: public, max-age=86400`. Depois apaga a foto de teste: `npx wrangler r2 object delete pc-fotos/teste.jpg --jurisdiction eu --remote`. Apaga também o ficheiro do PC; nunca faças commit dele.
-4. Se não funcionar, não ligues o interruptor `fotos` no passo 16 (a comunidade e as correções não dependem das fotos) até perceberes porquê.
-
-## 13. Token de limpeza da cache e segredos novos
-
-Quando rejeitas ou apagas uma foto aprovada, o servidor pede à Cloudflare para a esquecer da cache (senão a cópia podia ficar visível até 24 horas). Para isso, e para os avisos ao autor, os dois Workers precisam de três segredos novos:
-
-1. **`CF_PURGE_TOKEN`:** My Profile → API Tokens → Create Token → Custom token, com uma só permissão, **Zone → Cache Purge → Purge**, e só para a zona `pixellusitano.com` (Zone Resources → Include → Specific zone). Não uses o token do passo 7. Guarda-o num sítio privado.
-2. **`CF_ZONA`:** o id da zona `pixellusitano.com`, no painel da zona (Overview, na coluna da direita, "Zone ID").
-3. **`EMAIL_AUTOR`:** o teu email. Recebe o aviso das denúncias de perigo e o resumo diário, e é o único que o `pc-admin` deixa entrar. Tem de ser o mesmo endereço que puseres na política do Access (passo 14).
-4. **`CHAVE_MARCA_EMAIL`:** uma chave secreta com que os dois Workers fazem a marca (hash) dos emails das denúncias, decisões e bloqueios. Tem de ser exatamente a mesma nos dois, e sem ela o servidor recusa em vez de usar um hash simples. Gera uma ao acaso (por exemplo, `openssl rand -hex 32`) e guarda-a num sítio privado: se a mudares, os bloqueios que já existem deixam de apanhar as contas.
+1. **`EMAIL_AUTOR`:** o teu email. Recebe o aviso das denúncias de perigo e o resumo diário, e é o único que o `pc-admin` deixa entrar. Tem de ser o mesmo endereço que puseres na política do Access (passo 14).
+2. **`CHAVE_MARCA_EMAIL`:** uma chave secreta com que os dois Workers fazem a marca (HMAC-SHA-256) dos emails das denúncias, decisões e bloqueios. Gera-a uma vez, com `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`, e guarda-a na `Chave Privada`. Vai para o GitHub (passo 15) e para os dois Workers com o mesmo valor. **Nunca se muda:** com outra chave, os bloqueios guardados deixam de reconhecer os emails. Sem ela, o servidor recusa em vez de usar um hash simples.
 
 Um comando por segredo e por Worker (cada um pede o valor e tu colas com o botão direito, como no passo 5, ou usa o `secret bulk` do passo 5):
 
 ```
-npx wrangler secret put CF_PURGE_TOKEN
-npx wrangler secret put CF_ZONA
 npx wrangler secret put EMAIL_AUTOR
 npx wrangler secret put CHAVE_MARCA_EMAIL
-npx wrangler secret put CF_PURGE_TOKEN -c wrangler.admin.jsonc
-npx wrangler secret put CF_ZONA -c wrangler.admin.jsonc
 npx wrangler secret put EMAIL_AUTOR -c wrangler.admin.jsonc
 npx wrangler secret put CHAVE_MARCA_EMAIL -c wrangler.admin.jsonc
 ```
 
-Os três primeiros são do Worker principal (`paragem-certa`); os três com `-c wrangler.admin.jsonc` são do `pc-admin`. O `pc-admin` ainda não existe: no primeiro deles a wrangler pergunta se o crias, e respondes **sim** (como no passo 5).
+Os dois primeiros são do Worker principal (`paragem-certa`); os dois com `-c wrangler.admin.jsonc` são do `pc-admin`. O `pc-admin` ainda não existe: no primeiro deles a wrangler pergunta se o crias, e respondes **sim** (como no passo 5).
 
-No fim do passo 14, cada Worker tem de ter estes seis segredos (`npx wrangler secret list` e `npx wrangler secret list -c wrangler.admin.jsonc` mostram os nomes, nunca os valores):
+No fim do passo 14, cada Worker tem de ter estes cinco segredos (`npx wrangler secret list` e `npx wrangler secret list -c wrangler.admin.jsonc` mostram os nomes, nunca os valores):
 
-- `paragem-certa`: `RESEND_API_KEY`, `RESPONSAVEL`, `GOOGLE_WEB_CLIENT_ID` (passo 5), `CF_PURGE_TOKEN`, `CF_ZONA`, `EMAIL_AUTOR` e `CHAVE_MARCA_EMAIL` (este passo);
-- `pc-admin`: `RESEND_API_KEY`, `ACCESS_EQUIPA` e `ACCESS_AUD` (passo 14), `EMAIL_AUTOR`, `CHAVE_MARCA_EMAIL`, `CF_PURGE_TOKEN` e `CF_ZONA` (este passo).
+- `paragem-certa`: `RESEND_API_KEY`, `RESPONSAVEL` e `GOOGLE_WEB_CLIENT_ID` (passo 5), `EMAIL_AUTOR` e `CHAVE_MARCA_EMAIL` (este passo);
+- `pc-admin`: `RESEND_API_KEY`, `ACCESS_EQUIPA` e `ACCESS_AUD` (passo 14), `EMAIL_AUTOR` e `CHAVE_MARCA_EMAIL` (este passo).
+
+**Se ainda tens os da 0.4.0** (`CF_PURGE_TOKEN` e `CF_ZONA`, que limpavam a cache das fotos): depois de o Servidor publicar sem eles, e pela ordem do passo 11, apaga-os com `npx wrangler secret delete CF_PURGE_TOKEN`, `npx wrangler secret delete CF_ZONA` e os mesmos com `-c wrangler.admin.jsonc`. Depois, em My Profile → API Tokens, revoga o token da limpeza da cache.
 
 ## 14. A página de revisão (`pc-admin`) e o Cloudflare Access
 
@@ -221,36 +225,36 @@ Numa denúncia, se quiseres bloquear a conta, bloqueia antes de carregares em De
 
 ## 15. Segredos novos no GitHub
 
-Para o trabalho `publicar` (passo 7) enviar os segredos aos dois Workers, junta no GitHub (Settings → Secrets and variables → Actions → New repository secret) seis segredos novos, com os mesmos valores dos passos 13 e 14: `CF_PURGE_TOKEN`, `CF_ZONA`, `EMAIL_AUTOR`, `CHAVE_MARCA_EMAIL`, `ACCESS_AUD` e `ACCESS_EQUIPA`. O `RESEND_API_KEY` já lá está desde o passo 7. Em `ACCESS_AUD` vai a AUD verdadeira (ponto 5 do passo 14), nunca o `por-preencher`.
+Para o trabalho `publicar` (passo 7) enviar os segredos aos dois Workers, junta no GitHub (Settings → Secrets and variables → Actions → New repository secret) quatro segredos novos, com os mesmos valores dos passos 13 e 14: `EMAIL_AUTOR`, `CHAVE_MARCA_EMAIL`, `ACCESS_AUD` e `ACCESS_EQUIPA`. O `RESEND_API_KEY` já lá está desde o passo 7. Em `ACCESS_AUD` vai a AUD verdadeira (ponto 5 do passo 14), nunca o `por-preencher`. Sem o `CHAVE_MARCA_EMAIL`, a corrida do Servidor pára antes de publicar. Se lá estiverem o `CF_PURGE_TOKEN` e o `CF_ZONA` da 0.4.0, apaga-os (Remove), mas só depois de o Servidor publicar sem eles (ordem do passo 11).
 
-## 16. Ligar a comunidade, as fotos e as correções
+## 16. Ligar a comunidade e as correções
 
-Só no fim, depois do parecer do advogado sobre o DSA e as fotos.
+Só no fim, depois do parecer do advogado sobre o DSA.
 
-1. Em `worker/public/dados/config.json`, em `interruptores`, muda para `true` os que queres ligar: `"comunidade"`, `"fotos"` e `"correcoes"`. O `fotos` e o `correcoes` precisam do `comunidade` também ligado: sem ele, a app não mostra o botão "Corrigir dados", nem o "Enviar foto", nem as fotos da comunidade (só as fotos de rua). Antes do commit, ajusta também os testes do servidor: hoje contam com todos os interruptores desligados e falham se ligares algum. São `worker/test/base.test.ts` e `worker/test/portao.test.ts`, mais `relatos.test.ts` e `denuncias.test.ts` (`comunidade`), `fotos.test.ts` (`fotos`) e `correcoes.test.ts` (`correcoes`), todos em `worker/test/`. Muda-os no mesmo commit e confirma com `npm test` na pasta `worker/`. Se os testes falharem, o trabalho `publicar` não corre e nada vai para o ar. Faz commit no `main` e `git push origin main`, espera que a corrida do Servidor aberta por esse push acabe e só então corre o **Servidor → Run workflow** (passo 7). Confirma em `https://paragemcerta.pixellusitano.com/dados/config.json`.
-2. No dia de publicar a app, liga os mesmos em `app/src/main/assets/config.json` (a cópia de reserva da primeira abertura sem rede). Primeiro o servidor e só depois a app: nunca um interruptor ligado na app e desligado no servidor. Antes do commit, ajusta também os testes da app que contam com a cópia desligada (`RelatarTest.kt`, `CamadaRelatosTest.kt` e `ComunidadeTest.kt`). Faz commit e `git push origin main` e espera que o workflow **Android** fique verde no `main` antes de criares a tag: se falhar, a `v0.4.0` não gera o APK assinado nem a Release.
-3. Se o parecer o pedir, deixa `"fotos"` em `false`: as outras duas funcionam sem fotos. O `fotos` só diz respeito às fotos que as pessoas enviam: as fotos de rua do Panoramax (passo 21) aparecem sempre.
-4. **Desligar `fotos` só as esconde na app.** As fotos aprovadas continuam na internet em `fotos.pixellusitano.com`. Para as tirar de lá: tira o domínio `fotos.pixellusitano.com` do `pc-fotos` (R2 → `pc-fotos` → Settings → Custom Domains) ou esvazia o bucket, e limpa a cache (zona `pixellusitano.com` → Caching → Configuration → Purge Cache → Custom Purge, pelo hostname `fotos.pixellusitano.com`).
+1. Em `worker/public/dados/config.json`, em `interruptores`, muda para `true` os que queres ligar: `"comunidade"` e `"correcoes"`. O `correcoes` precisa do `comunidade` também ligado: sem ele, a app não mostra o botão "Corrigir dados". Antes do commit, ajusta também os testes do servidor: hoje contam com todos os interruptores desligados e falham se ligares algum. São `worker/test/base.test.ts` e `worker/test/portao.test.ts`, mais `relatos.test.ts` e `denuncias.test.ts` (`comunidade`) e `correcoes.test.ts` (`correcoes`), todos em `worker/test/`. Muda-os no mesmo commit e confirma com `npm test` na pasta `worker/`. Se os testes falharem, o trabalho `publicar` não corre e nada vai para o ar. Faz commit no `main` e `git push origin main`, espera que a corrida do Servidor aberta por esse push acabe e só então corre o **Servidor → Run workflow** (passo 7). Confirma em `https://paragemcerta.pixellusitano.com/dados/config.json`.
+2. No dia de publicar a app, liga os mesmos em `app/src/main/assets/config.json` (a cópia de reserva da primeira abertura sem rede). Primeiro o servidor e só depois a app: nunca um interruptor ligado na app e desligado no servidor. Antes do commit, ajusta também os testes da app que contam com a cópia desligada (`RelatarTest.kt`, `CamadaRelatosTest.kt` e `ComunidadeTest.kt`). Faz commit e `git push origin main` e espera que o workflow **Android** fique verde no `main` antes de criares a tag: se falhar, a tag não gera o APK assinado nem a Release.
+3. As fotos de rua do Panoramax (passo 21) aparecem sempre: não dependem de nenhum interruptor.
 
 ## 17. Pedidos de "Apagar conta" por email
 
-Quem não tem a app pede por email, como diz a página `apagar-conta.html`, e a conta tem de ser apagada no máximo em 30 dias.
+Quem não tem a app pede por email para contact@pixellusitano.com, como diz a página `apagar-conta.html`. **Ninguém te avisa destes pedidos:** só aparecem nessa caixa de correio (não entram no resumo diário nem na página de revisão), por isso vê-a pelo menos uma vez por semana. O RGPD dá **um mês** a contar do dia em que o pedido chega (art. 12.º, n.º 3): um pedido de 15/01 tem de estar tratado até 15/02.
 
-1. Confirma que o email do pedido veio do endereço da conta.
-2. Abre a página de revisão do `pc-admin` (passo 14), escreve esse email em **Apagar conta por email** e carrega em "Apagar conta". Apaga todas as contas desse email, com as fotos (também as aprovadas, no R2 e na cache), os relatos, as confirmações e as correções. A procura é pelo endereço exato: se disser que não há conta, pede à pessoa o endereço com que entrou (com o + ou os pontos, se os usou).
+1. **Confirma que o pedido é do dono da conta.** O remetente de um email pode ser falsificado, por isso não chega ver de onde veio. Escreve tu, de contact@pixellusitano.com, um email novo (não carregues em Responder) para o endereço da conta, a perguntar se foi essa pessoa que pediu para apagar a conta. Só avanças quando a confirmação chegar desse endereço.
+2. Abre a página de revisão do `pc-admin` (passo 14), escreve esse email em **Apagar conta por email** e carrega em "Apagar conta". Apaga todas as contas desse email, com os relatos, as confirmações e as correções. A procura é pelo endereço exato: se disser que não há conta, pede à pessoa o endereço com que entrou (com o + ou os pontos, se os usou).
 3. Responde ao pedido a dizer que a conta foi apagada. A página não envia nenhum email.
+4. **Guarda a troca de emails** (o pedido, a tua pergunta, a confirmação e a resposta final): é a prova de que confirmaste quem pediu e de que cumpriste o prazo. Não a apagues.
 
-Nunca apagues pelo `wrangler d1 execute … DELETE`: deixava as fotos aprovadas no ar.
+Nunca apagues pelo `wrangler d1 execute … DELETE`: o `pc-admin` apaga numa só transação todas as contas desse email e o que é delas; à mão é fácil esquecer uma tabela ou uma conta.
 
 ## 18. Se alguém gastar a quota de propósito
 
-As leituras da comunidade não têm limite por IP (nas redes móveis muita gente partilha o mesmo IP), por isso alguém pode gastar de propósito os 100 000 pedidos por dia e parar tudo no servidor até à meia-noite UTC. Se desconfiares de pedidos a mais, as estatísticas do Worker não te ajudam: não mostram IPs. Vê de onde vêm na zona `pixellusitano.com`: **Security → Analytics**. Filtra pelo hostname `paragemcerta.pixellusitano.com` e procura o IP que se repete nas estatísticas de topo (Source IP) ou nos registos de amostra (**Sampled logs**). Para o bloquear: com o filtro **Source IP** igual a esse IP, carrega em **Create custom security rule**. Ou vai a **Security → Security rules → Create rule → Custom rules** (no painel antigo: **Security → WAF → Custom rules**), campo **IP Source Address**, **equals**, esse IP, ação **Block** e **Deploy**. Tira a regra no dia seguinte: nas redes móveis o IP é partilhado por muita gente e um bloqueio comprido apanha inocentes. Os nomes dos menus mudam de vez em quando; segue o que a Cloudflare mostrar.
+O plano grátis dá **100 000 pedidos por dia aos Workers da conta inteira**: este (`paragem-certa`), o `pc-admin` e o do site (`pixellusitano`) gastam da mesma quota. As leituras da comunidade não têm limite por IP (nas redes móveis muita gente partilha o mesmo IP), por isso alguém pode gastá-la de propósito. Quando acaba, deixa de responder tudo o que passa pelo Worker: aqui, qualquer `/api/*` (entrar, sincronizar, relatos, Carris ao vivo) e a `/privacidade`; e também o `pc-admin` e o `/api/feedback` do site. Os ficheiros estáticos (`/termos`, `/apagar-conta`, `/dados/…`) continuam a abrir. A quota volta às 00:00 UTC (meia-noite em Lisboa no inverno, 1h no verão). Não cobra nada; nunca passes para o Workers Paid para fugir ao limite. **Ninguém te avisa a tempo:** o primeiro sinal deve ser um email da Cloudflare sobre os limites da D1, ou alguém a dizer que não consegue entrar. Se desconfiares de pedidos a mais, as estatísticas do Worker não te ajudam: não mostram IPs. Vê de onde vêm na zona `pixellusitano.com`: **Security → Analytics**. Filtra pelo hostname `paragemcerta.pixellusitano.com` e procura o IP que se repete nas estatísticas de topo (Source IP) ou nos registos de amostra (**Sampled logs**). Para o bloquear: com o filtro **Source IP** igual a esse IP, carrega em **Create custom security rule**. Ou vai a **Security → Security rules → Create rule → Custom rules** (no painel antigo: **Security → WAF → Custom rules**), campo **IP Source Address**, **equals**, esse IP, ação **Block** e **Deploy**. Se for um endereço IPv6, bloqueia o /64 inteiro: operador **is in** e os quatro primeiros blocos com `::/64` (por exemplo `2001:db8:1:2::/64`), porque cada ligação tem um /64 e muda de endereço lá dentro. Tira a regra no dia seguinte: nas redes móveis o IP é partilhado por muita gente e um bloqueio comprido apanha inocentes. Os nomes dos menus mudam de vez em quando; segue o que a Cloudflare mostrar.
 
 ## 19. Carris ao vivo
 
-O `/api/rt/carris` lê o feed oficial das posições da Carris (GTFS-RT), tira as posições com mais de 5 minutos, as com hora mais de 1 minuto no futuro e as que não têm nem paragem nem número de paragem, e guarda o resultado 30 segundos na cache da Cloudflare, que é de cada centro de dados. A Carris recebe no máximo um pedido por 30 segundos de cada centro de dados (em Portugal, quase sempre só o de Lisboa), por muita gente que tenha a app aberta; ninguém lhe pede nada diretamente do telemóvel. A app mostra os autocarros no mapa e no ecrã de uma linha, e "ao vivo, a N paragens" nas chegadas. Não leva nenhum segredo: não há nada para pôr na Cloudflare nem no GitHub.
+O `/api/rt/carris` lê o feed oficial das posições da Carris (GTFS-RT), tira as posições com mais de 5 minutos, as com hora mais de 1 minuto no futuro e as que não têm nem paragem nem número de paragem, e guarda o resultado 30 segundos na cache da Cloudflare, que é de cada centro de dados. A Carris recebe normalmente um pedido a cada 30 segundos de cada centro de dados (a cache não é garantida: pode haver mais, por exemplo quando chegam vários pedidos ao mesmo tempo com a cache vazia; em Portugal, quase sempre só o de Lisboa), por muita gente que tenha a app aberta; ninguém lhe pede nada diretamente do telemóvel. A app mostra os autocarros no mapa e no ecrã de uma linha, e "ao vivo, a N paragens" nas chegadas. Não leva nenhum segredo: não há nada para pôr na Cloudflare nem no GitHub.
 
-O interruptor `carrisAoVivo` fica `false` até a Carris responder **por escrito** ao email do rascunho `rascunhos/email-carris.md` (fora do repositório; envias do teu email). Com ele desligado, o `/api/rt/carris` dá 403 `desligado` e a app não mostra nem pede nada disto. Se a Carris pedir um crédito, junta-o ao ecrã Sobre antes de ligar.
+O interruptor `carrisAoVivo` fica `false` até a Carris responder **por escrito** ao email enviado a 10/11/2026 para nap.dados@carris.pt, com Cc para atendimento@carris.pt (o texto está em `rascunhos/email-carris.md`, fora do repositório). Com ele desligado, o `/api/rt/carris` dá 403 `desligado` e a app não mostra nem pede nada disto. Se a Carris pedir um crédito, junta-o ao ecrã Sobre antes de ligar.
 
 Com o OK da Carris (e a 0.4.0 já publicada):
 
@@ -259,7 +263,7 @@ Com o OK da Carris (e a 0.4.0 já publicada):
 3. No dia de publicar a app, liga o mesmo em `app/src/main/assets/config.json`. Primeiro o servidor e só depois a app (como no passo 16). Se algum teste da app contar com ele desligado, ajusta-o no mesmo commit; faz commit e `git push origin main` e espera que o workflow **Android** fique verde no `main`.
 4. Para desligar, `false` nos mesmos sítios e outra publicação; a app deixa de mostrar os autocarros na abertura seguinte, com rede.
 
-**O Metro de Lisboa fica fora da 0.4.** O servidor da API do Metro, na porta 8243, só manda o certificado do site e não o intermédio, e a Cloudflare recusa essas ligações (erro 526, testado a 03/11/2026). Por isso não há chave nem segredo do Metro para pôr, e o interruptor `metro` fica `false`. Quando o Metro mandar a cadeia completa (o rascunho `rascunhos/email-metro.md` pede-o), os tempos de espera e o estado das linhas entram numa versão seguinte. As linhas e o horário do Metro continuam a vir do catálogo e do Transitous.
+**O Metro de Lisboa fica para uma versão seguinte.** Até 10/11/2026, o servidor da API do Metro, na porta 8243, só mandava o certificado do site, e a Cloudflare recusava essas ligações (erro 526). A 11/11/2026 o Metro passou a mandar a cadeia completa (verificado com `openssl s_client`). Os tempos de espera e o estado das linhas entram numa versão seguinte; até lá não há chave nem segredo do Metro para pôr, e o interruptor `metro` fica `false`. As linhas e o horário do Metro continuam a vir do catálogo e do Transitous.
 
 ## 20. Linhas dos outros operadores
 
@@ -280,7 +284,7 @@ Ao publicar a 0.4.0 (ponto 5 de "Publicar a 0.4.0"):
 
 ## 21. Fotos de rua
 
-As fotos de rua do ecrã da paragem e da bússola vêm do Panoramax (fotos abertas, sem chave nem conta). O ficheiro `/dados/fotos-de-rua.json` diz que foto mostrar em cada paragem: a mais recente a menos de 30 m e virada para ela. Quem o gera é o `worker/ferramentas/gerar-fotos-rua.mjs`, no GitHub Actions. Nunca está no repositório (`.gitignore`) e, como um deploy apaga do ar o que não leva, vai em todos os deploys. Sem ficheiro no ar, a app mostra só as fotos da comunidade e continua a funcionar.
+As fotos de rua do ecrã da paragem e da bússola vêm do Panoramax (fotos abertas, sem chave nem conta). O ficheiro `/dados/fotos-de-rua.json` diz que foto mostrar em cada paragem: a mais recente a menos de 30 m e virada para ela. Quem o gera é o `worker/ferramentas/gerar-fotos-rua.mjs`, no GitHub Actions. Nunca está no repositório (`.gitignore`) e, como um deploy apaga do ar o que não leva, vai em todos os deploys. Sem ficheiro no ar, a paragem e a bússola ficam sem foto e a app continua a funcionar.
 
 Quando se gera:
 
@@ -294,4 +298,9 @@ Quando se gera:
 
 ## Custos e limites
 
-Tudo no plano grátis da Cloudflare e da Resend: o Worker e a D1 param no limite (100 000 pedidos por dia para a conta inteira, até à meia-noite UTC) em vez de cobrar. O R2 (as fotos) e o Zero Trust (a página de revisão) pedem cartão: o R2 não tem teto de gasto, por isso o alerta de 1 $ do passo 10 não se salta. Os passos 10 a 18 tratam deles.
+**Modelo D: o servidor nunca custa dinheiro.**
+
+- **Nunca ligues o Workers Paid**, nem para fugir a um limite. No plano grátis, os Workers e a D1 param no limite em vez de cobrar: 100 000 pedidos por dia para a conta inteira (este Worker, o `pc-admin` e o do site), até às 00:00 UTC. O passo 18 diz o que fazer.
+- **O R2 não se usa.** Nunca cries buckets: o R2 não tem teto de gasto. Os da 0.4.0 apagam-se nos passos 11 e 12.
+- A Resend fica no plano grátis (100 emails por dia, 3000 por mês): no limite pára, não cobra (passo 3).
+- O Zero Trust (a página de revisão) pede cartão, mas o plano Free não cobra. O alerta de 1 $ do passo 10 é a rede de segurança.
