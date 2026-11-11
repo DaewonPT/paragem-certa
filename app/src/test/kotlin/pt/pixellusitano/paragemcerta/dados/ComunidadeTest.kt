@@ -53,7 +53,6 @@ private class ServidorDeComunidade : Http {
         "/api/avisos" to { Resposta(200, """{"relatos":[]}""") },
         "/api/relatos" to { Resposta(201, """{"id":"r9","novo":true}""") },
         "/api/votos" to { Resposta(200, """{"confirmacoes":2,"confirmado":true,"ativo":true}""") },
-        "/api/fotos" to { Resposta(201, """{"id":"f9"}""") },
         "/api/correcoes" to { Resposta(201, "{}") },
         "/api/denuncias" to { Resposta(201, "{}") },
         "/api/termos" to { Resposta(200, "{}") },
@@ -64,14 +63,10 @@ private class ServidorDeComunidade : Http {
     // O tamanho de cada lista de chaves pedida ("paragens=a,b,c" → 3).
     fun tamanhos(rota: String, parametro: String) = pedidosA(rota).map { it.url.substringAfter("$parametro=").split(",").size }
 
-    // Só o config.json é um GET; a API toda passa por enviar e enviarBytes.
     override suspend fun get(url: String): Resposta = if (semRede) throw IOException("sem rede") else Resposta(200, config)
 
     override suspend fun enviar(metodo: String, url: String, corpo: String?, cabecalhos: Map<String, String>): Resposta =
         responder(metodo, url, corpo, cabecalhos)
-
-    override suspend fun enviarBytes(metodo: String, url: String, corpo: ByteArray, tipo: String, cabecalhos: Map<String, String>): Resposta =
-        responder(metodo, url, "${corpo.size} bytes de $tipo", cabecalhos)
 
     private suspend fun responder(metodo: String, url: String, corpo: String?, cabecalhos: Map<String, String>): Resposta {
         pedidos += Pedido(metodo, url, corpo, cabecalhos["Authorization"])
@@ -85,7 +80,6 @@ private class ServidorDeComunidade : Http {
 // Os ids do servidor-comunidade.json.
 private const val RELATO_DESVIO = "6f1c2a9e-3b7d-4c58-9a10-5d2e8b7f4a11"
 private const val RELATO_ELEVADOR = "0a4d9b3c-8e21-47f6-b5c9-1e7a6d3f2b90"
-private const val FOTO = "c7e5a1b2-4d96-4f03-8a2b-9c0d1e2f3a45"
 
 @OptIn(ExperimentalCoroutinesApi::class)
 @RunWith(RobolectricTestRunner::class)
@@ -134,7 +128,6 @@ class ComunidadeTest {
         ligar("comunidade")
         assertEquals(semSessao, comunidade.relatar(TipoRelato.DESVIO, "CM:060419", "736"))
         assertEquals(semSessao, comunidade.votar(RELATO_DESVIO, aindaEsta = true))
-        assertEquals(semSessao, comunidade.enviarFoto("CM:060419", byteArrayOf(1, 2, 3)))
         assertEquals(semSessao, comunidade.corrigir("CM:060419", Correcao.JaNaoExiste))
         assertEquals(semSessao, comunidade.denunciar("relato:$RELATO_DESVIO", MotivoDenuncia.FALSO, "Ana", ""))
         assertEquals(semSessao, comunidade.aceitarTermos())
@@ -162,11 +155,10 @@ class ComunidadeTest {
         entrar()
         assertEquals(Resultado.Ok(RelatoCriado("r9", novo = true)), comunidade.relatar(TipoRelato.DESVIO, "CM:060419", "736"))
         assertEquals(Resultado.Ok(Voto(2, confirmado = true, ativo = true)), comunidade.votar(RELATO_DESVIO, aindaEsta = false))
-        assertEquals(Resultado.Ok("f9"), comunidade.enviarFoto("CM:060419", byteArrayOf(1, 2, 3)))
         assertEquals(Resultado.Ok(Unit), comunidade.corrigir("CM:060419", Correcao.JaNaoExiste))
         assertEquals(Resultado.Ok(Unit), comunidade.denunciar("relato:$RELATO_DESVIO", MotivoDenuncia.FALSO, "Ana", ""))
         assertEquals(Resultado.Ok(Unit), comunidade.aceitarTermos())
-        assertEquals(6, http.pedidos.size)
+        assertEquals(5, http.pedidos.size)
         assertEquals(setOf("Bearer tok-ana"), http.pedidos.map { it.autorizacao }.toSet())
     }
 
@@ -181,11 +173,9 @@ class ComunidadeTest {
     }
 
     @Test fun daParagemNaoGuardaNada() = runTest {
-        ligar("comunidade", "fotos", "correcoes")
+        ligar("comunidade", "correcoes")
         val d = daParagem("CM:060419")
         assertEquals(listOf(RELATO_DESVIO, RELATO_ELEVADOR), d.relatos.map { it.id })
-        assertEquals(listOf(FOTO), d.fotos.map { it.id })
-        assertEquals(listOf("CM:070001"), d.emRevisao)
         assertEquals(1, d.correcoes.size)
         daParagem("CM:060419")
         assertEquals(2, http.pedidosA("/api/comunidade").size)
@@ -199,14 +189,12 @@ class ComunidadeTest {
     }
 
     @Test fun ocultosNaoAparecem() = runTest {
-        ligar("comunidade", "fotos")
+        ligar("comunidade")
         preferencias.ocultar("relato:$RELATO_DESVIO")
-        preferencias.ocultar("foto:$FOTO")
         val d = daParagem("CM:060419")
         assertEquals(listOf(RELATO_ELEVADOR), d.relatos.map { it.id })
-        assertTrue(d.fotos.isEmpty())
         // E o que se ocultou continua só no telemóvel: nenhum pedido leva os ids.
-        assertTrue(http.pedidos.none { RELATO_DESVIO in it.url || FOTO in it.url })
+        assertTrue(http.pedidos.none { RELATO_DESVIO in it.url })
     }
 
     @Test fun ocultosTambemSaemDoMapaEDasRotas() = runTest {
@@ -240,12 +228,10 @@ class ComunidadeTest {
     }
 
     @Test fun mapaGuarda2Minutos() = runTest {
-        ligar("comunidade", "fotos", "correcoes")
+        ligar("comunidade", "correcoes")
         val chaves = listOf("CM:060419", "CM:070001")
         val d = comunidade.dasParagens(chaves)
         assertEquals(listOf(RELATO_DESVIO, RELATO_ELEVADOR), d.relatos.map { it.id })
-        assertEquals(listOf(FOTO), d.fotos.map { it.id })
-        assertEquals(listOf("CM:070001"), d.emRevisao)
         assertEquals(1, d.correcoes.size)
         assertEquals(1, http.pedidosA("/api/comunidade").size)
         agora = inicio + Duration.ofMinutes(1)
@@ -452,20 +438,18 @@ class ComunidadeTest {
         assertTrue(http.pedidos.isEmpty())
     }
 
-    @Test fun fotosECorrecoesDesligadasLimpamEssasPartes() = runTest {
+    @Test fun correcoesDesligadasLimpamEssaParte() = runTest {
         ligar("comunidade")
         val d = daParagem("CM:060419")
         assertEquals(2, d.relatos.size)
-        assertTrue(d.fotos.isEmpty() && d.emRevisao.isEmpty() && d.correcoes.isEmpty())
+        assertTrue(d.correcoes.isEmpty())
         val mapa = comunidade.dasParagens(listOf("CM:060419", "CM:070001"))
         assertEquals(2, mapa.relatos.size)
-        assertTrue(mapa.fotos.isEmpty() && mapa.emRevisao.isEmpty() && mapa.correcoes.isEmpty())
-        // Ligadas na config, as mesmas leituras (já guardadas) passam a trazê-las.
-        ligar("comunidade", "fotos", "correcoes")
+        assertTrue(mapa.correcoes.isEmpty())
+        // Ligadas na config, as mesmas leituras (já guardadas) passam a trazer as correções.
+        ligar("comunidade", "correcoes")
         val ligado = comunidade.dasParagens(listOf("CM:060419", "CM:070001"))
         assertEquals(2, http.pedidosA("/api/comunidade").size) // só a daParagem e o primeiro mapa pediram
-        assertEquals(listOf(FOTO), ligado.fotos.map { it.id })
-        assertEquals(listOf("CM:070001"), ligado.emRevisao)
         assertEquals(1, ligado.correcoes.size)
     }
 }

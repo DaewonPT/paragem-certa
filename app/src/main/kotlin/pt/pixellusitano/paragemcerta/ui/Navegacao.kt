@@ -405,12 +405,7 @@ fun Navegacao(
                 val rua = ligacoes.fotosDeRua.fotoDa(b.chave)
                 BussolaEcra(
                     b.nome, b.lat, b.lon, aoVoltar = { nav.popBackStack() },
-                    foto = {
-                        FotoNaBussola(
-                            b.chave, rua, ligacoes.comunidade, ligacoes.configuracoes, ligacoes.preferencias,
-                            carregar = { ligacoes.http.obterBytes(it) }, aoAbrirPagina = ::abrirUrl,
-                        )
-                    },
+                    foto = { FotoNaBussola(rua, ligacoes.preferencias, carregar = { ligacoes.http.obterBytes(it) }, aoAbrirPagina = ::abrirUrl) },
                 )
             }
             composable<Sobre> {

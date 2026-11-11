@@ -28,10 +28,6 @@ interface Http {
     suspend fun enviar(metodo: String, url: String, corpo: String?, cabecalhos: Map<String, String> = emptyMap()): Resposta =
         throw UnsupportedOperationException("Só GET")
 
-    /** Como [enviar], mas com o corpo em bytes e o Content-Type [tipo] (uma foto JPEG). */
-    suspend fun enviarBytes(metodo: String, url: String, corpo: ByteArray, tipo: String, cabecalhos: Map<String, String> = emptyMap()): Resposta =
-        throw UnsupportedOperationException("Só GET")
-
     /** Os bytes de um GET; null se a resposta não for 2xx ou não houver rede. */
     suspend fun obterBytes(url: String): ByteArray? = throw UnsupportedOperationException("Só GET")
 }
@@ -70,12 +66,6 @@ class OkHttpHttp(
         // O OkHttp recusa um POST sem corpo (pedir um nonce, sair); o DELETE não precisa dele.
         val texto = corpo ?: if (metodo == "POST") "" else null
         return executar(pedido.method(metodo, texto?.toRequestBody(JSON_UTF8)))
-    }
-
-    override suspend fun enviarBytes(metodo: String, url: String, corpo: ByteArray, tipo: String, cabecalhos: Map<String, String>): Resposta {
-        val pedido = Request.Builder().url(url).header("User-Agent", agente)
-        cabecalhos.forEach { (nome, valor) -> pedido.header(nome, valor) }
-        return executar(pedido.method(metodo, corpo.toRequestBody(tipo.toMediaType())))
     }
 
     override suspend fun obterBytes(url: String): ByteArray? = try {
@@ -118,7 +108,7 @@ private fun erroDoCorpo(corpo: String): String? {
     return ((json as? JsonObject)?.get("erro") as? JsonPrimitive)?.takeIf { it.isString }?.content
 }
 
-// internal: o ServidorParagemCerta também a usa para enviar a foto em bytes.
+// internal: a Gira também a usa, para tratar o 304 antes de converter.
 internal suspend fun <T> converterResposta(fazer: suspend () -> Resposta, lerErro: Boolean, converter: (String) -> T): Resultado<T> {
     val r = try {
         fazer()

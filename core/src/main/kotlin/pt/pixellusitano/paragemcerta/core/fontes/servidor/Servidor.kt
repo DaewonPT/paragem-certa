@@ -11,7 +11,6 @@ import pt.pixellusitano.paragemcerta.core.comunidade.MotivoDenuncia
 import pt.pixellusitano.paragemcerta.core.comunidade.TipoRelato
 import pt.pixellusitano.paragemcerta.core.rede.Http
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
-import pt.pixellusitano.paragemcerta.core.rede.converterResposta
 import pt.pixellusitano.paragemcerta.core.rede.emPausa
 import pt.pixellusitano.paragemcerta.core.rede.pedir
 import pt.pixellusitano.paragemcerta.core.rede.pedirCom
@@ -28,7 +27,7 @@ private val JSON = Json { ignoreUnknownKeys = true }
     val interruptores: Interruptores,
     val emails: Emails,
     val canaisReclamacao: List<CanalReclamacaoTexto>,
-    /** Os termos em vigor: quem relata, vota ou envia fotos tem de os ter aceitado (senão 403 `termos_por_aceitar`). */
+    /** Os termos em vigor: quem relata ou vota tem de os ter aceitado (senão 403 `termos_por_aceitar`). */
     val versaoTermos: String = "1",
     /** Os mapas da rede de cada operador (`operador` = "CM" ou o id do Transitous, como `pt-Carris`). Um config antigo não os tem. */
     val mapasOficiais: List<MapaOficial> = emptyList(),
@@ -38,7 +37,6 @@ private val JSON = Json { ignoreUnknownKeys = true }
 @Serializable data class Interruptores(
     val conta: Boolean = false,
     val comunidade: Boolean = false,
-    val fotos: Boolean = false,
     val correcoes: Boolean = false,
     val carrisAoVivo: Boolean = false,
     val metro: Boolean = false,
@@ -82,17 +80,12 @@ private val JSON = Json { ignoreUnknownKeys = true }
     val confirmado: Boolean,
 )
 
-/** [data]: AAAA-MM-DD (UTC) em que foi aprovada; um servidor que ainda não a manda deixa-a a `null`. */
-@Serializable data class FotoRemota(val paragem: String, val id: String, val url: String, val data: String? = null)
-
 /** Só os campos do tipo vêm preenchidos: `posicao` traz lat e lon, `nome` traz o nome, `ja_nao_existe` nenhum. */
 @Serializable data class CorrecaoRemota(val paragem: String, val tipo: String, val lat: Double? = null, val lon: Double? = null, val nome: String? = null)
 
-/** O que o servidor sabe das paragens pedidas; `emRevisao` são as paragens com uma foto à espera do autor. */
+/** O que o servidor sabe das paragens pedidas. */
 @Serializable data class DadosComunidade(
     val relatos: List<RelatoRemoto> = emptyList(),
-    val fotos: List<FotoRemota> = emptyList(),
-    val emRevisao: List<String> = emptyList(),
     val correcoes: List<CorrecaoRemota> = emptyList(),
 )
 
@@ -123,8 +116,6 @@ private val JSON = Json { ignoreUnknownKeys = true }
 @Serializable data class AoVivoCarris(val atualizado: Long, val veiculos: List<VeiculoCarrisRemoto>)
 
 @Serializable private class RelatosJson(val relatos: List<RelatoRemoto> = emptyList())
-
-@Serializable private class FotoEnviada(val id: String)
 
 /**
  * O servidor da Paragem Certa. Falhas: o código HTTP (401 código errado ou sessão recusada, 410 código expirado,
@@ -166,7 +157,7 @@ class ServidorParagemCerta(
             JSON.decodeFromString<Sincronizacao>(it)
         }
 
-    /** Leitura pública (sem sessão): os relatos, fotos e correções das paragens pedidas (até 100). */
+    /** Leitura pública (sem sessão): os relatos e as correções das paragens pedidas (até 100). */
     suspend fun comunidade(paragens: List<String>): Resultado<DadosComunidade> =
         enviar("GET", "/api/comunidade?paragens=${juntar(paragens)}", null) { JSON.decodeFromString<DadosComunidade>(it) }
 
@@ -204,16 +195,6 @@ class ServidorParagemCerta(
             put("voto", if (aindaEsta) "ainda_esta" else "ja_nao_esta")
         }, token) { JSON.decodeFromString<Voto>(it) }
 
-    /** O JPEG vai em bruto (já sem metadados). Devolve o id da foto, que fica "em revisão" até o autor a ver. */
-    suspend fun enviarFoto(token: String, paragem: String, jpeg: ByteArray): Resultado<String> {
-        val caminho = "/api/fotos?paragem=${URLEncoder.encode(paragem, "UTF-8")}"
-        return comPausa(caminho) {
-            converterResposta({ http.enviarBytes("POST", "$base$caminho", jpeg, "image/jpeg", cabecalhos(token)) }, lerErro = true) {
-                JSON.decodeFromString<FotoEnviada>(it).id
-            }
-        }
-    }
-
     suspend fun corrigir(token: String, paragem: String, correcao: Correcao): Resultado<Unit> =
         enviar("POST", "/api/correcoes", buildJsonObject {
             put("paragem", paragem)
@@ -224,7 +205,7 @@ class ServidorParagemCerta(
             }
         }, token) { }
 
-    /** `conteudo` é "relato:<id>" ou "foto:<id>". A caixa "acredito de boa-fé" é do ecrã: só se chama com ela marcada. */
+    /** `conteudo` é "relato:<id>". A caixa "acredito de boa-fé" é do ecrã: só se chama com ela marcada. */
     suspend fun denunciar(token: String, conteudo: String, motivo: MotivoDenuncia, nome: String, explicacao: String): Resultado<Unit> =
         enviar("POST", "/api/denuncias", buildJsonObject {
             put("conteudo", conteudo)

@@ -14,7 +14,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.core.fontes.servidor.CorrecaoRemota
-import pt.pixellusitano.paragemcerta.core.fontes.servidor.FotoRemota
 import pt.pixellusitano.paragemcerta.core.fontes.servidor.RelatoRemoto
 import pt.pixellusitano.paragemcerta.core.modelo.Paragem
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
@@ -24,25 +23,17 @@ import pt.pixellusitano.paragemcerta.dados.Preferencias
 
 /**
  * Os relatos de uma paragem (sem os que a pessoa ocultou) e o que ela pode fazer com cada um; ver [rememberRelatosDaParagem].
- * A foto vem na mesma leitura (um só pedido por ecrã): [fotos] são as aprovadas, sem as ocultadas; [fotoEmRevisao] diz que há
- * uma à espera do autor; [correcoes] são as aprovadas (ver [aplicarCorrecoes]); [carregado] que a leitura já chegou (sem ela não
- * se sabe se já há foto); [recarregar] volta a ler.
+ * Na mesma leitura (um só pedido por ecrã) vêm as [correcoes] aprovadas (ver [aplicarCorrecoes]).
  */
 class RelatosDaParagem internal constructor(
     val lista: List<RelatoRemoto>,
     val aoVotar: (RelatoRemoto, aindaEsta: Boolean) -> Unit,
     val aoDenunciar: (RelatoRemoto) -> Unit,
     val aoOcultar: (RelatoRemoto) -> Unit,
-    val fotos: List<FotoRemota>,
-    val fotoEmRevisao: Boolean,
     val correcoes: List<CorrecaoRemota>,
-    val carregado: Boolean,
-    val aoDenunciarFoto: (FotoRemota) -> Unit,
-    val aoOcultarFoto: (FotoRemota) -> Unit,
-    val recarregar: () -> Unit,
 )
 
-/** O que se está a denunciar: o id do servidor ("relato:<id>" ou "foto:<id>"), o título do diálogo e a frase para quando já não existe. */
+/** O que se está a denunciar: o id do servidor ("relato:<id>"), o título do diálogo e a frase para quando já não existe. */
 private class Denuncia(val conteudo: String, @StringRes val titulo: Int, @StringRes val jaNaoExiste: Int, val email: String)
 
 /**
@@ -68,10 +59,7 @@ fun rememberRelatosDaParagem(
     val publicarDenuncia = rememberPublicar(comunidade, aoAbrirConta, R.string.denunciar_entrar_texto)
     val verificarPerto = rememberVerificarPerto(paragem)
     var relatos by remember(chave) { mutableStateOf(emptyList<RelatoRemoto>()) }
-    var fotos by remember(chave) { mutableStateOf(emptyList<FotoRemota>()) }
-    var fotoEmRevisao by remember(chave) { mutableStateOf(false) }
     var correcoes by remember(chave) { mutableStateOf(emptyList<CorrecaoRemota>()) }
-    var carregado by remember(chave) { mutableStateOf(false) }
     var recarregar by remember { mutableIntStateOf(0) }
     // O que se está a denunciar e o email da conta (lido ao abrir, para o texto não mudar a meio).
     var denunciado by remember { mutableStateOf<Denuncia?>(null) }
@@ -79,10 +67,7 @@ fun rememberRelatosDaParagem(
 
     fun esconderTudo() {
         relatos = emptyList()
-        fotos = emptyList()
-        fotoEmRevisao = false
         correcoes = emptyList()
-        carregado = false
     }
 
     // A config é uma chave: um "desligado" esconde a secção até ela mudar. Uma falha sem resposta deixa o que lá estava.
@@ -90,16 +75,13 @@ fun rememberRelatosDaParagem(
         when (val r = comunidade.daParagem(chave)) {
             is Resultado.Ok -> {
                 relatos = r.valor.relatos
-                fotos = r.valor.fotos
-                fotoEmRevisao = chave in r.valor.emRevisao
                 correcoes = r.valor.correcoes
-                carregado = true
             }
             is Resultado.Falha -> if (r.erro == "desligado") esconderTudo()
         }
     }
 
-    // Um voto ou uma denúncia que falha: desligado esconde a secção; um relato (ou foto) que já acabou sai da lista; o resto só se diz.
+    // Um voto ou uma denúncia que falha: desligado esconde a secção; um relato que já acabou sai da lista; o resto só se diz.
     fun falhou(f: Resultado.Falha, @StringRes jaNaoExiste: Int = R.string.relato_ja_acabou) {
         if (f.erro == "desligado") {
             esconderTudo()
@@ -165,12 +147,6 @@ fun rememberRelatosDaParagem(
         },
         aoDenunciar = { r -> denunciar("relato:${r.id}", R.string.denunciar_titulo, R.string.relato_ja_acabou) },
         aoOcultar = { r -> escopo.launch { preferencias.ocultar("relato:${r.id}") } },
-        fotos = fotos.filter { "foto:${it.id}" !in ocultos },
-        fotoEmRevisao = fotoEmRevisao,
         correcoes = correcoes,
-        carregado = carregado,
-        aoDenunciarFoto = { f -> denunciar("foto:${f.id}", R.string.denunciar_foto_titulo, R.string.denunciar_foto_ja_nao_existe) },
-        aoOcultarFoto = { f -> escopo.launch { preferencias.ocultar("foto:${f.id}") } },
-        recarregar = { recarregar++ },
     )
 }

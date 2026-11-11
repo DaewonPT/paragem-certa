@@ -41,6 +41,3 @@ fun anoDaFoto(f: FotoDeRua): String = f.data.take(4)
 
 /** A página da foto no Panoramax, onde estão o autor e a licença (a CC BY-SA 4.0 pede a ligação à fonte). */
 fun paginaDaFoto(f: FotoDeRua): String = "https://api.panoramax.xyz/#focus=pic&pic=${f.id}"
-
-/** A de rua só ganha se for mais recente que a da comunidade; num empate, ou sem data da comunidade, fica a da comunidade. */
-fun ruaGanha(rua: FotoDeRua, dataComunidade: String?): Boolean = dataComunidade != null && rua.data > dataComunidade

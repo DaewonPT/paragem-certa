@@ -108,7 +108,7 @@ class Conta(
     /**
      * Corre [pedido] com o token da sessão; sem sessão devolve `Falha(401, false, "sem_sessao")` sem pedir nada. Um 401 do
      * servidor = sessão recusada → sai da conta, como na sincronização. O token lê-se sob a vez, mas o pedido corre fora dela:
-     * uma foto a subir devagar não pode prender a sincronização nem a saída.
+     * um pedido lento não pode prender a sincronização nem a saída.
      */
     suspend fun <T> comSessao(pedido: suspend (token: String) -> Resultado<T>): Resultado<T> {
         val token = vez.withLock { sessao?.token } ?: return Resultado.Falha(401, limite = false, erro = "sem_sessao")

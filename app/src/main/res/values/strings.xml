@@ -496,34 +496,8 @@
     <string name="denunciar_recibo">Enviamos o recibo e a decisão para %1$s.</string>
     <string name="denunciar_enviar">Enviar denúncia</string>
     <string name="denunciar_enviada">Denúncia enviada.</string>
-    <string name="denunciar_foto_titulo">Denunciar esta foto</string>
-    <string name="denunciar_foto_ja_nao_existe">Esta foto já não existe.</string>
 
-    <!-- Comunidade: fotos das paragens -->
-    <string name="foto_enviar">Enviar foto</string>
-    <string name="foto_folha_titulo">Foto da paragem</string>
-    <string name="foto_regras">Fotografa a paragem, sem pessoas nem matrículas.</string>
-    <string name="foto_licenca">Ao enviar, aceitas a licença CC BY-SA 4.0 e que a foto seja creditada como “Passageiro da Paragem Certa”.</string>
-    <string name="foto_escolher">Escolher foto</string>
-    <string name="foto_tirar">Tirar foto</string>
-    <string name="foto_botao_enviar">Enviar</string>
-    <string name="foto_tentar_outra_vez">Tentar outra vez</string>
-    <string name="foto_a_preparar">A preparar a foto…</string>
-    <string name="foto_a_enviar">A enviar a foto…</string>
-    <string name="foto_pronta">Foto pronta para enviar.</string>
-    <string name="foto_enviada" tools:ignore="Typos">Foto enviada. Fica em revisão até o autor a aprovar.</string>
-    <string name="foto_ja_tem">Já há uma foto desta paragem em revisão.</string>
-    <string name="foto_estragada">Não foi possível usar esta foto. Escolhe outra.</string>
-    <string name="foto_grande">A foto é demasiado grande. Escolhe outra.</string>
-    <string name="foto_com_metadados">Esta foto traz dados escondidos que não conseguimos tirar. Escolhe outra.</string>
-    <string name="foto_limite">Hoje já não dá para enviar mais fotos. Tenta outra vez amanhã.</string>
-    <string name="foto_desligada">As fotos estão desligadas por agora.</string>
-    <string name="foto_sem_camera">Não há nenhuma app de câmara.</string>
-    <string name="foto_sem_galeria">Não há nenhuma app para escolher fotos.</string>
-    <string name="foto_entrar_texto">Entra com Google ou email para enviar fotos</string>
-    <string name="foto_em_revisao">Foto em revisão</string>
-    <string name="foto_credito">Foto de um passageiro · CC BY-SA 4.0</string>
-    <string name="foto_da_paragem">Foto da paragem, enviada por um passageiro</string>
+    <!-- Fotos de rua (Panoramax) -->
     <string name="foto_nao_carregou">Não foi possível carregar a foto.</string>
     <string name="foto_mais_opcoes">Mais opções da foto</string>
     <string name="foto_ocultar">Ocultar esta foto</string>

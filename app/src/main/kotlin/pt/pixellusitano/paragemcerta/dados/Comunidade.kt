@@ -24,9 +24,9 @@ import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
 
 /**
- * Os relatos, fotos e correções da comunidade e as ações da pessoa (relatar, votar, fotografar, corrigir, denunciar).
- * Só lê com o interruptor `comunidade` ligado na config; `fotos` e `correcoes` desligados limpam essas partes.
- * Os ocultos ("relato:<id>", "foto:<id>") só tiram coisas das listas, aqui: nunca vão para o servidor.
+ * Os relatos e as correções da comunidade e as ações da pessoa (relatar, votar, corrigir, denunciar).
+ * Só lê com o interruptor `comunidade` ligado na config; `correcoes` desligado limpa essa parte.
+ * Os ocultos ("relato:<id>") só tiram relatos das listas, aqui: nunca vão para o servidor.
  */
 class Comunidade(
     private val servidor: ServidorParagemCerta,
@@ -80,8 +80,6 @@ class Comunidade(
         val todos = unicas.mapNotNull { paragens[it]?.dados }
         return DadosComunidade(
             relatos = todos.flatMap { it.relatos },
-            fotos = todos.flatMap { it.fotos },
-            emRevisao = todos.flatMap { it.emRevisao },
             correcoes = todos.flatMap { it.correcoes },
         ).visivel()
     }
@@ -118,16 +116,13 @@ class Comunidade(
     suspend fun votar(relato: String, aindaEsta: Boolean): Resultado<Voto> =
         conta.comSessao { servidor.votar(it, relato, aindaEsta) }
 
-    suspend fun enviarFoto(paragem: String, jpeg: ByteArray): Resultado<String> =
-        conta.comSessao { servidor.enviarFoto(it, paragem, jpeg) }
-
     suspend fun corrigir(paragem: String, correcao: Correcao): Resultado<Unit> =
         conta.comSessao { servidor.corrigir(it, paragem, correcao) }
 
     suspend fun denunciar(conteudo: String, motivo: MotivoDenuncia, nome: String, explicacao: String): Resultado<Unit> =
         conta.comSessao { servidor.denunciar(it, conteudo, motivo, nome, explicacao) }
 
-    /** Aceita os termos em vigor (os da config), que o servidor pede antes de relatar, votar ou enviar fotos. */
+    /** Aceita os termos em vigor (os da config), que o servidor pede antes de relatar ou votar. */
     suspend fun aceitarTermos(): Resultado<Unit> {
         val versao = configuracoes.atual.value.versaoTermos
         return conta.comSessao { servidor.aceitarTermos(it, versao) }
@@ -138,8 +133,6 @@ class Comunidade(
     // O que o servidor devolveu, só da paragem [chave].
     private fun DadosComunidade.so(chave: String) = DadosComunidade(
         relatos = relatos.filter { it.paragem == chave },
-        fotos = fotos.filter { it.paragem == chave },
-        emRevisao = emRevisao.filter { it == chave },
         correcoes = correcoes.filter { it.paragem == chave },
     )
 
@@ -149,8 +142,6 @@ class Comunidade(
         val ocultos = preferencias.ocultos.first()
         return DadosComunidade(
             relatos = relatos.filter { "relato:${it.id}" !in ocultos },
-            fotos = if (interruptores.fotos) fotos.filter { "foto:${it.id}" !in ocultos } else emptyList(),
-            emRevisao = if (interruptores.fotos) emRevisao else emptyList(),
             correcoes = if (interruptores.correcoes) correcoes else emptyList(),
         )
     }

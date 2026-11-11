@@ -29,7 +29,7 @@ import pt.pixellusitano.paragemcerta.dados.Comunidade
 import pt.pixellusitano.paragemcerta.ui.sobre.URL_TERMOS
 
 /**
- * Corre as escritas da comunidade (relatar, votar, fotografar, corrigir, denunciar) e trata das duas respostas que pedem
+ * Corre as escritas da comunidade (relatar, votar, corrigir, denunciar) e trata das duas respostas que pedem
  * alguma coisa à pessoa: sem sessão mostra o [DialogoEntrar]; termos por aceitar mostra o [DialogoTermos] e, aceites, repete
  * a ação uma só vez. Nesses casos [correr] não chama `aoAcabar` (o diálogo é a resposta); nos outros chama-o uma vez.
  * Sem rede nada fica guardado para reenviar: a proximidade era a daquele momento.

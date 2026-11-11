@@ -20,6 +20,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -68,7 +69,7 @@ import pt.pixellusitano.paragemcerta.ui.comum.LinhaChegada
 import pt.pixellusitano.paragemcerta.ui.comum.bordaDoFiltro
 import pt.pixellusitano.paragemcerta.ui.comunidade.CartaoRelato
 import pt.pixellusitano.paragemcerta.ui.comunidade.CorrigirNaParagem
-import pt.pixellusitano.paragemcerta.ui.comunidade.FotosDaParagem
+import pt.pixellusitano.paragemcerta.ui.comunidade.FotoDeRuaNaParagem
 import pt.pixellusitano.paragemcerta.ui.comunidade.RelatarNaParagem
 import pt.pixellusitano.paragemcerta.ui.comunidade.aplicarCorrecoes
 import pt.pixellusitano.paragemcerta.ui.comunidade.fotoDeRuaVisivel
@@ -163,10 +164,7 @@ fun ParagemEcra(
         aoDenunciar = relatos.aoDenunciar,
         aoOcultar = relatos.aoOcultar,
         fotos = {
-            FotosDaParagem(
-                ref.chave, relatos, comunidade, configuracoes, carregarFoto, aoAbrirConta, rua = rua, aoAbrirPagina = aoAbrirPagina,
-                aoOcultarRua = { rua?.let { escopo.launch { preferencias.ocultar("foto:${it.id}") } } },
-            )
+            rua?.let { f -> key(f.id) { FotoDeRuaNaParagem(f, carregarFoto, aoAbrirPagina, aoOcultar = { escopo.launch { preferencias.ocultar("foto:${f.id}") } }) } }
         },
         jaNaoExiste = corrigida?.second == true,
         corrigir = { CorrigirNaParagem(vista, comunidade, configuracoes, aoAbrirConta) },

@@ -6,7 +6,6 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.buildJsonArray
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -218,23 +217,6 @@ class ServidorTest {
         assertEquals(buildJsonObject { put("relato", "r-1"); put("voto", "ainda_esta") }, json(http.enviados.last().corpo))
     }
 
-    @Test fun enviarFotoMandaOJpegEmBruto() = runTest {
-        val http = HttpFalso({ Resposta(201, """{"id":"f-1","estado":"pendente"}""") })
-        val jpeg = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0xD9.toByte())
-        assertEquals(Resultado.Ok("f-1"), servidor(http).enviarFoto("t", "TRANSITOUS:x_(1)", jpeg))
-        val p = http.enviadosEmBytes.single()
-        assertEquals("POST", p.metodo)
-        assertEquals("$base/api/fotos?paragem=TRANSITOUS%3Ax_%281%29", p.url)
-        assertEquals("image/jpeg", p.tipo)
-        assertArrayEquals(jpeg, p.corpo)
-        assertEquals(mapOf("Authorization" to "Bearer t"), p.cabecalhos)
-    }
-
-    @Test fun fotoQueJaTemFotoVemNaFalha() = runTest {
-        val http = HttpFalso({ Resposta(409, """{"erro":"ja_tem_foto"}""") })
-        assertEquals(Resultado.Falha(409, limite = false, erro = "ja_tem_foto"), servidor(http).enviarFoto("t", "CM:060419", byteArrayOf(1)))
-    }
-
     @Test fun corrigirMandaSoOQueOTipoUsa() = runTest {
         val http = HttpFalso({ Resposta(201, """{"id":"c-1"}""") })
         val s = servidor(http)
@@ -279,20 +261,7 @@ class ServidorTest {
         assertEquals(RelatoRemoto("6f1c2a9e-3b7d-4c58-9a10-5d2e8b7f4a11", "desvio", "CM:060419", "736", 1793700000000, 1793710800000, 2, confirmado = true), d.relatos[0])
         assertEquals(listOf(true, false), d.relatos.map { it.confirmado })
         assertEquals("", d.relatos[1].linha)
-        assertEquals(
-            FotoRemota("CM:060419", "c7e5a1b2-4d96-4f03-8a2b-9c0d1e2f3a45", "https://fotos.pixellusitano.com/3a7bd3e2360a3d29eea436fcfb7e44c735d117c42d1c1835420b6b9942dd4f1b.jpg", "2026-11-02"),
-            d.fotos.single(),
-        )
-        assertEquals(listOf("CM:070001"), d.emRevisao)
         assertEquals(CorrecaoRemota("CM:060419", "posicao", 38.6975, -9.2062), d.correcoes.single())
-    }
-
-    @Test fun fotoRemotaSemDataLeNa() = runTest {
-        // Um servidor que ainda não manda a data: a foto lê-se na mesma, só não se sabe de quando é.
-        val corpo = """{"fotos":[{"paragem":"CM:1","id":"f1","url":"https://fotos.pixellusitano.com/a.jpg"}]}"""
-        val d = (servidor(HttpFalso({ Resposta(200, corpo) })).comunidade(listOf("CM:1")) as Resultado.Ok).valor
-        assertEquals(FotoRemota("CM:1", "f1", "https://fotos.pixellusitano.com/a.jpg"), d.fotos.single())
-        assertNull(d.fotos.single().data)
     }
 
     @Test fun comunidadeVaziaOuComCamposNovosNaoParte() = runTest {
@@ -407,7 +376,6 @@ class ServidorTest {
         assertEquals(parado, s.avisos(listOf("736")))
         assertEquals(parado, s.relatar("t", TipoRelato.DESVIO, "CM:060419", "736"))
         assertEquals(parado, s.sincronizar("t", 0, emptyList()))
-        assertEquals(parado, s.enviarFoto("t", "CM:060419", byteArrayOf(1)))
         assertEquals(1, http.pedidos.size)
         // À meia-noite pede outra vez.
         agora = Instant.parse("2026-11-04T00:00:00Z")

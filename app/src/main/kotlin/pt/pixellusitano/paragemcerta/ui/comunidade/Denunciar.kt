@@ -55,7 +55,7 @@ private fun nomeDoMotivo(m: MotivoDenuncia) = when (m) {
 }
 
 /**
- * Denunciar um relato (ou, com outro [titulo], uma foto). Não pede nenhum endereço: o recibo e a decisão vão para o email da conta,
+ * Denunciar um relato. Não pede nenhum endereço: o recibo e a decisão vão para o email da conta,
  * que é o [email] que se mostra, e o pedido nem o leva (o servidor usa o da sessão). Só se envia com um nome e a declaração de boa-fé marcada.
  */
 @OptIn(ExperimentalMaterial3Api::class)

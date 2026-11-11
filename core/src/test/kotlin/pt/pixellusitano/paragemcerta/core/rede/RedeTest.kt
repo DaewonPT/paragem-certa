@@ -114,18 +114,6 @@ class RedeTest {
     // Um JPEG de mentira: bytes que não são UTF-8 válido, para provar que o corpo não passa por texto.
     private val jpeg = byteArrayOf(0xFF.toByte(), 0xD8.toByte(), 0xFF.toByte(), 0x00, 0x7F, 0x80.toByte(), 0xFF.toByte(), 0xD9.toByte())
 
-    @Test fun enviarBytesMandaOCorpoEmBruto() = comServidorLocal { url, recebido ->
-        val http = OkHttpHttp(userAgent("0.4.0"))
-        val r = runBlocking { http.enviarBytes("POST", url, jpeg, "image/jpeg", mapOf("Authorization" to "Bearer tok-123")) }
-        assertEquals(Resposta(200, "ok"), r)
-        val p = recebido()
-        assertEquals("POST", p.metodo)
-        assertEquals("image/jpeg", p.cabecalhos["content-type"])
-        assertArrayEquals(jpeg, p.bytes)
-        assertEquals("Bearer tok-123", p.cabecalhos["authorization"])
-        assertEquals(userAgent("0.4.0"), p.cabecalhos["user-agent"])
-    }
-
     @Test fun obterBytesDaNuloForaDos2xx() {
         val http = OkHttpHttp(userAgent("0.4.0"))
         comServidorLocal(resposta = jpeg) { url, _ -> assertArrayEquals(jpeg, runBlocking { http.obterBytes(url) }) }
@@ -144,7 +132,6 @@ class RedeTest {
         val soGet = object : Http {
             override suspend fun get(url: String) = Resposta(200, "")
         }
-        assertTrue(runCatching { runBlocking { soGet.enviarBytes("POST", "u", jpeg, "image/jpeg") } }.exceptionOrNull() is UnsupportedOperationException)
         assertTrue(runCatching { runBlocking { soGet.obterBytes("u") } }.exceptionOrNull() is UnsupportedOperationException)
     }
 

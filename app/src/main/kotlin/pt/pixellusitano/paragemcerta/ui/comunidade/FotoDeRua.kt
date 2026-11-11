@@ -11,7 +11,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ImageBitmap
@@ -21,32 +20,14 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import pt.pixellusitano.paragemcerta.R
-import pt.pixellusitano.paragemcerta.core.fontes.servidor.FotoRemota
 import pt.pixellusitano.paragemcerta.core.fotos.FotoDeRua
 import pt.pixellusitano.paragemcerta.core.fotos.anoDaFoto
 import pt.pixellusitano.paragemcerta.core.fotos.paginaDaFoto
-import pt.pixellusitano.paragemcerta.core.fotos.ruaGanha
-import pt.pixellusitano.paragemcerta.core.rede.Resultado
-import pt.pixellusitano.paragemcerta.dados.Comunidade
-import pt.pixellusitano.paragemcerta.dados.Configuracoes
 import pt.pixellusitano.paragemcerta.dados.EstadoFicheiro
 import pt.pixellusitano.paragemcerta.dados.FicheiroDoServidor
 import pt.pixellusitano.paragemcerta.dados.Preferencias
 
-/** A foto que se mostra numa paragem: só uma, a da comunidade ou a de rua. */
-internal sealed interface FotoEscolhida {
-    data class DaRua(val foto: FotoDeRua) : FotoEscolhida
-    data class DaComunidade(val foto: FotoRemota) : FotoEscolhida
-}
-
-/** A mais recente das duas; em empate, ou sem data da comunidade, a da comunidade ([ruaGanha]). null sem nenhuma. */
-internal fun escolherFoto(rua: FotoDeRua?, comunidade: FotoRemota?): FotoEscolhida? = when {
-    rua != null && (comunidade == null || ruaGanha(rua, comunidade.data)) -> FotoEscolhida.DaRua(rua)
-    comunidade != null -> FotoEscolhida.DaComunidade(comunidade)
-    else -> null
-}
-
-// "foto:<id>" nas Preferencias, como as da comunidade; até elas responderem (null) conta como ocultada: uma foto que a pessoa
+// "foto:<id>" nas Preferencias; até elas responderem (null) conta como ocultada: uma foto que a pessoa
 // ocultou não pode piscar nem pedir a miniatura entretanto.
 private fun ocultada(ocultos: Set<String>?, id: String) = ocultos == null || "foto:$id" in ocultos
 
@@ -103,32 +84,10 @@ internal fun FotoDeRuaConteudo(foto: FotoDeRua, imagem: ImageBitmap?, falhou: Bo
 }
 
 /**
- * A foto da paragem [chave] por baixo do alvo da bússola, sem menu: a de [rua] (a do ficheiro, para esta paragem) ou a da comunidade,
- * a mais recente (a mesma regra do ecrã da paragem). Lê a comunidade num só pedido, e só com as fotos ligadas: a de rua não
- * depende de nenhum interruptor. Sem [chave] (a viagem não sabe qual é a paragem) não mostra nem pede nada. As que a pessoa
- * ocultou no ecrã da paragem ficam ocultas.
+ * A foto de rua da paragem por baixo do alvo da bússola, sem menu: a de [rua] (a do ficheiro, para esta paragem), menos a que a
+ * pessoa ocultou no ecrã da paragem. Não pede nada ao servidor; sem [rua] (a viagem não sabe qual é a paragem) não mostra nada.
  */
 @Composable
-fun FotoNaBussola(
-    chave: String?,
-    rua: FotoDeRua?,
-    comunidade: Comunidade,
-    configuracoes: Configuracoes,
-    preferencias: Preferencias,
-    carregar: suspend (String) -> ByteArray?,
-    aoAbrirPagina: (String) -> Unit,
-) {
-    val config by configuracoes.atual.collectAsStateWithLifecycle()
-    val ocultos = ocultosDaPessoa(preferencias)
-    if (chave == null) return
-    val fotos by produceState(emptyList<FotoRemota>(), chave, config) {
-        value = if (!config.interruptores.fotos) emptyList() else (comunidade.daParagem(chave) as? Resultado.Ok)?.valor?.fotos.orEmpty()
-    }
-    val daRua = rua?.takeIf { !ocultada(ocultos, it.id) }
-    val daComunidade = fotos.firstOrNull { !ocultada(ocultos, it.id) }
-    when (val escolhida = escolherFoto(daRua, daComunidade)) {
-        is FotoEscolhida.DaRua -> FotoDeRuaNaParagem(escolhida.foto, carregar, aoAbrirPagina, aoOcultar = null)
-        is FotoEscolhida.DaComunidade -> FotoDaParagem(escolhida.foto, carregar, aoOcultar = null, aoDenunciar = null)
-        null -> Unit
-    }
+fun FotoNaBussola(rua: FotoDeRua?, preferencias: Preferencias, carregar: suspend (String) -> ByteArray?, aoAbrirPagina: (String) -> Unit) {
+    fotoDeRuaVisivel(rua, preferencias)?.let { FotoDeRuaNaParagem(it, carregar, aoAbrirPagina, aoOcultar = null) }
 }

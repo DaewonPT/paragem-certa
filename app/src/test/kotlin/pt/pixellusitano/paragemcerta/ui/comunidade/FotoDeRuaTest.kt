@@ -1,11 +1,9 @@
 package pt.pixellusitano.paragemcerta.ui.comunidade
 
+import android.content.pm.PackageManager
 import android.graphics.Bitmap
 import android.graphics.Color
 import androidx.compose.foundation.layout.width
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.test.assertCountEquals
 import androidx.compose.ui.test.assertHasClickAction
@@ -22,6 +20,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -60,9 +61,7 @@ import java.util.concurrent.CopyOnWriteArrayList
 
 /** O servidor da Paragem Certa só com o que as fotos precisam: a config e a leitura da paragem. O resto da rede dá 404. */
 private class ServidorDeFotosDeRua : Http {
-    var config = fixture("servidor-config.json").replace("\"comunidade\": false", "\"comunidade\": true").replace("\"fotos\": false", "\"fotos\": true")
-    var fotos: List<String> = emptyList()
-    var emRevisao: List<String> = emptyList()
+    var config = fixture("servidor-config.json").replace("\"comunidade\": false", "\"comunidade\": true")
     var semRede = false
     val pedidos = CopyOnWriteArrayList<String>()
 
@@ -72,7 +71,7 @@ private class ServidorDeFotosDeRua : Http {
         pedidos += url
         if (semRede) throw IOException("sem rede")
         return if ("/api/comunidade" in url) {
-            Resposta(200, """{"fotos":[${fotos.joinToString(",")}],"emRevisao":[${emRevisao.joinToString(",") { "\"$it\"" }}]}""")
+            Resposta(200, "{}")
         } else {
             Resposta(404, "")
         }
@@ -99,9 +98,7 @@ class FotoDeRuaTest {
     private val ref = RefParagem(Fonte.CM, "060419")
 
     private val rua = FotoDeRua("pan-1", "https://panoramax.exemplo/pan-1/thumb.jpg", "Robot8A", "CC BY-SA 4.0", "2022-03-13")
-    private val fotoF1 = """{"paragem":"CM:060419","id":"f1","url":"https://fotos.exemplo.pt/f1.jpg","data":"2023-05-01"}"""
     private val creditoRua = "Foto: Robot8A · CC BY-SA 4.0 · Panoramax · 2022"
-    private val creditoComunidade = "Foto de um passageiro · CC BY-SA 4.0"
     private val paginaDaRua = "https://api.panoramax.xyz/#focus=pic&pic=pan-1"
 
     private val carregadas = CopyOnWriteArrayList<String>()
@@ -119,10 +116,11 @@ class FotoDeRuaTest {
 
     private fun ligar() = runBlocking { configuracoes.aoAbrir() }
 
-    private fun jpeg(): ByteArray {
-        val bitmap = Bitmap.createBitmap(960, 720, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.rgb(40, 120, 200)) }
+    private fun jpeg(largura: Int = 960, altura: Int = 720): ByteArray {
+        val bitmap = Bitmap.createBitmap(largura, altura, Bitmap.Config.ARGB_8888).apply { eraseColor(Color.rgb(40, 120, 200)) }
         val saida = ByteArrayOutputStream()
         assertTrue(bitmap.compress(Bitmap.CompressFormat.JPEG, 90, saida))
+        bitmap.recycle()
         return saida.toByteArray()
     }
 
@@ -131,12 +129,6 @@ class FotoDeRuaTest {
     private fun esperarQueSaia(t: String) = regra.waitUntil(5_000) { regra.onAllNodesWithText(t, substring = true).fetchSemanticsNodes().isEmpty() }
 
     private fun semTexto(t: String) = regra.onAllNodesWithText(t, substring = true).assertCountEquals(0)
-
-    /** Espera que a leitura da comunidade tenha chegado: só depois dela é que o ecrã decide se há "Enviar foto". */
-    private fun esperarPelaLeitura() {
-        regra.waitUntil(5_000) { regra.waitForIdle(); http.leituras() >= 1 }
-        regra.waitForIdle()
-    }
 
     /** O ecrã da paragem verdadeiro, ligado à config, à comunidade e às preferências; [rua] é o que o ficheiro das fotos de rua tem para a paragem. */
     private fun abrir(rua: () -> FotoDeRua? = { this.rua }) = regra.setContent {
@@ -148,69 +140,17 @@ class FotoDeRuaTest {
         }
     }
 
-    // ---- a regra de qual foto ----
+    // ---- a foto no ecrã da paragem ----
 
-    @Test fun fotoDeRuaEscondeOEnviarFoto() {
-        ligar()
-        var daRua by mutableStateOf<FotoDeRua?>(rua)
-        abrir { daRua }
-        esperarPor(creditoRua)
-        esperarPelaLeitura()
-        regra.onNodeWithText("Enviar foto").assertDoesNotExist()
-        // A prova de que a leitura já tinha chegado: sem a foto de rua, o botão aparece.
-        daRua = null
-        esperarPor("Enviar foto")
-    }
-
-    @Test fun ocultadaFazVoltarOEnviarFoto() {
+    @Test fun ocultarEscondeAFotoDeRua() {
         ligar()
         abrir()
         esperarPor(creditoRua)
-        esperarPelaLeitura()
         regra.onNodeWithContentDescription("Mais opções da foto").performClick()
         regra.onNodeWithText("Denunciar").assertDoesNotExist() // a foto de rua só se oculta: não existe no nosso servidor
         regra.onNodeWithText("Ocultar esta foto").performClick()
         esperarQueSaia(creditoRua)
-        esperarPor("Enviar foto")
         assertEquals(setOf("foto:pan-1"), runBlocking { preferencias.ocultos.first() })
-    }
-
-    @Test fun fotosDesligadasMostraSoARua() {
-        // O interruptor `fotos` é o das fotos da comunidade: as de rua (Panoramax, já publicadas) não dependem dele.
-        http.config = http.config.replace("\"fotos\": true", "\"fotos\": false")
-        http.fotos = listOf(fotoF1) // mais nova do que a de rua: ganhava se as fotos da comunidade estivessem ligadas
-        ligar()
-        var daRua by mutableStateOf<FotoDeRua?>(rua)
-        abrir { daRua }
-        esperarPor(creditoRua)
-        esperarPelaLeitura()
-        semTexto(creditoComunidade)
-        assertTrue("a da comunidade não devia ser pedida: $carregadas", "https://fotos.exemplo.pt/f1.jpg" !in carregadas)
-        // Sem nenhuma foto, também não oferece "Enviar foto".
-        daRua = null
-        regra.waitForIdle()
-        semTexto("Enviar foto")
-    }
-
-    @Test fun fotoDeRuaComComunidadeMaisNovaMostraADaComunidade() {
-        ligar()
-        http.fotos = listOf(fotoF1) // 2023, contra a de rua de 2022
-        abrir()
-        esperarPor(creditoComunidade)
-        esperarQueSaia(creditoRua)
-        regra.onNodeWithText("Enviar foto").assertDoesNotExist()
-        regra.waitUntil(5_000) { "https://fotos.exemplo.pt/f1.jpg" in carregadas }
-    }
-
-    @Test fun fotoDeRuaMaisNovaGanhaAComunidade() {
-        ligar()
-        http.fotos = listOf(fotoF1)
-        val maisNova = rua.copy(data = "2024-09-30")
-        abrir { maisNova }
-        esperarPor("Foto: Robot8A · CC BY-SA 4.0 · Panoramax · 2024")
-        esperarPelaLeitura()
-        semTexto(creditoComunidade)
-        assertTrue("a da comunidade não devia ser pedida: $carregadas", "https://fotos.exemplo.pt/f1.jpg" !in carregadas)
     }
 
     @Test fun comunidadeDesligadaAindaMostraARua() {
@@ -219,7 +159,6 @@ class FotoDeRuaTest {
         abrir()
         esperarPor(creditoRua)
         regra.waitForIdle()
-        regra.onNodeWithText("Enviar foto").assertDoesNotExist()
         assertEquals(0, http.leituras()) // com a comunidade desligada a leitura nem é pedida
     }
 
@@ -228,17 +167,6 @@ class FotoDeRuaTest {
         http.semRede = true
         abrir()
         esperarPor(creditoRua)
-        regra.waitForIdle()
-        regra.onNodeWithText("Enviar foto").assertDoesNotExist()
-    }
-
-    @Test fun fotoEmRevisaoContinuaAVerSeComARua() {
-        ligar()
-        http.emRevisao = listOf("CM:060419")
-        abrir()
-        esperarPor(creditoRua)
-        esperarPor("Foto em revisão")
-        regra.onNodeWithText("Enviar foto").assertDoesNotExist()
     }
 
     // ---- o crédito ----
@@ -269,39 +197,30 @@ class FotoDeRuaTest {
 
     // ---- a bússola ----
 
-    private fun bussola(chave: String?, rua: FotoDeRua? = this.rua) = regra.setContent {
+    private fun bussola(rua: FotoDeRua? = this.rua) = regra.setContent {
         TemaParagemCerta(ModoTema.CLARO) {
             BussolaConteudo(
                 "Cais do Sodré", EstadoBussola.Ativa(120.0, rumo = 73.0, angulo = 80.0, semSensor = false, calibrar = false),
                 aoPermitir = {}, aoVoltar = {}, modifier = Modifier.width(360.dp),
-                foto = { FotoNaBussola(chave, rua, comunidade, configuracoes, preferencias, carregarFoto, aoAbrirPagina = { abertas += it }) },
+                foto = { FotoNaBussola(rua, preferencias, carregarFoto, aoAbrirPagina = { abertas += it }) },
             )
         }
     }
 
     @Test fun bussolaMostraAFotoDaParagem() {
         ligar()
-        bussola(ref.chave)
+        bussola()
         esperarPor(creditoRua)
         regra.onNodeWithText("120 m", useUnmergedTree = true).assertIsDisplayed()
         regra.onNodeWithContentDescription("Mais opções da foto").assertDoesNotExist() // por baixo do alvo e sem menu
         regra.onNodeWithText(creditoRua).performClick()
         assertEquals(listOf(paginaDaRua), abertas)
-        assertEquals(1, http.leituras()) // um só pedido da comunidade
-    }
-
-    @Test fun bussolaMostraTambemAFotoDaComunidade() {
-        ligar()
-        http.fotos = listOf(fotoF1)
-        bussola(ref.chave, rua = null)
-        esperarPor(creditoComunidade)
-        regra.onNodeWithContentDescription("Mais opções da foto").assertDoesNotExist()
-        assertEquals(1, http.leituras())
+        assertEquals(0, http.leituras())
     }
 
     @Test fun bussolaSemChaveFuncionaSemFoto() {
         ligar()
-        bussola(null, rua = null)
+        bussola(rua = null)
         regra.onNodeWithText("120 m", useUnmergedTree = true).assertIsDisplayed()
         regra.waitForIdle()
         semTexto("Foto")
@@ -312,20 +231,42 @@ class FotoDeRuaTest {
     @Test fun bussolaNaoMostraAFotoOcultada() {
         ligar()
         runBlocking { preferencias.ocultar("foto:pan-1") }
-        bussola(ref.chave)
-        esperarPelaLeitura()
+        bussola()
+        regra.waitForIdle()
         semTexto(creditoRua)
         assertTrue(carregadas.isEmpty())
     }
 
-    @Test fun bussolaComFotosDesligadasMostraSoARuaSemPedir() {
-        http.config = http.config.replace("\"fotos\": true", "\"fotos\": false")
-        http.fotos = listOf(fotoF1)
-        ligar()
-        bussola(ref.chave)
-        esperarPor(creditoRua)
+    @Test fun bussolaNaoPedeNadaAoServidor() {
+        bussola(rua = rua)
         regra.waitForIdle()
-        semTexto(creditoComunidade)
-        assertEquals(0, http.leituras()) // sem as fotos da comunidade, a bússola não pede nada ao servidor
+        assertEquals(0, http.leituras())
+    }
+
+    // ---- privacidade ----
+
+    @Test fun naoPedePermissoesDeGaleriaNemCamara() {
+        val pedidas = contexto.packageManager.getPackageInfo(contexto.packageName, PackageManager.GET_PERMISSIONS).requestedPermissions.orEmpty().toList()
+        assertTrue("o manifesto devia ter sido lido: $pedidas", "android.permission.INTERNET" in pedidas)
+        listOf(
+            "android.permission.READ_MEDIA_IMAGES", "android.permission.READ_MEDIA_VIDEO", "android.permission.READ_MEDIA_VISUAL_USER_SELECTED",
+            "android.permission.READ_EXTERNAL_STORAGE", "android.permission.WRITE_EXTERNAL_STORAGE", "android.permission.CAMERA",
+        ).forEach { assertFalse(it, it in pedidas) }
+    }
+
+    // ---- a imagem lida do servidor ----
+
+    @Test fun fotoGrandeLeSeComTamanhoLimitado() {
+        val bitmap = decodificarFoto(jpeg(4000, 3000))
+        assertNotNull(bitmap)
+        val maior = maxOf(bitmap!!.width, bitmap.height)
+        assertTrue("lado maior $maior", maior in 640..1280)
+        assertEquals(1280 to 960, decodificarFoto(jpeg(1280, 960))!!.let { it.width to it.height }) // as que já cabem lêem-se inteiras
+    }
+
+    @Test fun bytesQueNaoSaoUmaImagemNaoDaoBitmap() {
+        assertNull(decodificarFoto(ByteArray(0)))
+        assertNull(decodificarFoto("isto não é uma imagem".toByteArray()))
+        assertNull(decodificarFoto(jpeg(800, 600).copyOf(40)))
     }
 }

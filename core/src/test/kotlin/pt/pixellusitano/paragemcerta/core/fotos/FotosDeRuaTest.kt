@@ -1,9 +1,7 @@
 package pt.pixellusitano.paragemcerta.core.fotos
 
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
 import org.junit.Assert.assertThrows
-import org.junit.Assert.assertTrue
 import org.junit.Test
 import pt.pixellusitano.paragemcerta.core.fixture
 
@@ -86,23 +84,6 @@ class FotosDeRuaTest {
 
     @Test fun anoDaFotoSaiDaData() {
         assertEquals("2022", anoDaFoto(foto("2022-03-13")))
-    }
-
-    @Test fun aMaisRecenteGanha() {
-        // A de rua é de 13/03/2022: ganha à da comunidade de 2021 e perde para a de 2023.
-        assertTrue(ruaGanha(foto("2022-03-13"), "2021-12-31"))
-        assertFalse(ruaGanha(foto("2022-03-13"), "2023-01-01"))
-        // Compara dia a dia, não só o ano.
-        assertTrue(ruaGanha(foto("2022-03-14"), "2022-03-13"))
-        assertFalse(ruaGanha(foto("2022-03-13"), "2022-03-14"))
-    }
-
-    @Test fun empateFicaADaComunidade() {
-        assertFalse(ruaGanha(foto("2022-03-13"), "2022-03-13"))
-    }
-
-    @Test fun semDataDaComunidadeFicaADaComunidade() {
-        assertFalse(ruaGanha(foto("2022-03-13"), null))
     }
 
     @Test fun paginaDaFotoLevaOId() {
