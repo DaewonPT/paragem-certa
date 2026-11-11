@@ -5,7 +5,6 @@ import kotlinx.coroutines.FlowPreview
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.serialization.Serializable
@@ -129,8 +128,8 @@ class Conta(
             val desde = s.sincronizadaEm?.let { relogio().epochSecond - it }
             if (repositorio.porSincronizar(s.soNoTelemovel).isNotEmpty() || desde == null || desde < 0 || desde >= INTERVALO_AO_ABRIR_S) sincronizar()
         }
-        // O primeiro valor é o que já lá estava ao abrir; só conta o que muda depois.
-        repositorio.porEnviar().drop(1).debounce(ESPERA_MS).collect {
+        // O primeiro valor também conta (uma alteração feita durante a sincronização de abrir); a guarda abaixo torna-o inofensivo.
+        repositorio.porEnviar().debounce(ESPERA_MS).collect {
             val s = sessao
             if (s != null && repositorio.porSincronizar(s.soNoTelemovel).isNotEmpty()) sincronizar()
         }

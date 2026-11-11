@@ -347,7 +347,6 @@ class ContaTest {
         runCurrent()
         // A resposta converte-se em Dispatchers.Default, fora do tempo virtual: espera que a sincronização de abrir largue a vez.
         c.comSessao { Resultado.Ok(it) }
-        runCurrent() // o coletor só começa depois da sincronização; o primeiro valor que lê (o que já lá estava) é descartado
         assertEquals(2, servidor.sincronizacoes.size) // a de entrar e a de abrir
         repo.alternarFavorita(cais)
         advanceTimeBy(1_500)
@@ -360,7 +359,6 @@ class ContaTest {
         backgroundScope.launch { c.aoAbrir() }
         runCurrent()
         c.comSessao { Resultado.Ok(it) } // espera que a sincronização de abrir largue a vez
-        runCurrent()
     }
 
     @Test fun naoSincronizaAoAbrirSeSincronizouHaMenosDe15Min() = runTest {
@@ -398,6 +396,21 @@ class ContaTest {
         abrir(c)
         advanceTimeBy(3_000)
         assertEquals(antes, servidor.sincronizacoes.size)
+        // Mexer nos favoritos que ficaram só no telemóvel também não sincroniza.
+        repo.removerFavorita(cais.ref)
+        advanceTimeBy(3_000)
+        assertEquals(antes, servidor.sincronizacoes.size)
+    }
+
+    @Test fun alteracaoDuranteASincronizacaoDeAbrirVai() = runTest {
+        val c = conta()
+        entrar(c)
+        agora = agora.plusSeconds(16 * 60)
+        servidor.duranteASincronizacao = { repo.alternarFavorita(cais); servidor.duranteASincronizacao = {} }
+        abrir(c)
+        assertEquals(2, servidor.sincronizacoes.size)
+        advanceTimeBy(2_500)
+        assertEquals(listOf("CM:060419"), servidor.sincronizacoes.last().second.map { it.chave })
     }
 
     @Test fun apagarContaMantemOsFavoritos() = runTest {
