@@ -119,6 +119,38 @@ class RepositorioTest {
         }
     }
 
+    // A contagem lê-se antes do awaitItem: parado nele, o runTest salta sozinho para o fim da espera.
+    @Test fun guardadasDeHaPoucoEsperamORestoDoIntervalo() = runTest {
+        val resposta = { Resposta(200, fixture("cm-arrivals-060419.json")) }
+        repo(HttpPorUrl("arrivals" to listOf(resposta))).atualizarGuardadas(terminal, manha.minusSeconds(5))
+        val http = HttpPorUrl("arrivals" to listOf(resposta))
+        repo(http).chegadas(terminal).test {
+            assertEquals(manha.minusSeconds(5), awaitItem().atualizadoEm)
+            advanceTimeBy(14_000)
+            assertEquals(0, http.pedidos.size)
+            advanceTimeBy(2_000)
+            assertEquals(1, http.pedidos.size)
+            assertEquals(manha, awaitItem().atualizadoEm)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun guardadasNoFuturoEsperamNoMaximoUmIntervalo() = runTest {
+        // Guardadas às 06:00 e lidas às 05:00: o relógio do telemóvel andou para trás.
+        val resposta = { Resposta(200, fixture("cm-arrivals-060419.json")) }
+        repo(HttpPorUrl("arrivals" to listOf(resposta))).atualizarGuardadas(terminal, manha.plusSeconds(3_600))
+        val http = HttpPorUrl("arrivals" to listOf(resposta))
+        repo(http).chegadas(terminal).test {
+            assertEquals(manha.plusSeconds(3_600), awaitItem().atualizadoEm)
+            advanceTimeBy(19_000)
+            assertEquals(0, http.pedidos.size)
+            advanceTimeBy(2_000)
+            assertEquals(1, http.pedidos.size)
+            awaitItem()
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
     @Test fun paragemSemChegadas() = runTest {
         val http = HttpPorUrl("arrivals" to listOf({ Resposta(200, "[]") }))
         repo(http).chegadas(terminal).test {

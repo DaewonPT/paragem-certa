@@ -547,6 +547,33 @@ class PainelTest {
         assertEquals(http.pedidos.toString(), 1, planos(http))
     }
 
+    @Test fun voltarAoInicioNaoPedeAsChegadasOutraVez() {
+        val http = HttpPorUrl(
+            "arrivals" to listOf({ Resposta(200, fixture("cm-arrivals-060419.json")) }),
+            "/stops" to listOf({ Resposta(200, fixture("cm-stops.json")) }),
+            "/lines" to listOf({ Resposta(200, fixture("cm-lines.json")) }),
+        )
+        val repo = repositorio(http)
+        runBlocking {
+            repo.atualizarRede()
+            repo.alternarFavorita(repo.paragem(terminal)!!)
+        }
+        http.pedidos.clear()
+        val linhas = catalogoLinhas()
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { if (mostrar) Painel(repo, null, {}, {}, catalogo = linhas) } }
+        // O relógio do ecrã é o verdadeiro e a fixture é de 26/10: chegado o estado, já passaram todas.
+        val semChegadas = { regra.onAllNodesWithText("Não há chegadas nas próximas 2 horas").fetchSemanticsNodes().isNotEmpty() }
+        // Espera pelo estado (e não pelo pedido), para as chegadas já estarem guardadas quando o Início sai.
+        regra.waitUntil(5_000, semChegadas)
+
+        mostrar = false
+        regra.waitForIdle()
+        mostrar = true
+        regra.waitUntil(5_000, semChegadas)
+        regra.waitForIdle()
+        assertEquals(http.pedidos.toString(), 1, http.pedidos.count { "arrivals" in it })
+    }
+
     /** Com o plan da Casa a meio, o GPS dá uma posição [dLat] graus a norte do Saldanha; depois o plan responde. */
     private fun moverAMeio(dLat: Double): HttpPorUrl {
         val http = httpComRotas()
