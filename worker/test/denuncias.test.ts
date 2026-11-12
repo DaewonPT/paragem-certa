@@ -216,8 +216,9 @@ describe("denúncias e recibo", () => {
     const rui2 = await criarConta("rui2", "rui2@exemplo.pt");
     // Uma aberta de outro motivo não cala o aviso.
     expect((await denunciar(ana, corpo(await relato("r0")), segredos)).status).toBe(204);
+    vi.setSystemTime(INICIO + 30_000);
     expect((await denunciar(ana, corpo(await relato("r1"), { motivo: "perigo" }), segredos)).status).toBe(204);
-    // Com a hora parada, as duas tinham o mesmo criada_em e avisavam as duas.
+    // Com a hora parada, a r1 e a r2 tinham o mesmo criada_em e avisavam as duas.
     vi.setSystemTime(INICIO + 60_000);
     expect((await denunciar(rui2, corpo(await relato("r2"), { motivo: "perigo" }), segredos)).status).toBe(204);
     expect(mensagensEnviadas.map((m) => m.para)).toEqual(["ana@exemplo.pt", "ana@exemplo.pt", "autor@exemplo.pt", "rui2@exemplo.pt"]);
