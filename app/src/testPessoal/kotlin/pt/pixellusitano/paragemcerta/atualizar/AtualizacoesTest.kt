@@ -7,7 +7,13 @@ import android.content.pm.PackageInstaller
 import android.net.ConnectivityManager
 import android.net.NetworkInfo
 import android.os.Process
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withTimeout
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -23,6 +29,7 @@ import pt.pixellusitano.paragemcerta.BuildConfig
 import java.io.File
 import java.time.Duration
 import java.time.Instant
+import java.util.concurrent.CountDownLatch
 
 @RunWith(RobolectricTestRunner::class)
 class AtualizacoesTest {
@@ -239,6 +246,33 @@ class AtualizacoesTest {
         Atualizacoes.guardarPendente(contexto, futura)
         assertEquals(Decisao.NADA, Atualizacoes.instalarAoSair(contexto, emViagem = false, comAviso = false))
         assertTrue(sessoes.isEmpty())
+    }
+
+    // O "Atualizar" do aviso descarrega para outro ficheiro: não apaga nem mistura a versão que espera pela saída.
+    @Test fun oAtualizarDoAvisoNaoApagaAVersaoQueEsperaPelaSaida() = comApkNoServidor { url, _ ->
+        comApkDescarregado()
+        runTest { Atualizacoes.instalar(contexto, NovaVersao("v98.0.0", url, "")) }
+        assertTrue(File(contexto.cacheDir, "atualizacao.apk").exists())
+        assertEquals(Decisao.INSTALAR, Atualizacoes.instalarAoSair(contexto, emViagem = false, comAviso = false))
+        assertEquals(2, sessoes.size)
+    }
+
+    // Dois toques seguidos em "Atualizar" (o aviso volta depois de rodar o ecrã): o segundo espera, e os dois instalam.
+    @Test fun doisToquesEmAtualizarDescarregamUmDeCadaVez() {
+        val soltar = CountDownLatch(1)
+        comApkNoServidor(segurar = soltar) { url, pedidos ->
+            val nova = NovaVersao("v98.0.0", url, "")
+            runBlocking {
+                val toques = List(2) { async(Dispatchers.IO) { Atualizacoes.instalar(contexto, nova) } }
+                withTimeout(5_000) { while (pedidos.get() == 0) delay(10) }
+                delay(500) // tempo de sobra para o segundo descarregamento começar, se não esperasse
+                assertEquals(1, pedidos.get())
+                soltar.countDown()
+                toques.awaitAll()
+            }
+            assertEquals(2, pedidos.get())
+            assertEquals(2, sessoes.size)
+        }
     }
 
     private fun guardadoComoPendente() = contexto.getSharedPreferences("atualizacoes", 0).all.keys.any { it.startsWith("pendente") }

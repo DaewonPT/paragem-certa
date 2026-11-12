@@ -21,6 +21,8 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
@@ -99,6 +101,12 @@ object Atualizacoes {
     /** Fora do ciclo da atividade: sair com "Voltar" destrói-a logo a seguir e a instalação não pode ficar a meio. */
     private val escopo = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
+    /**
+     * Um descarregamento de cada vez: rodar o ecrã recomeça a procura e volta a mostrar o aviso, e dois a escrever no mesmo
+     * `.parte` estragavam-se um ao outro. Fica em quem chama e não em [descarregar] porque o Mutex não é reentrante.
+     */
+    private val vezDeDescarregar = Mutex()
+
     private fun prefs(contexto: Context) = contexto.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
 
     fun atualizarSozinha(contexto: Context): Boolean = prefs(contexto).getBoolean(SOZINHA, true)
@@ -119,7 +127,7 @@ object Atualizacoes {
             val nova = VerificadorVersoes(OkHttpHttp(userAgent(BuildConfig.VERSION_NAME))).verificar(BuildConfig.VERSION_CODE) ?: return
             // A app está à frente, por isso o melhor que `decidir` diz é ESPERAR: descarrega já, instala à saída.
             if (decidir(nova, atualizarSozinha(contexto), emPrimeiroPlano = true, pendente(contexto)?.tag) == Decisao.NADA) return
-            descarregar(contexto, nova)
+            vezDeDescarregar.withLock { descarregar(nova, ficheiroApk(contexto)) }
             descarregada = nova
         } catch (e: CancellationException) {
             // Saíste a meio: a abertura seguinte procura outra vez em vez de esperar 6 horas por uma transferência que não acabou.
@@ -179,10 +187,12 @@ object Atualizacoes {
 
     private fun ficheiroApk(contexto: Context) = File(contexto.cacheDir, "atualizacao.apk")
 
-    /** Descarrega o APK para a cache. Escreve num ficheiro à parte e só o renomeia no fim, por isso um descarregamento cortado nunca é instalado. */
-    private suspend fun descarregar(contexto: Context, nova: NovaVersao): File = withContext(Dispatchers.IO) {
-        val ficheiro = ficheiroApk(contexto)
-        val parte = File(contexto.cacheDir, "atualizacao.apk.parte")
+    /** O "Atualizar" do aviso tem o seu ficheiro: nunca apaga nem mistura a versão que a atualização automática deixou para a saída. */
+    private fun ficheiroManual(contexto: Context) = File(contexto.cacheDir, "atualizacao-manual.apk")
+
+    /** Descarrega o APK para [ficheiro]. Escreve num ficheiro à parte e só o renomeia no fim, por isso um descarregamento cortado nunca é instalado. */
+    private suspend fun descarregar(nova: NovaVersao, ficheiro: File): File = withContext(Dispatchers.IO) {
+        val parte = File(ficheiro.path + ".parte")
         try {
             OkHttpClient().newCall(Request.Builder().url(nova.urlApk).header("User-Agent", userAgent(BuildConfig.VERSION_NAME)).build())
                 .execute().use { r ->
@@ -213,7 +223,8 @@ object Atualizacoes {
      * senão o instalador devolve STATUS_PENDING_USER_ACTION e o [ResultadoInstalacao] trata disso.
      */
     suspend fun instalar(contexto: Context, nova: NovaVersao, semPerguntar: Boolean = false) = withContext(Dispatchers.IO) {
-        abrirSessao(contexto, nova, descarregar(contexto, nova), semPerguntar)
+        // Só larga a vez depois de o instalador ter a sua cópia: um segundo toque não apaga o ficheiro a meio.
+        vezDeDescarregar.withLock { abrirSessao(contexto, nova, descarregar(nova, ficheiroManual(contexto)), semPerguntar) }
     }
 
     /** Entrega o APK já descarregado ao instalador e apaga-o: a sessão guarda a sua cópia, e assim uma saída seguinte não o instala outra vez. */
