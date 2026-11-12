@@ -9,7 +9,7 @@ plugins {
     alias(libs.plugins.room)
 }
 
-val versao = "0.5.2"
+val versao = "0.5.3"
 
 // Chave de lançamento: no CI vem dos segredos do GitHub; no PC vem de ../Chave Privada/keystore.properties (fora do repositório).
 val propsChave = rootProject.file("../Chave Privada/keystore.properties")
@@ -62,12 +62,9 @@ android {
         create("pessoal") {
             dimension = "distribuicao"
             applicationIdSuffix = ".pessoal"
-            buildConfigField("String", "URL_DOACOES", "\"https://pixel-lusitano.dotatie.com/?lang=en\"")
         }
         create("play") {
             dimension = "distribuicao"
-            // A Play só aceita pagamentos fora dela em casos apertados: aqui não há ligação para donativos.
-            buildConfigField("String", "URL_DOACOES", "\"\"")
         }
     }
 

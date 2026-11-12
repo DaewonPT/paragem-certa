@@ -2,6 +2,10 @@
 
 A versão mais recente aparece primeiro.
 
+## 0.5.3 — Sobre sem donativos
+
+- O ecrã Sobre deixa de ter a ligação para os donativos.
+
 ## 0.5.2 — Rotas mais à mão
 
 - "Mais cedo" e "Mais tarde" passam para o topo das rotas.
