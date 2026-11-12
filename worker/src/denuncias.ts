@@ -61,9 +61,19 @@ export async function denunciar(pedido: Request, env: Env): Promise<Response> {
 
   const recibo = textoRecibo(nomeLimpo, conteudo, motivo);
   await enviarOuGuardar(env, quem.email, recibo.assunto, recibo.texto);
-  // Ameaça à vida ou à segurança (DSA, art. 18): o autor sabe logo, sem esperar pelo resumo diário.
+  // Ameaça à vida ou à segurança (DSA, art. 18): o autor sabe logo, sem esperar pelo resumo diário, por um teto só destes avisos.
+  // Só avisa se não houver outra de perigo por decidir das últimas 24 horas: quem denuncia muitas não gasta esse teto, e uma
+  // esquecida por decidir não cala as seguintes para sempre. `criada_em < agora`, e não o id: de duas ao mesmo tempo, a mais antiga avisa sempre.
+  // Limite: com o teto dos avisos cheio (5 no dia) ou o Resend em baixo, o aviso fica em Emails por enviar e só o resumo das 03:00 o mostra.
   if (motivo === "perigo" && env.EMAIL_AUTOR) {
-    await enviarOuGuardar(env, env.EMAIL_AUTOR, "Paragem Certa: denúncia de perigo", `Denúncia de perigo sobre ${conteudo}. Abre a página de revisão.`);
+    const recente = await env.DB.prepare(
+      "SELECT 1 FROM denuncias WHERE decidida_em IS NULL AND motivo = 'perigo' AND criada_em > ?1 AND criada_em < ?2 LIMIT 1",
+    )
+      .bind(agora - DIA, agora)
+      .first();
+    if (!recente) {
+      await enviarOuGuardar(env, env.EMAIL_AUTOR, "Paragem Certa: denúncia de perigo", `Denúncia de perigo sobre ${conteudo}. Abre a página de revisão.`, agora, "autor");
+    }
   }
   return semConteudo();
 }

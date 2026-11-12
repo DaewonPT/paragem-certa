@@ -40,7 +40,7 @@ Antes de passar de 720 `/plan` por dia, fala com a equipa do Transitous no Matri
 
 ## 3. Resend (emails de avisos e decisões)
 
-1. Cria a conta em resend.com. O plano grátis dá 100 emails por dia e 3000 por mês. O servidor envia no máximo 30 por dia (`outrosPorDia` no `config.json`), como recibos, decisões e o resumo diário; os que não couberem ficam guardados para enviares mais tarde com "Enviar agora".
+1. Cria a conta em resend.com. O plano grátis dá 100 emails por dia e 3000 por mês. O servidor envia no máximo 35 por dia: 30 (`outrosPorDia` no `config.json`) para recibos, decisões e o resumo diário, e 5 para os avisos de denúncia de perigo ao autor; os que não couberem ficam guardados para enviares mais tarde com "Enviar agora".
 2. Em **Domains → Add Domain**, escreve `mail.pixellusitano.com` (um subdomínio, para não mexer nos registos do email Proton) e escolhe a região **Ireland (eu-west-1)**.
 3. Acrescenta na Cloudflare (zona `pixellusitano.com` → DNS → Records) os registos que a Resend mostra, tal e qual. São todos do subdomínio `mail`; não alteres os registos da raiz.
 4. Espera que o domínio passe a "Verified".
@@ -178,7 +178,7 @@ Daqui em diante, nunca publiques a partir de um ramo ou tag anteriores à 0.5.2,
 
 Para os avisos ao autor e para a marca dos emails, os dois Workers precisam de mais dois segredos:
 
-1. **`EMAIL_AUTOR`:** o teu email. Recebe o aviso das denúncias de perigo e o resumo diário, e é o único que o `pc-admin` deixa entrar. Tem de ser o mesmo endereço que puseres na política do Access (passo 14).
+1. **`EMAIL_AUTOR`:** o teu email. Recebe um aviso quando chega uma denúncia de perigo e não há outra por decidir das últimas 24 horas, e o resumo diário, e é o único que o `pc-admin` deixa entrar. Tem de ser o mesmo endereço que puseres na política do Access (passo 14).
 2. **`CHAVE_MARCA_EMAIL`:** uma chave secreta com que os dois Workers fazem a marca (HMAC-SHA-256) dos emails das denúncias, decisões e bloqueios. Gera-a uma vez, com `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`, e guarda-a na `Chave Privada`. Vai para o GitHub (passo 15) e para os dois Workers com o mesmo valor. **Nunca se muda:** com outra chave, os bloqueios guardados deixam de reconhecer os emails. Sem ela, o servidor recusa em vez de usar um hash simples.
 
 Um comando por segredo e por Worker (cada um pede o valor e tu colas com o botão direito, como no passo 5, ou usa o `secret bulk` do passo 5):

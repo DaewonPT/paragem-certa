@@ -197,8 +197,9 @@ describe("denúncias e recibo", () => {
     expect(mensagensEnviadas.map((m) => m.para)).toEqual(["ana@exemplo.pt", "autor@exemplo.pt"]);
     expect(mensagensEnviadas[1].assunto).toBe("Paragem Certa: denúncia de perigo");
     expect(mensagensEnviadas[1].texto).toContain("perigo");
-    // As duas contam para os 30 do dia.
-    expect(await env.DB.prepare("SELECT quantos FROM contadores WHERE dia = ? AND nome = 'emails'").bind(hoje()).first<number>("quantos")).toBe(2);
+    // O recibo conta para os 30 do dia; o aviso, para os 5 do autor.
+    expect(await env.DB.prepare("SELECT quantos FROM contadores WHERE dia = ? AND nome = 'emails'").bind(hoje()).first<number>("quantos")).toBe(1);
+    expect(await env.DB.prepare("SELECT quantos FROM contadores WHERE dia = ? AND nome = 'autor'").bind(hoje()).first<number>("quantos")).toBe(1);
 
     mensagensEnviadas.length = 0;
     expect((await denunciar(ana, corpo(await relato("r2"), { motivo: "falso" }), segredos)).status).toBe(204);
@@ -208,6 +209,31 @@ describe("denúncias e recibo", () => {
     mensagensEnviadas.length = 0;
     expect((await denunciar(ana, corpo(await relato("r3"), { motivo: "perigo" }))).status).toBe(204);
     expect(mensagensEnviadas.map((m) => m.para)).toEqual(["ana@exemplo.pt"]);
+  });
+
+  it("soAvisaSemOutraDePerigoPorDecidirDasUltimas24Horas", async () => {
+    const segredos = { ...LIGADO, EMAIL_AUTOR: "autor@exemplo.pt" };
+    const rui2 = await criarConta("rui2", "rui2@exemplo.pt");
+    // Uma aberta de outro motivo não cala o aviso.
+    expect((await denunciar(ana, corpo(await relato("r0")), segredos)).status).toBe(204);
+    expect((await denunciar(ana, corpo(await relato("r1"), { motivo: "perigo" }), segredos)).status).toBe(204);
+    // Com a hora parada, as duas tinham o mesmo criada_em e avisavam as duas.
+    vi.setSystemTime(INICIO + 60_000);
+    expect((await denunciar(rui2, corpo(await relato("r2"), { motivo: "perigo" }), segredos)).status).toBe(204);
+    expect(mensagensEnviadas.map((m) => m.para)).toEqual(["ana@exemplo.pt", "ana@exemplo.pt", "autor@exemplo.pt", "rui2@exemplo.pt"]);
+
+    // Decididas, a seguinte volta a avisar.
+    await env.DB.prepare("UPDATE denuncias SET decidida_em = ? WHERE decidida_em IS NULL").bind(Date.now()).run();
+    vi.setSystemTime(INICIO + 120_000);
+    mensagensEnviadas.length = 0;
+    expect((await denunciar(ana, corpo(await relato("r3"), { motivo: "perigo" }), segredos)).status).toBe(204);
+    expect(mensagensEnviadas.map((m) => m.para)).toEqual(["ana@exemplo.pt", "autor@exemplo.pt"]);
+
+    // Esquecida por decidir há mais de 24 horas, já não cala o aviso.
+    vi.setSystemTime(INICIO + 120_000 + DIA + 1);
+    mensagensEnviadas.length = 0;
+    expect((await denunciar(ana, corpo(await relato("r4"), { motivo: "perigo" }), segredos)).status).toBe(204);
+    expect(mensagensEnviadas.map((m) => m.para)).toEqual(["ana@exemplo.pt", "autor@exemplo.pt"]);
   });
 });
 
@@ -224,6 +250,24 @@ describe("teto de emails e Resend em baixo", () => {
     // O teto não sobe acima de 30 e a denúncia ficou guardada.
     expect(await env.DB.prepare("SELECT quantos FROM contadores WHERE dia = ? AND nome = 'emails'").bind(hoje()).first<number>("quantos")).toBe(30);
     expect(await linhas("denuncias")).toBe(1);
+  });
+
+  it("avisoDePerigoSaiComOTetoDosRecibosCheio", async () => {
+    await env.DB.prepare("INSERT INTO contadores (dia, nome, quantos) VALUES (?, 'emails', 30)").bind(hoje()).run();
+    expect((await denunciar(ana, corpo(await relato("r1"), { motivo: "perigo" }), { ...LIGADO, EMAIL_AUTOR: "autor@exemplo.pt" })).status).toBe(204);
+
+    expect(mensagensEnviadas.map((m) => m.para)).toEqual(["autor@exemplo.pt"]);
+    expect(await env.DB.prepare("SELECT para FROM emails_por_enviar").all()).toMatchObject({ results: [{ para: "ana@exemplo.pt" }] });
+    expect(await env.DB.prepare("SELECT quantos FROM contadores WHERE dia = ? AND nome = 'autor'").bind(hoje()).first<number>("quantos")).toBe(1);
+    expect(await env.DB.prepare("SELECT quantos FROM contadores WHERE dia = ? AND nome = 'emails'").bind(hoje()).first<number>("quantos")).toBe(30);
+  });
+
+  it("tetoDosAvisosAoAutorParaNos5", async () => {
+    const semResend = { ...env, RESEND_API_KEY: "" } as Env;
+    const resultados: string[] = [];
+    for (let i = 0; i < 6; i++) resultados.push(await enviarOuGuardar(semResend, "autor@exemplo.pt", "A", "a", Date.now(), "autor"));
+    expect(resultados).toEqual(["enviado", "enviado", "enviado", "enviado", "enviado", "guardado"]);
+    expect(await env.DB.prepare("SELECT quantos FROM contadores WHERE dia = ? AND nome = 'emails'").bind(hoje()).first("quantos")).toBeNull();
   });
 
   it("oTetoRenovaNoDiaSeguinte", async () => {
