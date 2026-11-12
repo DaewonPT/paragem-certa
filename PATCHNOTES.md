@@ -2,6 +2,14 @@
 
 A versão mais recente aparece primeiro.
 
+## 0.5.4 — Rotas e horários em dia
+
+- Se voltares às rotas de "partir agora" ao fim de mais de 10 minutos, a app procura outra vez e mostra as partidas que ainda vêm.
+- "Começar viagem" numa rota que já passou avisa-te disso, em vez de abrir e fechar a viagem sem dizer nada.
+- Depois da meia-noite, o horário de uma linha mostra as partidas que ainda faltam nessa noite.
+- Rodar o ecrã durante "Atualizar" já não corta a atualização.
+- O servidor passa a limitar a sincronização dos favoritos de cada conta, para ninguém gastar sozinho a quota grátis de todos.
+
 ## 0.5.3 — Sobre sem donativos
 
 - O ecrã Sobre deixa de ter a ligação para os donativos.
