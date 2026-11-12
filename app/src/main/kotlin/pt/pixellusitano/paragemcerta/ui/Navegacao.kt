@@ -411,7 +411,6 @@ fun Navegacao(
             composable<Sobre> {
                 SobreEcra(
                     versao = BuildConfig.VERSION_NAME, aoAbrir = ::abrirUrl, aoVoltar = { nav.popBackStack() }, carrisAoVivo = config.interruptores.carrisAoVivo,
-                    urlDoacoes = BuildConfig.URL_DOACOES.ifBlank { null },
                 )
             }
         }

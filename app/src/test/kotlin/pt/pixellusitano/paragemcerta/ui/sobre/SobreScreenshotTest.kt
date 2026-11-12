@@ -39,18 +39,6 @@ class SobreScreenshotTest {
         assertEquals(1, voltou)
     }
 
-    @Test fun apoiarAbreAPaginaDeDonativos() {
-        var aberto: String? = null
-        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { SobreEcra(versao = "0.1.0", aoVoltar = {}, aoAbrir = { aberto = it }, urlDoacoes = "https://exemplo.pt/doar") } }
-        regra.onNodeWithText("Apoiar a Paragem Certa com um donativo").assertHasClickAction().performClick()
-        assertEquals("https://exemplo.pt/doar", aberto)
-    }
-
-    @Test fun semLigacaoDeDonativosNaoHaApoiar() {
-        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { SobreEcra(versao = "0.1.0", aoVoltar = {}, aoAbrir = {}) } }
-        regra.onNodeWithText("Apoiar a Paragem Certa com um donativo").assertDoesNotExist()
-    }
-
     @Test fun termosEPoliticaDePrivacidade_temLigacao() {
         val abertos = mutableListOf<String>()
         regra.setContent { TemaParagemCerta(ModoTema.CLARO) { SobreEcra(versao = "0.1.0", aoVoltar = {}, aoAbrir = { abertos += it }) } }

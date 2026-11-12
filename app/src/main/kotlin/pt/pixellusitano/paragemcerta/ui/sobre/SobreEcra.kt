@@ -43,12 +43,9 @@ private fun fontes(carrisAoVivo: Boolean) = listOfNotNull(
     R.string.sobre_fonte_panoramax to "https://panoramax.fr",
 )
 
-/**
- * aoAbrir recebe um URL https:// ou mailto:; quem chama abre-o com Intent.ACTION_VIEW. [carrisAoVivo]: o interruptor da config.
- * [urlDoacoes]: a página dos donativos, só na versão do GitHub (nula na da Play).
- */
+/** aoAbrir recebe um URL https:// ou mailto:; quem chama abre-o com Intent.ACTION_VIEW. [carrisAoVivo]: o interruptor da config. */
 @Composable
-fun SobreEcra(versao: String, aoAbrir: (String) -> Unit, aoVoltar: () -> Unit, carrisAoVivo: Boolean = false, urlDoacoes: String? = null) {
+fun SobreEcra(versao: String, aoAbrir: (String) -> Unit, aoVoltar: () -> Unit, carrisAoVivo: Boolean = false) {
     @Composable
     fun ligacoes(itens: List<Pair<String, String>>) = CartaoDeItens(itens.map { (texto, url) -> ItemDeMenu(texto, { aoAbrir(url) }) })
 
@@ -63,7 +60,7 @@ fun SobreEcra(versao: String, aoAbrir: (String) -> Unit, aoVoltar: () -> Unit, c
                     Text(stringResource(R.string.sobre_autor), color = MaterialTheme.colorScheme.onSurface)
                 }
             }
-            ligacoes(listOfNotNull(stringResource(R.string.sobre_licenca) to URL_REPOSITORIO, urlDoacoes?.let { stringResource(R.string.sobre_apoiar) to it }))
+            ligacoes(listOf(stringResource(R.string.sobre_licenca) to URL_REPOSITORIO))
             TituloSecao(stringResource(R.string.sobre_fontes))
             ligacoes(fontes(carrisAoVivo).map { (texto, url) -> stringResource(texto) to url })
             TituloSecao(stringResource(R.string.sobre_contacto))
