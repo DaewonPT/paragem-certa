@@ -102,20 +102,59 @@ describe("relatos e votos", () => {
     const { id } = await relatado(ana, { tipo: "problema_paragem", paragem: PARAGEM });
     const expiraEm = INICIO + 7 * DIA;
     const teo = await criarConta("teo", "teo@exemplo.pt", { criadaEm: Date.now() });
+    const lia = await criarConta("lia", "lia@exemplo.pt", { criadaEm: Date.now() });
     const ze = await criarConta("ze", "ze@exemplo.pt", { criadaEm: Date.now() });
 
     expect(await votado(teo, id, "ainda_esta")).toEqual({ confirmacoes: 1, confirmado: false, ativo: true });
     expect(await relatosDe()).toMatchObject([{ expiraEm, confirmacoes: 1 }]);
 
-    expect(await votado(teo, id, "ja_nao_esta")).toMatchObject({ ativo: true });
+    expect(await votado(lia, id, "ja_nao_esta")).toMatchObject({ ativo: true });
     expect(await votado(ze, id, "ja_nao_esta")).toMatchObject({ ativo: true });
     expect(await relatosDe()).toMatchObject([{ expiraEm }]);
 
-    expect(await votado(teo, id, "ainda_esta")).toEqual({ confirmacoes: 1, confirmado: false, ativo: true });
     avancar(DIA);
     expect(await relatosDe()).toMatchObject([{ expiraEm, confirmacoes: 2, confirmado: true }]);
-    // O "Já não está" do Zé também passou a contar: com o da Eva são dois.
+    // Os "Já não está" da Lia e do Zé também passaram a contar: com o da Eva, o relato some.
     expect(await votado(eva, id, "ja_nao_esta")).toEqual({ confirmacoes: 2, confirmado: true, ativo: false });
+  });
+
+  it("votoRepetidoNaoEscreveNemRenova", async () => {
+    const { id } = await relatado(ana);
+    avancar(10 * MINUTO);
+    expect(await votado(rui, id, "ainda_esta")).toEqual({ confirmacoes: 2, confirmado: true, ativo: true });
+    const renovado = Date.now() + 3 * HORA;
+    const votouEm = Date.now();
+    avancar(10 * MINUTO);
+    expect(await votado(rui, id, "ainda_esta")).toEqual({ confirmacoes: 2, confirmado: true, ativo: true });
+    expect(await relatosDe()).toMatchObject([{ expiraEm: renovado }]);
+    expect(await env.DB.prepare("SELECT em FROM confirmacoes WHERE relato_id = ? AND conta_id = 'rui'").bind(id).first("em")).toBe(votouEm);
+  });
+
+  it("jaNaoEstaNaoVoltaAtras", async () => {
+    const { id } = await relatado(ana);
+    expect(await votado(rui, id, "ja_nao_esta")).toMatchObject({ ativo: true });
+    avancar(10 * MINUTO);
+    expect(await votado(rui, id, "ainda_esta")).toEqual({ confirmacoes: 1, confirmado: false, ativo: true });
+    expect(await relatosDe()).toMatchObject([{ expiraEm: INICIO + 3 * HORA, confirmacoes: 1 }]);
+    // Relatar o mesmo também não volta atrás.
+    const resposta = await relatar(rui);
+    expect(resposta.status).toBe(200);
+    expect(await resposta.json()).toEqual({ id, novo: false });
+    expect(await relatosDe()).toMatchObject([{ expiraEm: INICIO + 3 * HORA, confirmacoes: 1 }]);
+    // O "Já não está" do Rui ficou: com o da Eva, o relato some.
+    expect(await votado(eva, id, "ja_nao_esta")).toEqual({ confirmacoes: 1, confirmado: false, ativo: false });
+  });
+
+  it("relatoRepetidoSoRenovaUmaVez", async () => {
+    const { id } = await relatado(ana);
+    avancar(10 * MINUTO);
+    expect((await relatar(rui)).status).toBe(200);
+    const renovado = Date.now() + 3 * HORA;
+    avancar(10 * MINUTO);
+    const resposta = await relatar(rui);
+    expect(resposta.status).toBe(200);
+    expect(await resposta.json()).toEqual({ id, novo: false });
+    expect(await relatosDe()).toMatchObject([{ id, confirmacoes: 2, expiraEm: renovado }]);
   });
 
   it("quemRelatouNaoContaDuasVezes", async () => {
