@@ -59,34 +59,45 @@ export async function pedirFonte(url: string, init?: RequestInit): Promise<Respo
 /**
  * Devolve o que `obter()` deu há menos de `segundos`, guardado em `caches.open("fontes")`; senão chama-o e guarda o
  * resultado. A frescura decide-se pelo `x-obtido-em` (assim os testes com o Date falso funcionam); o `max-age` é só
- * para a cache aceitar a cópia. Um erro de `obter()` não guarda nada e sobe. A cache em baixo nunca parte o pedido:
- * sem ler, pede-se à fonte; sem guardar, devolve-se o valor e o próximo pedido volta à fonte.
+ * para a cache aceitar a cópia. Uma FonteFalhou de `obter()` também fica guardada `segundos` (dá a mesma FonteFalhou sem
+ * voltar à fonte); os outros erros sobem sem guardar nada. A cache em baixo nunca parte o pedido: sem ler, pede-se à
+ * fonte; sem guardar, devolve-se o valor e o próximo pedido volta à fonte.
  */
 export async function comCache<T>(ctx: ExecutionContext, chave: string, segundos: number, obter: () => Promise<T>): Promise<T> {
   // Só uma chave, no endereço do próprio Worker; nunca é servida.
   const endereco = `https://paragemcerta.pixellusitano.com/__fontes/${encodeURIComponent(chave)}`;
   let cache: Cache | undefined;
+  let falhouHaPouco = false;
   try {
     cache = await caches.open("fontes");
     const guardada = await cache.match(endereco);
     if (guardada) {
       const idade = Date.now() - Number(guardada.headers.get("x-obtido-em"));
-      if (idade >= 0 && idade < segundos * 1000) return (await guardada.json()) as T;
+      const fresca = idade >= 0 && idade < segundos * 1000;
+      if (fresca && !guardada.headers.has("x-falhou")) return (await guardada.json()) as T;
+      falhouHaPouco = fresca;
       await guardada.body?.cancel();
     }
   } catch {
     // A cache não leu: segue para a fonte.
   }
-  const valor = await obter();
-  if (cache) {
-    const copia = new Response(JSON.stringify(valor), {
-      headers: { "content-type": "application/json", "cache-control": `max-age=${segundos}`, "x-obtido-em": String(Date.now()) },
-    });
+  // Fora do try: lá dentro, o catch de "a cache não leu" engolia-a. Sem isto, com a fonte em baixo cada pedido ia lá e esperava até 8 s.
+  if (falhouHaPouco) throw new FonteFalhou(`a fonte falhou há menos de ${segundos} s`);
+  const guardar = (corpo: string, falhou: boolean): void => {
+    if (!cache) return;
+    const cabecalhos = new Headers({ "content-type": "application/json", "cache-control": `max-age=${segundos}`, "x-obtido-em": String(Date.now()) });
+    if (falhou) cabecalhos.set("x-falhou", "1");
     try {
-      ctx.waitUntil(cache.put(endereco, copia).catch(() => undefined));
+      ctx.waitUntil(cache.put(endereco, new Response(corpo, { headers: cabecalhos })).catch(() => undefined));
     } catch {
       // A cache não guardou: o próximo pedido volta à fonte.
     }
-  }
+  };
+  const valor = await obter().catch((falha: unknown) => {
+    // Corpo vazio: um Worker antigo reposto lê-o como cache ilegível (o json() falha dentro do try dele) e vai à fonte.
+    if (falha instanceof FonteFalhou) guardar("", true);
+    throw falha;
+  });
+  guardar(JSON.stringify(valor), false);
   return valor;
 }

@@ -135,15 +135,22 @@ describe("Carris ao vivo", () => {
     expect(await resposta.json()).toEqual({ erro: "fonte_falhou" });
   });
 
-  it("carrisEmBaixoDa502ENaoGuarda", async () => {
-    const fetchFalso = vi.spyOn(globalThis, "fetch").mockResolvedValueOnce(new Response("erro", { status: 500 }));
+  it("carrisEmBaixoGuardaAFalha30Segundos", async () => {
+    const fetchFalso = vi.spyOn(globalThis, "fetch").mockImplementation(async () => new Response("erro", { status: 500 }));
     const resposta = await carris();
     expect(resposta.status).toBe(502);
     expect(await resposta.json()).toEqual({ erro: "fonte_falhou" });
 
-    fetchFalso.mockResolvedValueOnce(new Response(feed(AGORA_S, [entidade(CONHECIDO)])));
-    const depois = await carris();
-    expect(depois.status).toBe(200);
+    // Dentro dos 30 s, o mesmo 502 sem voltar à Carris.
+    vi.setSystemTime(AGORA + 29_000);
+    const guardada = await carris();
+    expect(guardada.status).toBe(502);
+    expect(await guardada.json()).toEqual({ erro: "fonte_falhou" });
+    expect(fetchFalso).toHaveBeenCalledTimes(1);
+
+    fetchFalso.mockImplementation(async () => new Response(feed(AGORA_S, [entidade(CONHECIDO)])));
+    vi.setSystemTime(AGORA + 31_000);
+    expect((await carris()).status).toBe(200);
     expect(fetchFalso).toHaveBeenCalledTimes(2);
   });
 
@@ -204,12 +211,15 @@ describe("Carris ao vivo", () => {
         },
       });
     };
+    // Cada falha fica guardada 30 s: depois disso volta-se à fonte.
+    vi.setSystemTime(AGORA + 31_000);
     fetchFalso.mockResolvedValueOnce(new Response(aos64KB(LIMITE + 1)));
     resposta = await carris();
     expect(resposta.status).toBe(502);
     expect(await resposta.json()).toEqual({ erro: "fonte_falhou" });
 
     // Exatamente 2 MB ainda passa.
+    vi.setSystemTime(AGORA + 62_000);
     fetchFalso.mockResolvedValueOnce(new Response(aos64KB(LIMITE)));
     expect((await carris()).status).toBe(200);
     expect(fetchFalso).toHaveBeenCalledTimes(3);

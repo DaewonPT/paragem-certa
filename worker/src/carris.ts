@@ -114,7 +114,7 @@ export function filtrar(v: VeiculoCarris[], agoraS: number): VeiculoCarris[] {
   return v.filter((x) => agoraS - x.ts <= 300 && x.ts - agoraS <= 60 && !(x.seq === 0 && x.paragem === null));
 }
 
-/** GET /api/rt/carris: as posições da Carris, pedidas no máximo uma vez a cada 30 s; o filtro corre a cada pedido. */
+/** GET /api/rt/carris: as posições da Carris, pedidas normalmente uma vez a cada 30 s, também quando falham; o filtro corre a cada pedido. */
 export async function carrisAoVivo(env: Env, ctx: ExecutionContext): Promise<Response> {
   if (!interruptores(env).carrisAoVivo) return erro("desligado", 403);
   const feed = await comCache(ctx, "carris-posicoes", 30, async () => {
