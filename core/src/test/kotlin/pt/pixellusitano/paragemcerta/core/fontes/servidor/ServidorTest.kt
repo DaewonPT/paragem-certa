@@ -34,10 +34,8 @@ class ServidorTest {
         val http = HttpFalso({ Resposta(200, fixture("servidor-config.json")) })
         val c = (servidor(http).config() as Resultado.Ok).valor
         assertEquals("$base/dados/config.json", http.pedidos.single())
-        assertEquals(1, c.versao)
         assertFalse(c.interruptores.conta)
         assertFalse(c.interruptores.correcoes)
-        assertEquals(70, c.emails.codigosPorDia)
         assertEquals(5, c.canaisReclamacao.size)
         assertEquals(CanalReclamacaoTexto("Carris Metropolitana", "https://carrismetropolitana.pt/contacto"), c.canaisReclamacao[2])
     }
@@ -46,10 +44,8 @@ class ServidorTest {
         val futura = """{"versao":2,"novidade":{"a":1},"interruptores":{"conta":true,"outroNovo":true},
             "emails":{"codigosPorDia":50,"limiteNovo":3},"canaisReclamacao":[{"nome":"A","url":"https://a.pt","icone":"x"}]}"""
         val c = (servidor(HttpFalso({ Resposta(200, futura) })).config() as Resultado.Ok).valor
-        assertEquals(2, c.versao)
         assertTrue(c.interruptores.conta)
         assertFalse(c.interruptores.comunidade) // o que falta fica desligado
-        assertEquals(50, c.emails.codigosPorDia)
         assertEquals(listOf(CanalReclamacaoTexto("A", "https://a.pt")), c.canaisReclamacao)
     }
 
@@ -59,6 +55,17 @@ class ServidorTest {
         assertEquals(emptyList<MapaOficial>(), c.mapasOficiais)
         assertFalse(c.interruptores.carrisAoVivo)
         assertFalse(c.interruptores.metro)
+    }
+
+    @Test fun configSoComInterruptoresLe() = runTest {
+        val c = (servidor(HttpFalso({ Resposta(200, """{"interruptores":{"comunidade":true}}""") })).config() as Resultado.Ok).valor
+        assertTrue(c.interruptores.comunidade)
+        assertFalse(c.interruptores.conta)
+        assertEquals(emptyList<CanalReclamacaoTexto>(), c.canaisReclamacao)
+        assertEquals(emptyList<MapaOficial>(), c.mapasOficiais)
+        assertEquals("1", c.versaoTermos)
+        // Sem interruptores não é o config: fica o anterior.
+        assertEquals(Resultado.Falha(200, limite = false), servidor(HttpFalso({ Resposta(200, """{"erro":"x"}""") })).config())
     }
 
     @Test fun configNovaLeOsMapasEOsInterruptores() = runTest {

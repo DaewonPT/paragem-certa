@@ -163,6 +163,7 @@ describe("base do servidor", () => {
 
   it("configTemOsInterruptoresDesligados", () => {
     // O estado publicado dos interruptores. A app traz uma cópia deste ficheiro: muda os dois ao mesmo tempo (docs/servidor.md, passos 9 e 16).
+    // Todas as apps exigem interruptores, e cada canal e cada mapa com nome (ou operador) e url; as 0.4.0 a 0.5.4 exigem ainda versao, emails.codigosPorDia e canaisReclamacao. Se um sair do config.json, essas apps deixam de o ler e ficam presas no último que guardaram.
     expect(config.versao).toBe(1);
     expect(config.interruptores).toEqual({ conta: true, comunidade: false, correcoes: false, carrisAoVivo: false, metro: false });
     expect(config.emails.codigosPorDia).toBe(70);

@@ -21,12 +21,14 @@ import java.time.ZoneOffset
 // Campos desconhecidos ignoram-se: uma versão nova do servidor não parte a app.
 private val JSON = Json { ignoreUnknownKeys = true }
 
-/** O `config.json` do servidor: interruptores e valores que mudam sem sair uma versão nova da app. */
+/**
+ * O `config.json` do servidor: interruptores e valores que mudam sem sair uma versão nova da app.
+ * Os outros campos têm valor por omissão: um campo que saia do ficheiro não pode deixar a app presa no config antigo.
+ */
 @Serializable data class Configuracao(
-    val versao: Int,
+    // Obrigatório de propósito: um JSON sem interruptores não é o config, e fica o anterior.
     val interruptores: Interruptores,
-    val emails: Emails,
-    val canaisReclamacao: List<CanalReclamacaoTexto>,
+    val canaisReclamacao: List<CanalReclamacaoTexto> = emptyList(),
     /** Os termos em vigor: quem relata ou vota tem de os ter aceitado (senão 403 `termos_por_aceitar`). */
     val versaoTermos: String = "1",
     /** Os mapas da rede de cada operador (`operador` = "CM" ou o id do Transitous, como `pt-Carris`). Um config antigo não os tem. */
@@ -42,9 +44,8 @@ private val JSON = Json { ignoreUnknownKeys = true }
     val metro: Boolean = false,
 )
 
+// Limite: um mapa ou canal sem nome/url faz falhar o ficheiro todo; o worker/test/base.test.ts verifica-os antes de publicar.
 @Serializable data class MapaOficial(val operador: String, val url: String)
-
-@Serializable data class Emails(val codigosPorDia: Int)
 
 @Serializable data class CanalReclamacaoTexto(val nome: String, val url: String)
 
