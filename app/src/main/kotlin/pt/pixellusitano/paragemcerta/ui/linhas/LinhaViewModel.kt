@@ -155,6 +155,7 @@ class LinhaViewModel(
             val v = vistaAtual() ?: return@launch
             // O dia de serviço que ainda corre, pelo relógio de Lisboa (certo nos dias de mudança da hora): a CM conta-o das 04:00 às 04:00,
             // como o site dela; o Transitous pede-o a partir das 03:00 (horarioDoDia).
+            // Limite: entre as 03:00 e as 04:00, saltar entre uma linha da CM e uma do Transitous limpa a cache dos horários (outro dia).
             val dia = relogio().atZone(LISBOA_FUSO).toLocalDateTime().minusHours(if (v.d.ref.fonte == Fonte.CM) 4 else 3).toLocalDate()
             when (val r = detalhes.horario(v.d, v.s.sentido, v.p, dia)) {
                 is Resultado.Ok -> interno.update { it.copy(horario = r.valor, horarioFalhou = false) }

@@ -15,7 +15,7 @@ import java.util.concurrent.atomic.AtomicInteger
 internal fun comApkNoServidor(segurar: CountDownLatch? = null, teste: (url: String, pedidos: AtomicInteger) -> Unit) {
     val pedidos = AtomicInteger()
     val servidor = HttpServer.create(InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 0)
-    // Uma linha por pedido: um pedido seguro não pode impedir outro de chegar.
+    // Uma linha por pedido: um pedido retido não pode impedir outro de chegar.
     val linhas = Executors.newCachedThreadPool()
     servidor.executor = linhas
     servidor.createContext("/") { t ->

@@ -224,6 +224,8 @@ object Atualizacoes {
      */
     suspend fun instalar(contexto: Context, nova: NovaVersao, semPerguntar: Boolean = false) = withContext(Dispatchers.IO) {
         // Só larga a vez depois de o instalador ter a sua cópia: um segundo toque não apaga o ficheiro a meio.
+        // Limite: um toque espera calado atrás de uma atualização automática a descarregar, e um segundo toque depois de rodar
+        // o ecrã volta a descarregar e abre outra sessão do instalador.
         vezDeDescarregar.withLock { abrirSessao(contexto, nova, descarregar(nova, ficheiroManual(contexto)), semPerguntar) }
     }
 

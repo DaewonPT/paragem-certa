@@ -76,6 +76,7 @@ export async function sincronizar(pedido: Request, env: Env): Promise<Response> 
       .first<{ n: number }>();
     if (total!.n >= MAX_FAVORITOS) return erro("demasiados_favoritos", 403);
     // Contar e reservar num só passo, como em enviarNoTeto; um contador "favoritos:<conta>" por dia, que o Cron apaga.
+    // Limite: se o batch falhar depois, as alterações reservadas contam na mesma para o dia; devolvê-las se isto acontecer.
     const contado = await env.DB.prepare(
       "INSERT INTO contadores (dia, nome, quantos) VALUES (?1, ?2, ?3) ON CONFLICT (dia, nome) DO UPDATE SET quantos = quantos + ?3 WHERE quantos + ?3 <= ?4",
     )

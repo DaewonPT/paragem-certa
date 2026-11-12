@@ -158,6 +158,7 @@ fun DetalheRotaEcra(
         aoVerAutocarro = { i -> if (seguida == i) centrar++ else aoSeguir(i) },
         aoVoltar = aoVoltar,
         // Uma rota que já passou abria o ecrã da viagem e fechava-o logo, sem dizer nada.
+        // Limite: só se vê ao tocar; uma rota que passe durante a preparação, ou que comece num veículo com menos de ~2 h de atraso, ainda arranca.
         aoComecar = {
             if (rotaPassou(it, Instant.now())) Toast.makeText(contexto, R.string.detalhe_rota_passou, Toast.LENGTH_LONG).show()
             else aoPreparar(true)

@@ -178,8 +178,8 @@ class RotasViewModel(
 
     /**
      * Ao voltar ao ecrã: a lista de "partir agora" com mais de [VALIDADE_LISTA] já mostra partidas que foram; procura-se de novo,
-     * desde a primeira página. Com hora escolhida a lista é a dessa hora e não envelhece. A rota aberta, o autocarro seguido e a
-     * preparação ficam.
+     * desde a primeira página. A rota aberta, o autocarro seguido e a preparação ficam.
+     * Limite: com hora escolhida a lista não se renova quando essa hora passa, e a procura usa a última posição conhecida.
      */
     fun procurarSeVelha() {
         val em = procuradaEm ?: return
