@@ -336,7 +336,7 @@ class RelatosNaParagemTest {
         abrir()
         esperarPor("Desvio na 736")
         regra.onNodeWithText("Ainda está").performClick()
-        esperarPor("Entra com Google ou email para votar")
+        esperarPor("Entra com o Google para votar")
         regra.onNodeWithText("Entrar").performClick()
         assertEquals(1, abriuConta)
         assertTrue(http.a("/api/votos").isEmpty())
@@ -351,7 +351,7 @@ class RelatosNaParagemTest {
         abrir()
         esperarPor("Desvio na 736")
         regra.onNodeWithText("Ainda está").performClick()
-        esperarPor("Entra com Google ou email para votar")
+        esperarPor("Entra com o Google para votar")
     }
 
     @Test fun termosPorAceitarNoVotoMostramOsTermosEDepoisVotam() {
@@ -555,7 +555,7 @@ class RelatosNaParagemTest {
         abrir()
         esperarPor("Desvio na 736")
         regra.onNodeWithText("Denunciar").performClick()
-        esperarPor("Entra com Google ou email para denunciar")
+        esperarPor("Entra com o Google para denunciar")
         regra.onNodeWithText("Porquê?").assertDoesNotExist()
         regra.onNodeWithText("Entrar").performClick()
         assertEquals(1, abriuConta)
@@ -571,7 +571,7 @@ class RelatosNaParagemTest {
         esperarPor("Desvio na 736")
         denunciarComNomeEBoaFe()
         regra.onNodeWithText("Enviar denúncia").performClick()
-        esperarPor("Entra com Google ou email para denunciar")
+        esperarPor("Entra com o Google para denunciar")
     }
 
     // ---- leitor de ecrã e letra grande ----

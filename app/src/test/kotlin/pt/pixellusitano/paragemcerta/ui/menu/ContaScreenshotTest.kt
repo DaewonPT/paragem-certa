@@ -11,7 +11,6 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performTextInput
 import androidx.compose.ui.unit.dp
 import androidx.room.Room
 import androidx.test.espresso.Espresso
@@ -57,8 +56,8 @@ import kotlin.time.Duration.Companion.seconds
 /** O servidor da Paragem Certa à mão: responde ao que o ecrã da conta pede e regista o que recebe (caminho → corpo). */
 private class ServidorFalso : Http {
     var semRede = false
-    var pedirCodigo = Resposta(204, "")
-    var confirmar = Resposta(200, """{"token":"t-ana","email":"ana@exemplo.pt"}""")
+    var nonce = Resposta(200, """{"nonce":"nonce-do-servidor"}""")
+    var google = Resposta(200, """{"token":"t-ana","email":"ana@exemplo.pt"}""")
     val pedidos = mutableListOf<Pair<String, String?>>()
 
     override suspend fun get(url: String): Resposta = error("só pedidos à API")
@@ -68,10 +67,8 @@ private class ServidorFalso : Http {
         val caminho = url.substringAfter("/api/")
         pedidos += caminho to corpo
         return when (caminho) {
-            "auth/email/pedir" -> pedirCodigo
-            "auth/email/confirmar" -> confirmar
-            "auth/google/nonce" -> Resposta(200, """{"nonce":"nonce-do-servidor"}""")
-            "auth/google" -> confirmar
+            "auth/google/nonce" -> nonce
+            "auth/google" -> google
             "sincronizar" -> Resposta(200, """{"revisao":1,"alteracoes":[]}""")
             else -> Resposta(404, "")
         }
@@ -106,15 +103,13 @@ class ContaScreenshotTest {
         modifier: Modifier = Modifier,
         estado: EstadoConta = EstadoConta.SemConta,
         googleDisponivel: Boolean = true,
-        passo: PassoEntrada = PassoEntrada.ESCOLHA,
         mensagem: String? = null,
         aoSincronizar: () -> Unit = {},
         aoSair: () -> Unit = {},
         aoApagarConta: () -> Unit = {},
         aoAbrir: (String) -> Unit = {},
     ) = ContaConteudo(
-        estado = estado, googleDisponivel = googleDisponivel, passo = passo, mensagem = mensagem, aOcupar = false,
-        aoEntrarComGoogle = {}, aoPedirCodigo = {}, aoMudarPasso = {}, aoConfirmarCodigo = { _, _ -> },
+        estado = estado, googleDisponivel = googleDisponivel, mensagem = mensagem, aOcupar = false, aoEntrarComGoogle = {},
         aoSincronizar = aoSincronizar, aoSair = aoSair, aoApagarConta = aoApagarConta, aoAbrir = aoAbrir, aoVoltar = {}, modifier = modifier,
     )
 
@@ -133,30 +128,14 @@ class ContaScreenshotTest {
 
     private fun existe(texto: String) = regra.onAllNodesWithText(texto).fetchSemanticsNodes().isNotEmpty()
 
-    /** Do ecrã de entrada até carregar em "Entrar" com o código escrito. */
-    private fun entrarPorEmail() {
-        regra.onNodeWithText("Entrar com email").performClick()
-        regra.onNodeWithText("Email").performTextInput("ana@exemplo.pt")
-        regra.onNodeWithText("Enviar código").performClick()
-        esperarPor("Código de 6 dígitos")
-        regra.onNodeWithText("Código de 6 dígitos").performTextInput("123456")
-        regra.onNodeWithText("Entrar").performClick()
+    /** Abre o ecrã com a Google a dar um token e carrega no botão. */
+    private fun entrarPeloGoogle() {
+        abrirEcra { _, _, _ -> "token-da-google" }
+        regra.onNodeWithText("Iniciar sessão com o Google").performClick()
     }
 
     @Test fun conta_sem_conta() = captureRoboImage("src/test/screenshots/conta_sem_conta.png") {
         TemaParagemCerta(ModoTema.CLARO) { EcraConta(modifier = Modifier.width(360.dp)) }
-    }
-
-    @Test fun conta_codigo() = captureRoboImage("src/test/screenshots/conta_codigo.png") {
-        TemaParagemCerta(ModoTema.CLARO) {
-            EcraConta(passo = PassoEntrada.CODIGO, mensagem = "Código errado", modifier = Modifier.width(360.dp))
-        }
-    }
-
-    @Test fun conta_codigo_escuro() = captureRoboImage("src/test/screenshots/conta_codigo_escuro.png") {
-        TemaParagemCerta(ModoTema.ESCURO) {
-            EcraConta(passo = PassoEntrada.CODIGO, mensagem = "Código errado", modifier = Modifier.width(360.dp))
-        }
     }
 
     // O email e a sincronização são um cartão e "Sair" e "Apagar conta" outro: entre eles há o espaço entre cartões, não só a divisória.
@@ -224,21 +203,21 @@ class ContaScreenshotTest {
     fun semClienteGoogleNaoMostraOBotao() {
         abrirEcra(webClientId = "")
         assertFalse(existe("Iniciar sessão com o Google"))
-        regra.onNodeWithText("Entrar com email").assertExists()
+        regra.onNodeWithText("A conta serve só para guardar os teus favoritos e passá-los entre telemóveis. A app funciona toda sem ela.").assertExists()
     }
 
     @Test @Config(qualifiers = "w360dp-h780dp")
-    fun comClienteGoogleMostraOBotao() {
+    fun semContaSoHaOGoogle() {
         abrirEcra(webClientId = "cliente-web")
         regra.onNodeWithText("Iniciar sessão com o Google").assertExists()
+        assertFalse(existe("Entrar com email"))
     }
 
     @Test @Config(qualifiers = "w360dp-h780dp")
-    fun googleIndisponivelSugereEmail() {
+    fun googleIndisponivelDizQueAAppFuncionaSemConta() {
         abrirEcra(pedirToken = { _, _, _ -> null })
         regra.onNodeWithText("Iniciar sessão com o Google").performClick()
-        esperarPor("Não foi possível entrar com o Google neste telemóvel. Usa o código por email.")
-        regra.onNodeWithText("Entrar com email").assertExists()
+        esperarPor("Não foi possível entrar com o Google neste telemóvel. A app funciona toda sem conta.")
         assertTrue(servidor.enviadas("auth/google").isEmpty())
     }
 
@@ -248,7 +227,7 @@ class ContaScreenshotTest {
         abrirEcra(espera = 1.seconds, pedirToken = { _, _, _ -> awaitCancellation() })
         regra.onNodeWithText("Iniciar sessão com o Google").performClick()
         regra.mainClock.advanceTimeBy(2_000)
-        esperarPor("Não foi possível entrar com o Google neste telemóvel. Usa o código por email.")
+        esperarPor("Não foi possível entrar com o Google neste telemóvel. A app funciona toda sem conta.")
         regra.onNodeWithText("Iniciar sessão com o Google").assertIsEnabled()
         assertFalse(existe("A carregar…"))
     }
@@ -268,22 +247,19 @@ class ContaScreenshotTest {
     }
 
     @Test @Config(qualifiers = "w360dp-h780dp")
-    fun entrarPorEmailSemFavoritosNaoPergunta() {
-        abrirEcra()
-        entrarPorEmail()
+    fun entrarPeloGoogleSemFavoritosNaoPergunta() {
+        entrarPeloGoogle()
         esperarPor("Sincronizar agora")
         assertFalse(existe("Juntar os favoritos deste telemóvel à conta?"))
-        assertEquals(listOf("""{"email":"ana@exemplo.pt"}"""), servidor.enviadas("auth/email/pedir"))
-        assertEquals(listOf("""{"email":"ana@exemplo.pt","codigo":"123456"}"""), servidor.enviadas("auth/email/confirmar"))
+        assertEquals(listOf("""{"idToken":"token-da-google"}"""), servidor.enviadas("auth/google"))
     }
 
     @Test @Config(qualifiers = "w360dp-h780dp")
     fun comFavoritosPerguntaESeNaoJuntarNaoOsEnvia() {
         runBlocking { repo.alternarFavorita(cais) }
-        abrirEcra()
-        entrarPorEmail()
+        entrarPeloGoogle()
         esperarPor("Juntar os favoritos deste telemóvel à conta?")
-        assertTrue(servidor.enviadas("auth/email/confirmar").isEmpty()) // ainda não entrou: a pergunta vem antes
+        assertTrue(servidor.enviadas("auth/google").isEmpty()) // ainda não entrou: a pergunta vem antes
         regra.onNodeWithText("Não juntar").performClick()
         esperarPor("Sincronizar agora")
         assertTrue(servidor.enviadas("sincronizar").none { it.contains("CM:060419") })
@@ -293,8 +269,7 @@ class ContaScreenshotTest {
     @Test @Config(qualifiers = "w360dp-h780dp")
     fun comFavoritosPerguntaESeJuntarEnviaOsFavoritos() {
         runBlocking { repo.alternarFavorita(cais) }
-        abrirEcra()
-        entrarPorEmail()
+        entrarPeloGoogle()
         esperarPor("Juntar os favoritos deste telemóvel à conta?")
         regra.onNodeWithText("Juntar").performClick()
         esperarPor("Sincronizar agora")
@@ -304,115 +279,43 @@ class ContaScreenshotTest {
     @Test @Config(qualifiers = "w360dp-h780dp")
     fun fecharAPerguntaNaoEntra() {
         runBlocking { repo.alternarFavorita(cais) }
-        abrirEcra()
-        entrarPorEmail()
+        entrarPeloGoogle()
         esperarPor("Juntar os favoritos deste telemóvel à conta?")
         Espresso.pressBack() // fechar a pergunta desiste da entrada
         regra.waitForIdle()
         assertFalse(existe("Juntar os favoritos deste telemóvel à conta?"))
         assertEquals(EstadoConta.SemConta, conta.estado.value)
-        assertTrue(servidor.enviadas("auth/email/confirmar").isEmpty())
-    }
-
-    @Test @Config(qualifiers = "w360dp-h780dp")
-    fun codigoErradoDizCodigoErrado() {
-        servidor.confirmar = Resposta(401, """{"erro":"codigo_errado"}""")
-        abrirEcra()
-        entrarPorEmail()
-        esperarPor("Código errado")
-        regra.onNodeWithText("Código de 6 dígitos").assertExists() // fica no código para tentar outra vez
-        assertEquals(EstadoConta.SemConta, conta.estado.value)
-    }
-
-    @Test @Config(qualifiers = "w360dp-h780dp")
-    fun muitosPedidosDeCodigoAvisamDaEspera() {
-        servidor.pedirCodigo = Resposta(429, """{"erro":"muitos_pedidos"}""")
-        abrirEcra()
-        regra.onNodeWithText("Entrar com email").performClick()
-        regra.onNodeWithText("Email").performTextInput("ana@exemplo.pt")
-        regra.onNodeWithText("Enviar código").performClick()
-        esperarPor("Pediste muitos códigos. Tenta daqui a uma hora.")
-        assertFalse(existe("Código de 6 dígitos"))
-    }
-
-    @Test @Config(qualifiers = "w360dp-h780dp")
-    fun limiteDoDiaSugereOGoogle() {
-        servidor.pedirCodigo = Resposta(429, """{"erro":"limite_do_dia"}""")
-        abrirEcra()
-        regra.onNodeWithText("Entrar com email").performClick()
-        regra.onNodeWithText("Email").performTextInput("ana@exemplo.pt")
-        regra.onNodeWithText("Enviar código").performClick()
-        esperarPor("Os códigos por email de hoje acabaram. Entra com o Google ou tenta amanhã.")
-        assertFalse(existe("Código de 6 dígitos"))
-    }
-
-    @Test @Config(qualifiers = "w360dp-h780dp")
-    fun limiteDoDiaSemGoogleDizSoAmanha() {
-        servidor.pedirCodigo = Resposta(429, """{"erro":"limite_do_dia"}""")
-        abrirEcra(webClientId = "")
-        regra.onNodeWithText("Entrar com email").performClick()
-        regra.onNodeWithText("Email").performTextInput("ana@exemplo.pt")
-        regra.onNodeWithText("Enviar código").performClick()
-        esperarPor("Os códigos por email de hoje acabaram. Tenta amanhã.")
-        assertFalse(existe("Código de 6 dígitos"))
+        assertTrue(servidor.enviadas("auth/google").isEmpty())
     }
 
     @Test @Config(qualifiers = "w360dp-h780dp")
     fun travaoPorIpPedeUmMinuto() {
-        servidor.pedirCodigo = Resposta(429, """{"erro":"espera_um_pouco"}""")
-        abrirEcra()
-        regra.onNodeWithText("Entrar com email").performClick()
-        regra.onNodeWithText("Email").performTextInput("ana@exemplo.pt")
-        regra.onNodeWithText("Enviar código").performClick()
+        servidor.nonce = Resposta(429, """{"erro":"espera_um_pouco"}""")
+        entrarPeloGoogle()
         esperarPor("Muitos pedidos seguidos. Espera um minuto e tenta outra vez.")
-        assertFalse(existe("Código de 6 dígitos"))
-    }
-
-    @Test @Config(qualifiers = "w360dp-h780dp")
-    fun travaoPorIpAoConfirmarPedeUmMinuto() {
-        servidor.confirmar = Resposta(429, """{"erro":"espera_um_pouco"}""")
-        abrirEcra()
-        entrarPorEmail()
-        esperarPor("Muitos pedidos seguidos. Espera um minuto e tenta outra vez.")
+        assertTrue(servidor.enviadas("auth/google").isEmpty())
     }
 
     @Test @Config(qualifiers = "w360dp-h780dp")
     fun semRedeDizSemLigacao() {
         servidor.semRede = true
-        abrirEcra()
-        regra.onNodeWithText("Entrar com email").performClick()
-        regra.onNodeWithText("Email").performTextInput("ana@exemplo.pt")
-        regra.onNodeWithText("Enviar código").performClick()
+        entrarPeloGoogle()
         esperarPor("Sem ligação")
     }
 
     @Test @Config(qualifiers = "w360dp-h780dp")
     fun servidorEmPausaDizAteQuando() {
-        servidor.pedirCodigo = Resposta(503, """{"erro":"em_pausa"}""") // o D1 passou o limite grátis do dia
-        abrirEcra()
-        regra.onNodeWithText("Entrar com email").performClick()
-        regra.onNodeWithText("Email").performTextInput("ana@exemplo.pt")
-        regra.onNodeWithText("Enviar código").performClick()
+        servidor.google = Resposta(503, """{"erro":"em_pausa"}""") // o D1 passou o limite grátis do dia
+        entrarPeloGoogle()
         val texto = textoDoAviso(contexto, R.string.servidor_em_pausa)
         assertFalse(texto.contains("%"))
         esperarPor(texto)
     }
 
     @Test @Config(qualifiers = "w360dp-h780dp")
-    fun quotaAcabadaAoPedirCodigoDizPausa() {
-        servidor.pedirCodigo = Resposta(429, "<html>1027</html>") // página da Cloudflare, sem JSON
-        abrirEcra()
-        regra.onNodeWithText("Entrar com email").performClick()
-        regra.onNodeWithText("Email").performTextInput("ana@exemplo.pt")
-        regra.onNodeWithText("Enviar código").performClick()
-        esperarPor(textoDoAviso(contexto, R.string.servidor_em_pausa))
-    }
-
-    @Test @Config(qualifiers = "w360dp-h780dp")
-    fun quotaAcabadaAoConfirmarCodigoDizPausa() {
-        servidor.confirmar = Resposta(429, "<html>1027</html>")
-        abrirEcra()
-        entrarPorEmail()
+    fun quotaAcabadaAoEntrarDizPausa() {
+        servidor.google = Resposta(429, "<html>1027</html>") // página da Cloudflare, sem JSON
+        entrarPeloGoogle()
         esperarPor(textoDoAviso(contexto, R.string.servidor_em_pausa))
     }
 }

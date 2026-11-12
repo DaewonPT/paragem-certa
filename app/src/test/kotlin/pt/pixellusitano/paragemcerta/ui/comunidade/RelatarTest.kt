@@ -285,7 +285,7 @@ class RelatarTest {
         aDistancia(10.0)
         abrirParagem()
         relatarDesvio()
-        esperarPor("Entra com Google ou email para relatar")
+        esperarPor("Entra com o Google para relatar")
         regra.onNodeWithText("Entrar").performClick()
         assertEquals(1, abriuConta)
         assertTrue(http.pedidos.isEmpty())
@@ -299,7 +299,7 @@ class RelatarTest {
         http.rotas["/api/relatos"] = { Resposta(401, "") }
         abrirParagem()
         relatarDesvio()
-        esperarPor("Entra com Google ou email para relatar")
+        esperarPor("Entra com o Google para relatar")
         assertEquals(EstadoConta.SemConta, conta.estado.value)
         regra.onNodeWithText("Entrar").performClick()
         assertEquals(1, abriuConta)

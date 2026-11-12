@@ -19,7 +19,7 @@ internal fun opcaoGoogle(webClientId: String, nonce: String): GetSignInWithGoogl
 
 /**
  * Pede à Google (pelo Credential Manager) o token de quem entra.
- * Nulo = sem serviços Google neste telemóvel, sem contas ou a pessoa cancelou: o ecrã sugere o código por email.
+ * Nulo = sem serviços Google neste telemóvel, sem contas ou a pessoa cancelou.
  */
 suspend fun pedirTokenGoogle(atividade: Activity, webClientId: String, nonce: String): String? = try {
     val pedido = GetCredentialRequest.Builder().addCredentialOption(opcaoGoogle(webClientId, nonce)).build()

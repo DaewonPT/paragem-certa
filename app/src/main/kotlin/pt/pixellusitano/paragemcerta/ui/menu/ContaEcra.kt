@@ -13,11 +13,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -25,7 +23,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
@@ -33,13 +30,11 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
-import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import java.time.format.DateTimeFormatter
 import kotlin.time.Duration
 import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Duration.Companion.seconds
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withTimeoutOrNull
 import pt.pixellusitano.paragemcerta.R
@@ -50,7 +45,6 @@ import pt.pixellusitano.paragemcerta.dados.EstadoConta
 import pt.pixellusitano.paragemcerta.dados.Repositorio
 import pt.pixellusitano.paragemcerta.dados.pedirTokenGoogle
 import pt.pixellusitano.paragemcerta.ui.comum.BotaoPrincipal
-import pt.pixellusitano.paragemcerta.ui.comum.BotaoSecundario
 import pt.pixellusitano.paragemcerta.ui.comum.CabecalhoAzulejo
 import pt.pixellusitano.paragemcerta.ui.comum.LISBOA_FUSO
 import pt.pixellusitano.paragemcerta.ui.sobre.URL_PRIVACIDADE
@@ -60,9 +54,6 @@ private val HORA = DateTimeFormatter.ofPattern("HH:mm")
 
 /** Quanto se espera pela Google: há telemóveis em que a janela dela nunca aparece e o pedido nunca volta. */
 private val ESPERA_GOOGLE = 3.minutes
-
-/** Em que ponto da entrada a pessoa está: a escolher como entrar, a escrever o email ou a escrever o código que recebeu. */
-enum class PassoEntrada { ESCOLHA, EMAIL, CODIGO }
 
 /**
  * Menu → Conta, ligado à [conta]. [webClientId] vazio = sem botão do Google. [pedirToken] é o Credential Manager (trocável nos testes),
@@ -83,7 +74,6 @@ fun ContaEcra(
     val contexto = LocalContext.current
     val escopo = rememberCoroutineScope()
     val estado by conta.estado.collectAsStateWithLifecycle()
-    var passo by rememberSaveable { mutableStateOf(PassoEntrada.ESCOLHA) }
     var mensagem by remember { mutableStateOf<Int?>(null) }
     var aOcupar by remember { mutableStateOf(false) }
     // Uma entrada à espera da resposta a "Juntar os favoritos…?"; recebe a resposta e acaba a entrada.
@@ -102,14 +92,6 @@ fun ContaEcra(
         }
     }
 
-    /** Acaba uma entrada: ou entrou (o estado da conta muda sozinho) ou diz porquê não. */
-    fun acabar(r: Resultado<Unit>, erro: (Resultado.Falha) -> Int) {
-        when (r) {
-            is Resultado.Ok -> passo = PassoEntrada.ESCOLHA
-            is Resultado.Falha -> mensagem = erro(r)
-        }
-    }
-
     suspend fun entrar(fazer: suspend (Boolean) -> Unit) {
         if (repositorio.chavesNoTelemovel().isEmpty()) fazer(false) else aEspera = fazer
     }
@@ -117,7 +99,6 @@ fun ContaEcra(
     ContaConteudo(
         estado = estado,
         googleDisponivel = webClientId.isNotBlank(),
-        passo = passo,
         mensagem = mensagem?.let { textoDoAviso(contexto, it) },
         aOcupar = aOcupar,
         aoEntrarComGoogle = {
@@ -127,22 +108,14 @@ fun ContaEcra(
                     is Resultado.Ok -> {
                         val token = contexto.atividade()?.let { withTimeoutOrNull(espera) { pedirToken(it, webClientId, nonce.valor) } }
                         if (token == null) mensagem = R.string.conta_erro_google
-                        else entrar { juntar -> acabar(conta.entrarComGoogle(token, juntar), ::erroDoGoogle) }
+                        else entrar { juntar ->
+                            // Se entrou, o estado da conta muda sozinho; senão diz porquê não.
+                            val r = conta.entrarComGoogle(token, juntar)
+                            if (r is Resultado.Falha) mensagem = erroDoGoogle(r)
+                        }
                     }
                 }
             }
-        },
-        aoPedirCodigo = { email ->
-            trabalhar {
-                when (val r = conta.pedirCodigo(email)) {
-                    is Resultado.Ok -> passo = PassoEntrada.CODIGO
-                    is Resultado.Falha -> mensagem = erroDoPedido(r, webClientId.isNotBlank())
-                }
-            }
-        },
-        aoMudarPasso = { passo = it },
-        aoConfirmarCodigo = { email, codigo ->
-            trabalhar { entrar { juntar -> acabar(conta.confirmarCodigo(email, codigo, juntar), ::erroDoCodigo) } }
         },
         aoSincronizar = {
             trabalhar {
@@ -150,12 +123,7 @@ fun ContaEcra(
                 if (r is Resultado.Falha) mensagem = erroDeSincronizar(r)
             }
         },
-        aoSair = {
-            trabalhar {
-                conta.sair()
-                passo = PassoEntrada.ESCOLHA
-            }
-        },
+        aoSair = { trabalhar { conta.sair() } },
         aoApagarConta = { trabalhar { conta.apagarEAvisar(contexto) } },
         aoAbrir = aoAbrir,
         aoVoltar = aoVoltar,
@@ -164,7 +132,7 @@ fun ContaEcra(
 
     aEspera?.let { terminar ->
         AlertDialog(
-            // Fechar a pergunta (atrás, fora da caixa) desiste da entrada: nada foi para a conta e o código pode voltar a usar-se.
+            // Fechar a pergunta (atrás, fora da caixa) desiste da entrada: nada foi para a conta.
             onDismissRequest = { aEspera = null },
             text = { Text(stringResource(R.string.conta_juntar_pergunta)) },
             confirmButton = {
@@ -183,18 +151,14 @@ fun ContaEcra(
     }
 }
 
-/** O ecrã da conta sem estado de rede: [passo] e [mensagem] vêm de fora; o email e o código escritos ficam cá. */
+/** O ecrã da conta sem estado de rede: [mensagem] vem de fora. */
 @Composable
 fun ContaConteudo(
     estado: EstadoConta,
     googleDisponivel: Boolean,
-    passo: PassoEntrada,
     mensagem: String?,
     aOcupar: Boolean,
     aoEntrarComGoogle: () -> Unit,
-    aoPedirCodigo: (String) -> Unit,
-    aoMudarPasso: (PassoEntrada) -> Unit,
-    aoConfirmarCodigo: (String, String) -> Unit,
     aoSincronizar: () -> Unit,
     aoSair: () -> Unit,
     aoApagarConta: () -> Unit,
@@ -202,9 +166,6 @@ fun ContaConteudo(
     aoVoltar: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var email by rememberSaveable { mutableStateOf("") }
-    // Muda de passo, começa em branco: um código usado não volta.
-    var codigo by rememberSaveable(passo) { mutableStateOf("") }
     var apagar by remember { mutableStateOf(false) }
     Column(modifier.background(MaterialTheme.colorScheme.background)) {
         CabecalhoAzulejo(stringResource(R.string.menu_conta), aoVoltar)
@@ -223,37 +184,9 @@ fun ContaConteudo(
                         }
                         EstadoConta.SemConta -> {
                             Text(stringResource(R.string.conta_nota), Modifier.padding(bottom = 12.dp), color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            if (googleDisponivel && passo != PassoEntrada.CODIGO) {
-                                BotaoPrincipal(aoEntrarComGoogle, Modifier.fillMaxWidth().padding(bottom = 8.dp), ativo = !aOcupar) {
+                            if (googleDisponivel) {
+                                BotaoPrincipal(aoEntrarComGoogle, Modifier.fillMaxWidth(), ativo = !aOcupar) {
                                     Text(stringResource(R.string.conta_google))
-                                }
-                            }
-                            when (passo) {
-                                PassoEntrada.ESCOLHA ->
-                                    BotaoSecundario({ aoMudarPasso(PassoEntrada.EMAIL) }, Modifier.fillMaxWidth()) {
-                                        Text(stringResource(R.string.conta_entrar_email))
-                                    }
-                                PassoEntrada.EMAIL -> {
-                                    OutlinedTextField(
-                                        email, { email = it }, Modifier.fillMaxWidth(), singleLine = true, shape = MaterialTheme.shapes.medium,
-                                        label = { Text(stringResource(R.string.conta_email)) },
-                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                                    )
-                                    BotaoPrincipal(
-                                        { aoPedirCodigo(email.trim()) }, Modifier.fillMaxWidth().padding(top = 8.dp), ativo = !aOcupar && '@' in email,
-                                    ) { Text(stringResource(R.string.conta_enviar_codigo)) }
-                                }
-                                PassoEntrada.CODIGO -> {
-                                    Text(stringResource(R.string.conta_codigo_enviado, email.trim()), Modifier.padding(bottom = 8.dp), color = MaterialTheme.colorScheme.onSurface)
-                                    OutlinedTextField(
-                                        codigo, { codigo = it.filter(Char::isDigit).take(6) }, Modifier.fillMaxWidth(), singleLine = true, shape = MaterialTheme.shapes.medium,
-                                        label = { Text(stringResource(R.string.conta_codigo)) },
-                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-                                    )
-                                    BotaoPrincipal(
-                                        { aoConfirmarCodigo(email.trim(), codigo) }, Modifier.fillMaxWidth().padding(top = 8.dp), ativo = !aOcupar && codigo.length == 6,
-                                    ) { Text(stringResource(R.string.conta_entrar)) }
-                                    Ligacao(stringResource(R.string.conta_mudar_email), { aoMudarPasso(PassoEntrada.EMAIL) })
                                 }
                             }
                         }
@@ -317,30 +250,8 @@ private tailrec fun Context.atividade(): Activity? = when (this) {
 }
 
 // Em todas: em_pausa = o servidor passou a quota grátis do dia, seja qual for o código; em /api/auth/ o núcleo não pausa,
-// por isso o 429 sem JSON (página da Cloudflare) também conta como pausa.
-// 400 = email que o servidor não aceita; três 429 com JSON: espera_um_pouco = travão curto por IP, limite_do_dia = acabaram
-// os códigos do dia (todos os utilizadores), muitos_pedidos = mais de 3 códigos por hora; o resto (502 da Resend…) = não saiu.
+// por isso o 429 sem JSON (página da Cloudflare) também conta como pausa. O 429 com JSON espera_um_pouco é o travão curto por IP.
 private fun Resultado.Falha.quotaSemJson() = codigo == 429 && erro == null
-
-@StringRes private fun erroDoPedido(f: Resultado.Falha, comGoogle: Boolean) = if (f.emPausa || f.quotaSemJson()) R.string.servidor_em_pausa
-else if (f.erro == "espera_um_pouco") R.string.conta_erro_espera
-else if (f.erro == "limite_do_dia") (if (comGoogle) R.string.conta_erro_limite_do_dia else R.string.conta_erro_limite_do_dia_sem_google)
-else when (f.codigo) {
-    null -> R.string.conta_erro_sem_ligacao
-    400 -> R.string.conta_erro_email
-    429 -> R.string.conta_erro_muitos
-    else -> R.string.conta_erro_envio
-}
-
-// 401 = código errado, 410 = expirado ou já gasto as 5 tentativas.
-@StringRes private fun erroDoCodigo(f: Resultado.Falha) = if (f.emPausa || f.quotaSemJson()) R.string.servidor_em_pausa
-else if (f.erro == "espera_um_pouco") R.string.conta_erro_espera
-else when (f.codigo) {
-    null -> R.string.conta_erro_sem_ligacao
-    401 -> R.string.conta_erro_codigo
-    410 -> R.string.conta_erro_expirou
-    else -> R.string.conta_erro_generico
-}
 
 @StringRes private fun erroDoGoogle(f: Resultado.Falha) = if (f.emPausa || f.quotaSemJson()) R.string.servidor_em_pausa
 else if (f.erro == "espera_um_pouco") R.string.conta_erro_espera

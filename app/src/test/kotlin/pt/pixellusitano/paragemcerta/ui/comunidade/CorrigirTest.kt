@@ -321,7 +321,7 @@ class CorrigirTest {
         abrirFolha()
         escolher("A paragem já não existe")
         enviar()
-        esperarPor("Entra com Google ou email para corrigir dados")
+        esperarPor("Entra com o Google para corrigir dados")
         regra.onNodeWithText("Entrar").performClick()
         assertEquals(1, abriuConta)
         assertTrue(http.a("/api/correcoes").isEmpty())

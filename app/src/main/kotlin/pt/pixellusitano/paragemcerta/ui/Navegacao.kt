@@ -54,6 +54,7 @@ import pt.pixellusitano.paragemcerta.core.linhas.RefLinha
 import pt.pixellusitano.paragemcerta.core.modelo.Linha
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
 import pt.pixellusitano.paragemcerta.dados.EcraInicial
+import pt.pixellusitano.paragemcerta.dados.EstadoConta
 import pt.pixellusitano.paragemcerta.dados.LinhaFavorita
 import pt.pixellusitano.paragemcerta.dados.Ligacoes
 import pt.pixellusitano.paragemcerta.ui.bussola.BussolaEcra
@@ -167,6 +168,9 @@ internal fun AbrirRotaDoWidget(nav: NavController, destino: String?, aoAbrir: ()
 fun ecraDeArranque(escolhido: EcraInicial, abrirViagem: Boolean, abrirParagem: String?, abrirRota: String?, definirLocal: String?): EcraInicial =
     if (abrirViagem || abrirParagem != null || abrirRota != null || definirLocal != null) EcraInicial.MAPA else escolhido
 
+/** A conta (no Menu e no Início) só aparece se houver forma de entrar (o cliente da Google) ou uma sessão aberta para sair ou apagar. */
+internal fun mostrarConta(interruptor: Boolean, clienteGoogle: String, comSessao: Boolean): Boolean = interruptor && (clienteGoogle.isNotBlank() || comSessao)
+
 /**
  * Ecrãs com a barra de baixo (Início, Rotas, Linhas e Menu). abrirViagem: a notificação da viagem foi tocada, por isso
  * abre-se o ecrã da viagem e avisa-se (aoAbrirViagem) para o pedido não se repetir. abrirParagem: o mesmo para um widget
@@ -202,6 +206,8 @@ fun Navegacao(
     val nasLinhas = destino?.hasRoute(Linhas::class) == true
     val repositorio = ligacoes.repositorio
     val config by ligacoes.configuracoes.atual.collectAsStateWithLifecycle()
+    val estadoConta by ligacoes.conta.estado.collectAsStateWithLifecycle()
+    val contaVisivel = mostrarConta(config.interruptores.conta, BuildConfig.GOOGLE_WEB_CLIENT_ID, estadoConta is EstadoConta.Com)
 
     fun separador(rota: Any) = nav.irParaSeparador(rota)
     fun abrirUrl(url: String) {
@@ -285,7 +291,7 @@ fun Navegacao(
                         abrirFavoritos = abrirFavoritos,
                         definirLocal = definirLocal,
                         aoDefinirLocalAberto = aoDefinirLocalAberto,
-                        aoAbrirConta = if (config.interruptores.conta) ({ nav.navigate(ContaRota) }) else null,
+                        aoAbrirConta = if (contaVisivel) ({ nav.navigate(ContaRota) }) else null,
                         painel = { posicao, aoDefinirLocal ->
                             Painel(
                                 repositorio, posicao,
@@ -369,7 +375,7 @@ fun Navegacao(
                         aoEnviarOpiniao = { runCatching { contexto.startActivity(intentOpiniao(BuildConfig.VERSION_NAME)) } },
                         aoAbrirSobre = { nav.navigate(Sobre) },
                         modifier = Modifier.fillMaxSize(),
-                        aoAbrirConta = if (config.interruptores.conta) ({ nav.navigate(ContaRota) }) else null,
+                        aoAbrirConta = if (contaVisivel) ({ nav.navigate(ContaRota) }) else null,
                     )
                 }
             }
