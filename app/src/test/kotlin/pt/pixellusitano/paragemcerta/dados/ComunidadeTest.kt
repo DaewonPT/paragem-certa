@@ -47,7 +47,7 @@ private class ServidorDeComunidade : Http {
     var porta: CompletableDeferred<Unit>? = null
     val pedidos = mutableListOf<Pedido>()
     val rotas = mutableMapOf<String, () -> Resposta>(
-        "/api/auth/email/confirmar" to { Resposta(200, """{"token":"tok-ana","email":"ana@exemplo.pt"}""") },
+        "/api/auth/google" to { Resposta(200, """{"token":"tok-ana","email":"ana@exemplo.pt"}""") },
         "/api/sincronizar" to { Resposta(200, """{"revisao":0,"alteracoes":[]}""") },
         "/api/comunidade" to { Resposta(200, fixture("servidor-comunidade.json")) },
         "/api/avisos" to { Resposta(200, """{"relatos":[]}""") },
@@ -113,7 +113,7 @@ class ComunidadeTest {
     }
 
     private suspend fun entrar() {
-        assertEquals(Resultado.Ok(Unit), conta.confirmarCodigo("ana@exemplo.pt", "123456", juntarFavoritos = true))
+        assertEquals(Resultado.Ok(Unit), conta.entrarComGoogle("token-de-teste", juntarFavoritos = true))
         http.pedidos.clear() // contam-se só os pedidos da comunidade
     }
 

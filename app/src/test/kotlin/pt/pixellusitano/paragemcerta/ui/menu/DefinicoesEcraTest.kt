@@ -64,7 +64,7 @@ class DefinicoesEcraTest {
     @Test fun apagarDadosSoAvisaNoFimESobreviveASairDoEcra() {
         val naRede = CompletableDeferred<Unit>()
         runBlocking {
-            assertEquals(Resultado.Ok(Unit), conta.confirmarCodigo("ana@exemplo.pt", "123456", juntarFavoritos = true))
+            assertEquals(Resultado.Ok(Unit), conta.entrarComGoogle("ana@exemplo.pt", juntarFavoritos = true))
             repo.alternarFavorita(cais)
         }
         servidor.duranteASincronizacao = { naRede.await() }

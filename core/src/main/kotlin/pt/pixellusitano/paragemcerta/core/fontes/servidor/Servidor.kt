@@ -118,9 +118,9 @@ private val JSON = Json { ignoreUnknownKeys = true }
 @Serializable private class RelatosJson(val relatos: List<RelatoRemoto> = emptyList())
 
 /**
- * O servidor da Paragem Certa. Falhas: o código HTTP (401 código errado ou sessão recusada, 410 código expirado,
- * 429 demasiados pedidos com `limite = true`) ou `Falha(null)` sem rede; `erro` traz o código que o servidor dá
- * (`codigo_errado`, `sem_sessao`, `desligado`, `termos_por_aceitar`…).
+ * O servidor da Paragem Certa. Falhas: o código HTTP (401 sessão recusada ou token do Google inválido, 429 demasiados
+ * pedidos com `limite = true`) ou `Falha(null)` sem rede; `erro` traz o código que o servidor dá
+ * (`token_invalido`, `sem_sessao`, `desligado`, `termos_por_aceitar`…).
  *
  * Quando a quota grátis do dia acaba (503 `em_pausa`, ou o 429 sem JSON da página 1027 da Cloudflare) os pedidos à API
  * param até à próxima 00:00 UTC e devolvem `Falha(null, true, "em_pausa")` sem pedir. Ficam de fora o `config()`
@@ -142,12 +142,6 @@ class ServidorParagemCerta(
 
     suspend fun entrarComGoogle(idToken: String): Resultado<Sessao> =
         enviar("POST", "/api/auth/google", buildJsonObject { put("idToken", idToken) }, converter = ::sessao)
-
-    suspend fun pedirCodigo(email: String): Resultado<Unit> =
-        enviar("POST", "/api/auth/email/pedir", buildJsonObject { put("email", email) }) { }
-
-    suspend fun confirmarCodigo(email: String, codigo: String): Resultado<Sessao> =
-        enviar("POST", "/api/auth/email/confirmar", buildJsonObject { put("email", email); put("codigo", codigo) }, converter = ::sessao)
 
     suspend fun sair(token: String): Resultado<Unit> = enviar("POST", "/api/auth/sair", null, token) { }
 

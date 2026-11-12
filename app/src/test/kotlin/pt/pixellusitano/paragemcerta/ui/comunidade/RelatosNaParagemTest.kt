@@ -78,7 +78,7 @@ private class ServidorDaParagem : Http {
     var semRede = false
     val pedidos = mutableListOf<Triple<String, String, String?>>()
     val rotas = mutableMapOf<String, () -> Resposta>(
-        "/api/auth/email/confirmar" to { Resposta(200, """{"token":"tok-ana","email":"ana@exemplo.pt"}""") },
+        "/api/auth/google" to { Resposta(200, """{"token":"tok-ana","email":"ana@exemplo.pt"}""") },
         "/api/sincronizar" to { Resposta(200, """{"revisao":0,"alteracoes":[]}""") },
         "/api/comunidade" to { Resposta(200, """{"relatos":[${relatos.joinToString(",")}]}""") },
         "/api/votos" to { Resposta(200, """{"confirmacoes":2,"confirmado":true,"ativo":true}""") },
@@ -137,7 +137,7 @@ class RelatosNaParagemTest {
     private fun ligar() = runBlocking { configuracoes.aoAbrir() }
 
     private fun entrar() = runBlocking {
-        assertEquals(Resultado.Ok(Unit), conta.confirmarCodigo("ana@exemplo.pt", "123456", juntarFavoritos = true))
+        assertEquals(Resultado.Ok(Unit), conta.entrarComGoogle("token-de-teste", juntarFavoritos = true))
         http.pedidos.clear() // contam-se só os pedidos da comunidade
     }
 

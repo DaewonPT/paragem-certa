@@ -42,7 +42,7 @@ import java.io.File
 import java.io.IOException
 import java.time.Instant
 
-/** O servidor da Paragem Certa em memória: o token é o email, cada email é uma conta, e as revisões sobem como no verdadeiro. */
+/** O servidor da Paragem Certa em memória: o idToken e o token são o email, cada email é uma conta, e as revisões sobem como no verdadeiro. */
 internal class ServidorDeTeste : Http {
     var semRede = false
     var recusarSessao = false
@@ -66,8 +66,8 @@ internal class ServidorDeTeste : Http {
         val token = cabecalhos["Authorization"]?.removePrefix("Bearer ")
         val pedido = corpo?.takeIf { it.isNotEmpty() }?.let { json.parseToJsonElement(it).jsonObject }
         return when (url.substringAfter("/api/")) {
-            "auth/email/confirmar" -> {
-                val email = pedido!!["email"]!!.jsonPrimitive.content
+            "auth/google" -> {
+                val email = pedido!!["idToken"]!!.jsonPrimitive.content
                 Resposta(200, """{"token":"$email","email":"$email"}""")
             }
             "auth/sair" -> Resposta(204, "").also { sessoesTerminadas += token!! }
@@ -110,7 +110,7 @@ class ContaTest {
         FavoritoRemoto(chave, tipo, nome, 38.6, -9.1, 0, apagado)
 
     private suspend fun entrar(c: Conta, email: String = "ana@exemplo.pt", juntar: Boolean = true) =
-        assertEquals(Resultado.Ok(Unit), c.confirmarCodigo(email, "123456", juntarFavoritos = juntar))
+        assertEquals(Resultado.Ok(Unit), c.entrarComGoogle(email, juntarFavoritos = juntar))
 
     private suspend fun chavesFavoritas() = repo.favoritas().first().map { it.ref.chave }
 

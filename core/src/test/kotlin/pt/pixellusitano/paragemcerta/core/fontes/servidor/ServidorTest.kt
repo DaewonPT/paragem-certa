@@ -19,7 +19,6 @@ import pt.pixellusitano.paragemcerta.core.fixture
 import pt.pixellusitano.paragemcerta.core.rede.Resposta
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import pt.pixellusitano.paragemcerta.core.rede.emPausa
-import java.io.IOException
 import java.time.Instant
 
 class ServidorTest {
@@ -74,52 +73,6 @@ class ServidorTest {
 
     @Test fun configIlegivelDaFalha() = runTest {
         assertEquals(Resultado.Falha(200, limite = false), servidor(HttpFalso({ Resposta(200, "<html>") })).config())
-    }
-
-    @Test fun pedirCodigoMandaOEmail() = runTest {
-        val http = HttpFalso({ Resposta(204, "") })
-        assertEquals(Resultado.Ok(Unit), servidor(http).pedirCodigo("ana@exemplo.pt"))
-        val p = http.enviados.single()
-        assertEquals("POST", p.metodo)
-        assertEquals("$base/api/auth/email/pedir", p.url)
-        assertEquals(buildJsonObject { put("email", "ana@exemplo.pt") }, json(p.corpo))
-    }
-
-    @Test fun confirmarCodigoDaSessao() = runTest {
-        val http = HttpFalso({ Resposta(200, sessaoJson) })
-        val r = servidor(http).confirmarCodigo("ana@exemplo.pt", "123456")
-        assertEquals(Resultado.Ok(Sessao("tok-123", "ana@exemplo.pt")), r)
-        val p = http.enviados.single()
-        assertEquals("$base/api/auth/email/confirmar", p.url)
-        assertEquals(buildJsonObject { put("email", "ana@exemplo.pt"); put("codigo", "123456") }, json(p.corpo))
-    }
-
-    @Test fun codigoErradoDaFalha401() = runTest {
-        val http = HttpFalso({ Resposta(401, """{"erro":"codigo_errado"}""") })
-        assertEquals(Resultado.Falha(401, limite = false, erro = "codigo_errado"), servidor(http).confirmarCodigo("ana@exemplo.pt", "000000"))
-    }
-
-    @Test fun codigoExpiradoDaFalha410() = runTest {
-        val http = HttpFalso({ Resposta(410, """{"erro":"codigo_expirado"}""") })
-        assertEquals(Resultado.Falha(410, limite = false, erro = "codigo_expirado"), servidor(http).confirmarCodigo("ana@exemplo.pt", "123456"))
-    }
-
-    @Test fun muitosPedidosDaLimite() = runTest {
-        val http = HttpFalso({ Resposta(429, """{"erro":"muitos_pedidos"}""") })
-        assertEquals(Resultado.Falha(429, limite = true, erro = "muitos_pedidos"), servidor(http).pedirCodigo("ana@exemplo.pt"))
-    }
-
-    @Test fun limiteDoDiaVemNaFalhaENaoPausa() = runTest {
-        val http = HttpFalso({ Resposta(429, """{"erro":"limite_do_dia"}""") }, { Resposta(200, comunidadeVazia) })
-        val s = servidor(http)
-        assertEquals(Resultado.Falha(429, limite = true, erro = "limite_do_dia"), s.pedirCodigo("ana@exemplo.pt"))
-        assertEquals(Resultado.Ok(DadosComunidade()), s.comunidade(listOf("CM:060419")))
-        assertEquals(2, http.pedidos.size)
-    }
-
-    @Test fun semRedeDaFalhaSemCodigo() = runTest {
-        val http = HttpFalso({ throw IOException("sem rede") })
-        assertEquals(Resultado.Falha(null, limite = false), servidor(http).pedirCodigo("ana@exemplo.pt"))
     }
 
     @Test fun nonceDoGoogleEntraNaSessao() = runTest {
@@ -420,7 +373,7 @@ class ServidorTest {
     @Test fun limiteDoWafNasEntradasNaoPausa() = runTest {
         val http = HttpFalso({ Resposta(429, "<html>Too Many Requests</html>") }, { Resposta(200, comunidadeVazia) })
         val s = servidor(http)
-        assertEquals(Resultado.Falha(429, limite = true), s.pedirCodigo("ana@exemplo.pt"))
+        assertEquals(Resultado.Falha(429, limite = true), s.nonceGoogle())
         assertEquals(Resultado.Ok(DadosComunidade()), s.comunidade(listOf("CM:060419")))
         assertEquals(2, http.pedidos.size)
     }
@@ -428,18 +381,18 @@ class ServidorTest {
     @Test fun pausaNaoTocaNasEntradasNemNaConfiguracao() = runTest {
         var agora = Instant.parse("2026-11-03T22:00:00Z")
         val http = HttpFalso(
-            { Resposta(503, """{"erro":"em_pausa"}""") }, { Resposta(204, "") }, { Resposta(200, fixture("servidor-config.json")) },
+            { Resposta(503, """{"erro":"em_pausa"}""") }, { Resposta(200, """{"nonce":"n-1"}""") }, { Resposta(200, fixture("servidor-config.json")) },
             { Resposta(503, """{"erro":"em_pausa"}""") }, { Resposta(200, comunidadeVazia) },
         )
         val s = servidor(http) { agora }
         assertTrue((s.comunidade(listOf("CM:060419")) as Resultado.Falha).emPausa)
-        // Em pausa, o pedido de código e a configuração continuam a chegar ao servidor.
-        assertEquals(Resultado.Ok(Unit), s.pedirCodigo("ana@exemplo.pt"))
+        // Em pausa, o pedido do nonce e a configuração continuam a chegar ao servidor.
+        assertEquals(Resultado.Ok("n-1"), s.nonceGoogle())
         assertTrue(s.config() is Resultado.Ok)
         assertEquals(3, http.pedidos.size)
         // Passada a meia-noite, um em_pausa na entrada devolve-se tal e qual, mas não começa pausa nenhuma.
         agora = Instant.parse("2026-11-04T00:00:00Z")
-        assertTrue((s.pedirCodigo("ana@exemplo.pt") as Resultado.Falha).emPausa)
+        assertTrue((s.nonceGoogle() as Resultado.Falha).emPausa)
         assertTrue(s.comunidade(listOf("CM:060419")) is Resultado.Ok)
         assertEquals(5, http.pedidos.size)
     }

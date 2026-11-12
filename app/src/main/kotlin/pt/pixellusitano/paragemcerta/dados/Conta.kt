@@ -58,14 +58,9 @@ class Conta(
         repositorio.comConta = sessao != null
     }
 
-    suspend fun pedirCodigo(email: String): Resultado<Unit> = servidor.pedirCodigo(email)
-
     suspend fun nonceGoogle(): Resultado<String> = servidor.nonceGoogle()
 
     /** Entra e sincroniza desde 0; [juntarFavoritos] = o que está no telemóvel vai para a conta (a pessoa escolheu). */
-    suspend fun confirmarCodigo(email: String, codigo: String, juntarFavoritos: Boolean): Resultado<Unit> =
-        entrar(servidor.confirmarCodigo(email, codigo), juntarFavoritos)
-
     suspend fun entrarComGoogle(idToken: String, juntarFavoritos: Boolean): Resultado<Unit> =
         entrar(servidor.entrarComGoogle(idToken), juntarFavoritos)
 
