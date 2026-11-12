@@ -1,5 +1,4 @@
-import { corpoJson } from "./codigos";
-import { erro, semConteudo } from "./respostas";
+import { corpoJson, erro, semConteudo } from "./respostas";
 import { contaDaSessao } from "./sessoes";
 
 const MAX_VERSAO = 40;

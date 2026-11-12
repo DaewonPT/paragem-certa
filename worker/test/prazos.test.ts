@@ -82,16 +82,13 @@ describe("prazos no Cron", () => {
 
   it("cronApagaContadoresVelhos", async () => {
     // AGORA é 10/01/2030: ficam hoje, ontem e anteontem.
-    await env.DB.batch([
-      env.DB.prepare("INSERT INTO contadores (dia, nome, quantos) VALUES ('2030-01-07', 'fotos', 1), ('2030-01-07', 'emails', 1), ('2030-01-08', 'fotos', 1), ('2030-01-09', 'emails', 1), ('2030-01-10', 'fotos', 1)"),
-      env.DB.prepare("INSERT INTO envios_email (dia, quantos) VALUES ('2030-01-07', 1), ('2030-01-08', 1), ('2030-01-10', 1)"),
-    ]);
+    await env.DB.prepare(
+      "INSERT INTO contadores (dia, nome, quantos) VALUES ('2030-01-07', 'fotos', 1), ('2030-01-07', 'emails', 1), ('2030-01-08', 'fotos', 1), ('2030-01-09', 'emails', 1), ('2030-01-10', 'fotos', 1)",
+    ).run();
 
     await correrCron({ agora: AGORA });
 
     const contadores = await env.DB.prepare("SELECT dia FROM contadores ORDER BY dia").all<{ dia: string }>();
     expect(contadores.results.map((linha) => linha.dia)).toEqual(["2030-01-08", "2030-01-09", "2030-01-10"]);
-    const envios = await env.DB.prepare("SELECT dia FROM envios_email ORDER BY dia").all<{ dia: string }>();
-    expect(envios.results.map((linha) => linha.dia)).toEqual(["2030-01-08", "2030-01-10"]);
   });
 });

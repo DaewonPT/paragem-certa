@@ -93,8 +93,6 @@ describe("sessões", () => {
     const velho = agora - 11 * MINUTO;
     const recente = agora - MINUTO;
     await env.DB.batch([
-      env.DB.prepare("INSERT INTO codigos (email, hash, sal, criado_em) VALUES ('velho@exemplo.pt', 'h', 's', ?)").bind(velho),
-      env.DB.prepare("INSERT INTO codigos (email, hash, sal, criado_em) VALUES ('novo@exemplo.pt', 'h', 's', ?)").bind(recente),
       env.DB.prepare("INSERT INTO nonces (valor, criado_em) VALUES ('velho', ?)").bind(velho),
       env.DB.prepare("INSERT INTO nonces (valor, criado_em) VALUES ('novo', ?)").bind(recente),
       env.DB.prepare("INSERT INTO sessoes (hash, conta_id, criada_em, usada_em) VALUES ('sem-uso', 'c1', ?, ?)").bind(agora - 100 * DIA, agora - 61 * DIA),
@@ -104,10 +102,8 @@ describe("sessões", () => {
 
     await correrCron();
 
-    const emails = (await env.DB.prepare("SELECT email FROM codigos").all<{ email: string }>()).results.map((linha) => linha.email);
     const nonces = (await env.DB.prepare("SELECT valor FROM nonces").all<{ valor: string }>()).results.map((linha) => linha.valor);
     const sessoes = (await env.DB.prepare("SELECT hash FROM sessoes").all<{ hash: string }>()).results.map((linha) => linha.hash);
-    expect(emails).toEqual(["novo@exemplo.pt"]);
     expect(nonces).toEqual(["novo"]);
     expect(sessoes).toEqual(["viva"]);
   });

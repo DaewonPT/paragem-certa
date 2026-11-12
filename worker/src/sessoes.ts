@@ -6,7 +6,7 @@ const DIA = 24 * HORA;
 const SEM_USO = 60 * DIA;
 const TOTAL = 180 * DIA;
 
-/** SHA-256 em hexadecimal. É o que se guarda dos tokens e dos códigos; nunca o valor em si. */
+/** SHA-256 em hexadecimal. É o que se guarda dos tokens; nunca o valor em si. */
 export async function sha256Hex(texto: string): Promise<string> {
   const resumo = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(texto));
   return [...new Uint8Array(resumo)].map((byte) => byte.toString(16).padStart(2, "0")).join("");

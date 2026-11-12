@@ -5,7 +5,7 @@ import { marcaDoEmail } from "../portao";
 import type { Aviso } from "./paginas";
 
 const MAX_MOTIVO = 500;
-/** O email não é único (uma conta do Google e uma de código podem tê-lo), mas mais do que isto já não é uma pessoa. */
+/** O email não é único (contas do Google diferentes podem ter tido o mesmo endereço), mas mais do que isto já não é uma pessoa. */
 const MAX_CONTAS_DO_EMAIL = 10;
 const MAX_SUBSTITUIDAS = 100;
 const TIPOS_DE_CORRECAO: Record<string, string> = { posicao: "posição", nome: "nome", ja_nao_existe: "já não existe" };

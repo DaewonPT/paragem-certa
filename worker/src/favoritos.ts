@@ -1,5 +1,4 @@
-import { corpoJson } from "./codigos";
-import { erro, json } from "./respostas";
+import { corpoJson, erro, json } from "./respostas";
 import { contaDaSessao } from "./sessoes";
 
 export type Favorito = {

@@ -1,8 +1,7 @@
-import { corpoJson } from "./codigos";
 import { enviarOuGuardar } from "./email";
 import { textoRecibo } from "./explicacoes";
 import { interruptores, quemEscreve } from "./portao";
-import { erro, semConteudo } from "./respostas";
+import { corpoJson, erro, semConteudo } from "./respostas";
 
 const DIA = 24 * 60 * 60_000;
 const MAX_POR_DIA = 5;

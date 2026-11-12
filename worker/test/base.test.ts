@@ -46,6 +46,17 @@ describe("base do servidor", () => {
     expect(await resposta.json()).toEqual({ erro: "nao_existe" });
   });
 
+  it("rotasDoCodigoJaNaoExistem", async () => {
+    // Nem com o travão por IP cheio: um 429 mostrava um texto errado nas apps antigas.
+    for (const limite of [limitador(Infinity), limitador(0)]) {
+      for (const rota of ["/api/auth/email/pedir", "/api/auth/email/confirmar"]) {
+        const resposta = await chamar(rota, { corpo: { email: "ana@exemplo.pt", codigo: "123456" }, segredos: { LIMITE_AUTH: limite } });
+        expect(resposta.status, rota).toBe(404);
+        expect(await resposta.json(), rota).toEqual({ erro: "nao_existe" });
+      }
+    }
+  });
+
   it("privacidadeTemOResponsavel", async () => {
     const resposta = await pedir("/privacidade", { RESPONSAVEL: "Nome de Teste" });
     expect(resposta.status).toBe(200);

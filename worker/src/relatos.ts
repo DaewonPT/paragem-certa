@@ -1,7 +1,6 @@
 import config from "../public/dados/config.json";
-import { corpoJson } from "./codigos";
 import { portaoDeEscrita } from "./portao";
-import { erro, json } from "./respostas";
+import { corpoJson, erro, json } from "./respostas";
 
 const REGRAS = config.comunidade;
 const DIA = 24 * 60 * 60_000;

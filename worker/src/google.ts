@@ -1,6 +1,5 @@
 import { createLocalJWKSet, createRemoteJWKSet, jwtVerify, type JWTVerifyGetKey } from "jose";
-import { corpoJson, VALIDADE } from "./codigos";
-import { erro, json } from "./respostas";
+import { corpoJson, erro, json } from "./respostas";
 import { aleatorioBase64Url, criarSessao } from "./sessoes";
 
 declare global {
@@ -12,6 +11,8 @@ declare global {
   }
 }
 
+/** Um nonce vale 10 minutos. */
+export const VALIDADE = 10 * 60_000;
 const EMISSORES = ["accounts.google.com", "https://accounts.google.com"];
 /** Os tokens da Google têm 1 a 2 KB; acima disto nem se tenta ler. */
 const TAMANHO_MAXIMO = 8192;
@@ -60,7 +61,7 @@ function googleRespondePeloEmail({ email, hd }: { email: string; hd?: string }):
   return email.endsWith("@gmail.com") || email.endsWith("@googlemail.com") || hd !== undefined;
 }
 
-/** A conta desta pessoa do Google; na primeira vez junta-a à conta de código do mesmo email, se puder, ou cria uma. */
+/** A conta desta pessoa do Google; na primeira vez junta-a a uma conta antiga sem Google do mesmo email, se puder, ou cria uma. */
 async function contaDoGoogle(env: Env, pessoa: { sub: string; email: string; hd?: string }): Promise<string> {
   const existente = await env.DB.prepare("SELECT id FROM contas WHERE google_sub = ?").bind(pessoa.sub).first<{ id: string }>();
   if (existente) return existente.id;
@@ -94,6 +95,11 @@ export async function novoNonce(env: Env): Promise<Response> {
   const nonce = aleatorioBase64Url(32);
   await env.DB.prepare("INSERT INTO nonces (valor, criado_em) VALUES (?, ?)").bind(nonce, Date.now()).run();
   return json({ nonce });
+}
+
+/** Para o Cron diário: os nonces que nunca chegaram a ser gastos. */
+export async function limparNoncesExpirados(env: Env, agora: number): Promise<void> {
+  await env.DB.prepare("DELETE FROM nonces WHERE criado_em < ?").bind(agora - VALIDADE).run();
 }
 
 /** POST /api/auth/google */

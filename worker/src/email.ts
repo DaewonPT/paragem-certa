@@ -12,7 +12,7 @@ export interface Mensagem {
 
 /**
  * O que o carteiro de registo "enviou" (testes e `wrangler dev`, sem RESEND_API_KEY).
- * Fica só em memória e nunca vai para a consola: o texto traz o código de entrada.
+ * Fica só em memória e nunca vai para a consola: o texto traz dados de quem o recebe.
  */
 export const mensagensEnviadas: Mensagem[] = [];
 
@@ -22,29 +22,28 @@ const carteiroDeRegisto: Carteiro = {
   },
 };
 
-export const REMETENTE_CODIGO = "Paragem Certa <codigo@mail.pixellusitano.com>";
 export const REMETENTE_AVISOS = "Paragem Certa <avisos@mail.pixellusitano.com>";
 
-function carteiroResend(chave: string, remetente: string): Carteiro {
+function carteiroResend(chave: string): Carteiro {
   return {
     async enviar(para, assunto, texto) {
       const resposta = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: { authorization: `Bearer ${chave}`, "content-type": "application/json" },
-        body: JSON.stringify({ from: remetente, to: [para], subject: assunto, text: texto }),
+        body: JSON.stringify({ from: REMETENTE_AVISOS, to: [para], subject: assunto, text: texto }),
       });
-      // Só o estado vai no erro: o pedido e a resposta trazem o email e o código.
+      // Só o estado vai no erro: o pedido e a resposta trazem o email e o texto.
       if (!resposta.ok) throw new Error(`o Resend respondeu ${resposta.status}`);
     },
   };
 }
 
-export function carteiroDe(env: Env, remetente = REMETENTE_CODIGO): Carteiro {
-  return env.RESEND_API_KEY ? carteiroResend(env.RESEND_API_KEY, remetente) : carteiroDeRegisto;
+export function carteiroDe(env: Env): Carteiro {
+  return env.RESEND_API_KEY ? carteiroResend(env.RESEND_API_KEY) : carteiroDeRegisto;
 }
 
 /**
- * Envia um email que não é um código de entrada se couber no teto do dia (`emails.outrosPorDia`, à parte dos códigos).
+ * Envia um email se couber no teto do dia (`emails.outrosPorDia`).
  * `false` se o teto está cheio ou o Resend falhou. Também o "Enviar agora" do pc-admin passa por aqui.
  * Limite: um envio que falha gasta o seu lugar do dia; devolvê-lo se o Resend cair muitas vezes.
  */
@@ -58,7 +57,7 @@ export async function enviarNoTeto(env: Env, para: string, assunto: string, text
     .run();
   if (lugar.meta.changes === 0) return false;
   try {
-    await carteiroDe(env, REMETENTE_AVISOS).enviar(para, assunto, texto);
+    await carteiroDe(env).enviar(para, assunto, texto);
     return true;
   } catch {
     // Sem registo: o erro só traz o estado do Resend.
@@ -67,8 +66,8 @@ export async function enviarNoTeto(env: Env, para: string, assunto: string, text
 }
 
 /**
- * Envia um email que não é um código de entrada (recibos, explicações, avisos ao autor) sem o perder: se não couber no
- * teto do dia ou o Resend falhar, fica em `emails_por_enviar`, que a página de revisão mostra com "Enviar agora".
+ * Envia um email (recibos, explicações, avisos ao autor) sem o perder: se não couber no teto do dia ou o Resend falhar,
+ * fica em `emails_por_enviar`, que a página de revisão mostra com "Enviar agora".
  * O destinatário vem sempre de quem chama, nunca do texto de um pedido.
  */
 export async function enviarOuGuardar(env: Env, para: string, assunto: string, texto: string, agora = Date.now()): Promise<"enviado" | "guardado"> {

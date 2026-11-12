@@ -250,18 +250,16 @@ describe("teto de emails e Resend em baixo", () => {
   it("resendFeitoEnviaComORemetenteDosAvisos", async () => {
     const fetchFalso = vi.spyOn(globalThis, "fetch").mockResolvedValue(new Response('{"id":"x"}', { status: 200 }));
     const com = { ...env, RESEND_API_KEY: "chave-de-teste" } as Env;
-    expect(await enviarOuGuardar(com, "ana@exemplo.pt", "Assunto", "Texto")).toBe("enviado");
+    expect(await enviarOuGuardar(com, "ana@exemplo.pt", "Recebemos a tua denúncia", "Texto")).toBe("enviado");
 
-    const corpoEnviado = JSON.parse(String(fetchFalso.mock.calls[0][1]?.body));
-    expect(corpoEnviado).toMatchObject({ from: REMETENTE_AVISOS, to: ["ana@exemplo.pt"], subject: "Assunto", text: "Texto" });
+    expect(fetchFalso).toHaveBeenCalledTimes(1);
+    const [url, init] = fetchFalso.mock.calls[0];
+    expect(String(url)).toBe("https://api.resend.com/emails");
+    expect(init?.method).toBe("POST");
+    expect(new Headers(init?.headers).get("authorization")).toBe("Bearer chave-de-teste");
+    expect(JSON.parse(String(init?.body))).toMatchObject({ from: REMETENTE_AVISOS, to: ["ana@exemplo.pt"], subject: "Recebemos a tua denúncia", text: "Texto" });
+    expect(mensagensEnviadas).toHaveLength(0);
     expect(REMETENTE_AVISOS).toBe("Paragem Certa <avisos@mail.pixellusitano.com>");
-    expect(await linhas("emails_por_enviar")).toBe(0);
-  });
-
-  it("codigosNaoGastamOTetoDosOutros", async () => {
-    await env.DB.prepare("INSERT INTO envios_email (dia, quantos) VALUES (?, 70)").bind(hoje()).run();
-    expect((await denunciar(ana, corpo(await relato("r1")))).status).toBe(204);
-    expect(mensagensEnviadas).toHaveLength(1);
     expect(await linhas("emails_por_enviar")).toBe(0);
   });
 });

@@ -12,3 +12,12 @@ export function semConteudo(): Response {
 export function erro(codigo: string, estado: number): Response {
   return json({ erro: codigo }, estado);
 }
+
+export async function corpoJson(pedido: Request): Promise<Record<string, unknown>> {
+  try {
+    const corpo: unknown = await pedido.json();
+    return corpo !== null && typeof corpo === "object" ? (corpo as Record<string, unknown>) : {};
+  } catch {
+    return {};
+  }
+}

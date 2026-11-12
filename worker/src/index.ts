@@ -1,18 +1,17 @@
 import { carrisAoVivo } from "./carris";
-import { confirmarCodigo, limparExpirados, pedirCodigo } from "./codigos";
 import { lerAvisos, lerComunidade } from "./comunidade";
 import { aceitarTermos, apagarConta } from "./conta";
 import { criarCorrecao } from "./correcoes";
 import { denunciar } from "./denuncias";
 import { sincronizar } from "./favoritos";
-import { entrarComGoogle, novoNonce } from "./google";
+import { entrarComGoogle, limparNoncesExpirados, novoNonce } from "./google";
 import { FonteFalhou } from "./fontes";
 import { aplicarPrazos } from "./prazos";
 import { paginaPrivacidade } from "./privacidade";
 import { criarRelato, votar } from "./relatos";
 import { erro, json } from "./respostas";
 import { resumoAoAutor } from "./resumo";
-import { sair } from "./sessoes";
+import { apagarSessoesExpiradas, sair } from "./sessoes";
 
 export default {
   async fetch(pedido, env, ctx): Promise<Response> {
@@ -21,15 +20,16 @@ export default {
 
       if (pathname === "/api/saude" && pedido.method === "GET") return json({ ok: true });
 
-      // Cada entrada escreve na base (um nonce, um código): sem isto, um só IP podia gastar a quota diária de escritas.
+      // As apps até à 0.5.3 ainda pedem a entrada por código: só o 404 lhes mostra o texto certo, nunca o 429 do travão.
+      if (pathname.startsWith("/api/auth/email/")) return erro("nao_existe", 404);
+
+      // Cada entrada escreve na base (um nonce, uma sessão): sem isto, um só IP podia gastar a quota diária de escritas.
       if (pathname.startsWith("/api/auth/")) {
         const { success } = await env.LIMITE_AUTH.limit({ key: pedido.headers.get("cf-connecting-ip") ?? "sem-ip" });
         if (!success) return erro("espera_um_pouco", 429);
       }
 
       if (pedido.method === "POST") {
-        if (pathname === "/api/auth/email/pedir") return await pedirCodigo(pedido, env);
-        if (pathname === "/api/auth/email/confirmar") return await confirmarCodigo(pedido, env);
         if (pathname === "/api/auth/sair") return await sair(pedido, env);
         if (pathname === "/api/auth/google/nonce") return await novoNonce(env);
         if (pathname === "/api/auth/google") return await entrarComGoogle(pedido, env);
@@ -72,6 +72,8 @@ export default {
   // para os testes a poderem escolher.
   async scheduled(controlo, env, ctx): Promise<void> {
     const agora = controlo.scheduledTime;
-    ctx.waitUntil(Promise.all([limparExpirados(env, agora), aplicarPrazos(env, agora), resumoAoAutor(env, agora)]));
+    ctx.waitUntil(
+      Promise.all([limparNoncesExpirados(env, agora), apagarSessoesExpiradas(env, agora), aplicarPrazos(env, agora), resumoAoAutor(env, agora)]),
+    );
   },
 } satisfies ExportedHandler<Env>;

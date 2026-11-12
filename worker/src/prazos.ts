@@ -24,7 +24,6 @@ export async function aplicarPrazos(env: Env, agora = Date.now()): Promise<void>
     ["decisoes", "criada_em < ?1", agora - 365 * DIA],
     ["bloqueios", "criado_em < ?1", agora - 365 * DIA],
     ["contadores", "dia < ?1", anteontem],
-    ["envios_email", "dia < ?1", anteontem],
   ];
   const passos = prazos.map(([tabela, condicao, limite]) =>
     emLotes(async () => {
