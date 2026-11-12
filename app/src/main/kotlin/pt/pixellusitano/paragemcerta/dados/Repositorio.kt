@@ -2,7 +2,10 @@ package pt.pixellusitano.paragemcerta.dados
 
 import androidx.room.withTransaction
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
@@ -204,10 +207,31 @@ class Repositorio(
         }
     }
 
+    // A última leitura da Carris e a hora a que chegou: o mapa, a paragem e a linha à vista usam a mesma, e só sai outro pedido quando ela faz 1 min.
+    private var leituraCarris: Pair<Instant, AoVivoCarris>? = null
+
+    // Um pedido de cada vez: sem isto, os dois fluxos do ecrã da linha (o mapa e as próximas) acordam juntos e pedem os dois.
+    private val vezDaCarris = Mutex()
+
+    /** A leitura com menos de [INTERVALO_CARRIS], se há; senão pede outra ao servidor. Quem chega com um pedido em voo espera por ele e usa-o. */
+    private suspend fun lerCarris(s: ServidorParagemCerta): Resultado<Pair<Instant, AoVivoCarris>> = vezDaCarris.withLock {
+        val agora = relogio()
+        leituraCarris?.takeIf { (em, _) -> !em.isAfter(agora) && Duration.between(em, agora) < INTERVALO_CARRIS }
+            ?.let { return@withLock Resultado.Ok(it) }
+        // Limite: uma falha não fica guardada; com a Carris em baixo cada ecrã à vista tenta à sua vez (com a pausa de pausaDepoisDeFalha). Guardar a falha se pesar.
+        // O OkHttp não pára um pedido a meio: se o ecrã que pediu sair, a resposta fica guardada para quem espera a vez.
+        withContext(NonCancellable) {
+            when (val r = s.carrisAoVivo()) {
+                is Resultado.Ok -> Resultado.Ok(relogio() to r.valor).also { leituraCarris = it.valor }
+                is Resultado.Falha -> r
+            }
+        }
+    }
+
     /**
-     * As posições da Carris ao vivo (do servidor, que guarda o GTFS-RT 30 s) de 30 em 30 s. Sem servidor ou com o `carrisAoVivo`
-     * desligado dá null sem pedir, e volta a ver o interruptor daí a pouco (o config.json pode chegar depois de o ecrã abrir); numa
-     * falha dá null e espera como a CM.
+     * As posições da Carris ao vivo (do servidor, que guarda o GTFS-RT 30 s) de minuto a minuto, numa só leitura para todos os ecrãs
+     * à vista. Sem servidor ou com o `carrisAoVivo` desligado dá null sem pedir, e volta a ver o interruptor daí a pouco (o config.json
+     * pode chegar depois de o ecrã abrir); numa falha dá null e espera como a CM.
      */
     private fun leiturasCarris(): Flow<AoVivoCarris?> = flow {
         var tentativa = 0
@@ -218,11 +242,13 @@ class Repositorio(
                 delay(ESPERA_SEM_CARRIS.toMillis())
                 continue
             }
-            when (val r = doServidor.carrisAoVivo()) {
+            when (val r = lerCarris(doServidor)) {
                 is Resultado.Ok -> {
                     tentativa = 0
-                    emit(r.valor)
-                    delay(INTERVALO_CARRIS.toMillis())
+                    val (em, leitura) = r.valor
+                    emit(leitura)
+                    // Acorda quando a leitura faz 1 min: um ecrã aberto a meio do minuto pede a seguinte junto com os outros (um só pedido).
+                    delay(Duration.between(relogio(), em.plus(INTERVALO_CARRIS)).toMillis().coerceIn(0, INTERVALO_CARRIS.toMillis()))
                 }
                 is Resultado.Falha -> {
                     emit(null)
@@ -640,7 +666,7 @@ class Repositorio(
 
     private companion object {
         val INTERVALO_VEICULOS: Duration = Duration.ofSeconds(15)
-        val INTERVALO_CARRIS: Duration = Duration.ofSeconds(30)
+        val INTERVALO_CARRIS: Duration = Duration.ofMinutes(1)
         val ESPERA_SEM_CARRIS: Duration = Duration.ofSeconds(5)
         const val PARAGEM_CARRIS = "pt-Carris_"
         const val MAX_VIAGENS_POR_ECRA = 3

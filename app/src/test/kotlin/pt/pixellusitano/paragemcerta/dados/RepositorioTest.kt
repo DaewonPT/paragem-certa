@@ -2,8 +2,15 @@ package pt.pixellusitano.paragemcerta.dados
 
 import androidx.room.Room
 import app.cash.turbine.test
+import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.async
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceTimeBy
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
+import kotlinx.coroutines.withContext
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -15,6 +22,8 @@ import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
 import pt.pixellusitano.paragemcerta.core.fontes.cm.CarrisMetropolitana
 import pt.pixellusitano.paragemcerta.core.fontes.geoapi.GeoApi
+import pt.pixellusitano.paragemcerta.core.fontes.servidor.Interruptores
+import pt.pixellusitano.paragemcerta.core.fontes.servidor.ServidorParagemCerta
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.Transitous
 import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.modelo.Etapa
@@ -26,6 +35,7 @@ import pt.pixellusitano.paragemcerta.core.modelo.Paragem
 import pt.pixellusitano.paragemcerta.core.modelo.ParagemEtapa
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
 import pt.pixellusitano.paragemcerta.core.modelo.TipoLugar
+import pt.pixellusitano.paragemcerta.core.modelo.Veiculo
 import pt.pixellusitano.paragemcerta.core.rede.Http
 import pt.pixellusitano.paragemcerta.core.rede.Resposta
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
@@ -355,5 +365,33 @@ class RepositorioTest {
             ParagemEntidade("CM:2", "CM", "2", "Sem linhas", normalizar("Sem linhas"), 38.70, -9.14, null, ""),
         ))
         assertEquals(listOf("CM:1"), bd.paragens().cmNaZona(38.69, -9.15, 38.71, -9.13).map { it.chave })
+    }
+
+    @Test fun quemSaiComALeituraDaCarrisEmVooNaoADeitaFora() = runTest {
+        val porta = CompletableDeferred<Unit>()
+        val pedidos = mutableListOf<String>()
+        val http = object : Http {
+            override suspend fun get(url: String) = Resposta(404, "")
+
+            override suspend fun enviar(metodo: String, url: String, corpo: String?, cabecalhos: Map<String, String>): Resposta {
+                pedidos += url
+                // Como o OkHttp, que não pára a meio: o pedido acaba mesmo que quem o fez seja cancelado.
+                withContext(NonCancellable) { porta.await() }
+                return Resposta(200, """{"atualizado":1,"veiculos":[]}""")
+            }
+        }
+        val repositorio = Repositorio(
+            bd, CarrisMetropolitana(http), Transitous(http), GeoApi(http), relogio = { manha },
+            servidor = ServidorParagemCerta(http), interruptores = { Interruptores(carrisAoVivo = true) },
+        )
+        val a = launch { repositorio.veiculosCarris().first() }
+        runCurrent()
+        // Outra paragem no ecrã da linha: o fluxo que pediu sai com o pedido em voo e o novo espera a vez.
+        a.cancel()
+        val b = async { repositorio.veiculosCarris().first() }
+        runCurrent()
+        porta.complete(Unit)
+        assertEquals(emptyList<Veiculo>(), b.await())
+        assertEquals(1, pedidos.size)
     }
 }

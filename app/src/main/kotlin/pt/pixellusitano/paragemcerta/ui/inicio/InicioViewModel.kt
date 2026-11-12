@@ -44,7 +44,7 @@ class InicioViewModel(
     val veiculos: StateFlow<List<Veiculo>> =
         veiculosAoVivo().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 
-    /** Os da Carris (de 30 em 30 s): a mesma regra, só correm com o mapa à vista. */
+    /** Os da Carris (de minuto a minuto): a mesma regra, só correm com o mapa à vista. */
     val veiculosCarris: StateFlow<List<Veiculo>> =
         carrisAoVivo().stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptyList())
 

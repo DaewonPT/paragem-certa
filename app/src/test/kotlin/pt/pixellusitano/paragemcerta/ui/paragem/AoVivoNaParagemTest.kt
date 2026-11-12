@@ -4,9 +4,13 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.hasContentDescription
@@ -15,6 +19,7 @@ import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.room.Room
 import com.github.takahirom.roborazzi.captureRoboImage
 import kotlinx.coroutines.flow.first
@@ -125,8 +130,9 @@ class AoVivoNaParagemTest {
     private val servidor = ServidorParagemCerta(rede)
     private val agora = Instant.now().truncatedTo(ChronoUnit.SECONDS)
     private var carrisLigado = true
+    // O relógio do repositório anda com o do teste: é por ele que a leitura da Carris envelhece.
     private val repositorio = Repositorio(
-        bd, CarrisMetropolitana(rede), Transitous(rede), GeoApi(rede), relogio = { agora },
+        bd, CarrisMetropolitana(rede), Transitous(rede), GeoApi(rede), relogio = { agora.plusMillis(regra.mainClock.currentTime) },
         servidor = servidor, interruptores = { Interruptores(carrisAoVivo = carrisLigado) },
     )
     private val preferencias = Preferencias(LojaEmMemoria())
@@ -161,6 +167,13 @@ class AoVivoNaParagemTest {
             aoMudarSentido = {}, aoEscolherParagem = {}, aoAbrirParagem = {}, aoFavorita = {}, aoUsarComoHabitual = {}, aoVerHorario = {},
             aoAbrirMapaOficial = null, mapa = {}, modifier = Modifier.width(360.dp), agora = agora,
         )
+    }
+
+    // Como o mapa do ecrã da linha: os autocarros da Carris, lidos ao mesmo tempo que as próximas.
+    @Composable
+    private fun VeiculosDaLinha() {
+        val veiculos by remember { repositorio.veiculosCarris() }.collectAsStateWithLifecycle(emptyList())
+        Text(veiculos.joinToString { it.id })
     }
 
     private fun abrir(ecra: @Composable () -> Unit) {
@@ -293,7 +306,7 @@ class AoVivoNaParagemTest {
         abrirParagem()
         esperarPor { vezes("ao vivo, a 5 paragens") == 3 }
         // As 3 primeiras a chegar; as outras 2 ficam com o horário, e nem ao fim de outra leitura da Carris se pede mais.
-        passar(31_000)
+        passar(61_000)
         quadro()
         quadro()
         assertEquals(2, rede.a("/api/rt/carris").size)
@@ -322,11 +335,11 @@ class AoVivoNaParagemTest {
         passar(60_000)
         assertEquals(emptyList<String>(), rede.pedidos)
 
-        // À vista, a primeira leitura sai logo e a seguinte 30 s depois de a resposta chegar.
+        // À vista, a primeira leitura sai logo e a seguinte 1 min depois de a resposta chegar.
         irPara(Lifecycle.State.STARTED)
         esperarPor { vezes("ao vivo, a 5 paragens") == 1 }
         assertEquals(1, rede.a("/api/rt/carris").size)
-        passar(29_000)
+        passar(59_000)
         assertEquals(1, rede.a("/api/rt/carris").size)
         passar(2_000)
         assertEquals(2, rede.a("/api/rt/carris").size)
@@ -365,6 +378,42 @@ class AoVivoNaParagemTest {
         abrir { ProximasDaLinha() }
         esperarPor { vezes("ao vivo, a 5 paragens") == 1 }
         assertEquals(1, viagensPedidas().size)
+    }
+
+    // ---- uma só leitura da Carris por minuto, para todos os ecrãs ----
+
+    @Test fun linhaComMapaEProximasFazUmSoPedido() {
+        haViagens(seq = 4, 5166)
+        abrir {
+            Column {
+                VeiculosDaLinha()
+                ProximasDaLinha()
+            }
+        }
+        esperarPor { vezes("ao vivo, a 5 paragens") == 1 && vezes("5166") > 0 }
+        assertEquals(1, rede.a("/api/rt/carris").size)
+        passar(59_000)
+        assertEquals(1, rede.a("/api/rt/carris").size)
+        passar(2_000)
+        assertEquals(2, rede.a("/api/rt/carris").size)
+    }
+
+    @Test fun outroEcraUsaALeituraDoMinuto() {
+        haViagens(seq = 4, 5166)
+        var naParagem by mutableStateOf(true)
+        abrir { if (naParagem) EcraDaParagem() else ProximasDaLinha() }
+        esperarPor { vezes("ao vivo, a 5 paragens") == 1 }
+        assertEquals(1, rede.a("/api/rt/carris").size)
+        passar(20_000)
+
+        // Da paragem para a linha a meio do minuto: a linha mostra a leitura que já há e pede a seguinte quando ela faz 1 min.
+        regra.runOnUiThread { naParagem = false }
+        esperarPor { vezes("ao vivo, a 5 paragens") == 1 && vezes("Algés") > 0 }
+        assertEquals(1, rede.a("/api/rt/carris").size)
+        passar(39_000)
+        assertEquals(1, rede.a("/api/rt/carris").size)
+        passar(2_000)
+        assertEquals(2, rede.a("/api/rt/carris").size)
     }
 
     // ---- a captura (só se grava no CI) ----

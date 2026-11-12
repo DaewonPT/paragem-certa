@@ -98,8 +98,9 @@ class CamadasTest {
     private val rede = RedeDoMapa()
     private val catalogo = lerCatalogo(fixture("linhas.json"))
     private var carrisLigado = true
+    // O relógio do repositório anda com o do teste: é por ele que a leitura da Carris envelhece.
     private val repositorio = Repositorio(
-        bd, CarrisMetropolitana(rede), Transitous(rede), GeoApi(rede),
+        bd, CarrisMetropolitana(rede), Transitous(rede), GeoApi(rede), relogio = { Instant.parse("2026-11-03T09:00:00Z").plusMillis(regra.mainClock.currentTime) },
         servidor = ServidorParagemCerta(rede), interruptores = { Interruptores(carrisAoVivo = carrisLigado) }, catalogo = { catalogo },
     )
     private val preferencias = Preferencias(LojaEmMemoria())
@@ -162,11 +163,11 @@ class CamadasTest {
         assertTrue(rede.a("/api/rt/carris").isEmpty())
         assertTrue(rede.a("/vehicles").isEmpty())
 
-        // À vista, o primeiro pedido sai logo e o seguinte 30 s depois de a resposta chegar (os 30 s contam-se do que se vê no ecrã).
+        // À vista, o primeiro pedido sai logo e o seguinte 1 min depois de a resposta chegar.
         irPara(Lifecycle.State.STARTED)
         esperarPor { veiculosNoEcra() }
         assertEquals(1, rede.a("/api/rt/carris").size)
-        passar(29_000)
+        passar(59_000)
         assertEquals(1, rede.a("/api/rt/carris").size)
         passar(2_000)
         assertEquals(2, rede.a("/api/rt/carris").size)
