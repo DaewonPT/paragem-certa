@@ -20,6 +20,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.setValue
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -475,7 +476,7 @@ private fun AvisoNotificacoes(abertos: MutableIntState) {
  * sem verificar nada. Sem ela, para quem desligou "Atualizar sozinha", verifica no máximo uma vez por dia no GitHub.
  */
 @Composable
-private fun AvisoAtualizacao(pendente: NovaVersao?, abertos: MutableIntState) {
+internal fun AvisoAtualizacao(pendente: NovaVersao?, abertos: MutableIntState) {
     val contexto = LocalContext.current
     val escopo = androidx.compose.runtime.rememberCoroutineScope()
     var nova by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(pendente) }
@@ -494,10 +495,14 @@ private fun AvisoAtualizacao(pendente: NovaVersao?, abertos: MutableIntState) {
         confirmButton = {
             TextButton(onClick = {
                 nova = null
+                // Rodar o ecrã ou sair com "Voltar" a meio não pode cortar o descarregamento, nem mostrar a falha e esconder o aviso um dia.
                 escopo.launch {
-                    runCatching { Atualizacoes.instalar(contexto, n) }
-                        .onSuccess { Atualizacoes.limparPendente(contexto) }
-                        .onFailure { Toast.makeText(contexto, falhou, Toast.LENGTH_LONG).show() }
+                    withContext(NonCancellable) {
+                        val app = contexto.applicationContext
+                        runCatching { Atualizacoes.instalar(app, n) }
+                            .onSuccess { Atualizacoes.limparPendente(app) }
+                            .onFailure { Toast.makeText(app, falhou, Toast.LENGTH_LONG).show() }
+                    }
                 }
             }) { Text(stringResource(R.string.atualizacao_atualizar)) }
         },
