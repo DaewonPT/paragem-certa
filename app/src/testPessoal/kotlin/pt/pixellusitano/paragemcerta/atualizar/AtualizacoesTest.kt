@@ -330,7 +330,7 @@ class AtualizacoesTest {
         assertTrue(APK_FALSO.contentEquals(destino.readBytes()))
     }
 
-    private fun guardadoComoPendente() =contexto.getSharedPreferences("atualizacoes", 0).all.keys.any { it.startsWith("pendente") }
+    private fun guardadoComoPendente() = contexto.getSharedPreferences("atualizacoes", 0).all.keys.any { it.startsWith("pendente") }
 
     private fun poeAppNoPlano(importancia: Int) {
         val eu = ActivityManager.RunningAppProcessInfo().apply { pid = Process.myPid(); this.importance = importancia }
