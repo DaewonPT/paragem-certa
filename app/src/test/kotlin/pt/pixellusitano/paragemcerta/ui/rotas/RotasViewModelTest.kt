@@ -32,6 +32,7 @@ import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import pt.pixellusitano.paragemcerta.core.rotas.etiquetas
 import pt.pixellusitano.paragemcerta.core.rotas.ordenar
 import pt.pixellusitano.paragemcerta.dados.fixture
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalTime
 import java.time.ZoneId
@@ -52,10 +53,12 @@ class RotasViewModelTest {
     private val filtrosUsados = mutableListOf<Filtros>()
     private val etapasPedidas = mutableListOf<Etapa>()
     private var partidasDaParagem: List<Chegada>? = null
+    private var agora = Instant.parse("2026-11-01T09:00:00Z")
+    private val horasPedidas = mutableListOf<Instant>()
 
     private fun vm(guardados: Flow<Filtros> = filtros) = RotasViewModel(
-        planear = { de, para, _, _, f, cursor ->
-            pedidos += de to para; filtrosUsados += f; cursoresPedidos += cursor
+        planear = { de, para, hora, _, f, cursor ->
+            pedidos += de to para; filtrosUsados += f; cursoresPedidos += cursor; horasPedidas += hora
             if (cursor == null) resposta else respostaPagina
         },
         registarRecente = { de, para -> recentes += de to para },
@@ -63,7 +66,7 @@ class RotasViewModelTest {
         filtrosGuardados = guardados,
         guardarFiltros = { filtros.value = it },
         proximasPartidas = { etapa -> etapasPedidas += etapa; partidasDaParagem },
-        relogio = { Instant.parse("2026-11-01T09:00:00Z") },
+        relogio = { agora },
     )
 
     private fun plano(vararg itinerarios: Itinerario, anterior: String? = null, seguinte: String? = null) =
@@ -274,6 +277,50 @@ class RotasViewModelTest {
         vm.maisTarde()
         advanceUntilIdle()
         assertEquals(antes.copy(seguinte = null), vm.estado.value)
+    }
+
+    @Test fun listaDeAgoraComMaisDe10MinProcuraDeNovoAoVoltar() = runTest(despachante) {
+        val rotas = TransitousParser.rotas(fixture("transitous-plan.json"))
+        resposta = plano(rotas[0], rotas[1], anterior = "EARLIER|1", seguinte = "LATER|2")
+        respostaPagina = plano(rotas[2], anterior = "EARLIER|3")
+        val vm = vm()
+        vm.definirOrigem(cais)
+        vm.definirDestino(oriente)
+        advanceUntilIdle()
+        vm.maisTarde()
+        advanceUntilIdle()
+        vm.abrir(rotas[0])
+        vm.seguir(1)
+        vm.preparar(true)
+        agora = agora.plus(Duration.ofMinutes(10))
+        vm.procurarSeVelha()
+        advanceUntilIdle()
+        assertEquals(listOf(null, "LATER|2"), cursoresPedidos) // ainda não é velha
+        agora = agora.plusSeconds(1)
+        vm.procurarSeVelha()
+        advanceUntilIdle()
+        // De novo desde a primeira página, com a hora de agora; a rota aberta, o autocarro seguido e a preparação ficam.
+        assertEquals(listOf(null, "LATER|2", null), cursoresPedidos)
+        assertEquals(agora, horasPedidas.last())
+        val prontas = vm.estado.value as EstadoRotas.Prontas
+        assertEquals("LATER|2", prontas.seguinte)
+        assertEquals(2, prontas.itinerarios.size)
+        assertEquals(rotas[0], vm.aberto.value)
+        assertEquals(1, vm.seguida.value)
+        assertTrue(vm.preparar.value)
+    }
+
+    @Test fun listaComHoraEscolhidaNaoEnvelhece() = runTest(despachante) {
+        val vm = vm()
+        vm.definirHora(TipoHora.PARTIR, LocalTime.of(18, 0))
+        vm.definirOrigem(cais)
+        vm.definirDestino(oriente)
+        advanceUntilIdle()
+        assertEquals(1, pedidos.size)
+        agora = agora.plus(Duration.ofHours(3))
+        vm.procurarSeVelha()
+        advanceUntilIdle()
+        assertEquals(1, pedidos.size)
     }
 
     @Test fun naoPlaneiaAntesDosFiltrosGuardados() = runTest(despachante) {

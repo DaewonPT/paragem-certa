@@ -25,6 +25,7 @@ import pt.pixellusitano.paragemcerta.core.regras.distanciaMetros
 import pt.pixellusitano.paragemcerta.core.rotas.etiquetas
 import pt.pixellusitano.paragemcerta.core.rotas.ordenar
 import pt.pixellusitano.paragemcerta.ui.comum.LISBOA_FUSO
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalTime
 import java.time.ZonedDateTime
@@ -128,6 +129,9 @@ class RotasViewModel(
     private var posicao: Pair<Double, Double>? = null
     private var procura: Job? = null
 
+    /** A hora da última procura (null = nenhuma). */
+    private var procuradaEm: Instant? = null
+
     /** O pedido da lista que está no ecrã com um cursor: as páginas "mais cedo" e "mais tarde" só valem com o resto do pedido igual. */
     private var pedirPagina: (suspend (String) -> Resultado<PlanoRotas>)? = null
 
@@ -171,6 +175,16 @@ class RotasViewModel(
     }
 
     fun tentarOutraVez() = procurar()
+
+    /**
+     * Ao voltar ao ecrã: a lista de "partir agora" com mais de [VALIDADE_LISTA] já mostra partidas que foram; procura-se de novo,
+     * desde a primeira página. Com hora escolhida a lista é a dessa hora e não envelhece. A rota aberta, o autocarro seguido e a
+     * preparação ficam.
+     */
+    fun procurarSeVelha() {
+        val em = procuradaEm ?: return
+        if (_pedido.value.tipoHora == TipoHora.AGORA && Duration.between(em, relogio()) > VALIDADE_LISTA) procurar()
+    }
 
     fun abrir(i: Itinerario?) {
         _aberto.value = i
@@ -251,6 +265,7 @@ class RotasViewModel(
                     // A posição atual guarda-se só pelo nome: GPS cru enchia os recentes de cópias.
                     registarRecente(if (origem.tipo == TipoLugar.POSICAO) Lugar(MINHA_POSICAO, 0.0, 0.0, TipoLugar.POSICAO) else origem, destino)
                     val agora = relogio()
+                    procuradaEm = agora
                     val hora = p.hora?.let { proximaOcorrencia(it, agora.atZone(LISBOA_FUSO)).toInstant() } ?: agora
                     val chegarAs = p.tipoHora == TipoHora.CHEGAR
                     val filtros = _filtros.value
@@ -273,5 +288,6 @@ class RotasViewModel(
 
     private companion object {
         const val PERTO_METROS = 100.0
+        val VALIDADE_LISTA: Duration = Duration.ofMinutes(10)
     }
 }

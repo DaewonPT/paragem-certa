@@ -53,6 +53,7 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
@@ -136,6 +137,11 @@ fun RotasEcra(
     LaunchedEffect(Unit) {
         ultimaPosicao(contexto)?.let(vm::definirPosicao)
         pedirPosicaoAtual(contexto, vm::definirPosicao)
+    }
+    // Ao voltar ao ecrã (da app, de outro separador ou da viagem), a lista de "partir agora" com mais de 10 min procura-se de novo.
+    LifecycleResumeEffect(vm) {
+        vm.procurarSeVelha()
+        onPauseOrDispose { }
     }
     BackHandler(enabled = escolher != null) { escolher = null }
     BackHandler(enabled = escolher == null && aberto != null) { vm.abrir(null) }
