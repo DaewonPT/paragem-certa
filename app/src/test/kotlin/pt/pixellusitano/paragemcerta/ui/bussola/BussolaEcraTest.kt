@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.core.app.ActivityOptionsCompat
 import com.github.takahirom.roborazzi.captureRoboImage
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -90,6 +91,37 @@ class BussolaEcraTest {
         // Rodado ao contrário, o cimo do ecrã é o fundo do telemóvel: a oeste.
         assertEquals(-90.0, orientacaoGraus(vetorDeitado(90.0), Surface.ROTATION_180), 0.01)
         assertEquals(0.0, orientacaoGraus(vetorDeitado(90.0), Surface.ROTATION_270), 0.01)
+    }
+
+    // ---- a escolha da posição ----
+
+    /** Uma posição de [fornecedor] medida aos [s] segundos; sem [precisao], hasAccuracy() dá false. */
+    private fun posicao(fornecedor: String, s: Double, precisao: Float? = null, latitude: Double = 0.0, longitude: Double = 0.0) =
+        Location(fornecedor).apply {
+            this.latitude = latitude
+            this.longitude = longitude
+            elapsedRealtimeNanos = (s * 1e9).toLong()
+            precisao?.let { accuracy = it }
+        }
+
+    @Test fun umaPosicaoMenosPrecisaDeOutroFornecedorSoGanhaPassados10s() {
+        val gps = LocationManager.GPS_PROVIDER
+        val rede = LocationManager.NETWORK_PROVIDER
+        val gps5 = posicao(gps, 0.0, 5f)
+        val primeira = posicao(rede, 0.0, 150f)
+        assertSame(primeira, melhorPosicao(null, primeira))
+        assertSame(gps5, melhorPosicao(gps5, posicao(rede, 2.0, 150f)))
+        val redeAos10 = posicao(rede, 10.0, 150f)
+        assertSame(redeAos10, melhorPosicao(gps5, redeAos10))
+        // Do mesmo fornecedor passa sempre, senão a posição parava enquanto andas.
+        val gps8 = posicao(gps, 2.0, 8f)
+        assertSame(gps8, melhorPosicao(gps5, gps8))
+        val gpsDepoisDaRede = posicao(gps, 1.0, 5f)
+        assertSame(gpsDepoisDaRede, melhorPosicao(primeira, gpsDepoisDaRede))
+        // Sem precisão conta como a pior.
+        assertSame(gps5, melhorPosicao(gps5, posicao(rede, 2.0)))
+        val redeDepoisDeGpsSemPrecisao = posicao(rede, 2.0, 150f)
+        assertSame(redeDepoisDeGpsSemPrecisao, melhorPosicao(posicao(gps, 0.0), redeDepoisDeGpsSemPrecisao))
     }
 
     // ---- o conteúdo ----
@@ -262,6 +294,31 @@ class BussolaEcraTest {
         regra.onNodeWithText("110 m", useUnmergedTree = true).assertIsDisplayed()
         regra.onNodeWithText("a norte", useUnmergedTree = true).assertIsDisplayed()
         regra.onNodeWithText("Este telemóvel não tem bússola. Aqui vês só a distância e a direção.").assertIsDisplayed()
+    }
+
+    @Test fun aRedeMenosPrecisaNaoFazSaltarADistanciaMasGanhaSeOGpsSeCalar() {
+        darLocalizacao()
+        shadowOf(gestor()).setProviderEnabled(LocationManager.GPS_PROVIDER, true)
+        shadowOf(gestor()).setProviderEnabled(LocationManager.NETWORK_PROVIDER, true)
+        ecra()
+        // O gestor deita fora uma posição do mesmo fornecedor a menos de 2 s da anterior: os tempos ficam afastados.
+        fun chega(l: Location) {
+            shadowOf(gestor()).simulateLocation(l)
+            regra.waitForIdle()
+        }
+        fun mostra(distancia: String, rumo: String) {
+            regra.onNodeWithText(distancia, useUnmergedTree = true).assertIsDisplayed()
+            regra.onNodeWithText(rumo, useUnmergedTree = true).assertIsDisplayed()
+        }
+        // O GPS a 0,00027° a sul da paragem (30 m).
+        chega(posicao(LocationManager.GPS_PROVIDER, 1.0, 5f, latitude = lat + 0.00073, longitude = lon))
+        mostra("30 m", "a norte")
+        // A rede, 0,0013° a norte da paragem (145 m) e muito menos precisa, logo a seguir: não conta.
+        chega(posicao(LocationManager.NETWORK_PROVIDER, 3.0, 150f, latitude = lat + 0.0023, longitude = lon))
+        mostra("30 m", "a norte")
+        // O GPS calou-se há 12 s: fica a rede.
+        chega(posicao(LocationManager.NETWORK_PROVIDER, 13.0, 150f, latitude = lat + 0.0023, longitude = lon))
+        mostra("140 m", "a sul")
     }
 
     @Test fun comSensorAPontaApontaParaAParagem() {

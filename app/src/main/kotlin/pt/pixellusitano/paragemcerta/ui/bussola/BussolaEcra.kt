@@ -8,6 +8,7 @@ import android.hardware.Sensor
 import android.hardware.SensorEvent
 import android.hardware.SensorEventListener
 import android.hardware.SensorManager
+import android.location.Location
 import android.location.LocationManager
 import android.view.Surface
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -59,6 +60,9 @@ import pt.pixellusitano.paragemcerta.ui.comum.CabecalhoAzulejo
 import pt.pixellusitano.paragemcerta.ui.inicio.temLocalizacao
 import pt.pixellusitano.paragemcerta.ui.rotas.textoDistancia
 import pt.pixellusitano.paragemcerta.ui.tema.Azulejo
+import kotlin.time.Duration.Companion.seconds
+
+private val POSICAO_RECENTE_NS = 10.seconds.inWholeNanoseconds
 
 /**
  * O que o ecrã tem para mostrar. Ativa: a distância e o rumo (norte 0) até à paragem; angulo é o da seta, que só existe com
@@ -93,12 +97,13 @@ fun BussolaEcra(nome: String, lat: Double, lon: Double, aoVoltar: () -> Unit, fo
         onPauseOrDispose { }
     }
 
-    // A posição atual, de qualquer fornecedor que esteja ligado (sem os serviços da Google).
-    var posicao by remember { mutableStateOf<Pair<Double, Double>?>(null) }
+    // A posição atual, de qualquer fornecedor que esteja ligado (sem os serviços da Google); guarda-se a localização
+    // inteira para comparar a precisão da seguinte.
+    var posicao by remember { mutableStateOf<Location?>(null) }
     var desligada by remember { mutableStateOf(false) }
     LifecycleStartEffect(permitida) {
         val gestor = contexto.getSystemService(LocationManager::class.java)
-        val ouvinte = LocationListenerCompat { posicao = it.latitude to it.longitude }
+        val ouvinte = LocationListenerCompat { posicao = melhorPosicao(posicao, it) }
         if (permitida && gestor != null) desligada = !seguirPosicao(contexto, gestor, ouvinte)
         onStopOrDispose { gestor?.let { largarPosicao(it, ouvinte) } }
     }
@@ -122,7 +127,7 @@ fun BussolaEcra(nome: String, lat: Double, lon: Double, aoVoltar: () -> Unit, fo
         onStopOrDispose { sensores?.unregisterListener(ouvinte) }
     }
 
-    val aqui = posicao
+    val aqui = posicao?.let { it.latitude to it.longitude }
     // A declinação passa o norte magnético da bússola ao verdadeiro, que é o dos rumos; muda com o sítio e não a cada leitura.
     val declinacao = remember(aqui) {
         aqui?.let { GeomagneticField(it.first.toFloat(), it.second.toFloat(), 0f, System.currentTimeMillis()).declination.toDouble() } ?: 0.0
@@ -164,6 +169,18 @@ private fun seguirPosicao(contexto: Context, gestor: LocationManager, ouvinte: L
 
 @SuppressLint("MissingPermission") // sem a permissão não há pedidos a largar
 private fun largarPosicao(gestor: LocationManager, ouvinte: LocationListenerCompat) = LocationManagerCompat.removeUpdates(gestor, ouvinte)
+
+/**
+ * A posição a mostrar quando chega [nova]. Uma posição de outro fornecedor e menos precisa (a rede a 150 m logo depois do
+ * GPS a 5 m) não tira o lugar à anterior enquanto esta tiver menos de 10 s.
+ * Limite: se o GPS se calar de vez (túnel, metro), a seta fica na última posição dele até 10 s antes de passar à rede.
+ */
+internal fun melhorPosicao(anterior: Location?, nova: Location): Location {
+    if (anterior == null || nova.provider == anterior.provider) return nova
+    fun erro(l: Location) = if (l.hasAccuracy()) l.accuracy else Float.MAX_VALUE
+    val recente = nova.elapsedRealtimeNanos - anterior.elapsedRealtimeNanos < POSICAO_RECENTE_NS
+    return if (recente && erro(nova) > erro(anterior)) anterior else nova
+}
 
 /**
  * O azimute do telemóvel (para onde aponta o cimo do ecrã), em graus de −180 a 180 contra o norte magnético, a partir do
