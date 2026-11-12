@@ -35,8 +35,7 @@
 <table>
   <thead><tr><th>Dado</th><th>Para quê</th><th>Quanto tempo</th></tr></thead>
   <tbody>
-    <tr><td>O teu email e, se entrares com o Google, o identificador que a Google dá à tua conta</td><td>Criar e reconhecer a tua conta</td><td>Até apagares a conta</td></tr>
-    <tr><td>Código de entrada por email (só uma marca do código, nunca o código)</td><td>Confirmar que o email é teu</td><td>Vale 10 minutos, com 5 tentativas</td></tr>
+    <tr><td>O teu email e o identificador que a Google dá à tua conta</td><td>Criar e reconhecer a tua conta</td><td>Até apagares a conta</td></tr>
     <tr><td>Sessão (só uma marca do código de sessão)</td><td>Manter-te dentro da conta</td><td>60 dias sem uso ou 180 dias no total</td></tr>
     <tr><td>Favoritos: paragens, linhas e sítios, incluindo a Casa e o Trabalho, com nome e coordenadas</td><td>Sincronizar entre os teus telemóveis</td><td>Até apagares a conta</td></tr>
     <tr><td>Versão dos termos que aceitaste e a data</td><td>Provar que aceitaste as regras antes de publicares</td><td>Até apagares a conta</td></tr>
@@ -65,8 +64,8 @@
 <h2>Quem mais recebe dados</h2>
 <p>O servidor corre na <strong>Cloudflare</strong> (alojamento e base de dados). As posições ao vivo dos autocarros da Carris passam pelo servidor da Paragem Certa: ele lê-as à Carris e dá-as à app, e não guarda nada de quem as pede. A Carris só recebe pedidos do servidor, sem nada sobre ti. Além disso:</p>
 <ul>
-  <li><strong>Google</strong>, quando entras com o Google: trata o início de sessão. A Paragem Certa recebe o teu email verificado e um identificador.</li>
-  <li><strong>Resend</strong>: envia os emails de entrada, os recibos e as decisões, por isso recebe o teu email. Os emails podem sair dos EUA, e a Resend guarda lá os registos desses envios.</li>
+  <li><strong>Google</strong>: trata o início de sessão. A Paragem Certa recebe o teu email verificado e um identificador.</li>
+  <li><strong>Resend</strong>: envia os recibos e as decisões, por isso recebe o teu email. Os emails podem sair dos EUA, e a Resend guarda lá os registos desses envios.</li>
   <li><strong>GitHub</strong>: aloja o código e corre os trabalhos de dados. Para o catálogo das linhas, o GitHub Actions lê os ficheiros GTFS (horários e linhas) que o Transitous publica; o GitHub Actions também lê o Panoramax e a lista de paragens da Carris Metropolitana para escolher as fotos de rua; nada disto leva dados teus.</li>
 </ul>
 <p>Estes serviços recebem pedidos diretamente do teu telemóvel, sem passar pelo servidor da Paragem Certa:</p>
@@ -106,8 +105,7 @@
 <table>
   <thead><tr><th>Data</th><th>Why</th><th>How long</th></tr></thead>
   <tbody>
-    <tr><td>Your email and, if you sign in with Google, the identifier Google gives your account</td><td>Create and recognise your account</td><td>Until you delete the account</td></tr>
-    <tr><td>Email sign-in code (only a hash of the code, never the code)</td><td>Confirm the email is yours</td><td>Valid for 10 minutes, 5 attempts</td></tr>
+    <tr><td>Your email and the identifier Google gives your account</td><td>Create and recognise your account</td><td>Until you delete the account</td></tr>
     <tr><td>Session (only a hash of the session token)</td><td>Keep you signed in</td><td>60 days without use or 180 days in total</td></tr>
     <tr><td>Favourites: stops, lines and places, including Home and Work, with name and coordinates</td><td>Sync between your phones</td><td>Until you delete the account</td></tr>
     <tr><td>The version of the terms you accepted and the date</td><td>Prove you accepted the rules before posting</td><td>Until you delete the account</td></tr>
@@ -136,8 +134,8 @@
 <h2>Who else receives data</h2>
 <p>The server runs on <strong>Cloudflare</strong> (hosting and database). The live positions of Carris buses go through the Paragem Certa server: it reads them from Carris and hands them to the app, and it stores nothing about who asks for them. Carris only receives requests from the server, with nothing about you. In addition:</p>
 <ul>
-  <li><strong>Google</strong>, when you sign in with Google: handles the sign-in. Paragem Certa receives your verified email and an identifier.</li>
-  <li><strong>Resend</strong>: sends the sign-in emails, receipts and decisions, so it receives your email. Emails may be sent from the United States, and Resend keeps the records of those emails there.</li>
+  <li><strong>Google</strong>: handles the sign-in. Paragem Certa receives your verified email and an identifier.</li>
+  <li><strong>Resend</strong>: sends the receipts and decisions, so it receives your email. Emails may be sent from the United States, and Resend keeps the records of those emails there.</li>
   <li><strong>GitHub</strong>: hosts the code and runs the data jobs. For the lines catalogue, GitHub Actions reads the GTFS files (timetables and lines) that Transitous publishes; GitHub Actions also reads Panoramax and the Carris Metropolitana stop list to choose the street photos; none of this carries data about you.</li>
 </ul>
 <p>These services receive requests directly from your phone, not through the Paragem Certa server:</p>

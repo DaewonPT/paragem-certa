@@ -340,6 +340,15 @@ describe("política de privacidade, termos e guia do autor", () => {
     expect(en).toContain("with location on, your position, to show the stops near you, to sort search results and to suggest routes to your saved home and work.");
   });
 
+  it("politicaJaNaoFalaDoCodigo", async () => {
+    // A entrada passou a ser só com o Google: nem a política nem o guia podem falar do código por email.
+    const { pt, en } = await politica();
+    for (const t of [pt, en]) {
+      for (const frase of ["Código de entrada", "emails de entrada", "Email sign-in code", "sign-in emails"]) expect(t, frase).not.toContain(frase);
+    }
+    for (const frase of ["codigo@mail.pixellusitano.com", "código de entrada"]) expect(env.TEST_GUIA, frase).not.toContain(frase);
+  });
+
   it("termosTemAIdadeEOsMecanismos", () => {
     // Guarda de regressão: o que os termos têm de explicar.
     const { pt, en } = emDuasLinguas(termosHtml);

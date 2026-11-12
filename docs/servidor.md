@@ -38,15 +38,15 @@ Antes de passar de 720 `/plan` por dia, fala com a equipa do Transitous no Matri
 2. Copia o `database_id` que o comando mostra para `worker/wrangler.jsonc` **e** para `worker/wrangler.admin.jsonc` (troca o texto `ID-DA-BASE-DE-DADOS-CRIADA-PELO-AUTOR` nos dois). O id não é um segredo: faz commit dele no `main` e envia-o para o GitHub com `git push origin main`. O **Run workflow** usa o que está no GitHub, não o que tens no PC.
 3. `npx wrangler d1 info paragem-certa` mostra a base, para confirmares.
 
-## 3. Resend (emails com o código de entrada)
+## 3. Resend (emails de avisos e decisões)
 
-1. Cria a conta em resend.com. O plano grátis dá 100 emails por dia e 3000 por mês. O `config.json` divide os 100 do dia: 70 para os códigos de entrada (`codigosPorDia`) e 30 para os outros emails, como recibos, decisões e o resumo diário (`outrosPorDia`). Se gastares os 100 todos os dias, ao fim de 30 dias chegas aos 3000 e a Resend deixa de enviar até o mês renovar. Nessa altura os códigos falham, e os outros emails ficam guardados para enviares mais tarde com "Enviar agora".
+1. Cria a conta em resend.com. O plano grátis dá 100 emails por dia e 3000 por mês. O servidor envia no máximo 30 por dia (`outrosPorDia` no `config.json`), como recibos, decisões e o resumo diário; os que não couberem ficam guardados para enviares mais tarde com "Enviar agora".
 2. Em **Domains → Add Domain**, escreve `mail.pixellusitano.com` (um subdomínio, para não mexer nos registos do email Proton) e escolhe a região **Ireland (eu-west-1)**.
 3. Acrescenta na Cloudflare (zona `pixellusitano.com` → DNS → Records) os registos que a Resend mostra, tal e qual. São todos do subdomínio `mail`; não alteres os registos da raiz.
 4. Espera que o domínio passe a "Verified".
 5. Em **API Keys → Create API Key**, cria uma chave só com permissão de envio e só para esse domínio. Guarda-a num sítio privado: é o valor de `RESEND_API_KEY`.
 
-O remetente que o servidor usa é `Paragem Certa <codigo@mail.pixellusitano.com>` nos códigos de entrada e `Paragem Certa <avisos@mail.pixellusitano.com>` nos recibos, nas decisões e no resumo diário (o mesmo domínio verificado).
+O remetente que o servidor usa é `Paragem Certa <avisos@mail.pixellusitano.com>` nos recibos, nas decisões e no resumo diário (do domínio que verificaste).
 
 ## 4. Google (Entrar com o Google)
 
@@ -120,8 +120,6 @@ Não há nada para fazer neste passo. Não se usa uma regra de limite de pedidos
 - Uma entrada normal faz 2 ou 3 pedidos. Sem limite, um só IP podia gastar sozinho as 100 000 escritas por dia da base grátis (cada pedido de `/api/auth/google/nonce` escreve uma linha) e parar as entradas e a sincronização de toda a gente até à meia-noite UTC. Quem partilhar o IP e passar o limite espera 10 segundos.
 - Na prática, quem fizer isto gasta ao mesmo ritmo os 100 000 pedidos por dia dos Workers da conta (partilhados com o `pc-admin` e o site), como com as leituras, que não têm limite por IP. A defesa é a do passo 18: ver o IP e bloqueá-lo com uma Custom rule (o plano grátis tem 5).
 
-Os limites de email por endereço (3 por hora) e por dia (70) são contados no servidor e não dependem deste.
-
 ## 9. Ligar a conta na app
 
 A entrada "Conta" do Menu só aparece com o interruptor ligado.
@@ -130,7 +128,7 @@ A entrada "Conta" do Menu só aparece com o interruptor ligado.
 2. Confirma em `https://paragemcerta.pixellusitano.com/dados/config.json`. A 0.3.2 que está nos telemóveis não tem Conta: experimenta numa build 0.4.0 feita no PC. A app vai buscá-lo de cada vez que abre; abre-a uma vez com rede e aparece Menu → Conta. Para entrares com o Google nessa build, precisas do passo 4 (cliente Android de testes e `local.properties`). O APK de debug não se instala por cima da 0.3.2 (a chave é outra): desinstala-a primeiro ou usa outro telemóvel, e faz o mesmo no segundo telemóvel para veres os favoritos.
 3. No dia de publicar a app, liga também `"conta"` em `app/src/main/assets/config.json`: é a cópia de reserva que a app usa na primeira abertura sem rede. Antes do commit, ajusta também, no mesmo commit, o teste da app que conta com essa cópia desligada (`ConfiguracoesTest.kt`, `semRedeUsaADaApp`). Faz commit e `git push origin main` e espera que o workflow **Android** fique verde no `main` antes de criares a tag: se falhar, a `v0.4.0` não gera o APK assinado nem a Release.
 
-Experimenta de ponta a ponta antes de anunciar: entrar com um código por email, entrar com o Google, ver os favoritos aparecerem num segundo telemóvel e apagar a conta.
+Experimenta de ponta a ponta antes de anunciar: entrar com o Google, ver os favoritos aparecerem num segundo telemóvel e apagar a conta.
 
 ## 10. Ativar o Zero Trust
 

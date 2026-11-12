@@ -9,6 +9,7 @@ A versão mais recente aparece primeiro.
 - Depois da meia-noite, o horário de uma linha mostra as partidas que ainda faltam nessa noite.
 - Rodar o ecrã durante "Atualizar" já não corta a atualização.
 - O servidor passa a limitar a sincronização dos favoritos de cada conta, para ninguém gastar sozinho a quota grátis de todos.
+- Entrar na conta passa a ser só com o Google. As contas criadas com um código por email foram apagadas; os teus favoritos continuam no telemóvel e voltam à conta se entrares com o Google e escolheres «Juntar».
 
 ## 0.5.3 — Sobre sem donativos
 
