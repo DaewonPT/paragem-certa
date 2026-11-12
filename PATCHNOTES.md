@@ -2,6 +2,15 @@
 
 A versão mais recente aparece primeiro.
 
+## 0.5.5 — Atualizações e bússola mais fiáveis
+
+- Uma atualização que fique a meio (fechaste a app ou perdeste a rede) continua onde parou, em vez de recomeçar do zero.
+- Se o telemóvel recusar instalar uma atualização, a app deixa de a descarregar outra vez de 6 em 6 horas e mostra-te o aviso para atualizares à mão.
+- Em "Encontrar a paragem", a seta e a distância já não saltam quando o GPS e a rede dão posições diferentes.
+- Voltar ao Início já não volta a pedir as chegadas que a app acabou de receber.
+- Na primeira vez que abres a app, a rede da Carris Metropolitana é descarregada uma só vez, e um telemóvel sem espaço já não fecha a app ao abrir o Início.
+- O servidor passa a limitar os pedidos para entrar com o Google, para ninguém gastar sozinho a quota grátis de todos.
+
 ## 0.5.4 — Rotas e horários em dia
 
 - Se voltares às rotas de "partir agora" ao fim de mais de 10 minutos, a app procura outra vez e mostra as partidas que ainda vêm.
