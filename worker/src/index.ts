@@ -68,8 +68,8 @@ export default {
     }
   },
 
-  // Cron Trigger diário (corre na Cloudflare, não no telemóvel): prazos e o resumo ao autor. A hora vem do controlador,
-  // para os testes a poderem escolher.
+  // Cron Trigger diário (corre na Cloudflare, não no telemóvel): limpa os nonces e as sessões expirados, aplica os prazos e
+  // manda o resumo ao autor. A hora vem do controlador, para os testes a poderem escolher.
   async scheduled(controlo, env, ctx): Promise<void> {
     const agora = controlo.scheduledTime;
     ctx.waitUntil(

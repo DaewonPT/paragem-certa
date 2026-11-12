@@ -127,10 +127,12 @@ describe("migração das contas só de código", () => {
     // A Ana e o Rui do beforeEach também são só de código.
     await env.DB.batch([
       env.DB.prepare("INSERT INTO contas (id, email, google_sub, criada_em) VALUES ('codigo', 'c@exemplo.pt', NULL, 1), ('gmail', 'g@gmail.com', 'sub-gmail', 1), ('google', 'o@exemplo.pt', 'sub-google', 1)"),
-      env.DB.prepare("INSERT INTO aceites_termos (conta_id, versao_termos, aceite_em) VALUES ('codigo', '1', 1)"),
+      env.DB.prepare("INSERT INTO aceites_termos (conta_id, versao_termos, aceite_em) VALUES ('codigo', '1', 1), ('google', '1', 1)"),
       env.DB.prepare("INSERT INTO relatos (id, tipo, paragem, linha, conta_id, criado_em, expira_em) VALUES ('r-codigo', 'desvio', 'CM:1', '736', 'codigo', 1, 2), ('r-google', 'desvio', 'CM:2', '736', 'google', 1, 2)"),
-      env.DB.prepare("INSERT INTO confirmacoes (relato_id, conta_id, voto, em) VALUES ('r-codigo', 'google', 'ainda_esta', 1), ('r-google', 'codigo', 'ja_nao_esta', 1)"),
-      env.DB.prepare("INSERT INTO correcoes (id, paragem, conta_id, tipo, nome, criada_em) VALUES ('k-codigo', 'CM:1', 'codigo', 'nome', 'Outro nome', 1)"),
+      env.DB.prepare("INSERT INTO confirmacoes (relato_id, conta_id, voto, em) VALUES ('r-codigo', 'google', 'ainda_esta', 1), ('r-google', 'codigo', 'ja_nao_esta', 1), ('r-google', 'google', 'ainda_esta', 1)"),
+      env.DB.prepare("INSERT INTO correcoes (id, paragem, conta_id, tipo, nome, criada_em) VALUES ('k-codigo', 'CM:1', 'codigo', 'nome', 'Outro nome', 1), ('k-google', 'CM:2', 'google', 'nome', 'Outro nome', 1)"),
+      env.DB.prepare("INSERT INTO codigos (email, hash, sal, criado_em) VALUES ('c@exemplo.pt', 'hash', 'sal', 1)"),
+      env.DB.prepare("INSERT INTO envios_email (dia, quantos) VALUES ('2026-11-12', 1)"),
     ]);
     for (const id of ["codigo", "gmail", "google"]) {
       await env.DB.prepare("INSERT INTO favoritos (conta_id, chave, tipo, nome, lat, lon, ordem, revisao) VALUES (?, 'CM:1', 'PARAGEM', 'Paragem', 38.7, -9.1, 0, 1)").bind(id).run();
@@ -150,9 +152,14 @@ describe("migração das contas só de código", () => {
       expect(await contar("favoritos", id), id).toBe(1);
       expect(await contar("sessoes", id), id).toBe(1);
     }
-    // O voto da conta apagada sai; o relato da conta Google fica.
-    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM confirmacoes WHERE relato_id = 'r-google'").first<number>("n")).toBe(0);
+    // O voto da conta apagada sai; o relato, o voto, os termos e a correção da conta Google ficam.
+    expect(await env.DB.prepare("SELECT conta_id FROM confirmacoes WHERE relato_id = 'r-google'").all()).toMatchObject({ results: [{ conta_id: "google" }] });
     expect(await env.DB.prepare("SELECT id FROM relatos").all()).toMatchObject({ results: [{ id: "r-google" }] });
+    for (const tabela of ["aceites_termos", "correcoes", "confirmacoes"]) expect(await contar(tabela, "google"), tabela).toBe(1);
+    // Já não se pedem códigos: os pedidos (com o email em claro) e a contagem dos envios saem todos.
+    for (const tabela of ["codigos", "envios_email"]) {
+      expect(await env.DB.prepare(`SELECT COUNT(*) AS n FROM ${tabela}`).first<number>("n"), tabela).toBe(0);
+    }
   });
 });
 

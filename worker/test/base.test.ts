@@ -345,6 +345,10 @@ describe("política de privacidade, termos e guia do autor", () => {
     const { pt, en } = await politica();
     for (const t of [pt, en]) {
       for (const frase of ["Código de entrada", "emails de entrada", "Email sign-in code", "sign-in emails"]) expect(t, frase).not.toContain(frase);
+      // Sem outra forma de entrar, o Google deixou de ser uma condição.
+      for (const frase of ["se entrares com o Google", "quando entras com o Google", "if you sign in with Google", "when you sign in with Google"]) {
+        expect(t, frase).not.toContain(frase);
+      }
     }
     for (const frase of ["codigo@mail.pixellusitano.com", "código de entrada"]) expect(env.TEST_GUIA, frase).not.toContain(frase);
   });
