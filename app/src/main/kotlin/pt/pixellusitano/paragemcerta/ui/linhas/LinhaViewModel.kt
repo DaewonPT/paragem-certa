@@ -153,7 +153,9 @@ class LinhaViewModel(
         if (!interno.value.horarioAberto) return
         horarioEmCurso = viewModelScope.launch {
             val v = vistaAtual() ?: return@launch
-            val dia = relogio().atZone(LISBOA_FUSO).toLocalDate()
+            // O dia de serviço que ainda corre, pelo relógio de Lisboa (certo nos dias de mudança da hora): a CM conta-o das 04:00 às 04:00,
+            // como o site dela; o Transitous pede-o a partir das 03:00 (horarioDoDia).
+            val dia = relogio().atZone(LISBOA_FUSO).toLocalDateTime().minusHours(if (v.d.ref.fonte == Fonte.CM) 4 else 3).toLocalDate()
             when (val r = detalhes.horario(v.d, v.s.sentido, v.p, dia)) {
                 is Resultado.Ok -> interno.update { it.copy(horario = r.valor, horarioFalhou = false) }
                 is Resultado.Falha -> interno.update { it.copy(horario = null, horarioFalhou = true) }

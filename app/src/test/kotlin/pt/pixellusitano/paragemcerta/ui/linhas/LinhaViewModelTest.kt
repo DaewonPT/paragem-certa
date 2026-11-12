@@ -130,13 +130,13 @@ class LinhaViewModelTest {
 
         fun vm(
             ref: RefLinha, sentido: Int? = null, paragem: String? = null, posicao: Pair<Double, Double>? = null,
-            relatos: suspend (String) -> List<RelatoRemoto> = { emptyList() },
+            relatos: suspend (String) -> List<RelatoRemoto> = { emptyList() }, relogio: Instant = hoje,
         ): LinhaViewModel = ViewModelProvider(
             loja,
             object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
                 override fun <T : ViewModel> create(modelClass: Class<T>): T =
-                    LinhaViewModel(ref, detalhes, repositorio, relatos, sentido, paragem, posicao, relogio = { hoje }) as T
+                    LinhaViewModel(ref, detalhes, repositorio, relatos, sentido, paragem, posicao, relogio = { relogio }) as T
             },
         )[ref.chave, LinhaViewModel::class.java].also { if (it !in criados) criados += it }
 
@@ -219,6 +219,35 @@ class LinhaViewModelTest {
         val outra = vm.ate { it.escolhida?.ref?.id == "pt-Metro-Lisboa_SP" && it.horario != null }
         assertEquals(emptyList<java.time.LocalTime>(), outra.horario)
         assertEquals(2, m.pedidosDeHorario())
+    }
+
+    @Test fun horarioDeMadrugadaEDoDiaDeServicoQueAindaCorre() = rodar {
+        // 01:30 de Lisboa a 04/11: o dia de serviço do Transitous ainda é o de 03/11, que começa às 03:00.
+        val m = Mundo(httpMetro(), catalogoPronto(), tarde)
+        val vm = m.vm(az, relogio = Instant.parse("2026-11-04T01:30:00Z"))
+        vm.ate { it.detalhe != null }
+        vm.verHorario()
+        vm.ate { it.horario != null }
+        assertEquals("2026-11-03T03:00:00Z", m.http.pedidos.single { "window=86400" in it }.substringAfter("time=").substringBefore('&'))
+    }
+
+    @Test fun horarioDaCmAsTresEMeiaAindaEDaVespera() = rodar {
+        // Na CM o dia de serviço vai até às 04:00: às 03:30 de 08/11 ainda falta a viagem das 27:55 de 07/11.
+        guardarLinhaCm()
+        val vm = Mundo(httpCm(), catalogoPronto()).vm(cm3708, paragem = "CM:060419", relogio = Instant.parse("2026-11-08T03:30:00Z"))
+        vm.ate { it.detalhe != null }
+        vm.verHorario()
+        assertEquals(listOf("05:25", "03:55"), vm.ate { it.horario != null }.horario!!.map { it.toString() })
+    }
+
+    @Test fun horarioNoDiaDaMudancaDaHoraContaPeloRelogioDeLisboa() = rodar {
+        // 02:30Z a 29/03 são 03:30 de Lisboa, já na hora de verão: o dia de serviço é o de 29/03, que começa às 02:00Z.
+        val m = Mundo(httpMetro(), catalogoPronto())
+        val vm = m.vm(l15e, relogio = Instant.parse("2026-03-29T02:30:00Z"))
+        vm.ate { it.detalhe != null }
+        vm.verHorario()
+        vm.ate { it.horario != null }
+        assertEquals("2026-03-29T02:00:00Z", m.http.pedidos.single { "window=86400" in it }.substringAfter("time=").substringBefore('&'))
     }
 
     @Test fun horarioQueFalhaFicaMarcadoEPodePedirseOutraVez() = rodar {
