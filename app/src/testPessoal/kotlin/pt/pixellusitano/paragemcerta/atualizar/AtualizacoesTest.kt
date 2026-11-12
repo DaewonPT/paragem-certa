@@ -128,6 +128,15 @@ class AtualizacoesTest {
         assertEquals(Intent.ACTION_VIEW, shadowOf(RuntimeEnvironment.getApplication()).nextStartedActivity?.action)
     }
 
+    // Uma instalação recusada (sem espaço, outra assinatura) fica pendente: a app mostra o aviso em vez de a descarregar outra vez.
+    @Test fun recusaDoAndroidFicaPendenteSemAvisar() {
+        ResultadoInstalacao().onReceive(contexto, resultado(PackageInstaller.STATUS_SUCCESS))
+        assertNull(Atualizacoes.pendente(contexto))
+        ResultadoInstalacao().onReceive(contexto, resultado(PackageInstaller.STATUS_FAILURE_STORAGE))
+        assertEquals(futura, Atualizacoes.pendente(contexto))
+        assertEquals(0, shadowOf(contexto.getSystemService(NotificationManager::class.java)).size())
+    }
+
     // Ao abrir a app: procura no máximo de 6 em 6 horas, só com Wi-Fi (salvo se a pessoa deixou os dados móveis).
     private val agora = Instant.parse("2026-11-02T10:00:00Z")
 
@@ -241,6 +250,14 @@ class AtualizacoesTest {
         assertNull(Atualizacoes.descarregada)
     }
 
+    // O Android limpou a cache antes da saída: a sessão fecha-se em vez de ficar aberta, e a versão fica pendente.
+    @Test fun semOApkASaidaFechaASessaoEFicaPendente() {
+        Atualizacoes.descarregada = futura
+        assertTrue(runCatching { Atualizacoes.instalarAoSair(contexto, emViagem = false, comAviso = false) }.isFailure)
+        assertTrue(sessoes.isEmpty())
+        assertEquals(futura, Atualizacoes.pendente(contexto))
+    }
+
     @Test fun versaoJaPendenteDeConfirmacaoNaoSeInstalaOutraVez() {
         comApkDescarregado()
         Atualizacoes.guardarPendente(contexto, futura)
@@ -275,15 +292,56 @@ class AtualizacoesTest {
         }
     }
 
-    private fun guardadoComoPendente() = contexto.getSharedPreferences("atualizacoes", 0).all.keys.any { it.startsWith("pendente") }
+    // Um descarregamento cortado continua onde ficou, mas só com bytes do mesmo endereço.
+    private val destino get() = File(contexto.cacheDir, "teste.apk")
+
+    private fun descarregar(url: String) =
+        runCatching { runBlocking { Atualizacoes.descarregar(NovaVersao("v99.0.0", url, ""), destino) } }
+
+    private fun parteCom(bytes: ByteArray, url: String) {
+        File(destino.path + ".parte").writeBytes(bytes)
+        File(destino.path + ".parte.url").writeText(url)
+    }
+
+    @Test fun umDescarregamentoCortadoContinuaOndeFicou() = comApkNoServidor(cortar = true) { url, _ ->
+        assertTrue(descarregar(url).isFailure)
+        assertEquals(8L, File(destino.path + ".parte").length())
+        assertTrue(descarregar(url).isSuccess)
+        assertTrue(APK_FALSO.contentEquals(destino.readBytes()))
+    }
+
+    @Test fun umPedacoJaCompletoRecomecaDoZero() = comApkNoServidor { url, _ ->
+        parteCom(APK_FALSO, url)
+        assertTrue(descarregar(url).isFailure)
+        assertFalse(File(destino.path + ".parte").exists())
+        assertTrue(descarregar(url).isSuccess)
+        assertTrue(APK_FALSO.contentEquals(destino.readBytes()))
+    }
+
+    @Test fun oPedacoDeOutraVersaoNaoSeAproveita() = comApkNoServidor { url, _ ->
+        parteCom(ByteArray(8) { 0x7F }, "https://exemplo/v97.0.0.apk")
+        assertTrue(descarregar(url).isSuccess)
+        assertTrue(APK_FALSO.contentEquals(destino.readBytes()))
+    }
+
+    @Test fun semRangeNoServidorRecomecaDoZero() = comApkNoServidor(ignorarRange = true) { url, _ ->
+        parteCom(ByteArray(8) { 0x7F }, url)
+        assertTrue(descarregar(url).isSuccess)
+        assertTrue(APK_FALSO.contentEquals(destino.readBytes()))
+    }
+
+    private fun guardadoComoPendente() =contexto.getSharedPreferences("atualizacoes", 0).all.keys.any { it.startsWith("pendente") }
 
     private fun poeAppNoPlano(importancia: Int) {
         val eu = ActivityManager.RunningAppProcessInfo().apply { pid = Process.myPid(); this.importance = importancia }
         shadowOf(contexto.getSystemService(ActivityManager::class.java)).setProcesses(listOf(eu))
     }
 
+    /** O que o instalador devolve ao receiver: a versão com que a sessão foi criada e o [estado]. */
+    private fun resultado(estado: Int) = Intent(contexto, ResultadoInstalacao::class.java).comVersao(futura)
+        .putExtra(PackageInstaller.EXTRA_STATUS, estado)
+
     /** O que o instalador devolve quando precisa que o utilizador confirme: o estado e o ecrã a abrir. */
-    private fun pedidoDeConfirmacao() = Intent(contexto, ResultadoInstalacao::class.java).comVersao(futura)
-        .putExtra(PackageInstaller.EXTRA_STATUS, PackageInstaller.STATUS_PENDING_USER_ACTION)
+    private fun pedidoDeConfirmacao() = resultado(PackageInstaller.STATUS_PENDING_USER_ACTION)
         .putExtra(Intent.EXTRA_INTENT, Intent(Intent.ACTION_VIEW))
 }

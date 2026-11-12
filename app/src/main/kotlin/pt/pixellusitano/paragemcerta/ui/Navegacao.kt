@@ -232,7 +232,7 @@ fun Navegacao(
         abrirFavoritos = ecra == EcraInicial.FAVORITOS
     }
 
-    // Uma atualização descarregada que o sistema ainda quer confirmar mostra-se sempre, tenha ou não "Atualizar sozinha" ligado.
+    // Uma atualização descarregada que o sistema ainda quer confirmar, ou que recusou, mostra-se sempre, tenha ou não "Atualizar sozinha" ligado.
     // Sem ela: com "Atualizar sozinha" ligado a app descarrega ao abrir e instala quando saíres; só quem o desligou recebe o aviso para confirmar.
     val pendente = remember { Atualizacoes.pendente(contexto) }
     // Instalar mata o processo :trip e com ele o aviso da paragem: com uma viagem por acabar o aviso espera pela abertura seguinte
@@ -483,8 +483,8 @@ private fun AvisoNotificacoes(abertos: MutableIntState) {
 }
 
 /**
- * Aviso manual de versão nova. [pendente] é uma versão já descarregada que o sistema ainda quer confirmar: mostra-se logo,
- * sem verificar nada. Sem ela, para quem desligou "Atualizar sozinha", verifica no máximo uma vez por dia no GitHub.
+ * Aviso manual de versão nova. [pendente] é uma versão já descarregada que o sistema ainda quer confirmar, ou que recusou:
+ * mostra-se logo, sem verificar nada. Sem ela, para quem desligou "Atualizar sozinha", verifica no máximo uma vez por dia no GitHub.
  */
 @Composable
 internal fun AvisoAtualizacao(pendente: NovaVersao?, abertos: MutableIntState) {

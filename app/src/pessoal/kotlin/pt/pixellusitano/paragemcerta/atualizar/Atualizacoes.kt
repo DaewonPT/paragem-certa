@@ -40,6 +40,7 @@ import pt.pixellusitano.paragemcerta.core.rede.pedir
 import pt.pixellusitano.paragemcerta.core.rede.userAgent
 import pt.pixellusitano.paragemcerta.viagem.FicheirosViagem
 import java.io.File
+import java.io.FileOutputStream
 import java.time.Duration
 import java.time.Instant
 
@@ -119,7 +120,8 @@ object Atualizacoes {
 
     /**
      * Ao abrir a app: com "Atualizar sozinha" ligado procura uma versão nova (só com Wi-Fi, a não ser que a pessoa tenha deixado
-     * os dados móveis) e descarrega-a. Se a pessoa sair a meio, quem chama cancela e o ficheiro incompleto nunca se instala.
+     * os dados móveis) e descarrega-a. Se a pessoa sair a meio, quem chama cancela e o ficheiro incompleto nunca se instala;
+     * a abertura seguinte continua-o.
      */
     suspend fun aoAbrir(contexto: Context, agora: Instant = Instant.now()) {
         if (descarregada != null || !reservarProcura(contexto, agora)) return
@@ -157,7 +159,7 @@ object Atualizacoes {
     fun aoSair(contexto: Context) {
         if (descarregada == null) return
         escopo.launch {
-            // Nada aqui pode deitar a app abaixo: ela já está fechada, e a procura seguinte repete.
+            // Nada aqui pode deitar a app abaixo: ela já está fechada. Se a sessão falhar, a versão fica pendente para o aviso.
             runCatching { instalarAoSair(contexto, FicheirosViagem.porAcabar(contexto), ServicoAvisoChegada.aCorrer) }
         }
     }
@@ -190,30 +192,49 @@ object Atualizacoes {
     /** O "Atualizar" do aviso tem o seu ficheiro: nunca apaga nem mistura a versão que a atualização automática deixou para a saída. */
     private fun ficheiroManual(contexto: Context) = File(contexto.cacheDir, "atualizacao-manual.apk")
 
-    /** Descarrega o APK para [ficheiro]. Escreve num ficheiro à parte e só o renomeia no fim, por isso um descarregamento cortado nunca é instalado. */
-    private suspend fun descarregar(nova: NovaVersao, ficheiro: File): File = withContext(Dispatchers.IO) {
+    /**
+     * Descarrega o APK para [ficheiro]. Escreve num ficheiro à parte e só o renomeia no fim, por isso um descarregamento cortado
+     * nunca é instalado, e o seguinte continua onde esse ficou, se for da mesma versão.
+     */
+    internal suspend fun descarregar(nova: NovaVersao, ficheiro: File): File = withContext(Dispatchers.IO) {
         val parte = File(ficheiro.path + ".parte")
-        try {
-            OkHttpClient().newCall(Request.Builder().url(nova.urlApk).header("User-Agent", userAgent(BuildConfig.VERSION_NAME)).build())
-                .execute().use { r ->
-                    check(r.isSuccessful) { "falha a descarregar a atualização (${r.code})" }
-                    val bloco = ByteArray(64 * 1024)
-                    r.body.byteStream().use { entrada ->
-                        parte.outputStream().use { saida ->
-                            while (true) {
-                                val lidos = entrada.read(bloco)
-                                if (lidos < 0) break
-                                ensureActive() // a pessoa saiu da app: pára de descarregar
-                                saida.write(bloco, 0, lidos)
-                            }
-                        }
+        // O endereço tem a tag (…/download/v0.5.4/paragem-certa-v0.5.4.apk): um `.parte` de outra versão, ou sem este ficheiro
+        // (deixado por uma versão antiga), deita-se fora em vez de se continuar.
+        val origem = File(ficheiro.path + ".parte.url")
+        if (!origem.exists() || origem.readText() != nova.urlApk) {
+            parte.delete()
+            origem.writeText(nova.urlApk)
+        }
+        // Limite: um `.parte` que ninguém continua fica na cache (até 56 MB) até ao descarregamento seguinte ou até o Android a limpar.
+        // Limite: se o APK da mesma tag for substituído a meio (o CI volta a publicar com --clobber), juntam-se pedaços de dois
+        // ficheiros; o Android recusa-o pela assinatura, a versão fica pendente e o "Atualizar" descarrega-a de novo.
+        val desde = parte.length()
+        val pedido = Request.Builder().url(nova.urlApk).header("User-Agent", userAgent(BuildConfig.VERSION_NAME))
+        // O OkHttp leva o Range pelo redirecionamento do GitHub e, com ele, não pede gzip: os bytes são os do ficheiro.
+        if (desde > 0) pedido.header("Range", "bytes=$desde-")
+        OkHttpClient().newCall(pedido.build()).execute().use { r ->
+            // 416: o `.parte` já tem o tamanho todo (o processo morreu antes de o renomear); a vez seguinte recomeça do zero.
+            if (r.code == 416) {
+                parte.delete()
+                origem.delete()
+            }
+            check(r.isSuccessful) { "falha a descarregar a atualização (${r.code})" }
+            val bloco = ByteArray(64 * 1024)
+            r.body.byteStream().use { entrada ->
+                // 206 continua o `.parte`; 200 (o servidor ignorou o Range) escreve por cima, do zero.
+                FileOutputStream(parte, r.code == 206).use { saida ->
+                    while (true) {
+                        val lidos = entrada.read(bloco)
+                        if (lidos < 0) break
+                        ensureActive() // a pessoa saiu da app: pára de descarregar
+                        saida.write(bloco, 0, lidos)
                     }
                 }
-            ficheiro.delete()
-            check(parte.renameTo(ficheiro)) { "falha a guardar a atualização" }
-        } finally {
-            parte.delete()
+            }
         }
+        ficheiro.delete()
+        check(parte.renameTo(ficheiro)) { "falha a guardar a atualização" }
+        origem.delete()
         ficheiro
     }
 
@@ -229,27 +250,40 @@ object Atualizacoes {
         vezDeDescarregar.withLock { abrirSessao(contexto, nova, descarregar(nova, ficheiroManual(contexto)), semPerguntar) }
     }
 
-    /** Entrega o APK já descarregado ao instalador e apaga-o: a sessão guarda a sua cópia, e assim uma saída seguinte não o instala outra vez. */
+    /**
+     * Entrega o APK já descarregado ao instalador e apaga-o, mesmo que falhe: a sessão guarda a sua cópia, e assim uma saída
+     * seguinte não o instala outra vez.
+     */
     private fun abrirSessao(contexto: Context, nova: NovaVersao, ficheiro: File, semPerguntar: Boolean) {
         val instalador = contexto.packageManager.packageInstaller
         val parametros = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
         if (semPerguntar && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             parametros.setRequireUserAction(PackageInstaller.SessionParams.USER_ACTION_NOT_REQUIRED)
         }
-        val sessao = instalador.createSession(parametros)
-        instalador.openSession(sessao).use { s ->
-            s.openWrite("paragem-certa", 0, ficheiro.length()).use { saida ->
-                ficheiro.inputStream().use { it.copyTo(saida) }
-                s.fsync(saida)
+        var sessao: Int? = null
+        try {
+            sessao = instalador.createSession(parametros)
+            instalador.openSession(sessao).use { s ->
+                s.openWrite("paragem-certa", 0, ficheiro.length()).use { saida ->
+                    ficheiro.inputStream().use { it.copyTo(saida) }
+                    s.fsync(saida)
+                }
+                val aviso = PendingIntent.getBroadcast(
+                    contexto, sessao, Intent(contexto, ResultadoInstalacao::class.java).comVersao(nova),
+                    PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
+                )
+                guardarNovidades(contexto, nova)
+                s.commit(aviso.intentSender)
             }
-            val aviso = PendingIntent.getBroadcast(
-                contexto, sessao, Intent(contexto, ResultadoInstalacao::class.java).comVersao(nova),
-                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_MUTABLE,
-            )
-            guardarNovidades(contexto, nova)
-            s.commit(aviso.intentSender)
+        } catch (e: Exception) {
+            // Sem espaço, ou sem o APK (o Android limpa a cache quando falta espaço): fecha a sessão, que senão ficava com a cópia
+            // a meio a ocupar espaço, e deixa a versão pendente, como as recusas que chegam ao [ResultadoInstalacao].
+            sessao?.let { runCatching { instalador.abandonSession(it) } }
+            guardarPendente(contexto, nova)
+            throw e
+        } finally {
+            ficheiro.delete()
         }
-        ficheiro.delete()
     }
 
     /** Guarda as notas da versão que vai ser instalada, para as mostrar quando a app abrir já atualizada. */
@@ -267,13 +301,13 @@ object Atualizacoes {
 
     fun marcarNovidadesVistas(contexto: Context) = prefs(contexto).edit().remove(NOVIDADES_TAG).remove(NOVIDADES_NOTAS).apply()
 
-    /** Guarda a versão cuja instalação ficou à espera de um toque do utilizador, para a app a mostrar quando abrir. */
+    /** Guarda a versão que ficou à espera de um toque do utilizador, ou que o Android recusou, para a app a mostrar quando abrir. */
     @SuppressLint("ApplySharedPref") // commit e não apply: o processo pode morrer logo a seguir ao receiver
     internal fun guardarPendente(contexto: Context, nova: NovaVersao) {
         prefs(contexto).edit().putString(PENDENTE_TAG, nova.tag).putString(PENDENTE_URL, nova.urlApk).putString(PENDENTE_NOTAS, nova.notas).commit()
     }
 
-    /** A versão à espera de confirmação, enquanto for mais nova do que a que está a correr; senão já foi instalada (ou ultrapassada) e apaga-se. */
+    /** A versão à espera de confirmação, ou recusada, enquanto for mais nova do que a que está a correr; senão já foi instalada (ou ultrapassada) e apaga-se. */
     fun pendente(contexto: Context): NovaVersao? {
         val prefs = prefs(contexto)
         val tag = prefs.getString(PENDENTE_TAG, null) ?: return null
@@ -314,10 +348,15 @@ internal fun emPrimeiroPlano(contexto: Context): Boolean {
 /**
  * O instalador responde aqui. Se precisa da confirmação do utilizador: com a app à frente abre o ecrã do sistema,
  * em segundo plano o Android não deixa abrir ecrãs, por isso avisa com uma notificação que abre esse ecrã ao tocar.
+ * Se o Android recusar a instalação, ou a pessoa a cancelar, a versão fica pendente e a app mostra o aviso quando abrir.
  */
 class ResultadoInstalacao : BroadcastReceiver() {
     override fun onReceive(contexto: Context, intent: Intent) {
-        if (intent.getIntExtra(PackageInstaller.EXTRA_STATUS, -1) != PackageInstaller.STATUS_PENDING_USER_ACTION) return
+        val estado = intent.getIntExtra(PackageInstaller.EXTRA_STATUS, -1)
+        // Recusada pelo Android (sem espaço, outra assinatura, perfil de trabalho) ou cancelada no ecrã do sistema: fica pendente,
+        // para a app a mostrar no aviso em vez de a voltar a descarregar de 6 em 6 horas sem dizer nada.
+        if (estado >= PackageInstaller.STATUS_FAILURE) intent.versao()?.let { Atualizacoes.guardarPendente(contexto, it) }
+        if (estado != PackageInstaller.STATUS_PENDING_USER_ACTION) return
         @Suppress("DEPRECATION")
         val confirmar = intent.getParcelableExtra<Intent>(Intent.EXTRA_INTENT) ?: return
         confirmar.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
