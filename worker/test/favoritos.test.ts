@@ -321,6 +321,7 @@ describe("sincronizar favoritos", () => {
 
     // Com 1000 linhas (apagadas incluídas) já não entra mais nenhuma, e a recusa não gasta o dia.
     await semear("rui", 1000);
+    await env.DB.prepare("UPDATE favoritos SET apagado = 1 WHERE conta_id = 'rui' AND ordem > 500").run();
     const cheia = await sincronizar(telemovelDoRui, 1000, [favorito("CM:novo")]);
     expect(cheia.status).toBe(403);
     expect(await cheia.json()).toEqual({ erro: "demasiados_favoritos" });
