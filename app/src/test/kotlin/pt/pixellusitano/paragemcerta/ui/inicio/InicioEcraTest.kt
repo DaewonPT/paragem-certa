@@ -370,6 +370,13 @@ class InicioEcraTest {
         assertEquals((faixa + 8.dp).value, ligacao!!.margemTopo.value, 0.01f)
     }
 
+    // A rede da CM descarrega-se na MainActivity (AtualizacaoDiaria, dentro do semFalhar): o Início não a pede outra vez.
+    @Test fun inicioNaoPedeARedeDaCm() {
+        abrir()
+        regra.waitForIdle()
+        assertFalse(http.pedidos.any { "carrismetropolitana.pt/v2/stops" in it })
+    }
+
     @Test fun inicioClaro() {
         abrir(contaLigada = true)
         regra.onRoot().captureRoboImage("src/test/screenshots/inicio_claro.png")

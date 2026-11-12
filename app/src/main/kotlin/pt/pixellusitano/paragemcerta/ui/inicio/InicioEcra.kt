@@ -329,11 +329,6 @@ fun InicioEcra(
         onPauseOrDispose { leitura.cancel() }
     }
 
-    LaunchedEffect(Unit) {
-        // Primeira utilização: as paragens da Carris Metropolitana ainda não estão na base local.
-        if (repositorio.redeEmFalta()) repositorio.atualizarRede()
-    }
-
     // As paragens da zona, como a comunidade as corrigiu e com o triângulo nas de relato confirmado.
     val relatos = rememberRelatosDoMapa(paragens, comunidade, configuracoes, preferencias)
     val desenhadas = remember(paragens, relatos) {
