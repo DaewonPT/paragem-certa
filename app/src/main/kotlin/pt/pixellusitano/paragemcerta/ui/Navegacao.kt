@@ -30,6 +30,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
@@ -168,6 +169,8 @@ internal fun AbrirRotaDoWidget(nav: NavController, destino: String?, aoAbrir: ()
 fun ecraDeArranque(escolhido: EcraInicial, abrirViagem: Boolean, abrirParagem: String?, abrirRota: String?, definirLocal: String?): EcraInicial =
     if (abrirViagem || abrirParagem != null || abrirRota != null || definirLocal != null) EcraInicial.MAPA else escolhido
 
+// Limite: os avisos "Entrar" da comunidade (paragem e viagem) abrem sempre a conta, que sem o cliente da Google e sem sessão
+// (forks e builds locais) não tem forma de entrar. As builds de lançamento levam sempre o cliente.
 /** A conta (no Menu e no Início) só aparece se houver forma de entrar (o cliente da Google) ou uma sessão aberta para sair ou apagar. */
 internal fun mostrarConta(interruptor: Boolean, clienteGoogle: String, comSessao: Boolean): Boolean = interruptor && (clienteGoogle.isNotBlank() || comSessao)
 
@@ -206,8 +209,10 @@ fun Navegacao(
     val nasLinhas = destino?.hasRoute(Linhas::class) == true
     val repositorio = ligacoes.repositorio
     val config by ligacoes.configuracoes.atual.collectAsStateWithLifecycle()
-    val estadoConta by ligacoes.conta.estado.collectAsStateWithLifecycle()
-    val contaVisivel = mostrarConta(config.interruptores.conta, BuildConfig.GOOGLE_WEB_CLIENT_ID, estadoConta is EstadoConta.Com)
+    val estadoConta = ligacoes.conta.estado.collectAsStateWithLifecycle()
+    // Só o "tem sessão" conta aqui: cada sincronização muda a hora no estado e não deve recompor a navegação toda.
+    val comSessao by remember { derivedStateOf { estadoConta.value is EstadoConta.Com } }
+    val contaVisivel = mostrarConta(config.interruptores.conta, BuildConfig.GOOGLE_WEB_CLIENT_ID, comSessao)
 
     fun separador(rota: Any) = nav.irParaSeparador(rota)
     fun abrirUrl(url: String) {
