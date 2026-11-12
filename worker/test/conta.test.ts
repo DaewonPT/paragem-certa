@@ -122,6 +122,40 @@ describe("apagar conta com a comunidade", () => {
   });
 });
 
+describe("migração das contas só de código", () => {
+  it("migracaoApagaAsContasSoDeCodigo", async () => {
+    // A Ana e o Rui do beforeEach também são só de código.
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO contas (id, email, google_sub, criada_em) VALUES ('codigo', 'c@exemplo.pt', NULL, 1), ('gmail', 'g@gmail.com', 'sub-gmail', 1), ('google', 'o@exemplo.pt', 'sub-google', 1)"),
+      env.DB.prepare("INSERT INTO aceites_termos (conta_id, versao_termos, aceite_em) VALUES ('codigo', '1', 1)"),
+      env.DB.prepare("INSERT INTO relatos (id, tipo, paragem, linha, conta_id, criado_em, expira_em) VALUES ('r-codigo', 'desvio', 'CM:1', '736', 'codigo', 1, 2), ('r-google', 'desvio', 'CM:2', '736', 'google', 1, 2)"),
+      env.DB.prepare("INSERT INTO confirmacoes (relato_id, conta_id, voto, em) VALUES ('r-codigo', 'google', 'ainda_esta', 1), ('r-google', 'codigo', 'ja_nao_esta', 1)"),
+      env.DB.prepare("INSERT INTO correcoes (id, paragem, conta_id, tipo, nome, criada_em) VALUES ('k-codigo', 'CM:1', 'codigo', 'nome', 'Outro nome', 1)"),
+    ]);
+    for (const id of ["codigo", "gmail", "google"]) {
+      await env.DB.prepare("INSERT INTO favoritos (conta_id, chave, tipo, nome, lat, lon, ordem, revisao) VALUES (?, 'CM:1', 'PARAGEM', 'Paragem', 38.7, -9.1, 0, 1)").bind(id).run();
+      await criarSessao(env, id);
+    }
+
+    const migracao = env.TEST_MIGRATIONS.find((m) => m.name.startsWith("0003"))!;
+    for (const consulta of migracao.queries) await env.DB.prepare(consulta).run();
+
+    const { results } = await env.DB.prepare("SELECT id FROM contas ORDER BY id").all<{ id: string }>();
+    expect(results.map((linha) => linha.id)).toEqual(["gmail", "google"]);
+    for (const tabela of ["favoritos", "sessoes", "aceites_termos", "relatos", "correcoes", "confirmacoes"]) {
+      expect(await contar(tabela, "codigo"), tabela).toBe(0);
+    }
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM confirmacoes WHERE relato_id = 'r-codigo'").first<number>("n")).toBe(0);
+    for (const id of ["gmail", "google"]) {
+      expect(await contar("favoritos", id), id).toBe(1);
+      expect(await contar("sessoes", id), id).toBe(1);
+    }
+    // O voto da conta apagada sai; o relato da conta Google fica.
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM confirmacoes WHERE relato_id = 'r-google'").first<number>("n")).toBe(0);
+    expect(await env.DB.prepare("SELECT id FROM relatos").all()).toMatchObject({ results: [{ id: "r-google" }] });
+  });
+});
+
 describe("termos", () => {
   it("termosGuardamAVersao", async () => {
     const antes = Date.now();
