@@ -30,6 +30,8 @@ describe("apagar conta", () => {
         .bind(id)
         .run();
       await env.DB.prepare("INSERT INTO aceites_termos (conta_id, versao_termos, aceite_em) VALUES (?, '1', 1)").bind(id).run();
+      // As alterações aos favoritos contadas em dois dias, que o Cron ainda não apagou.
+      await env.DB.prepare("INSERT INTO contadores (dia, nome, quantos) VALUES ('2030-01-01', ?1, 3), ('2030-01-02', ?1, 1)").bind(`favoritos:${id}`).run();
     }
     expect(await contar("sessoes", "ana")).toBe(2);
 
@@ -44,6 +46,8 @@ describe("apagar conta", () => {
     expect(await contar("sessoes", "rui")).toBe(1);
     expect(await contar("favoritos", "rui")).toBe(2);
     expect(await contar("aceites_termos", "rui")).toBe(1);
+    const { results } = await env.DB.prepare("SELECT nome FROM contadores ORDER BY dia").all<{ nome: string }>();
+    expect(results.map((linha) => linha.nome)).toEqual(["favoritos:rui", "favoritos:rui"]);
 
     // O token da conta apagada deixa de servir, em todas as rotas.
     expect(await contaDaSessao(pedidoComToken(tokenDaAna), env)).toBeNull();

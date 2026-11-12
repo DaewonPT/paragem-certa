@@ -5,8 +5,8 @@ const MAX_VERSAO = 40;
 
 /**
  * Apaga a conta por inteiro, no D1: os relatos (com os votos dos outros neles), os votos da conta, as
- * correções, os favoritos, os aceites, as sessões e a conta. Denúncias, decisões e bloqueios ficam (só com o hash do
- * email). Usada pelo DELETE /api/conta e pelo pc-admin.
+ * correções, os favoritos (e a contagem diária das alterações), os aceites, as sessões e a conta. Denúncias,
+ * decisões e bloqueios ficam (só com o hash do email). Usada pelo DELETE /api/conta e pelo pc-admin.
  */
 export async function apagarContaPorId(env: Env, contaId: string): Promise<void> {
   // Numa transação: ou desaparece tudo, ou nada.
@@ -16,6 +16,7 @@ export async function apagarContaPorId(env: Env, contaId: string): Promise<void>
     env.DB.prepare("DELETE FROM relatos WHERE conta_id = ?").bind(contaId),
     env.DB.prepare("DELETE FROM correcoes WHERE conta_id = ?").bind(contaId),
     env.DB.prepare("DELETE FROM favoritos WHERE conta_id = ?").bind(contaId),
+    env.DB.prepare("DELETE FROM contadores WHERE nome = ?").bind(`favoritos:${contaId}`),
     env.DB.prepare("DELETE FROM aceites_termos WHERE conta_id = ?").bind(contaId),
     env.DB.prepare("DELETE FROM sessoes WHERE conta_id = ?").bind(contaId),
     env.DB.prepare("DELETE FROM contas WHERE id = ?").bind(contaId),
