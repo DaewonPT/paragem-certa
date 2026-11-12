@@ -24,11 +24,6 @@ fun cmParagemDeTransitous(id: String): String? {
     return if (t[0] == '3') "0" + t.substring(1) else t
 }
 
-private val VIAGEM_TRANSITOUS = Regex("""^\d{8}_\d\d:\d\d_$PREFIXO_CM_TRANSITOUS""")
-
-/** Viagem do Transitous → trip_id da Carris Metropolitana: "20261101_10:35_pt-Carris-Metropolitana_3708_0_1|1|0525" → "3708_0_1|1|0525". */
-fun cmViagemDeTransitous(id: String): String? = VIAGEM_TRANSITOUS.find(id)?.let { id.substring(it.range.last + 1) }
-
 fun gravidadeDe(effect: String?, severityLevel: String?): Gravidade = when (severityLevel) {
     "SEVERE" -> Gravidade.GRAVE
     "WARNING" -> Gravidade.AVISO

@@ -113,10 +113,6 @@ class CarrisMetropolitanaTest {
         assertEquals(3, (r as Resultado.Ok).valor.size)
     }
 
-    @Test fun percursoOrdenadoPorSequencia() {
-        assertEquals(listOf("020735", "020002", "060419"), CmParser.padrao(fixture("cm-pattern-3708_0_1.json")))
-    }
-
     @Test fun chegadasCmNoTerminalSoDoSentido() {
         // No terminal da Caparica a mesma paragem tem chegadas (…_1, que acabam aqui) e partidas (…_2): o sentido sai do pattern_id.
         val c = CmParser.chegadas(fixture("cm-arrivals-060419.json"), manha)

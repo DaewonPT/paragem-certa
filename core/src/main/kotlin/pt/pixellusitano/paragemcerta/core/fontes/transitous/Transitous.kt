@@ -30,8 +30,8 @@ import java.time.ZoneId
 import java.time.temporal.ChronoUnit
 
 /**
- * Ids do Transitous que pertencem à Carris Metropolitana: essa vem só da API dela. Os ids convertem-se por uma regra fixa:
- * paragem sem este prefixo e com o 3 inicial a 0 (cmParagemDeTransitous), viagem sem "AAAAMMDD_HH:MM_" e sem o prefixo (cmViagemDeTransitous).
+ * Ids do Transitous que pertencem à Carris Metropolitana: essa vem só da API dela. A paragem converte-se por uma regra fixa:
+ * sem este prefixo e com o 3 inicial a 0 (cmParagemDeTransitous).
  */
 const val PREFIXO_CM_TRANSITOUS = "pt-Carris-Metropolitana_"
 
@@ -345,17 +345,11 @@ private fun modosDe(modo: Modo): String? = when (modo) {
 }
 
 class Transitous(private val http: Http, private val base: String = "https://api.transitous.org") {
+    // Limite: o ecrã da linha e as linhas favoritas filtram estas 30 partidas pela linha; numa paragem cheia uma linha rara pode ficar sem nenhuma, subir o n se acontecer.
     private fun urlChegadas(paragemId: String) = "$base/api/v6/stoptimes?stopId=${enc(paragemId)}&n=30&${zonaDaParagem(paragemId)}"
 
     suspend fun chegadas(paragemId: String, agora: Instant): Resultado<List<Chegada>> =
         http.pedir(urlChegadas(paragemId)) { TransitousParser.chegadas(it, paragemId, agora) }
-
-    /**
-     * As próximas chegadas da paragem que são da linha ([rotas]) no sentido [s]; o mesmo pedido da paragem.
-     * Limite: filtra as 30 partidas da paragem; numa paragem cheia uma linha rara pode ficar sem nenhuma, subir o n se acontecer.
-     */
-    suspend fun chegadasDaLinha(paragemId: String, rotas: Set<String>, s: SentidoCatalogo, agora: Instant): Resultado<List<Chegada>> =
-        http.pedir(urlChegadas(paragemId)) { TransitousParser.chegadas(it, paragemId, agora).filter { c -> daLinhaNoSentido(c, rotas, s) } }
 
     /**
      * As horas a que a linha parte da paragem no [dia] de serviço (das 03:00 de Lisboa às 03:00 do dia seguinte), pela ordem do dia,

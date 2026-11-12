@@ -27,11 +27,4 @@ class CmIdsTest {
         assertNull(sentidoDoPadraoCm("3708"))
         assertNull(sentidoDoPadraoCm(""))
     }
-
-    @Test fun viagemDoTransitousParaACm() {
-        assertEquals("3708_0_1|1|0525", cmViagemDeTransitous("20261101_10:35_pt-Carris-Metropolitana_3708_0_1|1|0525"))
-        assertEquals("[PL3CL][YA15B]3001_0_2_1000_1029_0_ESC_DOM", cmViagemDeTransitous("20261101_10:35_pt-Carris-Metropolitana_[PL3CL][YA15B]3001_0_2_1000_1029_0_ESC_DOM"))
-        assertNull(cmViagemDeTransitous("20261101_02:30_pt-Carris_13548_20260606_66_0_4"))
-        assertNull(cmViagemDeTransitous("pt-Carris-Metropolitana_3708_0_1|1|0525"))
-    }
 }

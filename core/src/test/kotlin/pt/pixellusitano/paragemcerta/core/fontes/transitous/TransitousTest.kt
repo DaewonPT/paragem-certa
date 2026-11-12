@@ -9,6 +9,7 @@ import pt.pixellusitano.paragemcerta.core.HttpFalso
 import pt.pixellusitano.paragemcerta.core.comunidade.chaveLinha
 import pt.pixellusitano.paragemcerta.core.fixture
 import pt.pixellusitano.paragemcerta.core.linhas.SentidoCatalogo
+import pt.pixellusitano.paragemcerta.core.linhas.daLinhaNoSentido
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.Lugar
 import pt.pixellusitano.paragemcerta.core.modelo.Modo
@@ -350,42 +351,17 @@ class TransitousTest {
         assertEquals("MobiCascais", operadorDe("pt-Cascais-Próxima_20127"))
     }
 
-    @Test fun chegadasDaLinhaFiltramRotaESentido() = runTest {
-        val http = HttpFalso({ Resposta(200, fixture("transitous-stoptimes-metro-mae.json")) })
-        val t = Transitous(http)
-        val az = setOf("pt-Metro-Lisboa_A")
-        val paraReboleira = (t.chegadasDaLinha("pt-Metro-Lisboa_MP", az, sentido(1, "Reboleira"), tarde) as Resultado.Ok).valor
-        // Só a Azul (a Amarela é outra rota) e só o sentido 1 (o 0 vai para Santa Apolónia).
-        assertEquals(2, paraReboleira.size)
-        assertTrue(paraReboleira.all { it.linhaNome == "Az" && it.destino == "Reboleira" && it.sentido == 1 })
-        val paraSantaApolonia = (t.chegadasDaLinha("pt-Metro-Lisboa_MP", az, sentido(0, "Santa Apolónia"), tarde) as Resultado.Ok).valor
-        assertEquals(listOf("Santa Apolónia", "Santa Apolónia"), paraSantaApolonia.map { it.destino })
-        assertTrue((t.chegadasDaLinha("pt-Metro-Lisboa_MP", setOf("pt-Metro-Lisboa_Z"), sentido(0, "Santa Apolónia"), tarde) as Resultado.Ok).valor.isEmpty())
-        // É o mesmo pedido da paragem (a estação-mãe leva o raio de 80 m).
-        assertEquals(List(3) { urlMetroMae }, http.pedidos)
-    }
-
-    @Test fun chegadasDaLinhaSemDirectionIdPeloDestino() = runTest {
-        val semSentido = fixture("transitous-stoptimes-metro-mae.json").replace(Regex("\"directionId\": \"\\d\",\\s*"), "")
-        val t = Transitous(HttpFalso({ Resposta(200, semSentido) }))
-        // O número do sentido (7) não bate com nada: só o destino pode decidir.
-        val paraORato = (t.chegadasDaLinha("pt-Metro-Lisboa_MP", setOf("pt-Metro-Lisboa_B"), sentido(7, "Rato"), tarde) as Resultado.Ok).valor
-        assertEquals(listOf("Rato", "Rato"), paraORato.map { it.destino })
-        assertTrue(paraORato.all { it.sentido == null })
-    }
-
-    @Test fun cpComDirectionIdPorOmissaoVaiPeloDestino() = runTest {
+    @Test fun cpComDirectionIdPorOmissaoVaiPeloDestino() {
         // Lido a 03/11/2026: a CP não tem direction_id e o Transitous manda "directionId": "0" em todas as partidas.
         val json = fixture("transitous-stoptimes-cp.json")
         assertEquals(6, Regex("\"directionId\": \"0\"").findAll(json).count())
-        val t = Transitous(HttpFalso({ Resposta(200, json) }))
+        val c = TransitousParser.chegadas(json, "${cp}_94_69005", tarde)
         val rotas = setOf("${cp}_25-94_69005-94_69179", "${cp}_25-94_69005-94_69260")
         // Os sentidos 0 e 1 são os que o gerador inventou: aqui o 1 é o de Cascais, e tem de ficar com as 6 mesmo vindo "0".
-        val paraCascais = (t.chegadasDaLinha("${cp}_94_69005", rotas, sentido(1, "Cascais", "Oeiras", porDestino = true), Instant.parse("2026-11-03T18:00:00Z")) as Resultado.Ok).valor
+        val paraCascais = c.filter { daLinhaNoSentido(it, rotas, sentido(1, "Cascais", "Oeiras", porDestino = true)) }
         assertEquals(6, paraCascais.size)
         assertTrue(paraCascais.all { it.sentido == 0 })
-        val paraLisboa = (t.chegadasDaLinha("${cp}_94_69005", rotas, sentido(0, "Cais do Sodré", porDestino = true), Instant.parse("2026-11-03T18:00:00Z")) as Resultado.Ok).valor
-        assertTrue(paraLisboa.isEmpty())
+        assertTrue(c.none { daLinhaNoSentido(it, rotas, sentido(0, "Cais do Sodré", porDestino = true)) })
     }
 
     @Test fun horarioDoDiaOrdenadoComPrimeiraEUltima() = runTest {
