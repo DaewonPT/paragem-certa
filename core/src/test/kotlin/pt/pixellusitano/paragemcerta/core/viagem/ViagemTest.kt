@@ -459,6 +459,12 @@ class ViagemTest {
         assertTrue(viagem.passo(viagem.inicio(limite.plusSeconds(1)), Entrada.Relogio(limite.plusSeconds(2))).first.terminada)
     }
 
+    @Test fun rotaQueOMotorRecusaNaoContaComoPassada() {
+        // Um desenho de um só ponto: o Percurso recusa-o, e quem começa a viagem é que avisa.
+        val plano = itinerario(autocarro().copy(desenho = listOf(ponto(0.0, 0.0))))
+        assertFalse(rotaPassou(plano, plano.chegada.plus(Duration.ofDays(1))))
+    }
+
     @Test fun guardaContaComOAtrasoConhecido() {
         // A bordo com 40 min de atraso e depois sem avançar (largou a viagem perto da linha): a guarda é chegada + 40 + 30 min.
         val etapa = autocarro()
