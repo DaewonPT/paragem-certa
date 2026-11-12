@@ -1,7 +1,7 @@
 import { env } from "cloudflare:workers";
 import { beforeEach, describe, expect, it } from "vitest";
 import { criarSessao } from "../src/sessoes";
-import { pedir } from "./ajudas";
+import { limitador, pedir } from "./ajudas";
 
 type Favorito = { chave: string; tipo: string; nome: string; lat: number; lon: number; ordem: number; apagado: boolean };
 type Resposta = { revisao: number; alteracoes: (Favorito & { revisao: number })[] };
@@ -43,6 +43,17 @@ async function linhas(contaId: string): Promise<{ chave: string; apagado: number
     revisao: number;
   }>();
   return results;
+}
+
+/** Põe `quantos` paragens favoritas na conta (revisões 1..quantos), sem passar pelo servidor. */
+async function semear(contaId: string, quantos: number): Promise<void> {
+  await env.DB.batch([
+    env.DB.prepare(
+      `WITH RECURSIVE n(i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < ?2)
+       INSERT INTO favoritos (conta_id, chave, tipo, nome, lat, lon, ordem, revisao) SELECT ?1, 'CM:' || i, 'PARAGEM', 'P', 38.7, -9.1, i, i FROM n`,
+    ).bind(contaId, quantos),
+    env.DB.prepare("UPDATE contas SET revisao = ? WHERE id = ?").bind(quantos, contaId),
+  ]);
 }
 
 describe("sincronizar favoritos", () => {
@@ -273,5 +284,62 @@ describe("sincronizar favoritos", () => {
   it("nomeComExatamente120CaracteresServe", async () => {
     const resposta = await sincronizado(telemovelA, 0, [favorito("CM:1", { nome: "ã".repeat(120) }), favorito("CM:2", { lat: -90, lon: 180 })]);
     expect(resposta.alteracoes).toHaveLength(2);
+  });
+
+  it("casasRepetidasNoPedidoLeemAContaUmaVez", async () => {
+    await semear("ana", 500);
+    let lidas = 0;
+    // Conta as linhas lidas pelo batch da sincronização.
+    const DB = {
+      prepare: (sql: string) => env.DB.prepare(sql),
+      batch: async (passos: D1PreparedStatement[]) => {
+        const resultados = await env.DB.batch(passos);
+        lidas += resultados.reduce((total, r) => total + r.meta.rows_read, 0);
+        return resultados;
+      },
+    } as unknown as D1Database;
+    const casas = Array.from({ length: 500 }, (_, i) => favorito(`casa-${i}`, { tipo: "CASA", nome: "Casa" }));
+
+    const resposta = await pedir("/api/sincronizar", { token: telemovelA, corpo: { desde: 500, alteracoes: casas }, segredos: { DB } });
+    expect(resposta.status).toBe(200);
+    expect(lidas).toBeLessThan(20_000);
+    // Fica só a última Casa do pedido, como antes.
+    const vivas = await env.DB.prepare("SELECT chave FROM favoritos WHERE conta_id = 'ana' AND tipo = 'CASA' AND apagado = 0").all<{ chave: string }>();
+    expect(vivas.results.map((linha) => linha.chave)).toEqual(["casa-499"]);
+  });
+
+  it("tetosDaContaRecusamAlteracoesMasNaoALeitura", async () => {
+    // Reenviar as mesmas 500 não aumenta as linhas, mas gasta as 1000 alterações do dia.
+    const quinhentas = Array.from({ length: 500 }, (_, i) => favorito(`CM:${i}`));
+    await sincronizado(telemovelA, 0, quinhentas);
+    await sincronizado(telemovelA, 500, quinhentas.map((f) => ({ ...f, nome: "Outro nome" })));
+    expect(await linhas("ana")).toHaveLength(500);
+    const semDia = await sincronizar(telemovelA, 1000, [favorito("CM:novo")]);
+    expect(semDia.status).toBe(429);
+    expect(await semDia.json()).toEqual({ erro: "muitos_pedidos" });
+    expect(await revisaoDaConta("ana")).toBe(1000);
+
+    // Com 1000 linhas (apagadas incluídas) já não entra mais nenhuma, e a recusa não gasta o dia.
+    await semear("rui", 1000);
+    const cheia = await sincronizar(telemovelDoRui, 1000, [favorito("CM:novo")]);
+    expect(cheia.status).toBe(403);
+    expect(await cheia.json()).toEqual({ erro: "demasiados_favoritos" });
+    expect(await linhas("rui")).toHaveLength(1000);
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM contadores WHERE nome = 'favoritos:rui'").first("n")).toBe(0);
+
+    // Sem alterações, as duas contas continuam a receber o que mudou.
+    expect((await sincronizado(telemovelB, 999)).alteracoes).toHaveLength(1);
+    expect((await sincronizado(telemovelDoRui, 999)).alteracoes).toHaveLength(1);
+  });
+
+  it("decimaPrimeiraSincronizacaoNoMinutoDa429", async () => {
+    const limite = limitador(10);
+    for (let vez = 1; vez <= 10; vez++) {
+      expect((await pedir("/api/sincronizar", { token: telemovelA, corpo: { desde: 0, alteracoes: [] }, segredos: { LIMITADOR: limite } })).status, `vez ${vez}`).toBe(200);
+    }
+    const decimaPrimeira = await pedir("/api/sincronizar", { token: telemovelA, corpo: { desde: 0, alteracoes: [] }, segredos: { LIMITADOR: limite } });
+    expect(decimaPrimeira.status).toBe(429);
+    expect(await decimaPrimeira.json()).toEqual({ erro: "devagar" });
+    expect(limite.chaves).toEqual(Array(11).fill("sincronizar:ana"));
   });
 });

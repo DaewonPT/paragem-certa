@@ -14,6 +14,11 @@ export type Favorito = {
 
 const TIPOS = new Set(["PARAGEM", "CASA", "TRABALHO", "OUTRO", "LINHA"]);
 const MAX_ALTERACOES = 500;
+// Tetos por conta: uma só conta não pode gastar a quota grátis do D1 (5 M leituras, 100 000 escritas por dia) de todos.
+// Limite: os apagados nunca saem da base (têm de chegar aos outros telemóveis), por isso uma conta com 1000 linhas já não
+// consegue enviar alterações (ficam no telemóvel); limpar apagados antigos se alguém lá chegar.
+const MAX_FAVORITOS = 1000; // linhas da conta, apagados incluídos
+const MAX_ALTERACOES_POR_DIA = 1000; // duas sincronizações cheias; tem de ser >= MAX_ALTERACOES
 const MAX_TEXTO = 120;
 // "LINHA|<linha>|<sentido>|<paragem>": uma linha da CP sem nome curto já passa dos 120.
 const MAX_CHAVE_LINHA = 250;
@@ -55,18 +60,41 @@ type Linha = Omit<Favorito, "apagado"> & { apagado: number; revisao: number };
 export async function sincronizar(pedido: Request, env: Env): Promise<Response> {
   const sessao = await contaDaSessao(pedido, env);
   if (!sessao) return erro("sem_sessao", 401);
+  // Antes de ler o corpo, para os pedidos mal feitos também contarem. É aproximado (docs/servidor.md): as escritas ficam presas pelos tetos abaixo.
+  const { success } = await env.LIMITADOR.limit({ key: `sincronizar:${sessao.contaId}` });
+  if (!success) return erro("devagar", 429);
 
   const { desde, alteracoes } = await corpoJson(pedido);
   if (!Number.isSafeInteger(desde) || (desde as number) < 0 || !Array.isArray(alteracoes)) return erro("pedido_invalido", 400);
   if (alteracoes.length > MAX_ALTERACOES) return erro("demasiadas_alteracoes", 400);
   if (!alteracoes.every(favoritoValido)) return erro("pedido_invalido", 400);
 
+  // Só quem traz alterações gasta os tetos: a sincronização que só lê passa sempre.
+  if (alteracoes.length > 0) {
+    const total = await env.DB.prepare("SELECT COUNT(*) AS n FROM (SELECT 1 FROM favoritos WHERE conta_id = ?1 LIMIT ?2)")
+      .bind(sessao.contaId, MAX_FAVORITOS)
+      .first<{ n: number }>();
+    if (total!.n >= MAX_FAVORITOS) return erro("demasiados_favoritos", 403);
+    // Contar e reservar num só passo, como em enviarNoTeto; um contador "favoritos:<conta>" por dia, que o Cron apaga.
+    const contado = await env.DB.prepare(
+      "INSERT INTO contadores (dia, nome, quantos) VALUES (?1, ?2, ?3) ON CONFLICT (dia, nome) DO UPDATE SET quantos = quantos + ?3 WHERE quantos + ?3 <= ?4",
+    )
+      .bind(new Date().toISOString().slice(0, 10), `favoritos:${sessao.contaId}`, alteracoes.length, MAX_ALTERACOES_POR_DIA)
+      .run();
+    if (contado.meta.changes === 0) return erro("muitos_pedidos", 429);
+  }
+
   // Tudo num só `batch` (uma transação): ou fica tudo gravado, ou nada, e dois telemóveis nunca se misturam a meio.
   const passos: D1PreparedStatement[] = [];
+  // Só a última Casa (e o último Trabalho) por apagar do pedido troca as outras: cada troca lê os favoritos todos da conta.
+  const ultima = new Map<string, number>();
+  alteracoes.forEach((f, i) => {
+    if (!f.apagado) ultima.set(f.tipo, i);
+  });
   alteracoes.forEach((f, i) => {
     const revisao = i + 1;
     passos.push(env.DB.prepare(GRAVAR).bind(sessao.contaId, f.chave, f.tipo, f.nome, f.lat, f.lon, f.ordem, f.apagado ? 1 : 0, revisao));
-    if ((f.tipo === "CASA" || f.tipo === "TRABALHO") && !f.apagado) {
+    if ((f.tipo === "CASA" || f.tipo === "TRABALHO") && ultima.get(f.tipo) === i) {
       passos.push(env.DB.prepare(SUBSTITUIR).bind(sessao.contaId, f.tipo, f.chave, revisao));
     }
   });

@@ -31,7 +31,7 @@ export async function pedir(caminho: string, opcoes: Opcoes = {}): Promise<Respo
       headers: cabecalhos,
       body: opcoes.corpo === undefined ? undefined : corpo,
     }),
-    { ...env, RESEND_API_KEY: undefined, LIMITE_AUTH: limitador(Infinity), CHAVE_MARCA_EMAIL: CHAVE_MARCA_TESTE, ...opcoes.segredos } as Env,
+    { ...env, RESEND_API_KEY: undefined, LIMITE_AUTH: limitador(Infinity), LIMITADOR: limitador(Infinity), CHAVE_MARCA_EMAIL: CHAVE_MARCA_TESTE, ...opcoes.segredos } as Env,
     ctx,
   );
   await waitOnExecutionContext(ctx);

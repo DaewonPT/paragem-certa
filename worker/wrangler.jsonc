@@ -22,7 +22,8 @@
       "migrations_dir": "migrations"
     }
   ],
-  // No máximo 10 escritas da comunidade por minuto e por conta (a chave é o id da conta).
+  // LIMITADOR: no máximo 10 escritas da comunidade por minuto e por conta (a chave é o id da conta) e, à parte,
+  // 10 sincronizações de favoritos por minuto e por conta (a chave é "sincronizar:<conta>").
   // LIMITE_AUTH: 5 pedidos de entrada (/api/auth/) em 10 segundos por IP, aproximado (a Cloudflare junta as contas em segundo
   // plano e deixa passar rajadas). Fica aqui porque a única regra grátis de limite de pedidos da zona é a do site.
   "ratelimits": [
