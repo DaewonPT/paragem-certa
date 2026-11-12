@@ -26,6 +26,9 @@ class AvisoAtualizacaoTest {
     // Rodar o ecrã ou sair com "Voltar" a meio do descarregamento não o corta nem mostra a falha.
     @Test fun sairDoEcraAMeioNaoCortaAAtualizacao() {
         val soltar = CountDownLatch(1)
+        // Pedido antes de o descarregamento começar: o Android cria o instalador da primeira vez que é pedido, sem trinco, e o
+        // Robolectric guarda as sessões em cada instância; pedido ao mesmo tempo que a app, cada um podia ficar com o seu.
+        val instalador = RuntimeEnvironment.getApplication().packageManager.packageInstaller
         comApkNoServidor(segurar = soltar) { url, pedidos ->
             var mostrar by mutableStateOf(true)
             regra.setContent { if (mostrar) AvisoAtualizacao(NovaVersao("v99.0.0", url, ""), remember { mutableIntStateOf(0) }) }
@@ -34,7 +37,6 @@ class AvisoAtualizacaoTest {
             mostrar = false
             regra.waitForIdle()
             soltar.countDown()
-            val instalador = RuntimeEnvironment.getApplication().packageManager.packageInstaller
             regra.waitUntil(5_000) { instalador.allSessions.isNotEmpty() }
             regra.waitForIdle()
             assertNull(ShadowToast.getTextOfLatestToast())
