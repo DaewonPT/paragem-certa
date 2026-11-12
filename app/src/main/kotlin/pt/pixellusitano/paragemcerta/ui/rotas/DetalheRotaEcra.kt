@@ -7,6 +7,7 @@ import androidx.compose.material3.Icon
 import pt.pixellusitano.paragemcerta.ui.comum.SeloModo
 import android.content.Intent
 import android.net.Uri
+import android.widget.Toast
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.PaddingValues
@@ -70,6 +71,7 @@ import pt.pixellusitano.paragemcerta.core.modelo.Itinerario
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
 import pt.pixellusitano.paragemcerta.core.modelo.Veiculo
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
+import pt.pixellusitano.paragemcerta.core.viagem.rotaPassou
 import pt.pixellusitano.paragemcerta.dados.Preferencias
 import pt.pixellusitano.paragemcerta.dados.Repositorio
 import pt.pixellusitano.paragemcerta.viagem.CM_INTERVALO
@@ -155,7 +157,11 @@ fun DetalheRotaEcra(
         estadoAutocarro = estadoAutocarro,
         aoVerAutocarro = { i -> if (seguida == i) centrar++ else aoSeguir(i) },
         aoVoltar = aoVoltar,
-        aoComecar = { aoPreparar(true) },
+        // Uma rota que já passou abria o ecrã da viagem e fechava-o logo, sem dizer nada.
+        aoComecar = {
+            if (rotaPassou(it, Instant.now())) Toast.makeText(contexto, R.string.detalhe_rota_passou, Toast.LENGTH_LONG).show()
+            else aoPreparar(true)
+        },
         aoPartilhar = {
             val envio = Intent(Intent.ACTION_SEND).setType("text/plain")
                 .putExtra(Intent.EXTRA_TEXT, textoPartilha(it, de, para, LISBOA_FUSO))

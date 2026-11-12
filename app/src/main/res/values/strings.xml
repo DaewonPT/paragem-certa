@@ -328,6 +328,7 @@
 
     <!-- Começar viagem, primeira viagem e viagem interrompida -->
     <string name="detalhe_comecar">Começar viagem</string>
+    <string name="detalhe_rota_passou">Esta rota já passou. Procura outra vez para veres as próximas.</string>
     <string name="viagem_interrompida">Viagem interrompida — toca para retomar</string>
     <string name="viagem_em_curso">Viagem em curso — toca para ver</string>
     <string name="viagem_descartar">Descartar</string>

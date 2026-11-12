@@ -448,6 +448,17 @@ class ViagemTest {
         assertEquals(fim to emptyList<Evento>(), viagem.passo(fim, Entrada.Relogio(limite.plusSeconds(60))))
     }
 
+    @Test fun rotaQuePassouDaGuardaNaoSeComeca() {
+        val etapa = aPe(0.0, 0.0 to 0.0, 0.0 to 1000.0)
+        val plano = itinerario(etapa)
+        val limite = etapa.chegada.plus(Duration.ofMinutes(30))
+        assertFalse(rotaPassou(plano, limite))
+        assertTrue(rotaPassou(plano, limite.plusSeconds(1)))
+        // A mesma regra do motor: começada nessa altura, acabava no primeiro passo.
+        val viagem = Viagem(plano)
+        assertTrue(viagem.passo(viagem.inicio(limite.plusSeconds(1)), Entrada.Relogio(limite.plusSeconds(2))).first.terminada)
+    }
+
     @Test fun guardaContaComOAtrasoConhecido() {
         // A bordo com 40 min de atraso e depois sem avançar (largou a viagem perto da linha): a guarda é chegada + 40 + 30 min.
         val etapa = autocarro()

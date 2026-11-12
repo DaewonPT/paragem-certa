@@ -295,6 +295,9 @@ class Viagem(val plano: Itinerario) {
  */
 fun limiteDaViagem(plano: Itinerario, e: EstadoViagem): Instant = plano.chegada.plusSeconds(e.atrasoS.coerceIn(0, ATRASO_MAX_S)) + GUARDA
 
+/** A rota já passou: uma viagem começada agora acabava no primeiro passo (a guarda de [limiteDaViagem]). */
+fun rotaPassou(plano: Itinerario, agora: Instant): Boolean = agora > limiteDaViagem(plano, Viagem(plano).inicio(agora))
+
 /** As paragens da etapa; sem elas (a pé, ou a fonte não as deu), a origem e o destino. Pública: o ecrã lista as mesmas que o motor conta. */
 fun paragensDe(etapa: Etapa): List<ParagemEtapa> = etapa.paragens.takeIf { it.size >= 2 } ?: listOf(
     ParagemEtapa(null, etapa.de.nome, etapa.de.lat, etapa.de.lon, etapa.partida),
