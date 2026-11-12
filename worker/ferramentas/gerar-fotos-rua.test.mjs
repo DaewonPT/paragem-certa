@@ -242,6 +242,13 @@ test("gerarJuntaAsParagensDasDuasFontes", async () => {
   const ficheiro = await gerarFicheiro({ dia: DIA, linhas: LINHAS, excluidas: new Set(), buscar: buscarFalso([perto, ...muitas(500)]) });
   const foto = { id: "perto", miniatura: "https://panoramax.example/perto/thumb.jpg", autor: "Ana", licenca: "CC BY-SA 4.0", data: "2022-03-13" };
   assert.deepEqual(ficheiro, { versao: 1, geradoEm: DIA, fotos: { "CM:060419": foto, "TRANSITOUS:pt-Carris_1": foto } });
+  // O FotosDeRuaTest.kt (leOFicheiroDoGerador) lê este mesmo ficheiro com o leitor da app.
+  const gravado = path.join(import.meta.dirname, "gerado", "fotos-de-rua.json");
+  if (process.env.GRAVAR) {
+    fs.mkdirSync(path.dirname(gravado), { recursive: true });
+    fs.writeFileSync(gravado, JSON.stringify(ficheiro, null, 1) + "\n");
+  }
+  assert.deepEqual(JSON.parse(fs.readFileSync(gravado, "utf8")), ficheiro, "o fotos-de-rua.json mudou: corre GRAVAR=1 npm run ferramentas, revê a diferença e corre o :core:test");
 });
 
 test("carrisMetropolitanaEmBaixoFazFalhar", async () => {

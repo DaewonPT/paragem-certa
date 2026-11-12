@@ -4,6 +4,9 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
 import org.junit.Test
 import pt.pixellusitano.paragemcerta.core.fixture
+import pt.pixellusitano.paragemcerta.core.modelo.Fonte
+import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
+import java.io.File
 
 class FotosDeRuaTest {
     private fun foto(data: String = "2022-03-13", id: String = "x") = FotoDeRua(id, "https://m.example/t.jpg", "Ana", "CC0", data)
@@ -26,6 +29,14 @@ class FotosDeRuaTest {
             fotos.getValue("CM:060419"),
         )
         assertEquals("Licence Ouverte 2.0", fotos.getValue("TRANSITOUS:pt-Carris_920").licenca)
+    }
+
+    // O que o worker/ferramentas/gerar-fotos-rua.mjs escreve nos seus testes (o gerar-fotos-rua.test.mjs confirma que é igual).
+    @Test fun leOFicheiroDoGerador() {
+        val fotos = lerFotosDeRua(File("../worker/ferramentas/gerado/fotos-de-rua.json").readText())
+        val foto = FotoDeRua("perto", "https://panoramax.example/perto/thumb.jpg", "Ana", "CC BY-SA 4.0", "2022-03-13")
+        // As chaves são as da app: escritas de outra forma, todas as paragens ficavam sem foto.
+        assertEquals(mapOf(RefParagem(Fonte.CM, "060419").chave to foto, RefParagem(Fonte.TRANSITOUS, "pt-Carris_1").chave to foto), fotos)
     }
 
     @Test fun ficheiroVazioLeSemFotos() {

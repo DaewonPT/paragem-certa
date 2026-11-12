@@ -11,6 +11,7 @@ import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.Modo
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
+import java.io.File
 import java.time.Instant
 import java.time.LocalDate
 
@@ -77,6 +78,34 @@ class LinhasTest {
         assertThrows(Exception::class.java) { lerCatalogo(json.replace("\"geradoEm\": \"2026-11-03\"", "\"geradoEm\": \"ontem\"")) }
         // Uma paragem que a linha usa e o ficheiro não tem: também é um ficheiro estragado (o chamador fica com o antigo).
         assertThrows(Exception::class.java) { lerCatalogo(json.replace("\"pt-Carris_3803\": [", "\"pt-Carris_0000\": [")) }
+    }
+
+    // O que o worker/ferramentas/gerar-linhas.mjs escreve para o teste-gtfs (o gerar-linhas.test.mjs confirma que é igual).
+    // Os testes do :core correm na pasta do módulo.
+    @Test fun leOFicheiroDoGerador() {
+        val c = lerCatalogo(File("../worker/ferramentas/gerado/linhas.json").readText())
+        assertEquals(LocalDate.of(2026, 11, 3), c.geradoEm)
+        assertEquals(c.linhas.map { it.operador }.toSet(), c.operadores.keys)
+        // Cada campo que o leitor aceita em falta tem de chegar: um nome trocado no gerador ou aqui falha neste teste.
+        assertTrue(c.linhas.all { it.rotas.isNotEmpty() && it.sentidos.isNotEmpty() && it.modo != Modo.OUTRO })
+        val sentidos = c.linhas.flatMap { it.sentidos }
+        assertTrue(sentidos.all { it.destino.isNotEmpty() && it.destinos.isNotEmpty() && it.paragens.size >= 2 && it.forma.size >= 2 })
+        assertTrue(c.linhas.any { it.nomeLongo.isNotEmpty() } && c.linhas.any { it.cor != null } && c.linhas.any { it.corTexto != null })
+        assertTrue(sentidos.any { it.porDestino } && sentidos.any { !it.porDestino })
+
+        val l728 = c.daRota("pt-Carris_204_1")!!
+        assertEquals(RefLinha(Fonte.TRANSITOUS, "pt-Carris:728"), l728.ref)
+        assertEquals("Restelo - Portela", l728.nomeLongo)
+        val s0 = l728.sentidos.single { it.sentido == 0 }
+        assertEquals("Portela", s0.destino)
+        assertEquals(setOf("Largo \"do\" Aeroporto", "Portela"), s0.destinos)
+        assertEquals(listOf("pt-Carris_3803", "pt-Carris_3804", "pt-Carris_3805"), s0.paragens.map { it.ref.id })
+        assertEquals("Rua da Palma, 12", s0.paragens[1].nome)
+        // A paragem é [nome, lat, lon] pela posição: uma troca de ordem não muda nenhum nome.
+        assertEquals(38.718, s0.paragens[1].lat, 1e-9)
+        // Sem direction_id no GTFS (a CP), só o destino decide as chegadas.
+        assertTrue(c.daRota("pt-Comboios-de-Portugal(CP)_25-94_31039-94_61101")!!.sentidos.all { it.porDestino })
+        assertEquals("#FFCC00", c.daRota("pt-Metro-Lisboa_B")!!.cor)
     }
 
     @Test fun daRotaEncontraALinha() {

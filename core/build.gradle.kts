@@ -21,3 +21,10 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.coroutines.test)
 }
+
+// Os testes leem o que os geradores do worker escrevem e os dois config.json: sem isto, o Gradle dava o :core:test como feito
+// quando só esses ficheiros mudam.
+tasks.test {
+    inputs.dir("../worker/ferramentas/gerado")
+    inputs.files("../worker/public/dados/config.json", "../app/src/main/assets/config.json")
+}

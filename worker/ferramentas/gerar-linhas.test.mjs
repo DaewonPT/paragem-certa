@@ -247,3 +247,15 @@ test("duasGeracoesIguaisDaoOMesmoFicheiro", () => {
   assert.equal(lido.geradoEm, DIA);
   assert.deepEqual(lido, catalogo);
 });
+
+const GRAVADO = path.join(import.meta.dirname, "gerado", "linhas.json");
+
+// O LinhasTest.kt (leOFicheiroDoGerador) lê este mesmo ficheiro com o leitor da app.
+// Limite: só apanha a app desta versão; as já instaladas leem os mesmos nomes, por isso um campo acrescenta-se, nunca muda de nome nem sai.
+test("catalogoIgualAoQueAAppLe", () => {
+  if (process.env.GRAVAR) {
+    fs.mkdirSync(path.dirname(GRAVADO), { recursive: true });
+    fs.writeFileSync(GRAVADO, JSON.stringify(catalogo, null, 1) + "\n");
+  }
+  assert.deepEqual(JSON.parse(fs.readFileSync(GRAVADO, "utf8")), catalogo, "o linhas.json mudou: corre GRAVAR=1 npm run ferramentas, revê a diferença e corre o :core:test");
+});

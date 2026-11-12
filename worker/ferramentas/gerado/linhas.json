@@ -1,0 +1,462 @@
+{
+ "versao": 1,
+ "geradoEm": "2026-11-03",
+ "operadores": [
+  {
+   "id": "pt-Carris",
+   "nome": "Carris"
+  },
+  {
+   "id": "pt-Cascais-Próxima",
+   "nome": "MobiCascais"
+  },
+  {
+   "id": "pt-Comboios-de-Portugal(CP)",
+   "nome": "CP"
+  },
+  {
+   "id": "pt-Metro-Lisboa",
+   "nome": "Metro de Lisboa"
+  }
+ ],
+ "paragens": {
+  "pt-Carris_3803": [
+   "Martim Moniz",
+   38.7166,
+   -9.1357
+  ],
+  "pt-Carris_3804": [
+   "Rua da Palma, 12",
+   38.718,
+   -9.136
+  ],
+  "pt-Carris_3805": [
+   "Portela",
+   38.77,
+   -9.105
+  ],
+  "pt-Carris_3807": [
+   "Prazeres",
+   38.7144,
+   -9.1682
+  ],
+  "pt-Carris_3808": [
+   "Graça",
+   38.7169,
+   -9.1311
+  ],
+  "pt-Cascais-Próxima_20127": [
+   "Cascais Terminal",
+   38.7005,
+   -9.418
+  ],
+  "pt-Cascais-Próxima_20128": [
+   "Estoril, Escola",
+   38.706,
+   -9.397
+  ],
+  "pt-Cascais-Próxima_20129": [
+   "Parede Terminal",
+   38.689,
+   -9.354
+  ],
+  "pt-Cascais-Próxima_20131": [
+   "Alcabideche",
+   38.734,
+   -9.409
+  ],
+  "pt-Comboios-de-Portugal(CP)_94_31039": [
+   "Lisboa Rossio",
+   38.71437,
+   -9.14141
+  ],
+  "pt-Comboios-de-Portugal(CP)_94_31112": [
+   "Queluz-Belas",
+   38.7553,
+   -9.2552
+  ],
+  "pt-Comboios-de-Portugal(CP)_94_61101": [
+   "Sintra",
+   38.79929,
+   -9.38574
+  ],
+  "pt-Comboios-de-Portugal(CP)_94_69005": [
+   "Cais do Sodré",
+   38.7056,
+   -9.1458
+  ],
+  "pt-Comboios-de-Portugal(CP)_94_69112": [
+   "Oeiras",
+   38.6876,
+   -9.3149
+  ],
+  "pt-Comboios-de-Portugal(CP)_94_69179": [
+   "São Pedro do Estoril",
+   38.6966,
+   -9.372
+  ],
+  "pt-Comboios-de-Portugal(CP)_94_69211": [
+   "Cascais",
+   38.7008,
+   -9.4183
+  ],
+  "pt-Metro-Lisboa_CG1": [
+   "Campo Grande",
+   38.75988,
+   -9.15794
+  ],
+  "pt-Metro-Lisboa_CG2": [
+   "Campo Grande",
+   38.75988,
+   -9.15794
+  ],
+  "pt-Metro-Lisboa_CG3": [
+   "Campo Grande",
+   38.75988,
+   -9.15794
+  ],
+  "pt-Metro-Lisboa_CG4": [
+   "Campo Grande",
+   38.75988,
+   -9.15794
+  ],
+  "pt-Metro-Lisboa_CS1": [
+   "Cais do Sodré",
+   38.7059,
+   -9.1445
+  ],
+  "pt-Metro-Lisboa_OD1": [
+   "Odivelas",
+   38.7932,
+   -9.173
+  ],
+  "pt-Metro-Lisboa_RA1": [
+   "Rato",
+   38.72,
+   -9.1541
+  ],
+  "pt-Metro-Lisboa_TE1": [
+   "Telheiras",
+   38.7604,
+   -9.1663
+  ]
+ },
+ "linhas": [
+  {
+   "operador": "pt-Carris",
+   "nome": "28E",
+   "nomeLongo": "Martim Moniz - Campo Ourique (Prazeres)",
+   "modo": "ELETRICO",
+   "cor": null,
+   "corTexto": null,
+   "rotas": [
+    "pt-Carris_75_0"
+   ],
+   "sentidos": [
+    {
+     "sentido": 0,
+     "destino": "Prazeres",
+     "destinos": [
+      "Prazeres"
+     ],
+     "paragens": [
+      "pt-Carris_3808",
+      "pt-Carris_3807"
+     ],
+     "forma": "s{hkFjlvv@rNzfF"
+    },
+    {
+     "sentido": 1,
+     "destino": "Graça",
+     "destinos": [
+      "Graça"
+     ],
+     "paragens": [
+      "pt-Carris_3807",
+      "pt-Carris_3808"
+     ],
+     "forma": "_lhkFft}v@sN{fF"
+    }
+   ]
+  },
+  {
+   "operador": "pt-Carris",
+   "nome": "728",
+   "nomeLongo": "Restelo - Portela",
+   "modo": "AUTOCARRO",
+   "cor": null,
+   "corTexto": null,
+   "rotas": [
+    "pt-Carris_204_0",
+    "pt-Carris_204_1"
+   ],
+   "sentidos": [
+    {
+     "sentido": 0,
+     "destino": "Portela",
+     "destinos": [
+      "Largo \"do\" Aeroporto",
+      "Portela"
+     ],
+     "paragens": [
+      "pt-Carris_3803",
+      "pt-Carris_3804",
+      "pt-Carris_3805"
+     ],
+     "forma": "wyhkFbiwv@wGz@oaD_cBoaDw|A"
+    },
+    {
+     "sentido": 1,
+     "destino": "Martim Moniz",
+     "destinos": [
+      "Martim Moniz"
+     ],
+     "paragens": [
+      "pt-Carris_3805",
+      "pt-Carris_3804",
+      "pt-Carris_3803"
+     ],
+     "forma": "ogskFfiqv@~cIv`EvG{@"
+    }
+   ]
+  },
+  {
+   "operador": "pt-Cascais-Próxima",
+   "nome": "1",
+   "nomeLongo": "Cascais Terminal - Parede",
+   "modo": "AUTOCARRO",
+   "cor": "#AD0101",
+   "corTexto": "#FFFFFF",
+   "rotas": [
+    "pt-Cascais-Próxima_M01_A"
+   ],
+   "sentidos": [
+    {
+     "sentido": 0,
+     "destino": "Parede",
+     "destinos": [
+      "Estoril",
+      "Parede"
+     ],
+     "paragens": [
+      "pt-Cascais-Próxima_20127",
+      "pt-Cascais-Próxima_20128",
+      "pt-Cascais-Próxima_20129"
+     ],
+     "porDestino": true,
+     "forma": "cuekFnmnx@ka@gbCfiBwkG"
+    },
+    {
+     "sentido": 1,
+     "destino": "Cascais",
+     "destinos": [
+      "Cascais"
+     ],
+     "paragens": [
+      "pt-Cascais-Próxima_20129",
+      "pt-Cascais-Próxima_20128",
+      "pt-Cascais-Próxima_20127"
+     ],
+     "porDestino": true,
+     "forma": "gmckFn}ax@giBvkGja@fbC"
+    }
+   ]
+  },
+  {
+   "operador": "pt-Cascais-Próxima",
+   "nome": "Circular de Alcabideche",
+   "nomeLongo": "Circular de Alcabideche",
+   "modo": "AUTOCARRO",
+   "cor": null,
+   "corTexto": null,
+   "rotas": [
+    "pt-Cascais-Próxima_M99"
+   ],
+   "sentidos": [
+    {
+     "sentido": 0,
+     "destino": "Alcabideche",
+     "destinos": [
+      "Alcabideche"
+     ],
+     "paragens": [
+      "pt-Cascais-Próxima_20127",
+      "pt-Cascais-Próxima_20131",
+      "pt-Cascais-Próxima_20127"
+     ],
+     "porDestino": true,
+     "forma": "cuekFnmnx@kpEgw@jpEfw@"
+    }
+   ]
+  },
+  {
+   "operador": "pt-Comboios-de-Portugal(CP)",
+   "nome": "Linha de Cascais",
+   "nomeLongo": "",
+   "modo": "COMBOIO",
+   "cor": "#0099FF",
+   "corTexto": "#FFFFFF",
+   "rotas": [
+    "pt-Comboios-de-Portugal(CP)_26-94_69005-94_69211",
+    "pt-Comboios-de-Portugal(CP)_26-94_69211-94_69005",
+    "pt-Comboios-de-Portugal(CP)_27-94_69005-94_69179",
+    "pt-Comboios-de-Portugal(CP)_27-94_69179-94_69005"
+   ],
+   "sentidos": [
+    {
+     "sentido": 0,
+     "destino": "Cascais",
+     "destinos": [
+      "Cascais",
+      "São Pedro do Estoril"
+     ],
+     "paragens": [
+      "pt-Comboios-de-Portugal(CP)_94_69005",
+      "pt-Comboios-de-Portugal(CP)_94_69112",
+      "pt-Comboios-de-Portugal(CP)_94_69179",
+      "pt-Comboios-de-Portugal(CP)_94_69211"
+     ],
+     "porDestino": true,
+     "forma": "_ufkFfhyv@noBz_`@gw@zcJgYj`H"
+    },
+    {
+     "sentido": 1,
+     "destino": "Cais do Sodré",
+     "destinos": [
+      "Cais do Sodré",
+      "Oeiras"
+     ],
+     "paragens": [
+      "pt-Comboios-de-Portugal(CP)_94_69211",
+      "pt-Comboios-de-Portugal(CP)_94_69179",
+      "pt-Comboios-de-Portugal(CP)_94_69112",
+      "pt-Comboios-de-Portugal(CP)_94_69005"
+     ],
+     "porDestino": true,
+     "forma": "_wekFjonx@fYk`Hfw@{cJooB{_`@"
+    }
+   ]
+  },
+  {
+   "operador": "pt-Comboios-de-Portugal(CP)",
+   "nome": "Linha de Sintra",
+   "nomeLongo": "",
+   "modo": "COMBOIO",
+   "cor": "#008000",
+   "corTexto": "#FFFFFF",
+   "rotas": [
+    "pt-Comboios-de-Portugal(CP)_25-94_31039-94_61101",
+    "pt-Comboios-de-Portugal(CP)_25-94_61101-94_31039"
+   ],
+   "sentidos": [
+    {
+     "sentido": 0,
+     "destino": "Sintra",
+     "destinos": [
+      "Sintra"
+     ],
+     "paragens": [
+      "pt-Comboios-de-Portugal(CP)_94_31039",
+      "pt-Comboios-de-Portugal(CP)_94_31112",
+      "pt-Comboios-de-Portugal(CP)_94_61101"
+     ],
+     "porDestino": true,
+     "forma": "ykhkFxlxv@y~FdfU}qGznX"
+    },
+    {
+     "sentido": 1,
+     "destino": "Lisboa Rossio",
+     "destinos": [
+      "Lisboa Rossio"
+     ],
+     "paragens": [
+      "pt-Comboios-de-Portugal(CP)_94_61101",
+      "pt-Comboios-de-Portugal(CP)_94_31112",
+      "pt-Comboios-de-Portugal(CP)_94_31039"
+     ],
+     "porDestino": true,
+     "forma": "q~xkFzchx@|qG{nXx~FefU"
+    }
+   ]
+  },
+  {
+   "operador": "pt-Metro-Lisboa",
+   "nome": "Am",
+   "nomeLongo": "Amarela",
+   "modo": "METRO",
+   "cor": "#FFCC00",
+   "corTexto": null,
+   "rotas": [
+    "pt-Metro-Lisboa_B"
+   ],
+   "sentidos": [
+    {
+     "sentido": 0,
+     "destino": "Odivelas",
+     "destinos": [
+      "Campo Grande",
+      "Odivelas"
+     ],
+     "paragens": [
+      "pt-Metro-Lisboa_RA1",
+      "pt-Metro-Lisboa_CG1",
+      "pt-Metro-Lisboa_OD1"
+     ],
+     "forma": "_oikFb|zv@gxF~VgoEb}A"
+    },
+    {
+     "sentido": 1,
+     "destino": "Rato",
+     "destinos": [
+      "Rato"
+     ],
+     "paragens": [
+      "pt-Metro-Lisboa_OD1",
+      "pt-Metro-Lisboa_CG2",
+      "pt-Metro-Lisboa_RA1"
+     ],
+     "forma": "oxwkFfr~v@foEc}AfxF_W"
+    }
+   ]
+  },
+  {
+   "operador": "pt-Metro-Lisboa",
+   "nome": "Vd",
+   "nomeLongo": "Verde",
+   "modo": "METRO",
+   "cor": "#00CC99",
+   "corTexto": null,
+   "rotas": [
+    "pt-Metro-Lisboa_C"
+   ],
+   "sentidos": [
+    {
+     "sentido": 0,
+     "destino": "Telheiras",
+     "destinos": [
+      "Telheiras"
+     ],
+     "paragens": [
+      "pt-Metro-Lisboa_CS1",
+      "pt-Metro-Lisboa_CG3",
+      "pt-Metro-Lisboa_TE1"
+     ],
+     "forma": "{vfkFb`yv@kpI~rAgBfs@"
+    },
+    {
+     "sentido": 1,
+     "destino": "Cais do Sodré",
+     "destinos": [
+      "Cais do Sodré"
+     ],
+     "paragens": [
+      "pt-Metro-Lisboa_TE1",
+      "pt-Metro-Lisboa_CG4",
+      "pt-Metro-Lisboa_CS1"
+     ],
+     "forma": "okqkFjh}v@fBgs@jpI_sA"
+    }
+   ]
+  }
+ ]
+}
