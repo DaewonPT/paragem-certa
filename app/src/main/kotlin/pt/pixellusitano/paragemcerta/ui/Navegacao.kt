@@ -496,9 +496,10 @@ internal fun AvisoAtualizacao(pendente: NovaVersao?, abertos: MutableIntState) {
             TextButton(onClick = {
                 nova = null
                 // Rodar o ecrã ou sair com "Voltar" a meio não pode cortar o descarregamento, nem mostrar a falha e esconder o aviso um dia.
+                // Só a aplicação entra na corrotina: a Activity destruída não fica presa na memória até acabar.
+                val app = contexto.applicationContext
                 escopo.launch {
                     withContext(NonCancellable) {
-                        val app = contexto.applicationContext
                         runCatching { Atualizacoes.instalar(app, n) }
                             .onSuccess { Atualizacoes.limparPendente(app) }
                             .onFailure { Toast.makeText(app, falhou, Toast.LENGTH_LONG).show() }
