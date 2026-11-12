@@ -17,7 +17,7 @@ val chaveLocal = Properties().apply { if (propsChave.isFile) propsChave.inputStr
 fun valorChave(env: String, prop: String): String? = System.getenv(env) ?: chaveLocal.getProperty(prop)
 
 // O id do cliente Web da Google não está no repositório: no CI vem dos segredos do GitHub, no PC de local.properties.
-// Sem ele o botão "Iniciar sessão com o Google" não aparece.
+// Sem ele a Conta (no Menu e o ícone no Início) fica escondida a quem não tiver sessão aberta.
 val propsLocais = Properties().apply { rootProject.file("local.properties").takeIf { it.isFile }?.inputStream()?.use(::load) }
 val clienteWebGoogle = (System.getenv("GOOGLE_WEB_CLIENT_ID") ?: propsLocais.getProperty("GOOGLE_WEB_CLIENT_ID") ?: "").trim()
 

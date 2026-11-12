@@ -65,7 +65,7 @@ Se o projeto ainda não tiver nada configurado, a consola mostra primeiro o bot�
    - Estes dois comandos não correm na pasta `worker/`. Em cada um, da linha "Signer #1 certificate SHA-1 digest:" copia só o código de 40 letras e números que vem a seguir, sem o texto antes. Se a consola o recusar, põe «:» entre cada par (AB:CD:EF:…).
    - A variante `play` (pacote `pt.pixellusitano.paragemcerta`, chave da Play) só entra quando a app for para a Play.
    - Nota: a Google apaga sozinha qualquer cliente OAuth que passe 6 meses sem uso e avisa-te por email 30 dias antes. O de testes é o que corre mais risco. Se receberes esse aviso, abre o cliente na consola e muda-lhe qualquer coisa (o nome, por exemplo), que isso já conta como uso. Se já tiver sido apagado, recupera-o na página das credenciais eliminadas (dá até 30 dias) ou cria-o outra vez com o mesmo pacote e a mesma SHA-1.
-5. Para builds no PC, cria (ou abre, se já existir) o ficheiro `local.properties` na pasta `codigo`, ao lado do `settings.gradle.kts` (não na `worker/`; não vai para o git), e escreve lá a linha `GOOGLE_WEB_CLIENT_ID=o-teu-client-id`. Depois compila a app outra vez. Sem ele o botão do Google não aparece.
+5. Para builds no PC, cria (ou abre, se já existir) o ficheiro `local.properties` na pasta `codigo`, ao lado do `settings.gradle.kts` (não na `worker/`; não vai para o git), e escreve lá a linha `GOOGLE_WEB_CLIENT_ID=o-teu-client-id`. Depois compila a app outra vez. Sem ele, a Conta (no Menu e o ícone da conta no Início) fica escondida a quem não tiver sessão aberta.
 6. **Verificar a marca (opcional, só depois do passo 6, com a `/privacidade` no ar e o Audience em "In production").** Sem isto, quem entra com o Google vê só `pixellusitano.com` e não «Paragem Certa». Em Branding, no campo da página inicial («Application home page»), põe uma página tua em pixellusitano.com que explique o que a app faz (não pode ser só uma página de entrada) e tenha uma ligação para `https://paragemcerta.pixellusitano.com/privacidade`. Na Google Search Console, verifica o domínio `pixellusitano.com` com a mesma conta Google que é dona (Owner) ou editora (Editor) do projeto. Depois carrega em **Verify Branding**. Quando passar, carrega em **Publish branding**, senão o nome não aparece.
 
 ## 5. Segredos do Worker
@@ -111,7 +111,7 @@ Confirma, quando o certificado estiver pronto (pode demorar uns minutos):
 
    Os quatro da etapa da comunidade juntam-se no passo 15.
 3. Para publicar: **Actions → Servidor → Run workflow**, no ramo `main`. Da primeira vez, só no ponto 5 de «Publicar a 0.4.0», depois do passo 15: antes disso faltam segredos e o `publicar` pára a meio. O trabalho `publicar` (no GitHub aparece como «Publish to Cloudflare») espera pelo trabalho dos testes e dos tipos («Tests and types»), aplica as migrações na base remota, faz o deploy do Worker principal e a seguir o do `pc-admin`, enviando outra vez os segredos de cada um. Só corre assim, à mão e no `main`: um commit ou um pedido de alterações nunca publica nada.
-4. O segredo `GOOGLE_WEB_CLIENT_ID` também serve ao `android.yml`: a Release assinada leva o id no APK. Sem ele, o botão do Google não aparece.
+4. O segredo `GOOGLE_WEB_CLIENT_ID` também serve ao `android.yml`: a Release assinada leva o id no APK. Sem ele, a Conta (no Menu e o ícone da conta no Início) fica escondida a quem não tiver sessão aberta.
 
 ## 8. Limite contra abusos em `/api/auth/*` (já está no servidor)
 
@@ -122,7 +122,7 @@ Não há nada para fazer neste passo. Não se usa uma regra de limite de pedidos
 
 ## 9. Ligar a conta na app
 
-A entrada "Conta" do Menu só aparece com o interruptor ligado.
+A entrada "Conta" do Menu só aparece com o interruptor ligado. Sem o `GOOGLE_WEB_CLIENT_ID` no APK (passos 4 e 7), a Conta do Menu e o ícone da conta no Início ficam escondidos a quem não tiver sessão aberta.
 
 1. Em `worker/public/dados/config.json`, muda `"conta": false` para `"conta": true`. Antes do commit, ajusta também os testes do servidor: hoje contam com todos os interruptores desligados e falham se ligares algum. Neste caso são `worker/test/base.test.ts` e `worker/test/portao.test.ts`. Muda-os no mesmo commit e confirma com `npm test` na pasta `worker/`. Se os testes falharem, o trabalho `publicar` não corre e nada vai para o ar. Faz commit no `main` e `git push origin main`, espera que a corrida do Servidor aberta por esse push acabe e só então corre o **Servidor → Run workflow** do passo 7.
 2. Confirma em `https://paragemcerta.pixellusitano.com/dados/config.json`. A 0.3.2 que está nos telemóveis não tem Conta: experimenta numa build 0.4.0 feita no PC. A app vai buscá-lo de cada vez que abre; abre-a uma vez com rede e aparece Menu → Conta. Para entrares com o Google nessa build, precisas do passo 4 (cliente Android de testes e `local.properties`). O APK de debug não se instala por cima da 0.3.2 (a chave é outra): desinstala-a primeiro ou usa outro telemóvel, e faz o mesmo no segundo telemóvel para veres os favoritos.
