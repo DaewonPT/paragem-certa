@@ -90,10 +90,24 @@ async function contaDoGoogle(env: Env, pessoa: { sub: string; email: string; hd?
   return resultados.at(-1)!.results[0].id;
 }
 
+/** Nonces por dia UTC, na app toda: cada um custa 3 escritas a criar e 3 a apagar. */
+export const MAX_NONCES_POR_DIA = 1000;
+
 /** POST /api/auth/google/nonce: o pedido único que a app entrega à Google e que volta dentro do token. */
 export async function novoNonce(env: Env): Promise<Response> {
+  const agora = Date.now();
+  // Contar e reservar num só passo, como em enviarNoTeto: com o teto cheio não se escreve nada.
+  // Limite: quem gastar o teto de propósito deixa as entradas novas em pausa até às 00:00 UTC (as sessões abertas continuam);
+  // se acontecer, passar a nonces assinados (HMAC), que só escrevem depois de um token válido da Google.
+  const contado = await env.DB.prepare(
+    "INSERT INTO contadores (dia, nome, quantos) VALUES (?1, 'nonces', 1) ON CONFLICT (dia, nome) DO UPDATE SET quantos = quantos + 1 WHERE quantos < ?2",
+  )
+    .bind(new Date(agora).toISOString().slice(0, 10), MAX_NONCES_POR_DIA)
+    .run();
+  // em_pausa: as apps publicadas (desde a 0.4.0) mostram "em pausa até <hora>" sem abrir o Google e não param o resto.
+  if (contado.meta.changes === 0) return erro("em_pausa", 503);
   const nonce = aleatorioBase64Url(32);
-  await env.DB.prepare("INSERT INTO nonces (valor, criado_em) VALUES (?, ?)").bind(nonce, Date.now()).run();
+  await env.DB.prepare("INSERT INTO nonces (valor, criado_em) VALUES (?, ?)").bind(nonce, agora).run();
   return json({ nonce });
 }
 

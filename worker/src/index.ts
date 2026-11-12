@@ -23,7 +23,7 @@ export default {
       // As apps até à 0.5.3 ainda pedem a entrada por código: só o 404 lhes mostra o texto certo, nunca o 429 do travão.
       if (pathname.startsWith("/api/auth/email/")) return erro("nao_existe", 404);
 
-      // Cada entrada escreve na base (um nonce, uma sessão): sem isto, um só IP podia gastar a quota diária de escritas.
+      // O travão por IP só abranda (é aproximado e cada IPv6 conta à parte); as escritas ficam presas pelo teto diário dos nonces (google.ts).
       if (pathname.startsWith("/api/auth/")) {
         const { success } = await env.LIMITE_AUTH.limit({ key: pedido.headers.get("cf-connecting-ip") ?? "sem-ip" });
         if (!success) return erro("espera_um_pouco", 429);

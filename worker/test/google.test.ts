@@ -1,6 +1,7 @@
 import { env } from "cloudflare:workers";
 import { exportJWK, generateKeyPair, importJWK, SignJWT, UnsecuredJWT, type CryptoKey, type JWK } from "jose";
 import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { MAX_NONCES_POR_DIA } from "../src/google";
 import { contaDaSessao } from "../src/sessoes";
 import { pedidoComToken, pedir } from "./ajudas";
 
@@ -107,6 +108,11 @@ async function contaDeEmail(id: string, email: string, googleSub: string | null 
   await env.DB.prepare("INSERT INTO contas (id, email, google_sub, criada_em) VALUES (?, ?, ?, 1)").bind(id, email, googleSub).run();
 }
 
+/** Quantos nonces o servidor já deu hoje (dia UTC). */
+async function noncesDeHoje(): Promise<number | null> {
+  return env.DB.prepare("SELECT quantos FROM contadores WHERE dia = ? AND nome = 'nonces'").bind(new Date().toISOString().slice(0, 10)).first<number>("quantos");
+}
+
 async function googleSubDe(id: string): Promise<string | null> {
   return (await env.DB.prepare("SELECT google_sub FROM contas WHERE id = ?").bind(id).first<{ google_sub: string | null }>())!.google_sub;
 }
@@ -118,6 +124,24 @@ describe("entrar com o Google", () => {
     expect(await novoNonce()).not.toBe(nonce);
     const guardado = await env.DB.prepare("SELECT criado_em FROM nonces WHERE valor = ?").bind(nonce).first<{ criado_em: number }>();
     expect(guardado!.criado_em).toBeGreaterThan(Date.now() - MINUTO);
+  });
+
+  it("nonceContaNoTetoDoDia", async () => {
+    await novoNonce();
+    await novoNonce();
+    expect(await noncesDeHoje()).toBe(2);
+  });
+
+  it("nonceParaNoTetoDoDiaSemEscrever", async () => {
+    await env.DB.prepare("INSERT INTO contadores (dia, nome, quantos) VALUES (?, 'nonces', ?)")
+      .bind(new Date().toISOString().slice(0, 10), MAX_NONCES_POR_DIA - 1)
+      .run();
+    await novoNonce(); // o último do dia
+    const resposta = await pedir("/api/auth/google/nonce");
+    expect(resposta.status).toBe(503);
+    expect(await resposta.json()).toEqual({ erro: "em_pausa" });
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM nonces").first("n")).toBe(1);
+    expect(await noncesDeHoje()).toBe(MAX_NONCES_POR_DIA);
   });
 
   it("tokenValidoDaSessao", async () => {
