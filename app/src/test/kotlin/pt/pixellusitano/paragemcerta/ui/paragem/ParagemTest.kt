@@ -126,6 +126,14 @@ class ParagemTest {
         regra.onNodeWithText("Não há chegadas nas próximas 2 horas").assertDoesNotExist()
     }
 
+    @Test fun fonteEmBaixoENadaGuardadoNaoDizQueNaoHaAutocarros() {
+        regra.setContent {
+            TemaParagemCerta(ModoTema.CLARO) { Ecra(EstadoChegadas(emptyList(), null, semLigacao = false, tempoRealIndisponivel = true), emptyList()) }
+        }
+        regra.onNodeWithText("Tempo real indisponível — não há chegadas guardadas por mostrar").assertExists()
+        regra.onNodeWithText("Não há chegadas nas próximas 2 horas").assertDoesNotExist()
+    }
+
     @Test fun tempoRealIndisponivelDizAIdadeDosDados() {
         regra.setContent {
             TemaParagemCerta(ModoTema.CLARO) {

@@ -50,7 +50,7 @@
     <string name="sem_chegadas">Não há chegadas nas próximas 2 horas</string>
     <string name="sem_ligacao">Sem ligação — atualizado há %1$d min</string>
     <string name="sem_ligacao_nada">Sem ligação — não há chegadas guardadas por mostrar</string>
-    <string name="tempo_real_indisponivel">Tempo real indisponível</string>
+    <string name="tempo_real_indisponivel">Tempo real indisponível — não há chegadas guardadas por mostrar</string>
     <!-- Uma chegada da Carris com o autocarro ao vivo, no lugar do "horário" -->
     <plurals name="ao_vivo_paragens">
         <item quantity="one">ao vivo, a %d paragem</item>
