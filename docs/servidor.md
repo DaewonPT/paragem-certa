@@ -290,7 +290,7 @@ Quando se gera:
 
 - **O workflow `Dados`** gera-o na primeira segunda-feira do mês (dias 1 a 7). Nas outras segundas-feiras, copia o que está no ar.
 - **O trabalho `publicar`** (passo 7) copia o que está no ar e só gera se não houver nada.
-- **Se gerar falhar** (Panoramax em baixo, uma resposta que não se percebe, menos de 500 fotos, a API da Carris Metropolitana em baixo), fica o que está no ar, com um aviso na corrida. Sem nada no ar, fica um ficheiro vazio, e a segunda-feira seguinte tenta outra vez. Nunca pára uma publicação.
+- **Se gerar falhar** (Panoramax em baixo, uma resposta que não se percebe, menos de 500 fotos, a API da Carris Metropolitana em baixo), fica o que está no ar, com um aviso na corrida. Sem nada no ar, fica um ficheiro vazio, e a segunda-feira seguinte tenta outra vez. Só pára a publicação se também não der para ler o ficheiro que está no ar: aí, um ficheiro vazio apagava as fotos.
 
 **Para gerar já:** **Actions → Dados → Run workflow**, no `main`. À mão, gera sempre.
 

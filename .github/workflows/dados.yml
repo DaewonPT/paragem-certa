@@ -84,7 +84,8 @@ jobs:
           node ferramentas/gerar-linhas.mjs "$gtfs" public/dados/linhas.json
 
       # Corre todas as semanas porque um deploy apaga do ar o que não leva: o gerador decide se gera ou copia o que lá está.
-      # Com o agendamento gera nos dias 1 a 7 do mês; à mão gera sempre. Uma falha do Panoramax não pára nada.
+      # Com o agendamento gera nos dias 1 a 7 do mês; à mão gera sempre. Uma falha do Panoramax só pára (e o catálogo
+      # novo espera) se também não der para ler o que está no ar.
       - name: Get the street photos
         working-directory: worker
         env:

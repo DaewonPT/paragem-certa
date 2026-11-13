@@ -166,10 +166,12 @@ if (import.meta.main) {
   const buscar = async (url) => {
     await new Promise((resolver) => setTimeout(resolver, 200));
     const resposta = await fetch(url, { headers: { "User-Agent": USER_AGENT }, signal: AbortSignal.any([prazo, AbortSignal.timeout(60_000)]) });
-    if (!resposta.ok) throw new Error(`${url} respondeu ${resposta.status}`);
+    if (!resposta.ok) throw Object.assign(new Error(`${url} respondeu ${resposta.status}`), { status: resposta.status });
     return resposta.json();
   };
-  const noAr = await buscar(NO_AR).catch(() => null);
+  // Só um 404 quer dizer que não há fotos no ar; outra falha é não saber, e um ficheiro vazio apagava as que lá estão.
+  let semSaber = false;
+  const noAr = await buscar(NO_AR).catch((e) => { semSaber = e.status !== 404; return null; });
   const ficheiro = await obterFicheiro({
     modo,
     dia,
@@ -181,6 +183,10 @@ if (import.meta.main) {
       buscar,
     }),
   });
+  if (semSaber && !Object.keys(ficheiro.fotos).length) {
+    console.error("::error::Não deu para ler as fotos de rua que estão no ar nem para gerar outras: um ficheiro vazio apagava-as. Corre outra vez mais tarde.");
+    process.exit(1);
+  }
   fs.writeFileSync(saida, JSON.stringify(ficheiro));
   console.log(`${Object.keys(ficheiro.fotos).length} paragens com foto em ${saida} (de ${ficheiro.geradoEm})`);
 }

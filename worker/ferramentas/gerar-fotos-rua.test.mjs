@@ -330,11 +330,14 @@ test("noArEstragadoOuVazioContaComoNada", async () => {
 
 // A linha de comandos, com um fetch falso: nunca sai para a rede.
 
-const FETCH_404 = `data:text/javascript,${encodeURIComponent("globalThis.fetch = async () => new Response('', { status: 404 });")}`;
+const comFetch = (codigo) => `data:text/javascript,${encodeURIComponent(`globalThis.fetch = ${codigo};`)}`;
+const FETCH_404 = comFetch("async () => new Response('', { status: 404 })");
 
-function correr(...argumentos) {
-  return spawnSync(process.execPath, [`--import=${FETCH_404}`, GERADOR, ...argumentos], { encoding: "utf8" });
+function correrCom(fetchFalso, ...argumentos) {
+  return spawnSync(process.execPath, [`--import=${fetchFalso}`, GERADOR, ...argumentos], { encoding: "utf8" });
 }
+
+const correr = (...argumentos) => correrCom(FETCH_404, ...argumentos);
 
 function pastaComLinhas() {
   const pasta = fs.mkdtempSync(path.join(os.tmpdir(), "fotos-"));
@@ -350,6 +353,17 @@ test("cliComTudoEmBaixoEscreveVazioESaiBem", () => {
   const r = correr("sempre", linhas, saida, DIA);
   assert.equal(r.status, 0, r.stderr);
   assert.deepEqual(JSON.parse(fs.readFileSync(saida, "utf8")), { versao: 1, geradoEm: DIA, fotos: {} });
+});
+
+test("cliSemLerONoArNemGerarNaoEscreveVazio", () => {
+  for (const fetchFalso of ["async () => new Response('', { status: 503 })", "async () => { throw new TypeError('fetch failed'); }"]) {
+    const { pasta, linhas } = pastaComLinhas();
+    const saida = path.join(pasta, "fotos.json");
+    const r = correrCom(comFetch(fetchFalso), "manter", linhas, saida, DIA);
+    assert.equal(r.status, 1, r.stderr);
+    assert.match(r.stderr, /::error::/);
+    assert.equal(fs.existsSync(saida), false);
+  }
 });
 
 test("cliSemConseguirEscreverSaiComErro", () => {

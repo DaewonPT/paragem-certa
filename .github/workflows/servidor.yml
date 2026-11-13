@@ -112,7 +112,7 @@ jobs:
           jq -e '.versao == 1 and (.linhas | length) > 0' public/dados/linhas.json > /dev/null
 
       # Um deploy apaga do ar o que não leva: copia as fotos de rua que lá estão e só gera se não houver nenhumas. Uma
-      # falha do Panoramax não pára a publicação.
+      # falha do Panoramax só pára a publicação se também não der para ler o que está no ar.
       - name: Keep the live street photos
         working-directory: worker
         run: node ferramentas/gerar-fotos-rua.mjs manter public/dados/linhas.json public/dados/fotos-de-rua.json
