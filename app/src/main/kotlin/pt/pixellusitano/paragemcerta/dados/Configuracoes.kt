@@ -24,10 +24,10 @@ class Configuracoes(contexto: Context, private val servidor: ServidorParagemCert
     /** Pede a nova e guarda-a; sem rede ou com uma resposta estranha fica a anterior. */
     suspend fun aoAbrir() {
         val nova = (servidor.config() as? Resultado.Ok)?.valor ?: return
-        withContext(Dispatchers.IO) { guardada.writeText(JSON.encodeToString(nova)) }
+        withContext(Dispatchers.IO) { escreverDeUmaVez(guardada, JSON.encodeToString(nova)) }
         _atual.value = nova
     }
 
-    // Um ficheiro estragado (disco cheio a meio da escrita) é o mesmo que não ter nenhum.
+    // Um ficheiro estragado é o mesmo que não ter nenhum.
     private fun ler(texto: String?): Configuracao? = texto?.let { runCatching { JSON.decodeFromString<Configuracao>(it) }.getOrNull() }
 }

@@ -97,6 +97,7 @@ class FicheiroDoServidor<T>(
 
 /** Escreve ao lado e troca de uma vez: a meio de uma escrita nunca fica um ficheiro cortado. */
 internal fun escreverDeUmaVez(ficheiro: File, texto: String) {
+    // Limite: não faz fsync; se o telemóvel se desligar a meio, alguns sistemas de ficheiros podem deixar o ficheiro vazio.
     val novo = File(ficheiro.path + ".novo").apply { writeText(texto) }
     Files.move(novo.toPath(), ficheiro.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
 }

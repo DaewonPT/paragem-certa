@@ -13,8 +13,6 @@ import pt.pixellusitano.paragemcerta.core.fontes.servidor.ServidorParagemCerta
 import pt.pixellusitano.paragemcerta.core.fontes.servidor.Sessao
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import java.io.File
-import java.nio.file.Files
-import java.nio.file.StandardCopyOption
 import java.time.Instant
 
 sealed interface EstadoConta {
@@ -164,9 +162,7 @@ class Conta(
         if (s == null) {
             ficheiro.delete()
         } else {
-            // Escreve ao lado e troca de uma vez: a meio de uma escrita nunca fica um ficheiro cortado.
-            val novo = File(ficheiro.path + ".novo").apply { writeText(JSON.encodeToString(s)) }
-            Files.move(novo.toPath(), ficheiro.toPath(), StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE)
+            escreverDeUmaVez(ficheiro, JSON.encodeToString(s))
         }
         sessao = s
         repositorio.comConta = s != null
