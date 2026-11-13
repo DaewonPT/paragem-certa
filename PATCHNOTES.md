@@ -2,6 +2,18 @@
 
 A versão mais recente aparece primeiro.
 
+## 0.5.6 — Muitos pequenos acertos
+
+- Ao voltares do detalhe de uma rota, a lista das Rotas fica onde estava. Só volta ao topo com uma procura nova.
+- Tocar em vários filtros seguidos nas Rotas faz uma só procura.
+- O aviso de versão nova já não desaparece quando rodas o ecrã.
+- Se saíres do ecrã da Conta a meio de entrar com o Google, a entrada já não se perde.
+- O aviso "Atualização pronta" já não tapa a notificação da viagem.
+- Avisos mais certos quando o serviço de rotas não responde e quando não há chegadas guardadas para mostrar.
+- Na noite da mudança da hora, o horário das linhas já não perde nem repete uma hora.
+- Uma ligação muito lenta já não deixa um ecrã à espera para sempre: ao fim de 2 minutos a app desiste e avisa.
+- A app deixa de pedir para ser avisada quando ligas o telemóvel; já não precisava disso.
+
 ## 0.5.5 — Atualizações e bússola mais fiáveis
 
 - Uma atualização que fique a meio (fechaste a app ou perdeste a rede) continua onde parou, em vez de recomeçar do zero.
