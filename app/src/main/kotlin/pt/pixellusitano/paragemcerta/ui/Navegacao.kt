@@ -490,9 +490,12 @@ private fun AvisoNotificacoes(abertos: MutableIntState) {
 internal fun AvisoAtualizacao(pendente: NovaVersao?, abertos: MutableIntState) {
     val contexto = LocalContext.current
     val escopo = androidx.compose.runtime.rememberCoroutineScope()
-    var nova by androidx.compose.runtime.remember { androidx.compose.runtime.mutableStateOf(pendente) }
+    // rememberSaveable: rodar o ecrã recria a atividade e a verificação do dia já foi gasta; sem isto o aviso só voltava amanhã.
+    var nova by rememberSaveable { androidx.compose.runtime.mutableStateOf(pendente) }
     androidx.compose.runtime.LaunchedEffect(Unit) {
-        if (pendente == null) nova = runCatching { Atualizacoes.verificar(contexto) }.getOrNull()
+        // Depois de rodar, o aviso guardado não pode ser apagado pelo null da verificação já gasta.
+        // Limite: rodar o ecrã durante o pedido ao GitHub gasta o dia sem mostrar nada; o aviso volta no dia seguinte.
+        if (pendente == null && nova == null) nova = runCatching { Atualizacoes.verificar(contexto) }.getOrNull()
     }
     val n = nova ?: return
     ContarAberto(abertos)

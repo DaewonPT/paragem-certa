@@ -104,8 +104,8 @@ object Atualizacoes {
     private val escopo = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
     /**
-     * Um descarregamento de cada vez: rodar o ecrã recomeça a procura e volta a mostrar o aviso, e dois a escrever no mesmo
-     * `.parte` estragavam-se um ao outro. Fica em quem chama e não em [descarregar] porque o Mutex não é reentrante.
+     * Um descarregamento de cada vez: rodar o ecrã recomeça a procura, e dois a escrever no mesmo `.parte` estragavam-se um
+     * ao outro. Fica em quem chama e não em [descarregar] porque o Mutex não é reentrante.
      */
     private val vezDeDescarregar = Mutex()
 
@@ -246,8 +246,8 @@ object Atualizacoes {
      */
     suspend fun instalar(contexto: Context, nova: NovaVersao, semPerguntar: Boolean = false) = withContext(Dispatchers.IO) {
         // Só larga a vez depois de o instalador ter a sua cópia: um segundo toque não apaga o ficheiro a meio.
-        // Limite: um toque espera calado atrás de uma atualização automática a descarregar, e um segundo toque depois de rodar
-        // o ecrã volta a descarregar e abre outra sessão do instalador.
+        // Limite: um toque espera calado atrás de uma atualização automática a descarregar, e um segundo toque no aviso de uma
+        // versão pendente, ao reabrir a app com o descarregamento a meio, volta a descarregar e abre outra sessão do instalador.
         vezDeDescarregar.withLock { abrirSessao(contexto, nova, descarregar(nova, ficheiroManual(contexto)), semPerguntar) }
     }
 

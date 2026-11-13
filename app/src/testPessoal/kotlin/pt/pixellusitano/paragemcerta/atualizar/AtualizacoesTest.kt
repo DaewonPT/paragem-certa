@@ -285,7 +285,8 @@ class AtualizacoesTest {
         assertEquals(2, sessoes.size)
     }
 
-    // Dois toques seguidos em "Atualizar" (o aviso volta depois de rodar o ecrã): o segundo espera, e os dois instalam.
+    // Dois toques seguidos em "Atualizar" (o aviso de uma versão pendente volta ao reabrir a app a meio do descarregamento):
+    // o segundo espera, e os dois instalam.
     @Test fun doisToquesEmAtualizarDescarregamUmDeCadaVez() {
         val soltar = CountDownLatch(1)
         comApkNoServidor(segurar = soltar) { url, pedidos ->
