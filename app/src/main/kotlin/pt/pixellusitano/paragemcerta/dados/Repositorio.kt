@@ -148,7 +148,7 @@ class Repositorio(
 ) {
     /** Consulta ao ritmo da fonte enquanto alguém recolhe o fluxo; sem rede ou com erro, emite o último resultado bom. */
     fun chegadas(ref: RefParagem): Flow<EstadoChegadas> = flow {
-        // Mostra logo o que está guardado, para não ficar em branco enquanto a rede responde (até 30 s com rede fraca).
+        // Mostra logo o que está guardado, para não ficar em branco enquanto a rede responde (até 120 s com rede fraca: o prazo total do OkHttpHttp).
         // Limite: sem nada guardado por chegar (de noite, ou já passou tudo) pede logo a cada regresso, como antes.
         chegadasGuardadas(ref, relogio())?.takeIf { it.first.isNotEmpty() }?.let { (lista, em) ->
             emit(EstadoChegadas(lista, em, semLigacao = false, tempoRealIndisponivel = false))

@@ -49,8 +49,12 @@ fun userAgent(versao: String) = "ParagemCerta/$versao (contact@pixellusitano.com
 
 class OkHttpHttp(
     private val agente: String,
-    private val cliente: OkHttpClient = OkHttpClient.Builder()
-        .connectTimeout(10, TimeUnit.SECONDS).readTimeout(20, TimeUnit.SECONDS).build(),
+    // O readTimeout só conta o tempo entre bytes: sem prazo total, uma resposta que chega aos bocadinhos nunca dava falha.
+    // Limite: 120 s porque o /v2/stops da CM (o maior pedido daqui, ~780 KB comprimido) pode vir duas vezes ao mesmo tempo
+    // num telemóvel novo; numa rede muito lenta a rede da CM do dia passa do prazo, fica a que havia (num telemóvel novo,
+    // nenhuma) e a abertura seguinte tenta outra vez. Dar-lhe um prazo maior se isto acontecer.
+    internal val cliente: OkHttpClient = OkHttpClient.Builder()
+        .connectTimeout(10, TimeUnit.SECONDS).readTimeout(20, TimeUnit.SECONDS).callTimeout(120, TimeUnit.SECONDS).build(),
 ) : Http {
     override suspend fun get(url: String): Resposta = executar(Request.Builder().url(url).header("User-Agent", agente))
 
