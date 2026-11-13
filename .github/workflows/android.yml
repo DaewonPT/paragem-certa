@@ -62,7 +62,7 @@ jobs:
             :app:assemblePessoalDebug
 
       # Os serviços (viagem e avisos de chegada) e as permissões do manifesto fundido não podem mudar sem ninguém ver.
-      # Os widgets são exatamente os dois da app (um terceiro falha aqui) e a app não pede alarmes exatos (nada corre com a app fechada).
+      # Os widgets são exatamente os dois da app (um terceiro falha aqui) e a app não pede alarmes exatos nem o arranque do telemóvel (nada corre com a app fechada).
       - name: Check merged manifest (trip and arrival-alert services, widget receivers, permissions)
         run: |
           MANIFESTO=$(find app/build/intermediates/merged_manifests/pessoalDebug -name AndroidManifest.xml)
@@ -83,7 +83,7 @@ jobs:
           for nome in ("FOREGROUND_SERVICE_LOCATION", "FOREGROUND_SERVICE_SPECIAL_USE", "POST_NOTIFICATIONS"):
               if "android.permission." + nome not in permissoes:
                   erros.append("falta a permissão " + nome)
-          for nome in ("ACCESS_BACKGROUND_LOCATION", "USE_FULL_SCREEN_INTENT", "REQUEST_IGNORE_BATTERY_OPTIMIZATIONS", "SCHEDULE_EXACT_ALARM", "USE_EXACT_ALARM"):
+          for nome in ("ACCESS_BACKGROUND_LOCATION", "USE_FULL_SCREEN_INTENT", "REQUEST_IGNORE_BATTERY_OPTIMIZATIONS", "SCHEDULE_EXACT_ALARM", "USE_EXACT_ALARM", "RECEIVE_BOOT_COMPLETED"):
               if "android.permission." + nome in permissoes:
                   erros.append("a permissão " + nome + " não pode existir")
           if widgets != ["WidgetCasaTrabalho", "WidgetChegadas"]:
