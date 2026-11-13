@@ -252,6 +252,14 @@ class ContaTest {
         assertTrue(repo.porSincronizar().isEmpty())
     }
 
+    // As apps já instaladas ficam com estes valores para sempre: o servidor só os pode subir, e a app muda com ele.
+    @Test fun limitesIguaisAosDoServidor() {
+        val servidor = File("../worker/src/favoritos.ts").readText()
+        assertTrue(servidor.contains("const MAX_ALTERACOES = ${Conta.MAX_ALTERACOES};"))
+        assertTrue(servidor.contains("const MAX_TEXTO = $MAX_TEXTO;"))
+        assertTrue(servidor.contains("const MAX_CHAVE_LINHA = $MAX_CHAVE_LINHA;"))
+    }
+
     @Test fun apagarDadosDoTelemovelSaiDaConta() = runTest {
         val c = conta()
         entrar(c)

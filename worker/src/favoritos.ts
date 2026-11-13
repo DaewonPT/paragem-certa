@@ -12,6 +12,7 @@ export type Favorito = {
 };
 
 const TIPOS = new Set(["PARAGEM", "CASA", "TRABALHO", "OUTRO", "LINHA"]);
+// Limite: a app copia MAX_ALTERACOES, MAX_TEXTO e MAX_CHAVE_LINHA (ContaTest confere); as apps instaladas nunca mudam, por isso só se podem subir.
 const MAX_ALTERACOES = 500;
 // Tetos por conta: uma só conta não pode gastar a quota grátis do D1 (5 M leituras, 100 000 escritas por dia) de todos.
 // Limite: os apagados nunca saem da base (têm de chegar aos outros telemóveis), por isso uma conta com 1000 linhas já não

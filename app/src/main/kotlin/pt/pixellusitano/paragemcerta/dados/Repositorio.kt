@@ -100,7 +100,10 @@ private fun LinhaFavoritaEntidade.paraRemoto() = FavoritoRemoto(chave, TIPO_LINH
 private const val TIPO_LINHA = "LINHA"
 
 /** O servidor recusa o pedido inteiro com uma chave de linha maior (worker/src/favoritos.ts): essas ficam só no telemóvel. */
-private const val MAX_CHAVE_LINHA = 250
+internal const val MAX_CHAVE_LINHA = 250
+
+/** O servidor recusa o pedido inteiro com um nome maior (MAX_TEXTO em worker/src/favoritos.ts). */
+internal const val MAX_TEXTO = 120
 
 @Serializable
 private class ChegadaGuardada(
@@ -577,7 +580,7 @@ class Repositorio(
             bd.locais().pendentes().map { FavoritoRemoto(it.uuid, it.tipo, it.nome, it.lat, it.lon, it.ordem, apagado = false) })
             .filter { it.chave !in soNoTelemovel }
             // O servidor recusa o pedido inteiro com um nome maior; a resposta traz o nome cortado e fica assim cá também.
-            .map { it.copy(nome = it.nome.take(120)) }
+            .map { it.copy(nome = it.nome.take(MAX_TEXTO)) }
 
     /**
      * Aplica o que veio da conta (sem o marcar como por enviar) e tira as marcas do que foi [enviadas]. O que mudou no telemóvel

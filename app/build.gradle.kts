@@ -80,6 +80,8 @@ android {
                 it.maxHeapSize = "2g"
                 // O Robolectric mexe em java.io.FileDescriptor por reflexão; no JDK 21 isso tem de ser aberto.
                 it.jvmArgs("--add-opens=java.base/java.io=ALL-UNNAMED", "--add-exports=java.base/jdk.internal.access=ALL-UNNAMED")
+                // O ContaTest lê worker/src/favoritos.ts: sem isto, o Gradle dava os testes da app como feitos quando só esse ficheiro muda.
+                it.inputs.file("../worker/src/favoritos.ts")
             }
         }
     }

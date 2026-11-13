@@ -175,7 +175,7 @@ class Conta(
     private fun estadoDe(s: SessaoGuardada?): EstadoConta =
         s?.let { EstadoConta.Com(it.email, it.sincronizadaEm?.let(Instant::ofEpochSecond)) } ?: EstadoConta.SemConta
 
-    private companion object {
+    internal companion object {
         const val MAX_ALTERACOES = 500
         const val ESPERA_MS = 2_000L
         const val INTERVALO_AO_ABRIR_S = 15 * 60L
