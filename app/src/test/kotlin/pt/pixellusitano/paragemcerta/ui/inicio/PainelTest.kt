@@ -67,9 +67,9 @@ import pt.pixellusitano.paragemcerta.core.rede.Http
 import pt.pixellusitano.paragemcerta.core.rede.Resposta
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import pt.pixellusitano.paragemcerta.dados.BaseDados
-import pt.pixellusitano.paragemcerta.dados.CatalogoLinhas
-import pt.pixellusitano.paragemcerta.dados.EstadoCatalogo
 import pt.pixellusitano.paragemcerta.dados.EstadoChegadas
+import pt.pixellusitano.paragemcerta.dados.EstadoFicheiro
+import pt.pixellusitano.paragemcerta.dados.FicheiroDoServidor
 import pt.pixellusitano.paragemcerta.dados.HttpComEtag
 import pt.pixellusitano.paragemcerta.dados.HttpPorUrl
 import pt.pixellusitano.paragemcerta.dados.LinhaFavorita
@@ -121,7 +121,7 @@ class PainelTest {
         return Repositorio(bd, CarrisMetropolitana(http), Transitous(http), GeoApi(http), relogio = { Instant.parse("2026-10-26T05:00:00Z") })
     }
 
-    private fun catalogoLinhas() = CatalogoLinhas(pasta.root, HttpComEtag({ Resposta(200, fixture("linhas.json"), "\"v1\"") }), "https://exemplo.pt")
+    private fun catalogoLinhas() = FicheiroDoServidor(pasta.root, "linhas.json", HttpComEtag({ Resposta(200, fixture("linhas.json"), "\"v1\"") }), "https://exemplo.pt/dados/linhas.json", ler = ::lerCatalogo)
 
     private fun painel(blocos: List<BlocoLinha>, aoAbrirLinha: (LinhaFavorita) -> Unit = {}) = regra.setContent {
         TemaParagemCerta(ModoTema.CLARO) {
@@ -252,7 +252,7 @@ class PainelTest {
         val linhas = catalogoLinhas()
         regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Painel(repo, null, {}, {}, catalogo = linhas) } }
 
-        assertEquals(EstadoCatalogo.ACarregar, linhas.estado.value)
+        assertEquals(EstadoFicheiro.ACarregar, linhas.estado.value)
         // A paragem ainda não tem nome (não está no Room nem no catálogo): a linha aparece sem "em …".
         regra.onNodeWithText("Az → Santa Apolónia").assertIsDisplayed()
         regra.onNodeWithText("A carregar…").assertIsDisplayed()

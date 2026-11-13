@@ -65,9 +65,9 @@ import pt.pixellusitano.paragemcerta.core.regras.distanciaMetros
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
 import pt.pixellusitano.paragemcerta.core.regras.favoritaPorOmissao
 import pt.pixellusitano.paragemcerta.core.regras.maisProximas
-import pt.pixellusitano.paragemcerta.dados.CatalogoLinhas
-import pt.pixellusitano.paragemcerta.dados.EstadoCatalogo
 import pt.pixellusitano.paragemcerta.dados.EstadoChegadas
+import pt.pixellusitano.paragemcerta.dados.EstadoFicheiro
+import pt.pixellusitano.paragemcerta.dados.FicheiroDoServidor
 import pt.pixellusitano.paragemcerta.dados.LinhaFavorita
 import pt.pixellusitano.paragemcerta.dados.LocalGuardado
 import pt.pixellusitano.paragemcerta.dados.ViagemRecente
@@ -150,10 +150,10 @@ internal fun estadosDasParagens(chegadas: (RefParagem) -> Flow<EstadoChegadas>, 
  */
 @Composable
 internal fun rememberBlocosDeLinhas(
-    repositorio: Repositorio, catalogo: CatalogoLinhas, favoritas: List<LinhaFavorita>, estados: Map<RefParagem, EstadoChegadas?> = emptyMap(),
+    repositorio: Repositorio, catalogo: FicheiroDoServidor<Catalogo>, favoritas: List<LinhaFavorita>, estados: Map<RefParagem, EstadoChegadas?> = emptyMap(),
 ): List<BlocoLinha> {
     val cm by remember(repositorio) { repositorio.linhasCmFlow() }.collectAsStateWithLifecycle(initialValue = emptyList())
-    val pronto = (catalogo.estado.collectAsStateWithLifecycle().value as? EstadoCatalogo.Pronto)?.c
+    val pronto = (catalogo.estado.collectAsStateWithLifecycle().value as? EstadoFicheiro.Pronto)?.c
     val nomes by produceState(emptyMap<RefParagem, String>(), favoritas) {
         value = favoritas.map { it.paragem }.distinct().mapNotNull { r -> repositorio.paragem(r)?.let { r to it.nome } }.toMap()
     }
@@ -442,7 +442,7 @@ fun Painel(
     posicao: Pair<Double, Double>?,
     aoAbrirParagem: (RefParagem) -> Unit,
     aoPesquisar: () -> Unit,
-    catalogo: CatalogoLinhas,
+    catalogo: FicheiroDoServidor<Catalogo>,
     aoAbrirRotas: (Rotas) -> Unit = {},
     aoAbrirLinha: (LinhaFavorita) -> Unit = {},
     /** Tocar na Casa ou no Trabalho ainda sem morada ("CASA" ou "TRABALHO"). */

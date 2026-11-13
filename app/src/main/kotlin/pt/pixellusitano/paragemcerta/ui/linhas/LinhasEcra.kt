@@ -40,8 +40,8 @@ import pt.pixellusitano.paragemcerta.core.linhas.RefLinha
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.Linha
 import pt.pixellusitano.paragemcerta.core.modelo.Modo
-import pt.pixellusitano.paragemcerta.dados.CatalogoLinhas
-import pt.pixellusitano.paragemcerta.dados.EstadoCatalogo
+import pt.pixellusitano.paragemcerta.dados.EstadoFicheiro
+import pt.pixellusitano.paragemcerta.dados.FicheiroDoServidor
 import pt.pixellusitano.paragemcerta.dados.Repositorio
 import pt.pixellusitano.paragemcerta.ui.comum.CampoAzulejo
 import pt.pixellusitano.paragemcerta.ui.comum.FatiaAzulejo
@@ -90,12 +90,12 @@ fun agruparLinhas(cm: List<Linha>, catalogo: Catalogo?, filtro: String, modo: Mo
 
 /**
  * O separador Linhas. As da CM vêm do Room em fluxo, por isso a lista enche-se quando a rede chega; o resto, do catálogo
- * ([CatalogoLinhas.estado]). A procura e o meio escolhido guardam-se com o separador (rememberSaveable + restoreState).
+ * ([FicheiroDoServidor.estado]). A procura e o meio escolhido guardam-se com o separador (rememberSaveable + restoreState).
  */
 @Composable
 fun LinhasEcra(
     repositorio: Repositorio,
-    catalogo: CatalogoLinhas,
+    catalogo: FicheiroDoServidor<Catalogo>,
     aoAbrirLinha: (RefLinha) -> Unit,
     modifier: Modifier = Modifier,
     perturbacoes: @Composable () -> Unit = {},
@@ -104,7 +104,7 @@ fun LinhasEcra(
     val estado by catalogo.estado.collectAsStateWithLifecycle()
     var filtro by rememberSaveable { mutableStateOf("") }
     var modo by rememberSaveable { mutableStateOf<Modo?>(null) }
-    val grupos = remember(cm, estado, filtro, modo) { agruparLinhas(cm, (estado as? EstadoCatalogo.Pronto)?.c, filtro, modo) }
+    val grupos = remember(cm, estado, filtro, modo) { agruparLinhas(cm, (estado as? EstadoFicheiro.Pronto)?.c, filtro, modo) }
     LinhasConteudo(grupos, filtro, { filtro = it }, modo, { modo = it }, estado, aoAbrirLinha, perturbacoes, modifier)
 }
 
@@ -120,7 +120,7 @@ fun LinhasConteudo(
     aoFiltrar: (String) -> Unit,
     modo: Modo?,
     aoEscolherModo: (Modo?) -> Unit,
-    estado: EstadoCatalogo,
+    estado: EstadoFicheiro<Catalogo>,
     aoAbrirLinha: (RefLinha) -> Unit,
     perturbacoes: @Composable () -> Unit = {},
     modifier: Modifier = Modifier,
@@ -144,9 +144,9 @@ fun LinhasConteudo(
             }
             item(key = "perturbacoes") { perturbacoes() }
             when (estado) {
-                EstadoCatalogo.ACarregar -> item(key = "estado") { Aviso(stringResource(R.string.linhas_a_carregar)) }
-                EstadoCatalogo.Falhou -> item(key = "estado") { Aviso(stringResource(R.string.linhas_sem_catalogo)) }
-                is EstadoCatalogo.Pronto -> if (grupos.isEmpty()) item(key = "estado") { Aviso(stringResource(R.string.linhas_sem_resultados)) }
+                EstadoFicheiro.ACarregar -> item(key = "estado") { Aviso(stringResource(R.string.linhas_a_carregar)) }
+                EstadoFicheiro.Falhou -> item(key = "estado") { Aviso(stringResource(R.string.linhas_sem_catalogo)) }
+                is EstadoFicheiro.Pronto -> if (grupos.isEmpty()) item(key = "estado") { Aviso(stringResource(R.string.linhas_sem_resultados)) }
             }
             grupos.forEach { g ->
                 item(key = "meio-${g.modo}") {

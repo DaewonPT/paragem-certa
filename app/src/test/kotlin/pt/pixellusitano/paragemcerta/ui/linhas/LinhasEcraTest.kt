@@ -43,6 +43,7 @@ import org.robolectric.annotation.GraphicsMode
 import pt.pixellusitano.paragemcerta.core.fontes.cm.CarrisMetropolitana
 import pt.pixellusitano.paragemcerta.core.fontes.geoapi.GeoApi
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.Transitous
+import pt.pixellusitano.paragemcerta.core.linhas.Catalogo
 import pt.pixellusitano.paragemcerta.core.linhas.LinhaCatalogo
 import pt.pixellusitano.paragemcerta.core.linhas.RefLinha
 import pt.pixellusitano.paragemcerta.core.linhas.lerCatalogo
@@ -51,8 +52,8 @@ import pt.pixellusitano.paragemcerta.core.modelo.Linha
 import pt.pixellusitano.paragemcerta.core.modelo.Modo
 import pt.pixellusitano.paragemcerta.core.rede.Resposta
 import pt.pixellusitano.paragemcerta.dados.BaseDados
-import pt.pixellusitano.paragemcerta.dados.CatalogoLinhas
-import pt.pixellusitano.paragemcerta.dados.EstadoCatalogo
+import pt.pixellusitano.paragemcerta.dados.EstadoFicheiro
+import pt.pixellusitano.paragemcerta.dados.FicheiroDoServidor
 import pt.pixellusitano.paragemcerta.dados.HttpComEtag
 import pt.pixellusitano.paragemcerta.dados.HttpPorUrl
 import pt.pixellusitano.paragemcerta.dados.Repositorio
@@ -85,7 +86,7 @@ class LinhasEcraTest {
 
     @Composable
     private fun Ecra(
-        grupos: List<GrupoLinhas>, estado: EstadoCatalogo = EstadoCatalogo.Pronto(catalogo), filtro: String = "", modo: Modo? = null,
+        grupos: List<GrupoLinhas>, estado: EstadoFicheiro<Catalogo> = EstadoFicheiro.Pronto(catalogo), filtro: String = "", modo: Modo? = null,
         aoFiltrar: (String) -> Unit = {}, aoEscolherModo: (Modo?) -> Unit = {}, aoAbrirLinha: (RefLinha) -> Unit = {},
     ) = LinhasConteudo(
         grupos, filtro, aoFiltrar, modo, aoEscolherModo, estado, aoAbrirLinha, modifier = Modifier.width(360.dp),
@@ -145,7 +146,7 @@ class LinhasEcraTest {
 
         val abertas = mutableListOf<RefLinha>()
         regra.setContent {
-            TemaParagemCerta(ModoTema.CLARO) { Ecra(grupos, EstadoCatalogo.Pronto(dois), aoAbrirLinha = { abertas += it }) }
+            TemaParagemCerta(ModoTema.CLARO) { Ecra(grupos, EstadoFicheiro.Pronto(dois), aoAbrirLinha = { abertas += it }) }
         }
         val nos = regra.onAllNodesWithText("1009")
         nos[0].performClick()
@@ -154,7 +155,7 @@ class LinhasEcraTest {
     }
 
     @Test fun semCatalogoMostraACm() {
-        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Ecra(agruparLinhas(cm, null, "", null), EstadoCatalogo.Falhou) } }
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Ecra(agruparLinhas(cm, null, "", null), EstadoFicheiro.Falhou) } }
         regra.onNodeWithText("1009").assertIsDisplayed()
         regra.onNodeWithText("3708").assertIsDisplayed()
         regra.onNodeWithText(SEM_CATALOGO).assertIsDisplayed()
@@ -163,19 +164,19 @@ class LinhasEcraTest {
     }
 
     @Test fun carregarFalharEProntoNaoSeConfundem() {
-        var estado: EstadoCatalogo by mutableStateOf(EstadoCatalogo.ACarregar)
+        var estado: EstadoFicheiro<Catalogo> by mutableStateOf(EstadoFicheiro.ACarregar)
         regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Ecra(agruparLinhas(cm, null, "", null), estado) } }
         regra.onNodeWithText(A_CARREGAR).assertIsDisplayed()
         regra.onNodeWithText(SEM_CATALOGO).assertDoesNotExist()
         // A CM já se vê enquanto o resto carrega.
         regra.onNodeWithText("1009").assertIsDisplayed()
 
-        estado = EstadoCatalogo.Falhou
+        estado = EstadoFicheiro.Falhou
         regra.waitForIdle()
         regra.onNodeWithText(SEM_CATALOGO).assertIsDisplayed()
         regra.onNodeWithText(A_CARREGAR).assertDoesNotExist()
 
-        estado = EstadoCatalogo.Pronto(catalogo)
+        estado = EstadoFicheiro.Pronto(catalogo)
         regra.waitForIdle()
         regra.onNodeWithText(SEM_CATALOGO).assertDoesNotExist()
         regra.onNodeWithText(A_CARREGAR).assertDoesNotExist()
@@ -192,7 +193,7 @@ class LinhasEcraTest {
             "/lines" to listOf({ Resposta(200, fixture("cm-lines.json")) }),
         )
         val repositorio = Repositorio(bd, CarrisMetropolitana(http), Transitous(http), GeoApi(http))
-        val linhas = CatalogoLinhas(pasta.root, HttpComEtag({ Resposta(200, fixture("linhas.json"), "\"v1\"") }), "https://exemplo.pt")
+        val linhas = FicheiroDoServidor(pasta.root, "linhas.json", HttpComEtag({ Resposta(200, fixture("linhas.json"), "\"v1\"") }), "https://exemplo.pt/dados/linhas.json", ler = ::lerCatalogo)
         val abertas = mutableListOf<RefLinha>()
         regra.setContent { TemaParagemCerta(ModoTema.CLARO) { LinhasEcra(repositorio, linhas, aoAbrirLinha = { abertas += it }) } }
 
@@ -284,7 +285,7 @@ class LinhasEcraTest {
     @Test fun linhas_com_perturbacoes() = captureRoboImage("src/test/screenshots/linhas_com_perturbacoes.png") {
         TemaParagemCerta(ModoTema.CLARO) {
             LinhasConteudo(
-                agruparLinhas(cm, catalogo, "", null), "", {}, null, {}, EstadoCatalogo.Pronto(catalogo), {},
+                agruparLinhas(cm, catalogo, "", null), "", {}, null, {}, EstadoFicheiro.Pronto(catalogo), {},
                 perturbacoes = { CartaoPerturbacoes(3, aoAbrir = {}) }, modifier = Modifier.width(360.dp),
             )
         }

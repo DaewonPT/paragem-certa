@@ -21,7 +21,9 @@ import pt.pixellusitano.paragemcerta.core.fontes.cm.CmParser
 import pt.pixellusitano.paragemcerta.core.fontes.geoapi.GeoApi
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.Transitous
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.chaveDoNome
+import pt.pixellusitano.paragemcerta.core.linhas.Catalogo
 import pt.pixellusitano.paragemcerta.core.linhas.RefLinha
+import pt.pixellusitano.paragemcerta.core.linhas.lerCatalogo
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.Modo
 import pt.pixellusitano.paragemcerta.core.modelo.Paragem
@@ -85,9 +87,9 @@ class DetalheDasLinhasTest {
     private suspend fun catalogoPronto() = catalogoACarregar().also { it.aoAbrir() }
 
     private fun catalogoACarregar(resposta: () -> Resposta = { Resposta(200, fixture("linhas.json"), "\"v1\"") }) =
-        CatalogoLinhas(pasta.newFolder(), HttpComEtag(resposta), "https://exemplo.pt", relogio = { hoje })
+        FicheiroDoServidor(pasta.newFolder(), "linhas.json", HttpComEtag(resposta), "https://exemplo.pt/dados/linhas.json", relogio = { hoje }, ler = ::lerCatalogo)
 
-    private fun detalhes(http: Http, catalogo: CatalogoLinhas, relogioDoRepositorio: Instant = manha) = DetalheDasLinhas(
+    private fun detalhes(http: Http, catalogo: FicheiroDoServidor<Catalogo>, relogioDoRepositorio: Instant = manha) = DetalheDasLinhas(
         CarrisMetropolitana(http), Transitous(http), catalogo,
         Repositorio(bd, CarrisMetropolitana(http), Transitous(http), GeoApi(http), relogio = { relogioDoRepositorio }),
         relogio = { hoje },
@@ -168,7 +170,7 @@ class DetalheDasLinhasTest {
 
     @Test fun catalogoQueFalhouNaoDizQueNaoExiste() = runTest {
         val catalogo = catalogoACarregar { throw IOException("sem rede") }.also { it.aoAbrir() }
-        assertEquals(EstadoCatalogo.Falhou, catalogo.estado.value)
+        assertEquals(EstadoFicheiro.Falhou, catalogo.estado.value)
         assertEquals(Resultado.Falha(null, limite = false), detalhes(HttpPorUrl("x" to listOf({ Resposta(200, "") })), catalogo).detalhe(l15e))
     }
 

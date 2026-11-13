@@ -13,6 +13,7 @@ import pt.pixellusitano.paragemcerta.core.fontes.servidor.ServidorParagemCerta
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.Transitous
 import kotlinx.coroutines.flow.first
 import pt.pixellusitano.paragemcerta.core.fotos.lerFotosDeRua
+import pt.pixellusitano.paragemcerta.core.linhas.lerCatalogo
 import pt.pixellusitano.paragemcerta.core.modelo.Filtros
 import pt.pixellusitano.paragemcerta.core.rede.OkHttpHttp
 import pt.pixellusitano.paragemcerta.core.rede.userAgent
@@ -35,7 +36,7 @@ class Ligacoes(contexto: Context) {
     val transitous = Transitous(http)
     val servidor = ServidorParagemCerta(http)
     val configuracoes = Configuracoes(contexto, servidor)
-    val catalogoLinhas = CatalogoLinhas(contexto.filesDir, http, BASE_SERVIDOR)
+    val catalogoLinhas = FicheiroDoServidor(contexto.filesDir, "linhas.json", http, "$BASE_SERVIDOR/dados/linhas.json", ler = ::lerCatalogo)
     val fotosDeRua = FicheiroDoServidor(contexto.filesDir, "fotos-de-rua.json", http, "$BASE_SERVIDOR/dados/fotos-de-rua.json", ler = ::lerFotosDeRua)
     val repositorio = Repositorio(
         bd, cm, transitous, GeoApi(http), servidor = servidor, interruptores = { configuracoes.atual.value.interruptores },

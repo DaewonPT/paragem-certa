@@ -22,7 +22,7 @@ sealed interface EstadoFicheiro<out T> {
 /**
  * Um ficheiro de `/dados/` do servidor (o `linhas.json`, o `fotos-de-rua.json`), guardado em [ficheiros] com o ETag. Pede-se ao abrir a
  * app, no máximo de 24 em 24 h; o guardado conta logo como Pronto, por velho que seja: um ficheiro antigo é melhor do que nenhum.
- * [ler] converte o texto e lança se ele não servir. [aoMudar] ouve cada mudança do estado (o catálogo guarda o seu próprio tipo de estado).
+ * [ler] converte o texto e lança se ele não servir.
  */
 class FicheiroDoServidor<T>(
     ficheiros: File,
@@ -31,7 +31,6 @@ class FicheiroDoServidor<T>(
     private val url: String,
     private val relogio: () -> Instant = Instant::now,
     private val ler: (String) -> T,
-    private val aoMudar: (EstadoFicheiro<T>) -> Unit = {},
 ) {
     private val ficheiro = File(ficheiros, nome)
     // "<segundos do último pedido que respondeu>\n<ETag>": o ETag é o do ficheiro que está ao lado.
@@ -40,15 +39,10 @@ class FicheiroDoServidor<T>(
     val estado: StateFlow<EstadoFicheiro<T>> = _estado
     val atual: T? get() = (_estado.value as? EstadoFicheiro.Pronto)?.c
 
-    private fun mudar(novo: EstadoFicheiro<T>) {
-        _estado.value = novo
-        aoMudar(novo)
-    }
-
     /** Sem rede não gasta o dia (a abertura seguinte tenta outra vez); uma resposta estragada gasta, para não descarregar em cada abertura. */
     suspend fun aoAbrir() {
         // Lido aqui e não ao construir: são centenas de KB para converter, fora da linha do ecrã.
-        if (atual == null) lerGuardado()?.let { mudar(EstadoFicheiro.Pronto(it)) }
+        if (atual == null) lerGuardado()?.let { _estado.value = EstadoFicheiro.Pronto(it) }
         val (pedidoEm, etag) = lerMarca()
         val guardado = atual
         if (guardado != null && Duration.between(pedidoEm, relogio()) < IDADE_MAXIMA) return
@@ -68,11 +62,11 @@ class FicheiroDoServidor<T>(
                     // Primeiro o ficheiro, depois o ETag: a meio, o pior é pedir outra vez o mesmo.
                     withContext(Dispatchers.IO) { escreverDeUmaVez(ficheiro, r.corpo) }
                     escreverMarca(r.etag)
-                    mudar(EstadoFicheiro.Pronto(novo))
+                    _estado.value = EstadoFicheiro.Pronto(novo)
                 }
             }
         }
-        if (atual == null) mudar(EstadoFicheiro.Falhou)
+        if (atual == null) _estado.value = EstadoFicheiro.Falhou
     }
 
     private suspend fun lerGuardado(): T? = withContext(Dispatchers.IO) {

@@ -32,14 +32,16 @@ import pt.pixellusitano.paragemcerta.core.fontes.geoapi.GeoApi
 import pt.pixellusitano.paragemcerta.core.fontes.servidor.RelatoRemoto
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.Transitous
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.chaveDoNome
+import pt.pixellusitano.paragemcerta.core.linhas.Catalogo
 import pt.pixellusitano.paragemcerta.core.linhas.RefLinha
+import pt.pixellusitano.paragemcerta.core.linhas.lerCatalogo
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.Paragem
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
 import pt.pixellusitano.paragemcerta.core.rede.Resposta
 import pt.pixellusitano.paragemcerta.dados.BaseDados
-import pt.pixellusitano.paragemcerta.dados.CatalogoLinhas
 import pt.pixellusitano.paragemcerta.dados.DetalheDasLinhas
+import pt.pixellusitano.paragemcerta.dados.FicheiroDoServidor
 import pt.pixellusitano.paragemcerta.dados.HttpComEtag
 import pt.pixellusitano.paragemcerta.dados.HttpPorUrl
 import pt.pixellusitano.paragemcerta.dados.LinhaEntidade
@@ -122,9 +124,9 @@ class LinhaViewModelTest {
     private suspend fun catalogoPronto() = catalogoACarregar().also { it.aoAbrir() }
 
     private fun catalogoACarregar(resposta: () -> Resposta = { Resposta(200, fixture("linhas.json"), "\"v1\"") }) =
-        CatalogoLinhas(pasta.newFolder(), HttpComEtag(resposta), "https://exemplo.pt", relogio = { hoje })
+        FicheiroDoServidor(pasta.newFolder(), "linhas.json", HttpComEtag(resposta), "https://exemplo.pt/dados/linhas.json", relogio = { hoje }, ler = ::lerCatalogo)
 
-    private inner class Mundo(val http: HttpPorUrl, catalogo: CatalogoLinhas, relogioDasChegadas: Instant = manha) {
+    private inner class Mundo(val http: HttpPorUrl, catalogo: FicheiroDoServidor<Catalogo>, relogioDasChegadas: Instant = manha) {
         val repositorio = Repositorio(bd, CarrisMetropolitana(http), Transitous(http), GeoApi(http), relogio = { relogioDasChegadas })
         private val detalhes = DetalheDasLinhas(CarrisMetropolitana(http), Transitous(http), catalogo, repositorio, relogio = { hoje })
 

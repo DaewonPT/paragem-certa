@@ -7,6 +7,8 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import pt.pixellusitano.paragemcerta.core.linhas.Catalogo
+import pt.pixellusitano.paragemcerta.core.linhas.lerCatalogo
 import pt.pixellusitano.paragemcerta.core.rede.Http
 import pt.pixellusitano.paragemcerta.core.rede.Resposta
 import java.io.IOException
@@ -29,16 +31,16 @@ class CatalogoLinhasTest {
     @get:Rule val pasta = TemporaryFolder()
     private var agora = Instant.parse("2026-11-03T09:00:00Z")
     private val base = "https://exemplo.pt"
-    private fun catalogo(http: Http) = CatalogoLinhas(pasta.root, http, base, relogio = { agora })
+    private fun catalogo(http: Http) = FicheiroDoServidor(pasta.root, "linhas.json", http, "$base/dados/linhas.json", relogio = { agora }, ler = ::lerCatalogo)
     private val bom = { Resposta(200, fixture("linhas.json"), "\"v1\"") }
     private val semRede = { throw IOException("sem rede") }
 
-    private fun pronto(c: CatalogoLinhas) = (c.estado.value as EstadoCatalogo.Pronto).c
+    private fun pronto(c: FicheiroDoServidor<Catalogo>) = (c.estado.value as EstadoFicheiro.Pronto).c
 
     @Test fun catalogoComEtagNaoDescarregaDeNovo() = runTest {
         val primeiro = HttpComEtag(bom)
         val c = catalogo(primeiro)
-        assertEquals(EstadoCatalogo.ACarregar, c.estado.value)
+        assertEquals(EstadoFicheiro.ACarregar, c.estado.value)
         c.aoAbrir()
         assertEquals(listOf("$base/dados/linhas.json" to null), primeiro.pedidos)
         val lido = pronto(c)
@@ -88,7 +90,7 @@ class CatalogoLinhasTest {
     @Test fun semCatalogoESemRedeFalha() = runTest {
         val c = catalogo(HttpComEtag(semRede, bom))
         c.aoAbrir()
-        assertEquals(EstadoCatalogo.Falhou, c.estado.value)
+        assertEquals(EstadoFicheiro.Falhou, c.estado.value)
         // Uma falha não gasta o dia: a abertura seguinte tenta outra vez.
         c.aoAbrir()
         assertTrue(pronto(c).linhas.isNotEmpty())

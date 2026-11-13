@@ -39,8 +39,9 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import kotlinx.coroutines.launch
 import pt.pixellusitano.paragemcerta.R
+import pt.pixellusitano.paragemcerta.core.linhas.Catalogo
 import pt.pixellusitano.paragemcerta.core.regras.Favorita
-import pt.pixellusitano.paragemcerta.dados.CatalogoLinhas
+import pt.pixellusitano.paragemcerta.dados.FicheiroDoServidor
 import pt.pixellusitano.paragemcerta.dados.LinhaFavorita
 import pt.pixellusitano.paragemcerta.dados.LocalGuardado
 import pt.pixellusitano.paragemcerta.dados.Repositorio
@@ -57,7 +58,7 @@ import pt.pixellusitano.paragemcerta.ui.tema.iconeLocal
 @Composable
 fun FavoritosEcra(
     repositorio: Repositorio,
-    catalogo: CatalogoLinhas,
+    catalogo: FicheiroDoServidor<Catalogo>,
     aoAbrirFavorita: (Favorita) -> Unit,
     aoAbrirLinha: (LinhaFavorita) -> Unit,
     aoVoltar: () -> Unit,

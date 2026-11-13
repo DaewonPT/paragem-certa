@@ -9,6 +9,7 @@ import kotlinx.coroutines.flow.map
 import pt.pixellusitano.paragemcerta.core.fontes.cm.CarrisMetropolitana
 import pt.pixellusitano.paragemcerta.core.fontes.cm.PadraoCm
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.Transitous
+import pt.pixellusitano.paragemcerta.core.linhas.Catalogo
 import pt.pixellusitano.paragemcerta.core.linhas.RefLinha
 import pt.pixellusitano.paragemcerta.core.linhas.SentidoCatalogo
 import pt.pixellusitano.paragemcerta.core.linhas.daLinhaNoSentido
@@ -57,7 +58,7 @@ fun paragemInicial(s: SentidoLinha, habitual: String?, posicao: Pair<Double, Dou
 class DetalheDasLinhas(
     private val cm: CarrisMetropolitana,
     private val transitous: Transitous,
-    private val catalogo: CatalogoLinhas,
+    private val catalogo: FicheiroDoServidor<Catalogo>,
     private val repositorio: Repositorio,
     private val relogio: () -> Instant = Instant::now,
 ) {
@@ -83,7 +84,7 @@ class DetalheDasLinhas(
     }
 
     private suspend fun detalheDoCatalogo(ref: RefLinha): Resultado<DetalheLinha> {
-        val c = (catalogo.estado.first { it !is EstadoCatalogo.ACarregar } as? EstadoCatalogo.Pronto)?.c ?: return Resultado.Falha(null, limite = false)
+        val c = (catalogo.estado.first { it !is EstadoFicheiro.ACarregar } as? EstadoFicheiro.Pronto)?.c ?: return Resultado.Falha(null, limite = false)
         val l = c.linhas.firstOrNull { it.ref == ref } ?: return Resultado.Falha(404, limite = false)
         // Um sentido sem paragens não tem por onde abrir (o catálogo vem de fora): fica de fora, e sem nenhum não há ecrã.
         val sentidos = l.sentidos.filter { it.paragens.isNotEmpty() }
