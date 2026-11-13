@@ -82,8 +82,8 @@ private const val MAX_LINHAS_AVISOS = 20
 
 /**
  * A viagem a correr, no processo :trip (ver o manifesto): alimenta o motor (core/viagem) com as posições do GPS e o
- * relógio, escreve o trip-state.json, atualiza a notificação fixa e toca os avisos. Não usa a base de dados, as
- * definições nem o WorkManager: só o trip-plan.json que a app escreveu, a Carris Metropolitana (também as perturbações),
+ * relógio, escreve o trip-state.json, atualiza a notificação fixa e toca os avisos. Não usa a base de dados nem as
+ * definições: só o trip-plan.json que a app escreveu, a Carris Metropolitana (também as perturbações),
  * o servidor da Paragem Certa (os relatos da comunidade) e o GPS. Tudo corre na thread principal (posições, relógio e respostas), por isso o
  * estado não precisa de trincos.
  */

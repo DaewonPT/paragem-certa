@@ -1,7 +1,6 @@
 package pt.pixellusitano.paragemcerta.dados
 
 import android.content.Context
-import androidx.work.WorkManager
 import java.time.Duration
 import java.time.Instant
 
@@ -23,12 +22,5 @@ object AtualizacaoDiaria {
         if (!repositorio.atualizarRede()) return false
         prefs.edit().putLong(ULTIMA, agora.epochSecond).apply()
         return true
-    }
-
-    /** Até à 0.3.1 a rede e a atualização da app corriam em segundo plano (WorkManager): cancela o que ficou agendado nos telemóveis. */
-    fun cancelarTrabalhosAntigos(contexto: Context) {
-        val trabalhos = WorkManager.getInstance(contexto)
-        trabalhos.cancelUniqueWork("rede-cm")
-        trabalhos.cancelUniqueWork("atualizacao-automatica")
     }
 }

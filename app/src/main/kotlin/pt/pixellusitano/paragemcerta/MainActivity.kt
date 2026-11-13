@@ -78,8 +78,6 @@ class MainActivity : ComponentActivity() {
         abrirParagem = if (nova) intent.getStringExtra(EXTRA_ABRIR_PARAGEM) else null
         abrirRota = if (nova) intent.getStringExtra(EXTRA_ABRIR_ROTA_LOCAL) else null
         definirLocal = if (nova) localADefinir(intent.getStringExtra(EXTRA_DEFINIR_LOCAL)) else null
-        // Aqui e não na Application: essa corre também no processo :trip, que não pode tocar no WorkManager.
-        AtualizacaoDiaria.cancelarTrabalhosAntigos(applicationContext)
         enableEdgeToEdge()
         val ligacoes = (application as ParagemCertaApp).ligacoes
         // Com a app fechada não corre nada: a rede e a versão nova tratam-se enquanto ela está à frente (parar ao sair, recomeçar ao voltar).
