@@ -22,6 +22,7 @@ import pt.pixellusitano.paragemcerta.ui.comum.FaixaAzulejo
 import pt.pixellusitano.paragemcerta.ui.comum.bordaDoFiltro
 import pt.pixellusitano.paragemcerta.ui.tema.Icones
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -40,6 +41,7 @@ import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
@@ -126,6 +128,7 @@ fun RotasEcra(
     val recentes by remember { repositorio.recentes() }.collectAsStateWithLifecycle(emptyList())
     var escolher by rememberSaveable { mutableStateOf<Campo?>(null) }
     val guardarLocal = rememberGuardarLocal(repositorio)
+    val lista = rememberListaDasRotas(estado)
     // Os "dentro de 3 min" dos cartões andam com o relógio enquanto o ecrã está aberto.
     val agora by produceState(Instant.now()) {
         while (true) {
@@ -169,7 +172,7 @@ fun RotasEcra(
             aoMudarHora = vm::definirHora, aoMudarFiltros = vm::mudarFiltros,
             aoAbrirRota = vm::abrir, aoTentarOutraVez = vm::tentarOutraVez,
             aoMaisCedo = vm::maisCedo, aoMaisTarde = vm::maisTarde,
-            relatos = relatos,
+            relatos = relatos, lista = lista,
         )
         else -> EscolherLugarEcra(
             titulo = stringResource(if (campo == Campo.ORIGEM) R.string.rotas_de else R.string.rotas_para),
@@ -185,6 +188,26 @@ fun RotasEcra(
             aoGuardar = guardarLocal,
         )
     }
+}
+
+/** A posição da lista de rotas: fica no [RotasEcra], que continua composto com o detalhe aberto. */
+@Composable
+internal fun rememberListaDasRotas(estado: EstadoRotas): LazyListState {
+    val lista = rememberLazyListState()
+    val itinerarios = (estado as? EstadoRotas.Prontas)?.itinerarios
+    // A posição guardada leva a marca da lista a que pertence (o hashCode cabe no estado guardado): uma página ou procura nova
+    // começa de cima, mesmo a que chegou com o ecrã fora (filtros mudados no Menu); a mesma lista fica onde estava ao voltar do
+    // detalhe, de outro separador ou da viagem, e ao rodar.
+    var listaDaPosicao by rememberSaveable { mutableIntStateOf(itinerarios.hashCode()) }
+    LaunchedEffect(itinerarios) {
+        val nova = itinerarios.hashCode()
+        // A marca só muda depois de ir ao topo: se o efeito for cancelado antes, da próxima vez tenta outra vez.
+        if (nova != listaDaPosicao) {
+            lista.scrollToItem(0)
+            listaDaPosicao = nova
+        }
+    }
+    return lista
 }
 
 @Composable
@@ -205,12 +228,11 @@ fun RotasConteudo(
     modifier: Modifier = Modifier,
     /** Os relatos confirmados das linhas das rotas (já sem os ocultos): cada cartão mostra o seu (ver [relatoDoCartao]). */
     relatos: List<RelatoRemoto> = emptyList(),
+    /** A posição da lista: o [RotasEcra] dá a de [rememberListaDasRotas]. */
+    lista: LazyListState = rememberLazyListState(),
 ) {
     var escolherHora by remember { mutableStateOf<TipoHora?>(null) }
     val cores = MaterialTheme.colorScheme
-    val lista = rememberLazyListState()
-    // Uma página nova (ou uma procura nova) começa de cima, não onde estava o fim da lista anterior.
-    LaunchedEffect((estado as? EstadoRotas.Prontas)?.itinerarios) { lista.scrollToItem(0) }
 
     // As filas de filtros rolam até à borda do ecrã e levam o recuo por dentro; os outros itens recuam por fora.
     val recuo = Modifier.padding(horizontal = 16.dp)
