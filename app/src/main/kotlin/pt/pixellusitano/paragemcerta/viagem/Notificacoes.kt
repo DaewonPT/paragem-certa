@@ -45,6 +45,9 @@ object Notificacoes {
     const val ID_LOCALIZACAO = 3
     const val ID_VIGIA = 4
 
+    /** O "Atualização pronta" da versão do GitHub. Com o id da viagem, um tapava o outro e o fim da viagem apagava-o. */
+    const val ID_ATUALIZACAO = 5
+
     /** Os avisos de chegada ficam todos (um id por aviso, a contar daqui), para um não apagar o outro. */
     const val ID_CHEGADA = 100
 

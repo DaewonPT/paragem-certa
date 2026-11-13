@@ -39,6 +39,7 @@ import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import pt.pixellusitano.paragemcerta.core.rede.pedir
 import pt.pixellusitano.paragemcerta.core.rede.userAgent
 import pt.pixellusitano.paragemcerta.viagem.FicheirosViagem
+import pt.pixellusitano.paragemcerta.viagem.Notificacoes
 import java.io.File
 import java.io.FileOutputStream
 import java.time.Duration
@@ -381,10 +382,6 @@ class ResultadoInstalacao : BroadcastReceiver() {
             .setContentIntent(abrir)
             .setAutoCancel(true)
             .build()
-        gestor.notify(NOTIFICACAO, aviso)
-    }
-
-    private companion object {
-        const val NOTIFICACAO = 1
+        gestor.notify(Notificacoes.ID_ATUALIZACAO, aviso)
     }
 }

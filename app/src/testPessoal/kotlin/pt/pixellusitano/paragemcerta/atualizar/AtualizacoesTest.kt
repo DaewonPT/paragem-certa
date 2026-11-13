@@ -26,6 +26,7 @@ import org.robolectric.RuntimeEnvironment
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.shadows.ShadowNetworkInfo
 import pt.pixellusitano.paragemcerta.BuildConfig
+import pt.pixellusitano.paragemcerta.viagem.Notificacoes
 import java.io.File
 import java.time.Duration
 import java.time.Instant
@@ -118,6 +119,16 @@ class AtualizacoesTest {
         assertEquals(futura, Atualizacoes.pendente(contexto))
         assertEquals(1, shadowOf(contexto.getSystemService(NotificationManager::class.java)).size())
         assertNull(shadowOf(RuntimeEnvironment.getApplication()).nextStartedActivity)
+    }
+
+    // A viagem tem a sua notificação fixa: começar ou acabar uma não pode levar o aviso da atualização.
+    @Test fun avisoSobreviveAViagem() {
+        poeAppNoPlano(ActivityManager.RunningAppProcessInfo.IMPORTANCE_CACHED)
+        val gestor = contexto.getSystemService(NotificationManager::class.java)
+        ResultadoInstalacao().onReceive(contexto, pedidoDeConfirmacao())
+        gestor.notify(Notificacoes.ID_PROGRESSO, Notificacoes.vazia(contexto)) // a viagem começa
+        gestor.cancel(Notificacoes.ID_PROGRESSO) // e acaba
+        assertEquals(Atualizacoes.CANAL, shadowOf(gestor).allNotifications.single().channelId)
     }
 
     @Test fun confirmacaoComAppAFrenteAbreOEcraSemFicarPendente() {
