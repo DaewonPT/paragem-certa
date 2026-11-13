@@ -96,7 +96,8 @@ async function rejeitarCorrecao(env: Env, id: string, razao: Razao, agora: numbe
 /**
  * Remover (o relato, com a explicação a dizer que veio de uma denúncia) ou manter; em ambos os casos quem
  * denunciou recebe a decisão (DSA, art. 16) e, fechada a denúncia, dela fica só a marca do email.
- * Se o conteúdo já saiu (por outra denúncia, ou a conta foi apagada), a denúncia decide-se na mesma.
+ * Se o conteúdo já saiu (por outra denúncia, ou a conta foi apagada), a denúncia decide-se na mesma,
+ * a não ser que se peça também para bloquear a conta: aí responde 404 e não decide nada.
  */
 async function decidirDenuncia(env: Env, id: string, campos: URLSearchParams, agora: number): Promise<Desfecho> {
   const acao = campos.get("acao");
