@@ -193,7 +193,7 @@
     <string name="rotas_sem_ligacoes">Não encontrámos ligações a esta hora. Experimenta outra hora.</string>
     <string name="rotas_muito_perto">Estás praticamente lá: vai a pé.</string>
     <string name="rotas_sem_origem">Escolhe de onde partes.</string>
-    <string name="rotas_erro_rede">Sem ligação à internet. Tenta outra vez quando tiveres rede.</string>
+    <string name="rotas_erro_rede">Não foi possível falar com o serviço de rotas. Vê se tens rede ou tenta daqui a pouco.</string>
     <string name="rotas_erro_servico">O serviço de rotas não respondeu. Tenta daqui a pouco.</string>
     <string name="rotas_tentar">Tentar outra vez</string>
     <string name="rotas_a_pe">%1$d min a pé</string>
