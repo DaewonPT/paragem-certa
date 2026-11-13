@@ -45,22 +45,23 @@ class CarrisMetropolitanaTest {
     }
 
     @Test fun paragens() {
-        val p = CmParser.paragens(fixture("cm-stops.json")).first { it.ref.id == "060419" }
+        val p = CmParser.paragensComLinhas(fixture("cm-stops.json")).map { it.first }.first { it.ref.id == "060419" }
         assertEquals("Cais do Sodré (Terminal)", p.nome)
         assertEquals(false, p.acessivel)
     }
 
-    @Test fun linhasDasParagens() {
+    @Test fun paragensComLinhas() {
         assertEquals(
             mapOf("060419" to listOf("3708"), "060451" to listOf("3708"), "062000" to emptyList()),
-            CmParser.linhasDasParagens(fixture("cm-stops.json")),
+            CmParser.paragensComLinhas(fixture("cm-stops.json")).associate { (p, l) -> p.ref.id to l },
         )
     }
 
     @Test fun linhasComCorOficial() {
-        val l = CmParser.linhas(fixture("cm-lines.json")).first { it.id == "3708" }
+        val (l, padroes) = CmParser.linhasComPadroes(fixture("cm-lines.json")).first { it.first.id == "3708" }
         assertEquals("#C61D23", l.cor)
         assertEquals("Costa da Caparica (Terminal) - Lisboa (C. Sodré)", l.nomeLongo)
+        assertEquals(listOf("3708_0_2", "3708_0_1"), padroes)
     }
 
     @Test fun veiculos() {

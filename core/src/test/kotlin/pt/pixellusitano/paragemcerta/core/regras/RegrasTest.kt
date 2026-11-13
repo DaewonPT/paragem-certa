@@ -11,7 +11,7 @@ import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
 import java.time.Duration
 
 class RegrasTest {
-    private val paragens = CmParser.paragens(fixture("cm-stops.json"))
+    private val paragens = CmParser.paragensComLinhas(fixture("cm-stops.json")).map { it.first }
     private val terminal = paragens.first { it.ref.id == "060419" }
     private val cais = paragens.first { it.ref.id == "062000" }
 

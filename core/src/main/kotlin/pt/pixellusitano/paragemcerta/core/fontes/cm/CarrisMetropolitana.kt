@@ -56,23 +56,17 @@ object CmParser {
             .filter { aindaPorChegar(it, agora) }
             .sortedBy { it.prevista ?: it.programada }
 
-    fun paragens(json: String): List<Paragem> =
+    /** Cada paragem com as linhas (line_ids) que passam nela. */
+    fun paragensComLinhas(json: String): List<Pair<Paragem, List<String>>> =
         JSON.decodeFromString<List<CmParagemJson>>(json).map {
-            Paragem(RefParagem(Fonte.CM, it.id), it.nome ?: it.id, it.lat, it.lon, it.cadeiraDeRodas)
+            Paragem(RefParagem(Fonte.CM, it.id), it.nome ?: it.id, it.lat, it.lon, it.cadeiraDeRodas) to it.linhas.map(::cmIdLimpo)
         }
 
-    /** As linhas (line_ids) que passam em cada paragem, pelo id da paragem. */
-    fun linhasDasParagens(json: String): Map<String, List<String>> =
-        JSON.decodeFromString<List<CmParagemJson>>(json).associate { p -> p.id to p.linhas.map(::cmIdLimpo) }
-
-    fun linhas(json: String): List<Linha> =
+    /** Cada linha com os ids dos percursos (patterns), para pedir as paragens de uma linha. */
+    fun linhasComPadroes(json: String): List<Pair<Linha, List<String>>> =
         JSON.decodeFromString<List<CmLinhaJson>>(json).map {
-            Linha(Fonte.CM, it.id, it.nomeCurto ?: it.id, it.nomeLongo, it.color, it.corTexto, Modo.AUTOCARRO)
+            Linha(Fonte.CM, it.id, it.nomeCurto ?: it.id, it.nomeLongo, it.color, it.corTexto, Modo.AUTOCARRO) to it.padroes
         }
-
-    /** Ids dos percursos (patterns) de cada linha, para pedir as paragens de uma linha. */
-    fun padroesDasLinhas(json: String): Map<String, List<String>> =
-        JSON.decodeFromString<List<CmLinhaJson>>(json).associate { it.id to it.padroes }
 
     /** O percurso com as paragens, a forma e o horário de cada grupo de viagens (o `patterns/{id}` completo). */
     fun padraoCompleto(json: String): PadraoCm {

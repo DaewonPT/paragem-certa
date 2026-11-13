@@ -449,11 +449,9 @@ class Repositorio(
         // Milhares de paragens: converter fora da linha do ecrã.
         val (linhas, entidades) = try {
             withContext(Dispatchers.Default) {
-                val padroes = CmParser.padroesDasLinhas(linhasJson.valor)
-                val linhasDe = CmParser.linhasDasParagens(paragensJson.valor)
-                CmParser.linhas(linhasJson.valor).map {
-                    LinhaEntidade(it.id, it.nomeCurto, it.nomeLongo, it.cor, it.corTexto, padroes[it.id].orEmpty().joinToString(","))
-                } to CmParser.paragens(paragensJson.valor).map { it.paraEntidade().copy(linhas = linhasDe[it.ref.id].orEmpty().joinToString(",")) }
+                CmParser.linhasComPadroes(linhasJson.valor).map { (l, padroes) ->
+                    LinhaEntidade(l.id, l.nomeCurto, l.nomeLongo, l.cor, l.corTexto, padroes.joinToString(","))
+                } to CmParser.paragensComLinhas(paragensJson.valor).map { (p, ids) -> p.paraEntidade().copy(linhas = ids.joinToString(",")) }
             }
         } catch (e: IllegalArgumentException) {
             return false // JSON estragado (o SerializationException é um IllegalArgumentException): fica a rede que havia
