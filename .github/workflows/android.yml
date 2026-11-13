@@ -42,6 +42,7 @@ jobs:
         with:
           cache-provider: basic
 
+      # A variante play só se compila: o atualizar/Atualizacoes.kt dela é uma cópia vazia, feita à mão, da API da pessoal.
       - name: Test, screenshot check, lint and debug APK
         env:
           RECORD: ${{ inputs.record_screenshots }}
@@ -59,7 +60,8 @@ jobs:
             :app:testPessoalDebugUnitTest \
             $SHOTS \
             :app:lintPessoalDebug \
-            :app:assemblePessoalDebug
+            :app:assemblePessoalDebug \
+            :app:compilePlayDebugKotlin
 
       # Os serviços (viagem e avisos de chegada) e as permissões do manifesto fundido não podem mudar sem ninguém ver.
       # Os widgets são exatamente os dois da app (um terceiro falha aqui) e a app não pede alarmes exatos nem o arranque do telemóvel (nada corre com a app fechada).
