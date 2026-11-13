@@ -20,6 +20,7 @@ import pt.pixellusitano.paragemcerta.core.fontes.cm.CarrisMetropolitana
 import pt.pixellusitano.paragemcerta.core.fontes.cm.CmParser
 import pt.pixellusitano.paragemcerta.core.fontes.geoapi.GeoApi
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.Transitous
+import pt.pixellusitano.paragemcerta.core.fontes.transitous.chaveDoNome
 import pt.pixellusitano.paragemcerta.core.linhas.RefLinha
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.Modo
@@ -69,7 +70,7 @@ class DetalheDasLinhasTest {
     )
 
     private fun paragemCm(id: String, nome: String, lat: Double) =
-        ParagemEntidade("CM:$id", "CM", id, nome, normalizar(nome), lat, -9.14, null, "3708")
+        ParagemEntidade("CM:$id", "CM", id, nome, chaveDoNome(nome), lat, -9.14, null, "3708")
 
     private suspend fun guardarLinhaCm() {
         bd.linhas().guardar(listOf(LinhaEntidade("3708", "3708", "Costa da Caparica - Cais do Sodré", "#C61D23", "#FFFFFF", "3708_0_1,3708_1_1,3708_0_2")))

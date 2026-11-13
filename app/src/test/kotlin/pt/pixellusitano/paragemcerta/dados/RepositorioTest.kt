@@ -25,6 +25,7 @@ import pt.pixellusitano.paragemcerta.core.fontes.geoapi.GeoApi
 import pt.pixellusitano.paragemcerta.core.fontes.servidor.Interruptores
 import pt.pixellusitano.paragemcerta.core.fontes.servidor.ServidorParagemCerta
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.Transitous
+import pt.pixellusitano.paragemcerta.core.fontes.transitous.chaveDoNome
 import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.modelo.Etapa
 import pt.pixellusitano.paragemcerta.core.modelo.Filtros
@@ -170,6 +171,7 @@ class RepositorioTest {
         val r = repo(http)
         assertTrue(r.atualizarRede())
         assertTrue(r.pesquisar("sodre").any { it.nome == "Cais do Sodré (Terminal)" })
+        assertTrue(r.pesquisar("cais  do").any { it.nome == "Cais do Sodré (Terminal)" })
         assertEquals("#C61D23", r.linhaCm("3708")?.cor)
     }
 
@@ -185,7 +187,7 @@ class RepositorioTest {
     @Test fun paragemQueJaEstaGuardadaNaoEPisada() = runTest {
         // A da CM leva as linhas que lá passam: guardar por cima apagava-as.
         val guardada = ParagemEntidade(
-            terminal.chave, "CM", terminal.id, "Cais do Sodré (Terminal)", normalizar("Cais do Sodré (Terminal)"), 38.7058, -9.1448, null, "3708,1009",
+            terminal.chave, "CM", terminal.id, "Cais do Sodré (Terminal)", chaveDoNome("Cais do Sodré (Terminal)"), 38.7058, -9.1448, null, "3708,1009",
         )
         bd.paragens().guardar(listOf(guardada))
         repo(semRede).guardarParagemSeFalta(Paragem(terminal, "Cais do Sodré", 0.0, 0.0, true))
@@ -271,7 +273,7 @@ class RepositorioTest {
         bd.paragens().guardar(
             listOf(
                 ParagemEntidade(
-                    "TRANSITOUS:pt-Transtejo-Soflusa_5", "TRANSITOUS", "pt-Transtejo-Soflusa_5", "Cais do Sodré", normalizar("Cais do Sodré"),
+                    "TRANSITOUS:pt-Transtejo-Soflusa_5", "TRANSITOUS", "pt-Transtejo-Soflusa_5", "Cais do Sodré", chaveDoNome("Cais do Sodré"),
                     38.705, -9.1455, null,
                 ),
             ),
@@ -292,6 +294,22 @@ class RepositorioTest {
         val para = Lugar("Casa", 38.7022, -9.2292, TipoLugar.LOCAL)
         val rotas = (repo(http).planear(de, para, manha, false, Filtros()) as Resultado.Ok).valor.itinerarios
         assertEquals(listOf("Cais do Sodre", "Santos", "Alcantara - Mar", "Belem", "Algés"), rotas[0].etapas.first { !it.aPe }.paragens.map { it.nome })
+    }
+
+    @Test fun paragemDaCmComEspacosAMaisDaOsAcentosAsRotas() = runTest {
+        // A CM a escrever "Cais do  Sodré" (dois espaços) junto da estação que a CP, na rota, escreve "Cais do Sodre".
+        val paragens = """[{"id":"999001","long_name":"Cais do  Sodré","lat":38.7061,"lon":-9.1452,"line_ids":["3708"]}]"""
+        val http = HttpPorUrl(
+            "/stops" to listOf({ Resposta(200, paragens) }),
+            "/lines" to listOf({ Resposta(200, fixture("cm-lines.json")) }),
+            "plan" to listOf({ Resposta(200, fixture("transitous-plan-cascais.json")) }),
+        )
+        val r = repo(http)
+        assertTrue(r.atualizarRede())
+        val de = Lugar("A minha posição", 38.7062, -9.1442, TipoLugar.POSICAO)
+        val para = Lugar("Casa", 38.7022, -9.2292, TipoLugar.LOCAL)
+        val comboio = (r.planear(de, para, manha, false, Filtros()) as Resultado.Ok).valor.itinerarios[0].etapas.first { !it.aPe }
+        assertEquals("Cais do Sodré", comboio.de.nome)
     }
 
     @Test fun planearDaOsCursoresDasPaginas() = runTest {
@@ -393,8 +411,8 @@ class RepositorioTest {
 
     @Test fun cmNaZonaDeixaDeForaAsParagensSemLinhas() = runTest {
         bd.paragens().guardar(listOf(
-            ParagemEntidade("CM:1", "CM", "1", "Com linhas", normalizar("Com linhas"), 38.70, -9.14, null, "3708"),
-            ParagemEntidade("CM:2", "CM", "2", "Sem linhas", normalizar("Sem linhas"), 38.70, -9.14, null, ""),
+            ParagemEntidade("CM:1", "CM", "1", "Com linhas", chaveDoNome("Com linhas"), 38.70, -9.14, null, "3708"),
+            ParagemEntidade("CM:2", "CM", "2", "Sem linhas", chaveDoNome("Sem linhas"), 38.70, -9.14, null, ""),
         ))
         assertEquals(listOf("CM:1"), bd.paragens().cmNaZona(38.69, -9.15, 38.71, -9.13).map { it.chave })
     }

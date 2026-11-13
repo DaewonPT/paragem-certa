@@ -14,7 +14,6 @@ import androidx.room.Transaction
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import kotlinx.coroutines.flow.Flow
-import java.text.Normalizer
 import java.util.UUID
 
 /** Paragens da Carris Metropolitana (rede inteira, atualizada uma vez por dia) e do Transitous já vistas.
@@ -415,7 +414,3 @@ val MIGRACAO_3_4 = object : Migration(3, 4) {
         )
     }
 }
-
-/** "Cais do Sodré" → "cais do sodre": a pesquisa ignora acentos e maiúsculas. */
-fun normalizar(texto: String): String =
-    Normalizer.normalize(texto, Normalizer.Form.NFD).replace(Regex("\\p{M}+"), "").lowercase().trim()

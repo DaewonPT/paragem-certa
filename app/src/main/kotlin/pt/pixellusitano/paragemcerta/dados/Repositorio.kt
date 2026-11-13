@@ -34,6 +34,7 @@ import pt.pixellusitano.paragemcerta.core.fontes.servidor.FavoritoRemoto
 import pt.pixellusitano.paragemcerta.core.fontes.servidor.Interruptores
 import pt.pixellusitano.paragemcerta.core.fontes.servidor.ServidorParagemCerta
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.Transitous
+import pt.pixellusitano.paragemcerta.core.fontes.transitous.chaveDoNome
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.chavesDosNomes
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.comNomesAcentuados
 import pt.pixellusitano.paragemcerta.core.linhas.Catalogo
@@ -127,7 +128,7 @@ private fun ParagemEntidade.paraParagem() =
 
 private fun Paragem.paraEntidade() = ParagemEntidade(
     chave = ref.chave, fonte = ref.fonte.name, id = ref.id, nome = nome,
-    nomeNormalizado = normalizar(nome), lat = lat, lon = lon, acessivel = acessivel,
+    nomeNormalizado = chaveDoNome(nome), lat = lat, lon = lon, acessivel = acessivel,
 )
 
 private fun LocalEntidade.lugar() = Lugar(nome, lat, lon, TipoLugar.LOCAL)
@@ -413,7 +414,7 @@ class Repositorio(
     }
 
     suspend fun pesquisar(texto: String): List<Paragem> {
-        val locais = bd.paragens().cmPorNome(normalizar(texto)).map { it.paraParagem() }
+        val locais = bd.paragens().cmPorNome(chaveDoNome(texto)).map { it.paraParagem() }
         val outras = (transitous.pesquisar(texto) as? Resultado.Ok)?.valor.orEmpty()
         if (outras.isNotEmpty()) bd.paragens().guardar(outras.map { it.paraEntidade() })
         return locais + outras
@@ -503,8 +504,8 @@ class Repositorio(
      *  null = o Transitous falhou e não há nenhum local guardado que sirva (sem ligação, não "sem resultados"). */
     suspend fun pesquisarLugares(texto: String, perto: Pair<Double, Double>? = null): List<Lugar>? {
         if (ehCodigoPostal(texto)) lugaresDoCodigoPostal(texto)?.let { return it }
-        val procura = normalizar(texto)
-        val meus = bd.locais().lista().filter { normalizar(it.nome).contains(procura) }.map { it.lugar() }
+        val procura = chaveDoNome(texto)
+        val meus = bd.locais().lista().filter { chaveDoNome(it.nome).contains(procura) }.map { it.lugar() }
         val outros = (transitous.pesquisarLugares(texto, perto) as? Resultado.Ok)?.valor
             ?.map { if (it.tipo == TipoLugar.PARAGEM) it.copy(nome = nomeBase(it.nome)) else it }
             ?.fold(emptyList<Lugar>()) { sem, l -> if (sem.any { it.repetidoDe(l) }) sem else sem + l }
