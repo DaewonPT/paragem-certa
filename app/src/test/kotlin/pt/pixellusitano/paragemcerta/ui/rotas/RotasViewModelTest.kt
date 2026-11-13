@@ -6,8 +6,10 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.test.StandardTestDispatcher
+import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.advanceUntilIdle
 import kotlinx.coroutines.test.resetMain
+import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
@@ -335,6 +337,42 @@ class RotasViewModelTest {
         advanceUntilIdle()
         assertEquals(1, pedidos.size)
         assertEquals(Filtros(acessivel = true), filtrosUsados.single())
+    }
+
+    @Test fun toquesSeguidosNosFiltrosFazemUmaProcura() = runTest(despachante) {
+        val vm = vm()
+        vm.definirOrigem(cais)
+        vm.definirDestino(oriente)
+        runCurrent()
+        assertEquals(1, pedidos.size) // ao abrir não se espera
+        val escolhas = listOf(
+            Filtros(modos = setOf(Modo.METRO)),
+            Filtros(modos = setOf(Modo.METRO, Modo.COMBOIO)),
+            Filtros(modos = setOf(Modo.METRO, Modo.COMBOIO), menosAPe = true),
+        )
+        escolhas.forEach { vm.mudarFiltros(it); advanceTimeBy(300) }
+        advanceUntilIdle()
+        assertEquals(2, pedidos.size)
+        assertEquals(escolhas.last(), filtrosUsados.last())
+        assertEquals(2, recentes.size)
+    }
+
+    @Test fun destinoNovoDuranteAEsperaProcuraJaComOsFiltrosNovos() = runTest(despachante) {
+        val vm = vm()
+        vm.definirOrigem(cais)
+        vm.definirDestino(oriente)
+        runCurrent()
+        val metro = Filtros(modos = setOf(Modo.METRO))
+        vm.mudarFiltros(metro)
+        advanceTimeBy(300)
+        val alges = Lugar("Algés", 38.7027, -9.2297, TipoLugar.LOCAL)
+        vm.definirDestino(alges)
+        runCurrent()
+        assertEquals(2, pedidos.size)
+        assertEquals(alges, pedidos.last().second)
+        assertEquals(metro, filtrosUsados.last())
+        advanceUntilIdle()
+        assertEquals(2, pedidos.size)
     }
 
     @Test fun posicaoNovaLongeVoltaAPlanear() = runTest(despachante) {

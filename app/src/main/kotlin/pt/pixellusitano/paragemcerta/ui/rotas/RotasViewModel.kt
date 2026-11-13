@@ -3,6 +3,7 @@ package pt.pixellusitano.paragemcerta.ui.rotas
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -140,9 +141,13 @@ class RotasViewModel(
 
     init {
         filtrosGuardados.distinctUntilChanged().onEach {
+            // Toques seguidos nos filtros (aqui ou nas Definições) fazem uma só procura; ao abrir não se espera.
+            // Limite: mudanças a mais de 700 ms umas das outras fazem um /plan cada uma, também as das Definições (em fundo, com as
+            // Rotas guardadas no separador), e um /plan já enviado chega ao Transitous mesmo cancelado (o execute() do OkHttp não pára).
+            val espera = if (filtrosChegaram) ESPERA_FILTROS_MS else 0L
             _filtros.value = it
             filtrosChegaram = true
-            procurar()
+            procurar(espera)
         }.launchIn(viewModelScope)
         viewModelScope.launch { _alertas.value = linhasComAlerta() }
     }
@@ -246,7 +251,7 @@ class RotasViewModel(
         }
     }
 
-    private fun procurar() {
+    private fun procurar(espera: Long = 0L) {
         procura?.cancel()
         val p = _pedido.value
         val destino = p.destino ?: run {
@@ -262,6 +267,7 @@ class RotasViewModel(
             else -> {
                 _estado.value = EstadoRotas.ACarregar
                 procura = viewModelScope.launch {
+                    delay(espera)
                     // A posição atual guarda-se só pelo nome: GPS cru enchia os recentes de cópias.
                     registarRecente(if (origem.tipo == TipoLugar.POSICAO) Lugar(MINHA_POSICAO, 0.0, 0.0, TipoLugar.POSICAO) else origem, destino)
                     val agora = relogio()
@@ -288,6 +294,7 @@ class RotasViewModel(
 
     private companion object {
         const val PERTO_METROS = 100.0
+        const val ESPERA_FILTROS_MS = 700L
         val VALIDADE_LISTA: Duration = Duration.ofMinutes(10)
     }
 }
