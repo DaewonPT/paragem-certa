@@ -357,7 +357,9 @@ class Transitous(private val http: Http, private val base: String = "https://api
      */
     suspend fun horarioDoDia(paragemId: String, modo: Modo, rotas: Set<String>, s: SentidoCatalogo, dia: LocalDate): Resultado<List<LocalTime>> {
         val inicio = dia.atTime(3, 0).atZone(LISBOA).toInstant()
-        val url = "$base/api/v6/stoptimes?stopId=${enc(paragemId)}&time=$inicio&window=86400&n=1&realtimeMode=OFF&${zonaDaParagem(paragemId, modosDe(modo))}"
+        // Na noite da mudança da hora o dia de serviço tem 23 ou 25 horas: a janela acaba às 03:00 de Lisboa do dia seguinte.
+        val fim = dia.plusDays(1).atTime(3, 0).atZone(LISBOA).toInstant()
+        val url = "$base/api/v6/stoptimes?stopId=${enc(paragemId)}&time=$inicio&window=${fim.epochSecond - inicio.epochSecond}&n=1&realtimeMode=OFF&${zonaDaParagem(paragemId, modosDe(modo))}"
         return http.pedir(url) { json ->
             TransitousParser.partidas(json, paragemId)
                 .filter { daLinhaNoSentido(it, rotas, s) }

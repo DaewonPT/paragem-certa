@@ -397,6 +397,22 @@ class TransitousTest {
         )
     }
 
+    @Test fun horarioDoDiaNaNoiteDaMudancaDaHoraVaiAteAsTresDeLisboa() = runTest {
+        val http = HttpFalso({ Resposta(200, "{}") })
+        val t = Transitous(http)
+        // Sábado 24/10/2026: das 03:00 de verão (02:00Z) às 03:00 de inverno (03:00Z) são 25 h. Sábado 27/03/2027: são 23 h.
+        t.horarioDoDia("pt-Carris_3803", Modo.AUTOCARRO, emptySet(), sentido(0, "X"), LocalDate.of(2026, 10, 24))
+        t.horarioDoDia("pt-Carris_3803", Modo.AUTOCARRO, emptySet(), sentido(0, "X"), LocalDate.of(2027, 3, 27))
+        val resto = "&n=1&realtimeMode=OFF&radius=0&exactRadius=true&mode=BUS"
+        assertEquals(
+            listOf(
+                "https://api.transitous.org/api/v6/stoptimes?stopId=pt-Carris_3803&time=2026-10-24T02:00:00Z&window=90000$resto",
+                "https://api.transitous.org/api/v6/stoptimes?stopId=pt-Carris_3803&time=2027-03-27T03:00:00Z&window=82800$resto",
+            ),
+            http.pedidos,
+        )
+    }
+
     @Test fun horarioDoDiaComFalhaDaFonte() = runTest {
         val r = Transitous(HttpFalso({ Resposta(503, "") })).horarioDoDia("pt-Carris_3803", Modo.AUTOCARRO, emptySet(), sentido(0, "X"), LocalDate.of(2026, 11, 4))
         assertEquals(Resultado.Falha(503, limite = true), r)
