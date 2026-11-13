@@ -2,11 +2,13 @@ package pt.pixellusitano.paragemcerta.dados
 
 import android.content.Context
 import kotlinx.coroutines.FlowPreview
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import pt.pixellusitano.paragemcerta.core.fontes.servidor.ServidorParagemCerta
@@ -59,8 +61,10 @@ class Conta(
     suspend fun nonceGoogle(): Resultado<String> = servidor.nonceGoogle()
 
     /** Entra e sincroniza desde 0; [juntarFavoritos] = o que está no telemóvel vai para a conta (a pessoa escolheu). */
+    // O OkHttp não pára um pedido a meio: sair do ecrã ou rodá-lo deitava fora a sessão que o servidor já criou.
+    // Limite: se a pessoa, com esta resposta ainda a caminho, entrar outra vez ou apagar os dados, a sessão que chegar depois fica guardada na mesma.
     suspend fun entrarComGoogle(idToken: String, juntarFavoritos: Boolean): Resultado<Unit> =
-        entrar(servidor.entrarComGoogle(idToken), juntarFavoritos)
+        withContext(NonCancellable) { entrar(servidor.entrarComGoogle(idToken), juntarFavoritos) }
 
     private suspend fun entrar(r: Resultado<Sessao>, juntar: Boolean): Resultado<Unit> {
         val nova = when (r) {

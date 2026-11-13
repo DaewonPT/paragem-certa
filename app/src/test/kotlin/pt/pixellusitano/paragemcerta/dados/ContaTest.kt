@@ -2,6 +2,7 @@ package pt.pixellusitano.paragemcerta.dados
 
 import androidx.room.Room
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.TestScope
@@ -48,6 +49,8 @@ internal class ServidorDeTeste : Http {
     var recusarSessao = false
     /** Corre enquanto o pedido de sincronização "está na rede" (a pessoa mexe nos favoritos entretanto). */
     var duranteASincronizacao: suspend () -> Unit = {}
+    /** Corre enquanto o pedido de entrada "está na rede" (a pessoa sai do ecrã entretanto). */
+    var duranteAEntrada: suspend () -> Unit = {}
     /** O token e as alterações de cada sincronização recebida. */
     val sincronizacoes = mutableListOf<Pair<String, List<FavoritoRemoto>>>()
     val desdes = mutableListOf<Long>()
@@ -68,6 +71,7 @@ internal class ServidorDeTeste : Http {
         return when (url.substringAfter("/api/")) {
             "auth/google" -> {
                 val email = pedido!!["idToken"]!!.jsonPrimitive.content
+                duranteAEntrada()
                 Resposta(200, """{"token":"$email","email":"$email"}""")
             }
             "auth/sair" -> Resposta(204, "").also { sessoesTerminadas += token!! }
@@ -127,6 +131,17 @@ class ContaTest {
         assertFalse(File(contexto.filesDir, "conta.json").exists())
         assertEquals(EstadoConta.Com("ana@exemplo.pt", agora), c.estado.value)
         assertEquals(EstadoConta.Com("ana@exemplo.pt", agora), conta().estado.value) // a app abre outra vez e a sessão continua
+    }
+
+    @Test fun sairDoEcraAMeioDaEntradaGuardaASessao() = runTest {
+        val c = conta()
+        lateinit var ecra: Job
+        // A pessoa volta atrás com o pedido na rede: o OkHttp acaba-o e o servidor já criou a sessão.
+        servidor.duranteAEntrada = { ecra.cancel() }
+        ecra = launch { c.entrarComGoogle("ana@exemplo.pt", juntarFavoritos = false) }
+        ecra.join()
+        assertEquals(EstadoConta.Com("ana@exemplo.pt", agora), c.estado.value)
+        assertTrue(ficheiro.readText().contains("ana@exemplo.pt"))
     }
 
     @Test fun entrarSincronizaDesdeZero() = runTest {
