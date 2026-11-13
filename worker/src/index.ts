@@ -70,10 +70,12 @@ export default {
 
   // Cron Trigger diário (corre na Cloudflare, não no telemóvel): limpa os nonces e as sessões expirados, aplica os prazos e
   // manda o resumo ao autor. A hora vem do controlador, para os testes a poderem escolher.
+  // Um waitUntil por tarefa: num Promise.all, a primeira falha acabava o Cron e deixava as outras a meio.
   async scheduled(controlo, env, ctx): Promise<void> {
     const agora = controlo.scheduledTime;
-    ctx.waitUntil(
-      Promise.all([limparNoncesExpirados(env, agora), apagarSessoesExpiradas(env, agora), aplicarPrazos(env, agora), resumoAoAutor(env, agora)]),
-    );
+    ctx.waitUntil(limparNoncesExpirados(env, agora));
+    ctx.waitUntil(apagarSessoesExpiradas(env, agora));
+    ctx.waitUntil(aplicarPrazos(env, agora));
+    ctx.waitUntil(resumoAoAutor(env, agora));
   },
 } satisfies ExportedHandler<Env>;

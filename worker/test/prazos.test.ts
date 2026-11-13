@@ -91,4 +91,23 @@ describe("prazos no Cron", () => {
     const contadores = await env.DB.prepare("SELECT dia FROM contadores ORDER BY dia").all<{ dia: string }>();
     expect(contadores.results.map((linha) => linha.dia)).toEqual(["2030-01-08", "2030-01-09", "2030-01-10"]);
   });
+
+  it("cronAcabaOsPrazosMesmoQueOResumoFalhe", async () => {
+    // Mais do que um lote: só acabam todos se a falha do resumo não acabar o Cron antes de tempo.
+    await env.DB.prepare(
+      `WITH RECURSIVE n (i) AS (SELECT 1 UNION ALL SELECT i + 1 FROM n WHERE i < 1234)
+       INSERT INTO emails_por_enviar (id, para, assunto, texto, criado_em) SELECT 'e' || i, 'a@exemplo.pt', 'a', 't', ? FROM n`,
+    )
+      .bind(AGORA - 31 * DIA)
+      .run();
+    // O resumo usa o batch e os prazos e as limpezas não: só o resumo falha.
+    const d1SemBatch = {
+      prepare: (sql: string) => env.DB.prepare(sql),
+      batch: () => Promise.reject(new Error("D1_ERROR: soluço")),
+    } as unknown as D1Database;
+
+    await expect(correrCron({ agora: AGORA, segredos: { DB: d1SemBatch, EMAIL_AUTOR: "autor@exemplo.pt" } })).rejects.toThrow("soluço");
+
+    expect(await contar("emails_por_enviar")).toBe(0);
+  });
 });
