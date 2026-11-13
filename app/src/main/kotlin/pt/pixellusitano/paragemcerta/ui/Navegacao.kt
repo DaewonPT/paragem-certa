@@ -501,7 +501,7 @@ internal fun AvisoAtualizacao(pendente: NovaVersao?, abertos: MutableIntState) {
     ContarAberto(abertos)
     val falhou = stringResource(R.string.atualizacao_falhou)
     AlertDialog(
-        // "Agora não": a pendente fica guardada e volta a aparecer na abertura seguinte.
+        // "Agora não": a pendente fica guardada e volta a aparecer quando a app arranca de novo (rodar o ecrã não a traz).
         onDismissRequest = { nova = null },
         title = { Text(stringResource(R.string.atualizacao_titulo, n.tag.removePrefix("v"))) },
         // Notas longas rolam em vez de ficarem cortadas (o aviso não tem altura para tudo).
