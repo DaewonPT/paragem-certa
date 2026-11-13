@@ -157,6 +157,7 @@ describe("pc-admin: avisos e formulários", () => {
     await correcaoDoRui();
     await relatoDoRui();
     await denunciaDaAna("denuncia-1", "relato:relato-1");
+    await denunciaDaAna("denuncia-2", "relato:ja-saiu");
     await env.DB.prepare("INSERT INTO bloqueios (email_hash, motivo, criado_em) VALUES ('hash-1', 'Relatos falsos', ?)").bind(INICIO).run();
     await env.DB.prepare("INSERT INTO emails_por_enviar (id, para, assunto, texto, criado_em) VALUES ('email-1', 'ze@exemplo.pt', 'A', 'B', ?)").bind(INICIO).run();
 
@@ -173,6 +174,8 @@ describe("pc-admin: avisos e formulários", () => {
     expect(html).toContain('name="denuncia" value="denuncia-1"');
     // Só na denúncia: a correção e o relato do rui não trazem "Bloquear conta".
     expect(html.split('action="/contas/rui/bloquear"').length - 1).toBe(1);
+    // A caixa só aparece na denúncia com conta.
+    expect(html.match(/name="bloquear"/g)).toHaveLength(1);
   });
 });
 
@@ -255,6 +258,43 @@ describe("pc-admin: denúncias", () => {
     });
     expect((await acao("/denuncias/denuncia-1/decidir", { ...razao, acao: "remover" })).status).toBe(404);
     expect(mensagensEnviadas).toHaveLength(2);
+    expect(await contar("bloqueios")).toBe(0);
+  });
+
+  it("denunciaRemoverEBloquearBloqueiaAConta", async () => {
+    await relatoDoRui();
+    await denunciaDaAna("denuncia-1", "relato:relato-1");
+
+    voltou(await acao("/denuncias/denuncia-1/decidir", { ...razao, acao: "remover", bloquear: "on" }));
+
+    const hash = await marcaDe("rui@exemplo.pt");
+    expect(await contar("relatos")).toBe(0);
+    expect(await env.DB.prepare("SELECT email_hash, motivo FROM bloqueios").all()).toMatchObject({ results: [{ email_hash: hash, motivo: razao.motivo }] });
+    expect(await decisoes()).toMatchObject([
+      { acao: "conta_bloqueada", denuncia_id: "denuncia-1", email_hash: hash, regra: razao.regra },
+      { acao: "relato_apagado", denuncia_id: "denuncia-1" },
+    ]);
+    expect(mensagensEnviadas).toHaveLength(3);
+    const aQuemRelatou = mensagensEnviadas.filter((m) => m.para === "rui@exemplo.pt");
+    expect(aQuemRelatou).toHaveLength(2);
+    const bloqueio = aQuemRelatou.find((m) => m.texto.includes("Bloqueámos a tua conta"))!;
+    expect(bloqueio.texto).toContain("veio de uma denúncia");
+    expect(mensagensEnviadas.filter((m) => m.para === "ana@exemplo.pt")).toHaveLength(1);
+    expect(await contar("denuncias WHERE decidida_em IS NULL")).toBe(0);
+  });
+
+  it("decidirComBloquearSemContaNaoDecide", async () => {
+    await relatoDoRui();
+    await denunciaDaAna("denuncia-1", "relato:relato-1");
+    voltou(await acao("/relatos/relato-1/apagar", razao));
+    mensagensEnviadas.length = 0;
+
+    // Com o relato já apagado não se sabe a conta: decidir sem bloquear enganava o autor.
+    expect((await acao("/denuncias/denuncia-1/decidir", { ...razao, acao: "manter", bloquear: "on" })).status).toBe(404);
+
+    expect(await contar("denuncias WHERE decidida_em IS NULL")).toBe(1);
+    expect(await contar("bloqueios")).toBe(0);
+    expect(mensagensEnviadas).toEqual([]);
   });
 
   it("denunciaDeConteudoQueJaSaiuDecideNaMesma", async () => {

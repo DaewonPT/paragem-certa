@@ -221,7 +221,7 @@ A página de revisão é um Worker à parte, o `pc-admin` (`worker/wrangler.admi
 5. **A AUD:** vai a Zero Trust → Access controls → Applications → a aplicação do `pc-admin` → Edit → **Additional settings** e copia a **Application Audience (AUD) Tag**. Depois substitui o `por-preencher`: `npx wrangler secret put ACCESS_AUD -c wrangler.admin.jsonc`. Se apagares e voltares a criar a aplicação, a AUD muda e tens de a pôr outra vez (aqui e no GitHub).
 6. **Prova:** numa janela privada do browser, o endereço do `pc-admin` mostra a página de entrada do Cloudflare Access, nunca a página de revisão. Se aparecerem duas maneiras de entrar (Cloudflare e One-time PIN), usa a do **One-time PIN**: escreve o teu email, carrega em **Send login code**, mete o código que chega e aparece a página de revisão. E `curl.exe -i https://pc-admin.<subdomínio>.workers.dev/` nunca devolve a página de revisão (só um redirecionamento ou um 403).
 
-Numa denúncia, se quiseres bloquear a conta, bloqueia antes de carregares em Decidir: depois de decidires, a denúncia sai da lista e o botão vai com ela.
+Numa denúncia, para bloquear também a conta de quem relatou, marca "e bloquear a conta" antes de carregares em Decidir. O bloqueio leva o mesmo porquê e a mesma regra. Se quiseres outro porquê, usa "Bloquear conta" antes de decidir: depois de decidires, a denúncia sai da lista e já não há onde bloquear.
 
 ## 15. Segredos novos no GitHub
 

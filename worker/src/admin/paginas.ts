@@ -131,7 +131,7 @@ ${botao(`/correcoes/${k.id}/aprovar`, "Aprovar")} ${comRazao(`/correcoes/${k.id}
 ${secao("Denúncias abertas", denuncias, (d) => html`<li${d.motivo === "perigo" ? html` class="perigo"` : ""}>${d.id} · motivo ${d.motivo} · ${hora(d.criada_em)}<br>
 Conteúdo ${d.conteudo}, de ${quem(d.conta_id, d.conta_email)}<br>
 Denunciado por ${d.nome} (${d.email})${d.explicacao ? html`<br>Explicação: ${d.explicacao}` : ""}${d.motivo === "perigo" ? html`<br><strong>Ameaça à vida ou à segurança: comunica à PSP ou à PJ</strong>` : ""}<br>
-${comRazao(`/denuncias/${d.id}/decidir`, "Decidir", html`<select name="acao" aria-label="Decisão"><option value="remover">Remover o conteúdo</option><option value="manter">Manter o conteúdo</option></select> `)} ${bloquearConta(d.conta_id, d.id)}</li>`)}
+${comRazao(`/denuncias/${d.id}/decidir`, "Decidir", html`<select name="acao" aria-label="Decisão"><option value="remover">Remover o conteúdo</option><option value="manter">Manter o conteúdo</option></select> ${d.conta_id ? html`<label><input type="checkbox" name="bloquear"> e bloquear a conta</label> ` : ""}`)} ${bloquearConta(d.conta_id, d.id)}</li>`)}
 ${secao("Relatos ativos", ativos, (r) => html`<li>${r.id} · ${r.tipo}${r.linha ? html` · linha ${r.linha}` : ""} · ${r.paragem} · ${hora(r.criado_em)} até ${hora(r.expira_em)} · ${quem(r.conta_id, r.email)}<br>
 ${comRazao(`/relatos/${r.id}/apagar`, "Apagar")}</li>`)}
 ${secao("Contas bloqueadas", bloqueios.results as Bloqueio[], (b) => html`<li>${b.email_hash} · ${hora(b.criado_em)} · ${b.motivo} ${botao(`/bloqueios/${b.email_hash}/desbloquear`, "Desbloquear")}</li>`)}

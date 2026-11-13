@@ -102,12 +102,24 @@ async function decidirDenuncia(env: Env, id: string, campos: URLSearchParams, ag
   const acao = campos.get("acao");
   const razao = razaoDe(campos, id);
   if ((acao !== "remover" && acao !== "manter") || !razao) return 400;
-  const denuncia = await env.DB.prepare("SELECT conteudo, nome, email FROM denuncias WHERE id = ? AND decidida_em IS NULL LIMIT 1")
+  // A conta lê-se antes de decidir: "Remover" apaga o relato e o conta_id vai com ele.
+  const denuncia = await env.DB.prepare(
+    `SELECT d.conteudo, d.nome, d.email, r.conta_id FROM denuncias d LEFT JOIN relatos r ON r.id = substr(d.conteudo, 8)
+     WHERE d.id = ? AND d.decidida_em IS NULL LIMIT 1`,
+  )
     .bind(id)
-    .first<{ conteudo: string; nome: string | null; email: string | null }>();
+    .first<{ conteudo: string; nome: string | null; email: string | null; conta_id: string | null }>();
   if (!denuncia) return 404;
 
   const avisos: Aviso[] = [];
+  if (campos.has("bloquear")) {
+    // Limite: sem o relato já não se sabe a conta. Não se decide nada, para o autor não julgar que bloqueou.
+    if (!denuncia.conta_id) return 404;
+    campos.set("denuncia", id);
+    // O 404 (conta já bloqueada ou já apagada) não impede a decisão.
+    const feito = await bloquear(env, denuncia.conta_id, campos, agora);
+    if (Array.isArray(feito)) avisos.push(...feito);
+  }
   if (acao === "remover") {
     // "relato:<id>": o formato foi confirmado ao denunciar.
     const feito = await apagarRelato(env, denuncia.conteudo.split(":")[1], razao, agora);
