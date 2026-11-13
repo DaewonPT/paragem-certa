@@ -111,29 +111,29 @@ object CmParser {
             )
         }
 
-    fun alertas(json: String, agora: Instant): List<Alerta> =
-        JSON.decodeFromString<List<CmAlertaJson>>(json)
-            .filter { a ->
-                a.periodos.isEmpty() || a.periodos.any {
-                    (it.start == null || it.start <= agora.epochSecond) && (it.end == null || agora.epochSecond <= it.end)
-                }
-            }
+    fun alertas(json: String, agora: Instant): List<Alerta> {
+        fun decorre(p: CmPeriodo) = (p.start == null || p.start <= agora.epochSecond) && (p.end == null || agora.epochSecond <= p.end)
+        return JSON.decodeFromString<List<CmAlertaJson>>(json)
+            .filter { a -> a.periodos.isEmpty() || a.periodos.any(::decorre) }
             .map { a ->
                 val periodo = a.periodos.firstOrNull()
+                // O GTFS-RT deixa haver vários períodos: as datas são as do que decorre agora, o id fica no primeiro.
+                val atual = a.periodos.firstOrNull(::decorre)
                 val titulo = a.titulo.pt()
                 Alerta(
                     // A API não dá id: título + início identificam o alerta (para não o notificar duas vezes).
                     id = "$titulo|${periodo?.start}",
                     linhaIds = a.entidades.mapNotNull { it.rota?.let(::cmLinhaDaRota) }.toSet(),
                     paragemIds = a.entidades.mapNotNull { it.paragem?.let(::cmIdLimpo) }.toSet(),
-                    inicio = periodo?.start?.let(Instant::ofEpochSecond),
-                    fim = periodo?.end?.let(Instant::ofEpochSecond),
+                    inicio = atual?.start?.let(Instant::ofEpochSecond),
+                    fim = atual?.end?.let(Instant::ofEpochSecond),
                     titulo = titulo,
                     texto = a.texto.pt(),
                     gravidade = gravidadeDe(a.effect, a.gravidade),
                     imagemUrl = a.image?.imagens?.firstOrNull()?.url,
                 )
             }
+    }
 }
 
 class CarrisMetropolitana(private val http: Http, private val base: String = "https://api.carrismetropolitana.pt/v2/") {

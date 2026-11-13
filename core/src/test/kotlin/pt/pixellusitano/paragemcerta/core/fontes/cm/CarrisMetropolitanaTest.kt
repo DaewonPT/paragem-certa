@@ -94,6 +94,15 @@ class CarrisMetropolitanaTest {
         assertTrue(CmParser.alertas(fixture("cm-alerts.json"), Instant.parse("2026-10-01T12:00:00Z")).isEmpty())
     }
 
+    @Test fun datasDoPeriodoQueDecorre() {
+        val json = """[{"active_period":[{"start":1793491200,"end":1793663999},{"start":1794096000,"end":1794268799}]""" +
+            ""","header_text":{"translation":[{"language":"pt","text":"Obras"}]}}]"""
+        val a = CmParser.alertas(json, Instant.parse("2026-11-08T12:00:00Z")).single()
+        assertEquals(Instant.parse("2026-11-08T00:00:00Z"), a.inicio)
+        assertEquals(Instant.parse("2026-11-09T23:59:59Z"), a.fim)
+        assertEquals("Obras|1793491200", a.id) // o id continua no 1.º período: não volta a notificar
+    }
+
     @Test fun gravidade() {
         assertEquals(Gravidade.GRAVE, gravidadeDe("NO_SERVICE", null))
         assertEquals(Gravidade.INFO, gravidadeDe("DETOUR", "INFO"))
