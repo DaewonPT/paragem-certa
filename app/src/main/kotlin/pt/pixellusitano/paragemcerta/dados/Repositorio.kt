@@ -1,8 +1,10 @@
 package pt.pixellusitano.paragemcerta.dados
 
 import androidx.room.withTransaction
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.async
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -72,6 +74,7 @@ import pt.pixellusitano.paragemcerta.core.rotas.proximasPartidas as proximasDaLi
 import java.time.Duration
 import java.time.Instant
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.atomic.AtomicReference
 import kotlin.math.abs
 
 data class EstadoChegadas(
@@ -280,13 +283,15 @@ class Repositorio(
         if (chegadas.isEmpty()) return chegadas
         val viagens = chegadas.mapNotNullTo(HashSet()) { it.idViagem }
         val dasChegadas = chegadas.mapNotNullTo(HashSet()) { it.padrao }
-        var veiculos = emptyList<Veiculo>()
+        val veiculos = AtomicReference(emptyList<Veiculo>())
         // Com a rede fraca, as chegadas ficavam à espera dos prazos do OkHttp. Passado o prazo seguem como numa falha dos veículos
-        // ou dos percursos; o pedido cortado não fica guardado e volta a fazer-se na leitura seguinte.
-        withTimeoutOrNull(PRAZO_SITUACAO.toMillis()) {
-            veiculos = (lerVeiculos() as? Resultado.Ok)?.valor?.second.orEmpty()
+        // ou dos percursos; o pedido cortado não fica guardado e volta a fazer-se na leitura seguinte. As leituras correm num âmbito
+        // à parte porque o pedido HTTP não pára quando se cancela: dentro desta corrotina, o prazo esperava na mesma por ele.
+        val extra = CoroutineScope(Dispatchers.IO).async {
+            val lidos = (lerVeiculos() as? Resultado.Ok)?.valor?.second.orEmpty()
+            veiculos.set(lidos) // já servem se só os percursos chegarem tarde
             // Limite: um percurso que falhou não fica guardado; volta a pedir-se na leitura seguinte (no máximo 3 de cada vez).
-            veiculos.asSequence()
+            lidos.asSequence()
                 .filter { abs(Duration.between(it.ultimoSinal, agora).seconds) <= IDADE_PROVA_S && (it.viagem in viagens || it.padrao in dasChegadas) }
                 .mapNotNull { it.padrao }
                 .filter { !padroes.containsKey(it) } // não `in`: o contains do ConcurrentHashMap procura nos valores
@@ -295,7 +300,12 @@ class Repositorio(
                 .toList()
                 .forEach { padraoAoVivo(it, agora) }
         }
-        return situacaoCm(chegadas, veiculos, padroes, paragemId, agora)
+        try {
+            withTimeoutOrNull(PRAZO_SITUACAO.toMillis()) { extra.join() }
+        } finally {
+            extra.cancel()
+        }
+        return situacaoCm(chegadas, veiculos.get(), padroes, paragemId, agora)
     }
 
     // A última leitura dos veículos da CM e a hora a que chegou: os ecrãs à vista e as paragens usam a mesma durante 15 s.

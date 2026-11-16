@@ -46,6 +46,9 @@ import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import java.io.IOException
 import java.time.Duration
 import java.time.Instant
+import java.util.concurrent.CopyOnWriteArrayList
+import java.util.concurrent.CountDownLatch
+import java.util.concurrent.TimeUnit
 
 /**
  * Http falso por URL: cada pedido usa a próxima resposta da fila do primeiro prefixo que coincide. Um URL sem fila leva 404
@@ -53,7 +56,7 @@ import java.time.Instant
  */
 class HttpPorUrl(vararg filas: Pair<String, List<() -> Resposta>>) : Http {
     private val filas = filas.map { it.first to it.second.toMutableList() }
-    val pedidos = mutableListOf<String>()
+    val pedidos: MutableList<String> = CopyOnWriteArrayList() // os veículos e os percursos das chegadas pedem-se noutro fio
     override suspend fun get(url: String): Resposta {
         pedidos += url
         val fila = filas.firstOrNull { url.contains(it.first) }?.second ?: return Resposta(404, "")
@@ -617,26 +620,35 @@ class RepositorioTest {
         }
     }
 
-    @Test fun veiculosSemRespostaNaoSeguramAsChegadas() = runTest {
-        var agora = manha
-        var semResposta = true
-        val aoVivo = httpAoVivo()
-        val http = object : Http {
-            override suspend fun get(url: String): Resposta {
-                // Para lá dos 120 s do OkHttp: na prática, nunca responde.
-                if ("vehicles" in url && semResposta) delay(600_000)
-                return aoVivo.get(url)
+    // O fake prende mesmo a linha de execução e não liga ao cancelamento, como o execute() do OkHttp: com o prazo à volta da
+    // chamada, as chegadas ficavam aqui presas, e é o timeout deste @Test que o apanha.
+    @Test(timeout = 30_000)
+    fun veiculosSemRespostaNaoSeguramAsChegadas() {
+        val solta = CountDownLatch(1)
+        try {
+            runTest {
+                var agora = manha
+                val aoVivo = httpAoVivo()
+                val http = object : Http {
+                    override suspend fun get(url: String): Resposta {
+                        // Com limite: se a regressão voltar, o teste falha mas a linha não fica presa para sempre.
+                        if ("vehicles" in url && solta.count > 0) withContext(Dispatchers.IO) { solta.await(60, TimeUnit.SECONDS) }
+                        return aoVivo.get(url)
+                    }
+                }
+                val r = repo(http) { agora }
+                val c = (r.chegadasComSituacao(terminal) as Resultado.Ok).valor.single()
+                assertEquals(PRAZO_SITUACAO.toMillis(), testScheduler.currentTime)
+                assertNull(c.paragensEmFalta)
+                // A leitura cortada não fica guardada: a seguinte, já com resposta (no relógio de verdade), traz a situação.
+                solta.countDown()
+                agora = manha.plusSeconds(21)
+                val depois = withContext(Dispatchers.Default) { r.chegadasComSituacao(terminal) }
+                assertEquals(1, (depois as Resultado.Ok).valor.single().paragensEmFalta)
             }
+        } finally {
+            solta.countDown()
         }
-        val r = repo(http) { agora }
-        val c = (r.chegadasComSituacao(terminal) as Resultado.Ok).valor.single()
-        assertEquals(PRAZO_SITUACAO.toMillis(), testScheduler.currentTime)
-        assertNull(c.paragensEmFalta)
-        // A leitura cortada não fica guardada: a seguinte, já com resposta (no relógio de verdade), traz a situação.
-        semResposta = false
-        agora = manha.plusSeconds(21)
-        val depois = withContext(Dispatchers.Default) { r.chegadasComSituacao(terminal) }
-        assertEquals(1, (depois as Resultado.Ok).valor.single().paragensEmFalta)
     }
 
     @Test fun apagarDadosEsqueceASituacao() = runTest {
