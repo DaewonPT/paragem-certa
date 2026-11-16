@@ -31,10 +31,15 @@ import pt.pixellusitano.paragemcerta.dados.fixture
 import pt.pixellusitano.paragemcerta.ui.mapa.Dono
 import java.time.Instant
 
-/** O que o detalhe pede à CM: as chegadas da paragem de embarque e os veículos; guarda o URL de cada pedido. 404 nas chegadas = nenhuma. */
+/**
+ * O que o detalhe pede à CM: as chegadas da paragem de embarque, os veículos, o percurso e a forma do autocarro; guarda o URL de
+ * cada pedido. 404 nas chegadas = nenhuma.
+ */
 private class RedeDaCm : Http {
     var chegadas = { Resposta(404, "") }
     var veiculos = { Resposta(200, "[]") }
+    var padrao = { Resposta(404, "") }
+    var forma = { Resposta(404, "") }
     val pedidos = mutableListOf<String>()
 
     fun a(parte: String) = pedidos.filter { parte in it }
@@ -44,6 +49,8 @@ private class RedeDaCm : Http {
         return when {
             "arrivals/by_stop/" in url -> chegadas()
             url.endsWith("vehicles") -> veiculos()
+            "patterns/" in url -> padrao()
+            "shapes/" in url -> forma()
             else -> Resposta(404, "")
         }
     }
@@ -71,7 +78,7 @@ class AutocarroNoDetalheTest {
     private val dono = Dono()
 
     // A rota do detalhe com uma etapa da 3708 da Carris Metropolitana (a 3.ª), que entra na paragem 020047.
-    private val rota = TransitousParser.rotas(fixture("transitous-plan.json"))[0].let { r ->
+    private var rota = TransitousParser.rotas(fixture("transitous-plan.json"))[0].let { r ->
         val b = r.etapas[1]
         val cm = b.copy(linhaNome = "3708", paragens = listOf(ParagemEtapa("pt-Carris-Metropolitana_320047", b.de.nome, b.de.lat, b.de.lon, b.partida)))
         r.copy(etapas = r.etapas.take(2) + cm + r.etapas.drop(2))
@@ -79,7 +86,7 @@ class AutocarroNoDetalheTest {
     private val partidaDaEtapa = rota.etapas[2].partidaProgramada
 
     private var seguida by mutableStateOf<Int?>(null)
-    private var visto: Pair<Veiculo?, EstadoAutocarro>? = null
+    private var visto: Triple<Veiculo?, EstadoAutocarro, List<Pair<Double, Double>>>? = null
 
     @After fun fechar() = bd.close()
 
@@ -190,5 +197,40 @@ class AutocarroNoDetalheTest {
         assertEquals("41|1234", visto?.first?.id)
         assertEquals(EstadoAutocarro.NO_MAPA, visto?.second)
         assertTrue(veiculos() >= 2)
+    }
+
+    @Test fun semEstimativaOAutocarroDoPadraoApareceComOCaminho() {
+        // A etapa daqui a 4 min; a CM só dá o horário e o percurso, e o autocarro dele está na paragem antes (020002).
+        val partida = inicio.plusSeconds(240)
+        rota = rota.copy(etapas = rota.etapas.toMutableList().also { it[2] = it[2].copy(partidaProgramada = partida) })
+        val de = rota.etapas[2].de
+        val meio = (38.7 + de.lat) / 2 to (-9.1 + de.lon) / 2
+        rede.chegadas = {
+            Resposta(200, """[{"line_id":"3708","headsign":"Oriente","scheduled_arrival_unix":${partida.epochSecond},"pattern_id":"3708_0_1"}]""")
+        }
+        rede.veiculos = {
+            Resposta(
+                200,
+                """[{"id":"41|1234","line_id":"3708","lat":38.7,"lon":-9.1,"timestamp":${System.currentTimeMillis()},""" +
+                    """"trip_id":"T9","pattern_id":"3708_0_1","stop_id":"020002"}]""",
+            )
+        }
+        rede.padrao = {
+            Resposta(
+                200,
+                """[{"id":"3708_0_1","shape_id":"F1","path":[{"stop_id":"020002","stop_sequence":1},{"stop_id":"020047","stop_sequence":2}],""" +
+                    """"trips":[{"schedule":[{"stop_id":"020002","stop_sequence":1,"arrival_time":"08:00:00"},""" +
+                    """{"stop_id":"020047","stop_sequence":2,"arrival_time":"08:04:00"}]}]}]""",
+            )
+        }
+        rede.forma = {
+            Resposta(200, """{"geojson":{"geometry":{"coordinates":[[-9.1,38.7],[${meio.second},${meio.first}],[${de.lon},${de.lat}]]}}}""")
+        }
+        regra.mainClock.autoAdvance = false
+        seguida = 2
+        abrir(Lifecycle.State.STARTED)
+        esperarPor { visto?.third.orEmpty().isNotEmpty() }
+        assertEquals("41|1234", visto?.first?.id)
+        assertEquals(listOf(38.7 to -9.1, meio, de.lat to de.lon), visto?.third)
     }
 }

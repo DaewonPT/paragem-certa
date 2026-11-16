@@ -637,6 +637,21 @@ class RepositorioTest {
         assertEquals(1, c.paragensEmFalta) // com a versão de 16/11, sem a 020002, seria null
     }
 
+    @Test fun formaDoPadraoPedeUmaVezESemFormaDaNulo() = runTest {
+        val http = HttpPorUrl(
+            "patterns" to listOf({ Resposta(200, fixture("cm-pattern-completo.json")) }),
+            "shapes" to listOf({ Resposta(200, fixture("cm-shape.json")) }),
+        )
+        val r = repo(http)
+        val forma = r.formaDoPadrao("3708_0_1")
+        assertTrue(forma.orEmpty().isNotEmpty())
+        assertEquals(forma, r.formaDoPadrao("3708_0_1"))
+        assertEquals(1, http.pedidos.count { "patterns" in it })
+        assertEquals(1, http.pedidos.count { "shapes" in it })
+        val semForma = HttpPorUrl("patterns" to listOf({ Resposta(200, fixture("cm-pattern-completo.json")) }), "shapes" to listOf({ Resposta(404, "") }))
+        assertNull(repo(semForma).formaDoPadrao("3708_0_1"))
+    }
+
     @Test fun cmNaZonaDeixaDeForaAsParagensSemLinhas() = runTest {
         bd.paragens().guardar(listOf(
             ParagemEntidade("CM:1", "CM", "1", "Com linhas", chaveDoNome("Com linhas"), 38.70, -9.14, null, "3708"),

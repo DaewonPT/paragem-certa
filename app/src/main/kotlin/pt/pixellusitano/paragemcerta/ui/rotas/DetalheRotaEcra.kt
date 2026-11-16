@@ -41,6 +41,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -63,6 +64,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.emptyFlow
 import org.maplibre.android.geometry.LatLng
 import pt.pixellusitano.paragemcerta.R
+import pt.pixellusitano.paragemcerta.core.aovivo.troco
 import pt.pixellusitano.paragemcerta.core.atraso.estado
 import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.modelo.Etapa
@@ -130,7 +132,7 @@ fun DetalheRotaEcra(
     val contexto = LocalContext.current
     val escuro = LocalEscuro.current
     val etapaSeguida = seguida?.let(it.etapas::getOrNull)
-    val (autocarro, estadoAutocarro) = rememberAutocarro(repositorio, seguida, etapaSeguida)
+    val (autocarro, estadoAutocarro, trajeto) = rememberAutocarro(repositorio, seguida, etapaSeguida)
     var centrar by remember { mutableIntStateOf(0) }
     var centrado by remember(seguida) { mutableStateOf(false) }
     LaunchedEffect(seguida, autocarro != null) {
@@ -152,6 +154,8 @@ fun DetalheRotaEcra(
                 aoMoverCamara = { _, _, _, _, _ -> }, aoTocarParagem = {}, aoTocarVeiculo = {},
                 modifier = Modifier.fillMaxSize(), percursos = percursos, mostrarPosicao = temLocalizacao(contexto),
                 centrarNoVeiculo = centrar,
+                trajeto = etapaSeguida?.takeIf { trajeto.size >= 2 }?.let { Percurso(trajeto, hex(corDaLinha(it.cor, it.modo)), aPe = false) },
+                paragemDoVeiculo = etapaSeguida?.de?.let { it.lat to it.lon },
             )
         },
         seguida = seguida,
@@ -192,12 +196,14 @@ fun DetalheRotaEcra(
 }
 
 /**
- * O autocarro da [etapa] seguida ([i]) e o que dizer dele. Com o ecrã visível pede as chegadas da paragem de embarque a cada
- * 30 s e recolhe os veículos da CM (15 s); sem etapa, ou fora do ecrã, não pede nada. Numa falha nada muda: fica o último
- * autocarro conhecido. Depois de o ver no mapa segue a viagem dele, mesmo quando passa na paragem e sai das chegadas.
+ * O autocarro da [etapa] seguida ([i]), o que dizer dele e o caminho dele até à paragem de embarque (vazio depois de lá passar ou
+ * sem a forma do percurso). Com o ecrã visível pede as chegadas da paragem de embarque com a situação ao vivo a cada 30 s (assim
+ * também se acha o autocarro de uma chegada sem estimativa) e recolhe os veículos da CM (15 s); sem etapa, ou fora do ecrã, não
+ * pede nada. Numa falha nada muda: fica o último autocarro conhecido. Depois de o ver no mapa segue a viagem dele, mesmo quando
+ * passa na paragem e sai das chegadas.
  */
 @Composable
-internal fun rememberAutocarro(repositorio: Repositorio, i: Int?, etapa: Etapa?): Pair<Veiculo?, EstadoAutocarro> {
+internal fun rememberAutocarro(repositorio: Repositorio, i: Int?, etapa: Etapa?): Triple<Veiculo?, EstadoAutocarro, List<Pair<Double, Double>>> {
     val paragem = etapa?.embarqueCm()
     val ciclo = LocalLifecycleOwner.current.lifecycle
     var chegadas by remember(i) { mutableStateOf(emptyList<Chegada>()) }
@@ -206,7 +212,7 @@ internal fun rememberAutocarro(repositorio: Repositorio, i: Int?, etapa: Etapa?)
         if (paragem == null) return@LaunchedEffect
         ciclo.repeatOnLifecycle(Lifecycle.State.STARTED) {
             while (true) {
-                (repositorio.chegadasAgora(RefParagem(Fonte.CM, paragem)) as? Resultado.Ok)?.let { chegadas = it.valor }
+                (repositorio.chegadasComSituacao(RefParagem(Fonte.CM, paragem)) as? Resultado.Ok)?.let { chegadas = it.valor }
                 voltas++
                 delay(CM_INTERVALO.toMillis())
             }
@@ -219,7 +225,14 @@ internal fun rememberAutocarro(repositorio: Repositorio, i: Int?, etapa: Etapa?)
         etapa?.let { autocarroDaEtapa(chegadas, veiculos.orEmpty(), it, Instant.now(), guardada) }
     }
     LaunchedEffect(autocarro?.viagem) { autocarro?.viagem?.let { guardada = it } }
-    return autocarro to estadoAutocarro(autocarro, voltas, veiculos != null)
+    // Só com o autocarro ainda antes da paragem; as leituras em que ele não se mexe não pedem nem cortam outra vez.
+    val emFalta = autocarro?.let { a -> chegadas.firstOrNull { it.idViagem == a.viagem }?.paragensEmFalta }
+    val trajeto by produceState(emptyList<Pair<Double, Double>>(), autocarro?.id, autocarro?.lat, autocarro?.lon, emFalta, etapa) {
+        val a = autocarro
+        value = if (a == null || etapa == null || emFalta == null) emptyList()
+        else a.padrao?.let { repositorio.formaDoPadrao(it) }?.let { troco(it, a.lat to a.lon, etapa.de.lat to etapa.de.lon) }.orEmpty()
+    }
+    return Triple(autocarro, estadoAutocarro(autocarro, voltas, veiculos != null), trajeto)
 }
 
 @Composable

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- A seta do caminho do autocarro no mapa. Aponta para a direita (+x): numa camada com symbolPlacement LINE o MapLibre roda-a
+     no sentido das coordenadas da linha. Vai como SDF: só conta a forma (o alfa); a cor e o contorno dá-os a camada. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="16dp" android:height="16dp"
+    android:viewportWidth="24" android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M6,4L18,12L6,20L9,12z" />
+</vector>

@@ -256,6 +256,19 @@ class Repositorio(
     private suspend fun padraoAoVivo(id: String, agora: Instant): PadraoAoVivo? =
         padroes[id] ?: (cm.padraoAoVivo(id, diaDeServicoCm(agora)) as? Resultado.Ok)?.valor?.also { padroes[id] = it }
 
+    // Só as últimas formas (170 KB de JSON cada) para a sessão não crescer com cada autocarro visto; pelo formaId.
+    private val formas = object : LinkedHashMap<String, List<Pair<Double, Double>>>(MAX_FORMAS, 0.75f, true) {
+        override fun removeEldestEntry(eldest: MutableMap.MutableEntry<String, List<Pair<Double, Double>>>) = size > MAX_FORMAS
+    }
+
+    /** A forma (lat, lon) do percurso [padrao] da CM (id limpo); null sem forma, numa falha ou num 404 (que não fica guardado). */
+    suspend fun formaDoPadrao(padrao: String): List<Pair<Double, Double>>? {
+        val id = padraoAoVivo(padrao, relogio())?.formaId ?: return null
+        // A ordem de acesso mexe no mapa a cada leitura: um acesso de cada vez.
+        synchronized(formas) { formas[id] }?.let { return it }
+        return (cm.forma(id) as? Resultado.Ok)?.valor?.also { synchronized(formas) { formas[id] = it } }
+    }
+
     /**
      * As [chegadas] da CM de [paragemId] com a situação ao vivo. Pede só os percursos que faltam dos veículos frescos que podem ser
      * de uma destas chegadas (pela viagem ou pelo percurso), no máximo [MAX_PADROES_NOVOS] de cada vez. Sem veículos, a regra de hoje.
@@ -815,6 +828,7 @@ class Repositorio(
         val VALIDADE_SITUACAO: Duration = Duration.ofMinutes(2)
         val ANTES_DE_AGORA: Duration = Duration.ofMinutes(20)
         const val MAX_PADROES_NOVOS = 3
+        const val MAX_FORMAS = 8
         const val RAIO_REPETIDOS_METROS = 400.0
         const val RAIO_PEDACOS_METROS = 2000.0
         const val TIPO_PARAGEM = "PARAGEM"

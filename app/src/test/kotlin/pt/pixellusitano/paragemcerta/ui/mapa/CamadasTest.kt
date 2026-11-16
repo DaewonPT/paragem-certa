@@ -293,6 +293,10 @@ class CamadasTest {
         assertNotNull(contexto.getDrawable(R.drawable.gira_mapa))
     }
 
+    @Test fun setaDrawableExiste() {
+        assertNotNull(contexto.getDrawable(R.drawable.seta_mapa))
+    }
+
     // ---- o cartão da estação GIRA ----
 
     private val vascoDaGama = EstacaoGira("105", "CC Vasco da Gama", 38.768548, -9.096222)

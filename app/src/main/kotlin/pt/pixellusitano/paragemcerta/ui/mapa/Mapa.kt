@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.content.ContextCompat
+import androidx.core.graphics.drawable.toBitmap
 import androidx.core.graphics.toColorInt
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -63,6 +64,7 @@ import pt.pixellusitano.paragemcerta.core.linhas.RefLinha
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.Paragem
 import pt.pixellusitano.paragemcerta.core.modelo.Veiculo
+import pt.pixellusitano.paragemcerta.core.regras.distanciaMetros
 import pt.pixellusitano.paragemcerta.dados.DetalheLinha
 import pt.pixellusitano.paragemcerta.ui.comum.corDoTextoSobre
 import pt.pixellusitano.paragemcerta.ui.comunidade.aplicarCorrecoes
@@ -70,6 +72,7 @@ import pt.pixellusitano.paragemcerta.ui.rotas.hex
 import pt.pixellusitano.paragemcerta.ui.tema.Azulejo
 import java.time.Duration
 import java.time.Instant
+import kotlin.math.roundToInt
 
 // Verificado a 27/10/2026: os dois estilos do OpenFreeMap respondem 200.
 private const val ESTILO_CLARO = "https://tiles.openfreemap.org/styles/positron"
@@ -94,8 +97,16 @@ private const val CAMADA_MARCAS_TEXTO = "camada-marcas-texto"
 private const val FONTE_GIRA = "fonte-gira"
 private const val CAMADA_GIRA = "camada-gira"
 private const val IMAGEM_GIRA = "gira"
+private const val FONTE_TRAJETO = "fonte-trajeto"
+private const val CAMADA_TRAJETO = "camada-trajeto"
+private const val CAMADA_TRAJETO_SETAS = "camada-trajeto-setas"
+private const val IMAGEM_SETA = "seta"
 private val SINAL_ANTIGO: Duration = Duration.ofMinutes(2)
 private const val ZOOM_A_SEGUIR = 16.5
+
+// O autocarro do detalhe da rota: mais devagar do que as outras câmaras, para se ver de onde vem; a menos disto da paragem, vai a ela.
+private const val DURACAO_AUTOCARRO_MS = 1200
+private const val PERTO_DA_PARAGEM_M = 300.0
 
 // As estações GIRA de uma rua ficam a poucas dezenas de metros: só se desenham a partir do zoom 13, e com o nome a partir do 15.
 private const val ZOOM_GIRA = 13.0
@@ -112,6 +123,19 @@ private const val OPERADOR_CARRIS = "pt-Carris"
  * esbatido: na viagem, as etapas que não são a atual (mais finas e claras; a câmara só enquadra as outras).
  */
 data class Percurso(val pontos: List<Pair<Double, Double>>, val cor: String, val aPe: Boolean, val esbatido: Boolean = false)
+
+/**
+ * Para onde vai a câmara ao procurar o [autocarro] (lat, lon): sem [paragem], a ele com zoom 15.5; perto da paragem, a ela com
+ * zoom 16 (os limites dos dois quase num ponto davam o zoom máximo); senão null, e enquadram-se os dois.
+ */
+internal fun pontoDoAutocarro(autocarro: Pair<Double, Double>, paragem: Pair<Double, Double>?): Pair<Pair<Double, Double>, Double>? = when {
+    paragem == null -> autocarro to 15.5
+    distanciaMetros(autocarro.first, autocarro.second, paragem.first, paragem.second) < PERTO_DA_PARAGEM_M -> paragem to 16.0
+    else -> null
+}
+
+/** As margens (esquerda, cima, direita, baixo, em px) ao enquadrar o autocarro e a paragem: em baixo mais os 28 dp que a folha tapa. */
+internal fun margensDoAutocarro(densidade: Float): IntArray = intArrayOf(48, 48, 48, 28 + 48).map { (it * densidade).roundToInt() }.toIntArray()
 
 /** Uma paragem da etapa atual da viagem; sai: onde a pessoa sai (maior, com o nome). */
 data class Marca(val lat: Double, val lon: Double, val nome: String, val sai: Boolean = false)
@@ -209,9 +233,13 @@ fun Mapa(
     margemTopo: Dp = 180.dp,
     /**
      * Contador: cada vez que sobe, a câmara vai para o primeiro dos [veiculos], mesmo que a pessoa tenha mexido no mapa (o
-     * [centrarEm] aí já não move a câmara).
+     * [centrarEm] aí já não move a câmara); com [paragemDoVeiculo], enquadra os dois ([pontoDoAutocarro]).
      */
     centrarNoVeiculo: Int = 0,
+    /** O caminho do autocarro até à paragem, com setas no sentido da marcha; fora dos [percursos], para não reenquadrar o itinerário. */
+    trajeto: Percurso? = null,
+    /** A paragem onde a pessoa apanha o primeiro dos [veiculos] (lat, lon). */
+    paragemDoVeiculo: Pair<Double, Double>? = null,
 ) {
     val contexto = LocalContext.current
     val ciclo = LocalLifecycleOwner.current.lifecycle
@@ -464,6 +492,17 @@ fun Mapa(
         )
     }
 
+    LaunchedEffect(trajeto, estado.estilo) {
+        val t = trajeto?.takeIf { it.pontos.size >= 2 }
+        estado.estilo?.getSourceAs<GeoJsonSource>(FONTE_TRAJETO)?.setGeoJson(
+            FeatureCollection.fromFeatures(listOfNotNull(t?.let {
+                Feature.fromGeometry(LineString.fromLngLats(it.pontos.map { (lat, lon) -> Point.fromLngLat(lon, lat) })).apply {
+                    addStringProperty("cor", corDaLinhaNoMapa(it.cor, escuro))
+                }
+            })),
+        )
+    }
+
     // A seguir a pessoa manda a câmara do MapLibre; senão (sem localização, ou depois de a pessoa mexer no mapa) enquadra-se
     // o percurso, mas só quando ele muda: arrastar o mapa não o pode devolver ao sítio de onde a pessoa o tirou.
     LaunchedEffect(percursos, estado.mapa) {
@@ -475,12 +514,22 @@ fun Mapa(
         mapa.easeCamera(CameraUpdateFactory.newLatLngBounds(limites, 80))
     }
 
-    // Depois do enquadramento do percurso: com o mapa a abrir, o veículo pedido ganha.
+    // Depois do enquadramento do percurso: com o mapa a abrir, o veículo pedido ganha. Só no toque e na 1.ª aparição: as
+    // leituras seguintes do veículo não mexem na câmara, para a pessoa poder arrastar o mapa.
     LaunchedEffect(centrarNoVeiculo, estado.mapa) {
         val mapa = estado.mapa ?: return@LaunchedEffect
         val v = veiculos.firstOrNull()
         if (centrarNoVeiculo <= 0 || v == null) return@LaunchedEffect
-        mapa.easeCamera(CameraUpdateFactory.newLatLngZoom(LatLng(v.lat, v.lon), 15.5))
+        val mudanca = pontoDoAutocarro(v.lat to v.lon, paragemDoVeiculo)
+            ?.let { (ponto, zoom) -> CameraUpdateFactory.newLatLngZoom(LatLng(ponto.first, ponto.second), zoom) }
+            ?: run {
+                val limites = LatLngBounds.Builder()
+                    .includes(listOfNotNull(v.lat to v.lon, paragemDoVeiculo).map { (lat, lon) -> LatLng(lat, lon) }).build()
+                val m = margensDoAutocarro(vista.resources.displayMetrics.density)
+                CameraUpdateFactory.newLatLngBounds(limites, m[0], m[1], m[2], m[3])
+            }
+        // O easeCamera não aceita 0 ms: sem animações, de imediato.
+        if (animacoesLigadas(contexto)) mapa.easeCamera(mudanca, DURACAO_AUTOCARRO_MS) else mapa.moveCamera(mudanca)
     }
 
     AndroidView(factory = { vista }, modifier = modifier)
@@ -587,11 +636,14 @@ private fun prepararCamadas(contexto: Context, estilo: Style, escuro: Boolean) {
     // O triângulo é um desenho (vetor) e não um "⚠" em texto: as letras do OpenFreeMap não o têm.
     ContextCompat.getDrawable(contexto, R.drawable.relato_mapa)?.let { estilo.addImage(IMAGEM_RELATO, it) }
     ContextCompat.getDrawable(contexto, R.drawable.gira_mapa)?.let { estilo.addImage(IMAGEM_GIRA, it) }
+    // Em SDF: a seta ganha a cor e o contorno da camada.
+    ContextCompat.getDrawable(contexto, R.drawable.seta_mapa)?.let { estilo.addImage(IMAGEM_SETA, it.toBitmap(), true) }
     estilo.addSource(GeoJsonSource(FONTE_GIRA))
     estilo.addSource(GeoJsonSource(FONTE_PARAGENS))
     estilo.addSource(GeoJsonSource(FONTE_VEICULOS))
     estilo.addSource(GeoJsonSource(FONTE_PERCURSOS))
     estilo.addSource(GeoJsonSource(FONTE_MARCAS))
+    estilo.addSource(GeoJsonSource(FONTE_TRAJETO))
     // Os percursos ficam por baixo das paragens e dos veículos.
     estilo.addLayer(
         LineLayer(CAMADA_PERCURSOS, FONTE_PERCURSOS).withProperties(
@@ -601,6 +653,26 @@ private fun prepararCamadas(contexto: Context, estilo: Style, escuro: Boolean) {
             PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
             PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
         ).withFilter(Expression.eq(Expression.get("aPe"), Expression.literal(false))),
+    )
+    // O caminho do autocarro até à paragem: logo acima dos percursos, com as setas brancas (contorno Tinta) no sentido da marcha.
+    estilo.addLayer(
+        LineLayer(CAMADA_TRAJETO, FONTE_TRAJETO).withProperties(
+            PropertyFactory.lineColor(Expression.get("cor")),
+            PropertyFactory.lineWidth(5f),
+            PropertyFactory.lineCap(Property.LINE_CAP_ROUND),
+            PropertyFactory.lineJoin(Property.LINE_JOIN_ROUND),
+        ),
+    )
+    estilo.addLayer(
+        SymbolLayer(CAMADA_TRAJETO_SETAS, FONTE_TRAJETO).withProperties(
+            PropertyFactory.symbolPlacement(Property.SYMBOL_PLACEMENT_LINE),
+            PropertyFactory.iconImage(IMAGEM_SETA),
+            PropertyFactory.iconColor(hex(Azulejo.Branco)),
+            PropertyFactory.iconHaloColor(hex(Azulejo.Tinta)),
+            PropertyFactory.iconHaloWidth(1f),
+            PropertyFactory.symbolSpacing(80f),
+            PropertyFactory.iconAllowOverlap(true),
+        ),
     )
     estilo.addLayer(
         LineLayer(CAMADA_A_PE, FONTE_PERCURSOS).withProperties(
