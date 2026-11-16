@@ -54,7 +54,7 @@ import kotlinx.coroutines.flow.emptyFlow
 import kotlinx.coroutines.flow.map
 import org.maplibre.android.geometry.LatLng
 import pt.pixellusitano.paragemcerta.R
-import pt.pixellusitano.paragemcerta.core.atraso.aindaPorChegar
+import pt.pixellusitano.paragemcerta.core.atraso.aindaAMostrar
 import pt.pixellusitano.paragemcerta.core.comunidade.TipoRelato
 import pt.pixellusitano.paragemcerta.core.fontes.servidor.RelatoRemoto
 import pt.pixellusitano.paragemcerta.core.linhas.RefLinha
@@ -366,7 +366,7 @@ private fun PainelDaParagem(
             val e = estado.chegadas
             if (e != null) FaixaEstado(e, agora, Modifier.padding(vertical = 4.dp))
             // Com o relógio do ecrã: uma chegada que já passou sai sem esperar pelo pedido seguinte.
-            val visiveis = e?.chegadas?.filter { aindaPorChegar(it, agora) }?.take(CHEGADAS_VISIVEIS)
+            val visiveis = e?.chegadas?.filter { aindaAMostrar(it, agora) }?.take(CHEGADAS_VISIVEIS)
             when {
                 e == null -> Texto(stringResource(R.string.a_carregar))
                 visiveis.isNullOrEmpty() && !e.semLigacao && !e.tempoRealIndisponivel -> Texto(stringResource(R.string.sem_chegadas))

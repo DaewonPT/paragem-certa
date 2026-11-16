@@ -14,7 +14,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.test.assertContentDescriptionContains
 import androidx.compose.ui.test.assertHasClickAction
+import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.assertHeightIsAtLeast
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsNotSelected
@@ -116,6 +118,33 @@ class ParagemTest {
         regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Ecra(estado.copy(chegadas = listOf(passada) + chegadas)) } }
         regra.onNodeWithText("Rio de Mouro", substring = true, useUnmergedTree = true).assertDoesNotExist()
         regra.onNodeWithText("Reboleira", substring = true, useUnmergedTree = true).assertExists()
+    }
+
+    private fun aCaminho(emFalta: Int, pelaPosicao: Boolean, atrasoS: Long) = Chegada(
+        Fonte.CM, "1103", "1103", "Algés (Estação)", agora.minusSeconds(600), agora.minusSeconds(600 - atrasoS), "T1", null,
+        Modo.AUTOCARRO, null, null, paragensEmFalta = emFalta, pelaPosicao = pelaPosicao,
+    )
+
+    @Test fun aCaminhoFicaDepoisDaHoraEDizAsParagens() {
+        // A prevista pela posição já ficou para trás no relógio do ecrã: com paragensEmFalta fica até ao teto.
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Ecra(estado.copy(chegadas = listOf(aCaminho(3, true, 540)) + chegadas)) } }
+        regra.onNodeWithText("Algés (Estação)", substring = true, useUnmergedTree = true).assertExists()
+        regra.onNodeWithText("ao vivo, a 3 paragens", useUnmergedTree = true).assertExists()
+        regra.onNodeWithText("+9", useUnmergedTree = true).assertDoesNotExist()
+        regra.onNode(hasContentDescription("Linha 1103 para Algés (Estação)", substring = true))
+            .assertContentDescriptionContains(", ao vivo, a 3 paragens", substring = true)
+    }
+
+    @Test fun estimativaDaCmNoFuturoJuntaAsParagensAoAtraso() {
+        val c = aCaminho(2, false, 840) // a da CM ainda no futuro: +14
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Ecra(estado.copy(chegadas = listOf(c))) } }
+        regra.onNodeWithText("+14 · ao vivo, a 2 paragens", useUnmergedTree = true).assertExists()
+        regra.onNode(hasContentDescription("muito atrasado, 14 minutos, ao vivo, a 2 paragens", substring = true)).assertExists()
+    }
+
+    @Test fun aZeroParagensDizAChegar() {
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Ecra(estado.copy(chegadas = listOf(aCaminho(0, true, 540)))) } }
+        regra.onNodeWithText("ao vivo, a chegar", useUnmergedTree = true).assertExists()
     }
 
     @Test fun semRedeENadaGuardadoNaoDizQueNaoHaAutocarros() {
@@ -261,6 +290,10 @@ class ParagemTest {
 
     @Test fun paragem_escuro() = captureRoboImage("src/test/screenshots/paragem_escuro.png") {
         TemaParagemCerta(ModoTema.ESCURO) { Ecra(estado) }
+    }
+
+    @Test fun paragem_cm_a_caminho_claro() = captureRoboImage("src/test/screenshots/paragem_cm_a_caminho_claro.png") {
+        TemaParagemCerta(ModoTema.CLARO) { Ecra(estado.copy(chegadas = listOf(aCaminho(3, true, 540), aCaminho(2, false, 840)) + chegadas)) }
     }
 
     @Test fun paragem_sem_chegadas() = captureRoboImage("src/test/screenshots/paragem_sem_chegadas.png") {

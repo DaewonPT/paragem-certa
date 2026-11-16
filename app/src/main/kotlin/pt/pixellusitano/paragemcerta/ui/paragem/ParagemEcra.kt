@@ -44,7 +44,7 @@ import kotlinx.coroutines.launch
 import pt.pixellusitano.paragemcerta.BuildConfig
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.aviso.ServicoAvisoChegada
-import pt.pixellusitano.paragemcerta.core.atraso.aindaPorChegar
+import pt.pixellusitano.paragemcerta.core.atraso.aindaAMostrar
 import pt.pixellusitano.paragemcerta.core.comunidade.chaveLinha
 import pt.pixellusitano.paragemcerta.core.fontes.servidor.RelatoRemoto
 import pt.pixellusitano.paragemcerta.core.fotos.FotoDeRua
@@ -251,7 +251,7 @@ fun ParagemConteudo(
                 CartaoRelato(r, nomeLinha, agora, aoVotar = { aoVotar(r, it) }, aoDenunciar = { aoDenunciar(r) }, aoOcultar = { aoOcultar(r) })
             }
             // Filtra outra vez com o relógio do ecrã: sem rede, a próxima resposta pode demorar minutos.
-            val visiveis = estado?.chegadas?.filter { aindaPorChegar(it, agora) }
+            val visiveis = estado?.chegadas?.filter { aindaAMostrar(it, agora) }
             val semNada = estado != null && visiveis.isNullOrEmpty() && (estado.semLigacao || estado.tempoRealIndisponivel)
             if (!semNada) {
                 CartaoAzulejo(Modifier.padding(top = 8.dp).fillMaxWidth()) {

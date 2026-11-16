@@ -47,7 +47,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.launch
 import pt.pixellusitano.paragemcerta.R
-import pt.pixellusitano.paragemcerta.core.atraso.aindaPorChegar
+import pt.pixellusitano.paragemcerta.core.atraso.aindaAMostrar
 import pt.pixellusitano.paragemcerta.core.comunidade.chaveLinha
 import pt.pixellusitano.paragemcerta.core.linhas.Catalogo
 import pt.pixellusitano.paragemcerta.core.linhas.LinhaCatalogo
@@ -413,7 +413,7 @@ private fun Chegadas(e: EstadoChegadas?, maximo: Int, linhas: Map<String, Linha>
     }
     FaixaEstado(e, agora, Modifier.padding(vertical = 4.dp))
     // Filtra outra vez com o relógio do ecrã: sem rede, a próxima resposta pode demorar minutos.
-    val visiveis = e.chegadas.filter { aindaPorChegar(it, agora) }
+    val visiveis = e.chegadas.filter { aindaAMostrar(it, agora) }
     if (visiveis.isEmpty() && !e.semLigacao && !e.tempoRealIndisponivel) {
         Text(stringResource(R.string.sem_chegadas), color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(vertical = 6.dp))

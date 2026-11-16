@@ -128,9 +128,8 @@ fun SeloModo(modo: Modo, cor: Color) {
 
 /** "ao vivo, a 5 paragens" ou, a zero, "ao vivo, a chegar". */
 @Composable
-private fun textoAoVivo(a: AoVivo): String =
-    if (a.paragensEmFalta == 0) stringResource(R.string.ao_vivo_a_chegar)
-    else pluralStringResource(R.plurals.ao_vivo_paragens, a.paragensEmFalta, a.paragensEmFalta)
+private fun textoAoVivo(n: Int): String =
+    if (n == 0) stringResource(R.string.ao_vivo_a_chegar) else pluralStringResource(R.plurals.ao_vivo_paragens, n, n)
 
 /** "+3", "a horas" ou, sem hora prevista (só a do horário), o relógio e "horário". */
 @Composable
@@ -141,13 +140,20 @@ fun RotuloAtraso(programada: Instant, prevista: Instant?, limites: Limites, cor:
     }
 }
 
-/** [aoVivo] (só Carris) toma o lugar do "horário", a verde; com tempo real do Transitous na chegada, esse é que se mostra. */
+/**
+ * [aoVivo] é o da Carris: toma o lugar do "horário", a verde; com tempo real do Transitous na chegada, esse é que se mostra.
+ * O da CM vem em [Chegada.paragensEmFalta] e fica na cor do estado do atraso.
+ */
 @Composable
 fun LinhaChegada(c: Chegada, linha: Linha?, agora: Instant, limites: Limites = LocalLimites.current, aoVivo: AoVivo? = null) {
     val escuro = LocalEscuro.current
     val cor = CoresAtraso.cor(estado(c, limites), escuro)
-    val etiquetaAoVivo = aoVivo?.takeIf { c.prevista == null }?.let { textoAoVivo(it) }
-    val descricao = descricaoChegada(c, agora, limites, etiquetaAoVivo)
+    val daCarris = aoVivo?.takeIf { c.prevista == null }?.paragensEmFalta
+    val texto = (daCarris ?: c.paragensEmFalta)?.let { textoAoVivo(it) }
+    // Com a estimativa da CM ainda no futuro, a etiqueta de atraso fica e as paragens juntam-se-lhe.
+    val comAtraso = daCarris == null && c.paragensEmFalta != null && !c.pelaPosicao
+    val etiqueta = if (comAtraso) stringResource(R.string.atraso_e_ao_vivo, rotuloAtraso(c.programada, c.prevista, limites), texto!!) else texto
+    val descricao = descricaoChegada(c, agora, limites, if (comAtraso) "${situacaoAtraso(c.programada, c.prevista, limites)}, $texto" else texto)
     Row(
         Modifier.fillMaxWidth().heightIn(min = 48.dp).padding(vertical = 6.dp).clearAndSetSemantics { contentDescription = descricao },
         verticalAlignment = Alignment.CenterVertically,
@@ -167,7 +173,8 @@ fun LinhaChegada(c: Chegada, linha: Linha?, agora: Instant, limites: Limites = L
         )
         Column(horizontalAlignment = Alignment.End) {
             Text(rotuloTempo(c, agora, LISBOA_FUSO), color = cor, fontWeight = FontWeight.Black, style = MaterialTheme.typography.titleMedium)
-            if (etiquetaAoVivo != null) Text(etiquetaAoVivo, color = CoresAtraso.cor(EstadoAtraso.A_HORAS, escuro), style = MaterialTheme.typography.labelSmall)
+            // Por baixo do tempo: a etiqueta, na cor do estado (a da Carris continua verde), ou o RotuloAtraso de hoje.
+            if (etiqueta != null) Text(etiqueta, color = if (daCarris != null) CoresAtraso.cor(EstadoAtraso.A_HORAS, escuro) else cor, style = MaterialTheme.typography.labelSmall)
             else RotuloAtraso(c.programada, c.prevista, limites, cor)
         }
     }

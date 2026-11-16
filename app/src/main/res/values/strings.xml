@@ -51,12 +51,13 @@
     <string name="sem_ligacao">Sem ligação — atualizado há %1$d min</string>
     <string name="sem_ligacao_nada">Sem ligação — não há chegadas guardadas por mostrar</string>
     <string name="tempo_real_indisponivel">Tempo real indisponível — não há chegadas guardadas por mostrar</string>
-    <!-- Uma chegada da Carris com o autocarro ao vivo, no lugar do "horário" -->
+    <!-- Uma chegada com o autocarro ao vivo (Carris ou CM) -->
     <plurals name="ao_vivo_paragens">
         <item quantity="one">ao vivo, a %d paragem</item>
         <item quantity="other">ao vivo, a %d paragens</item>
     </plurals>
     <string name="ao_vivo_a_chegar">ao vivo, a chegar</string>
+    <string name="atraso_e_ao_vivo">%1$s · %2$s</string>
     <string name="acessivel">Acessível a cadeira de rodas</string>
 
     <!-- Paragem -->
