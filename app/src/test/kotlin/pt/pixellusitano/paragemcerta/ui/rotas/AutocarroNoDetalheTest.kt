@@ -282,6 +282,22 @@ class AutocarroNoDetalheTest {
         assertEquals(2, rede.a("shapes/").size)
     }
 
+    @Test fun formaQueFalhaNaoTentaComOEcraEmSegundoPlano() {
+        autocarroDoPadrao()
+        rede.forma = { Resposta(500, "") }
+        regra.mainClock.autoAdvance = false
+        seguida = 2
+        abrir(Lifecycle.State.STARTED)
+        esperarPor { rede.a("shapes/").isNotEmpty() }
+        irPara(Lifecycle.State.CREATED)
+        passar(60_000)
+        quadro()
+        assertEquals(1, rede.a("shapes/").size)
+        // De volta ao ecrã, tenta logo outra vez.
+        irPara(Lifecycle.State.STARTED)
+        esperarPor { rede.a("shapes/").size == 2 }
+    }
+
     @Test fun leituraSemOAutocarroNaoPedeAFormaOutraVez() {
         // Como uma leitura cortada pelo prazo: a 2.ª consulta às chegadas não o traz (emFalta nulo) com a forma ainda a caminho.
         autocarroDoPadrao()

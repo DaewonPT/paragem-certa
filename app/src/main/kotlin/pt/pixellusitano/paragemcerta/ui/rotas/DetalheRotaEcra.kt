@@ -62,6 +62,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.emptyFlow
+import kotlinx.coroutines.flow.first
 import org.maplibre.android.geometry.LatLng
 import pt.pixellusitano.paragemcerta.R
 import pt.pixellusitano.paragemcerta.core.aovivo.troco
@@ -235,6 +236,7 @@ internal fun rememberAutocarro(repositorio: Repositorio, i: Int?, etapa: Etapa?)
         value = null // a de outro percurso não serve para este autocarro
         // Uma falha tenta-se outra vez a cada leitura dos veículos, até a forma chegar ou o percurso mudar (que cancela isto).
         while (padrao != null && value == null) {
+            ciclo.currentStateFlow.first { it.isAtLeast(Lifecycle.State.STARTED) } // fora do ecrã não pede
             value = repositorio.formaDoPadrao(padrao)
             if (value == null) delay(VEICULOS_INTERVALO.toMillis())
         }
