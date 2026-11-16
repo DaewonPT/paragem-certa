@@ -27,22 +27,27 @@ data class Linha(
 /**
  * sentido: o directionId do Transitous (0 ou 1) ou, na CM, o que sai do pattern_id (sentidoDoPadraoCm); null se a fonte não o dá.
  * padrao: o percurso da CM, sem o prefixo do operador ("3708_0_1"); null nas outras fontes.
+ * paragensEmFalta: só na CM, quando há um autocarro ligado a esta chegada e ainda antes da paragem (0 = a chegar).
+ * pelaPosicao: a prevista foi calculada pela app a partir da posição do autocarro, não veio da CM.
  */
 data class Chegada(
     val fonte: Fonte, val linhaId: String, val linhaNome: String, val destino: String,
     val programada: Instant, val prevista: Instant?, val idViagem: String?, val idVeiculo: String?,
     val modo: Modo, val cor: String?, val acessivel: Boolean?,
     val sentido: Int? = null, val padrao: String? = null,
+    val paragensEmFalta: Int? = null, val pelaPosicao: Boolean = false,
 )
 
 /**
  * id com o prefixo do operador (os números repetem-se entre operadores). viagem: o trip_id inteiro; paragem: a próxima ou
- * a atual; aChegar: a chegar a ela ou parado nela.
+ * a atual; aChegar: a chegar a ela ou parado nela. padrao: o pattern_id da CM sem o prefixo do operador; estado: o
+ * current_status da CM tal como vem ("INCOMING_AT", "STOPPED_AT", "IN_TRANSIT_TO").
  */
 data class Veiculo(
     val id: String, val linhaId: String, val lat: Double, val lon: Double, val rumo: Int?,
     val ultimoSinal: Instant, val destino: String? = null,
     val viagem: String? = null, val paragem: String? = null, val aChegar: Boolean = false,
+    val padrao: String? = null, val estado: String? = null,
 )
 
 enum class Gravidade { GRAVE, AVISO, INFO }

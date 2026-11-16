@@ -42,6 +42,7 @@ import kotlinx.serialization.Serializable
     @SerialName("trip_id") val viagem: String? = null,
     @SerialName("stop_id") val paragem: String? = null,
     @SerialName("current_status") val estado: String? = null,
+    @SerialName("pattern_id") val padrao: String? = null,
 )
 
 @Serializable internal class CmTraducoes(val translation: List<CmTraducao> = emptyList()) {

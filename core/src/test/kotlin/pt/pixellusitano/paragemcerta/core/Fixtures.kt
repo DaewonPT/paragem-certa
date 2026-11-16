@@ -2,9 +2,13 @@ package pt.pixellusitano.paragemcerta.core
 
 import pt.pixellusitano.paragemcerta.core.rede.Http
 import pt.pixellusitano.paragemcerta.core.rede.Resposta
+import java.time.Instant
 
 fun fixture(nome: String): String =
     requireNotNull(object {}.javaClass.getResource("/fixtures/$nome")) { "fixture $nome em falta" }.readText()
+
+/** O "agora" das fixtures cm-*-120321.json, gravadas juntas: 5 s depois do sinal de veículo mais recente da gravação. */
+internal val GRAVADA_120321: Instant = Instant.ofEpochSecond(1794807019)
 
 data class PedidoEnviado(val metodo: String, val url: String, val corpo: String?, val cabecalhos: Map<String, String>)
 

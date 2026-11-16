@@ -1,7 +1,6 @@
 package pt.pixellusitano.paragemcerta.core.fontes.cm
 
 import kotlinx.serialization.json.Json
-import pt.pixellusitano.paragemcerta.core.atraso.aindaPorChegar
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.enc
 import pt.pixellusitano.paragemcerta.core.modelo.Alerta
 import pt.pixellusitano.paragemcerta.core.modelo.Chegada
@@ -14,12 +13,16 @@ import pt.pixellusitano.paragemcerta.core.modelo.Veiculo
 import pt.pixellusitano.paragemcerta.core.rede.Http
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import pt.pixellusitano.paragemcerta.core.rede.pedir
+import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 
 internal val JSON = Json { ignoreUnknownKeys = true; coerceInputValues = true }
+
+/** Quanto tempo depois da hora em uso uma chegada da CM ainda vem da fonte: um autocarro atrasado não pode sumir antes de passar. */
+val JANELA_CM: Duration = Duration.ofMinutes(60)
 
 /** O percurso (pattern) inteiro de uma linha: [sentido] é o direction_id; [paragens] pela ordem em que o autocarro passa. */
 data class PadraoCm(
@@ -39,7 +42,10 @@ private fun horaCm(texto: String): Pair<LocalTime, Boolean> {
 }
 
 object CmParser {
-    /** Descarta as que já passaram (observadas ou com a hora em uso no passado) e ordena pela hora em uso. */
+    /**
+     * Descarta as observadas e as com a hora em uso há mais de [JANELA_CM], e ordena pela hora em uso. Quem quer a regra dos
+     * 30 s (Avisa-me, widget, guardadas, partidas das Rotas, modo viagem) filtra com aindaPorChegar à entrada.
+     */
     fun chegadas(json: String, agora: Instant): List<Chegada> =
         JSON.decodeFromString<List<CmChegadaJson>>(json)
             .filter { it.observada == null }
@@ -53,7 +59,7 @@ object CmParser {
                     sentido = it.padrao?.let(::sentidoDoPadraoCm), padrao = it.padrao?.let(::cmIdLimpo),
                 )
             }
-            .filter { aindaPorChegar(it, agora) }
+            .filter { !(it.prevista ?: it.programada).plus(JANELA_CM).isBefore(agora) }
             .sortedBy { it.prevista ?: it.programada }
 
     /** Cada paragem com as linhas (line_ids) que passam nela. */
@@ -102,6 +108,8 @@ object CmParser {
                 viagem = it.viagem,
                 paragem = it.paragem?.let(::cmIdLimpo),
                 aChegar = it.estado == "INCOMING_AT" || it.estado == "STOPPED_AT",
+                padrao = it.padrao?.let(::cmIdLimpo),
+                estado = it.estado,
             )
         }
 

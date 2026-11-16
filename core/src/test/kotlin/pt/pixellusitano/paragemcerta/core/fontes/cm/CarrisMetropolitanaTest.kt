@@ -6,6 +6,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import pt.pixellusitano.paragemcerta.core.GRAVADA_120321
 import pt.pixellusitano.paragemcerta.core.HttpFalso
 import pt.pixellusitano.paragemcerta.core.atraso.EstadoAtraso
 import pt.pixellusitano.paragemcerta.core.atraso.estado
@@ -40,8 +41,25 @@ class CarrisMetropolitanaTest {
         assertNull(c[1].prevista)
     }
 
-    @Test fun chegadasPassadasDesaparecem() {
-        assertTrue(CmParser.chegadas(fixture("cm-arrivals-060419.json"), Instant.parse("2026-10-26T06:35:00Z")).isEmpty())
+    @Test fun chegadasForaDaJanelaDesaparecem() {
+        // 05:29 (prevista) e 05:30 passaram há mais de 60 min; a das 06:25 fica até às 07:25.
+        assertEquals(listOf(Instant.parse("2026-10-26T06:25:00Z")),
+            CmParser.chegadas(fixture("cm-arrivals-060419.json"), Instant.parse("2026-10-26T06:35:00Z")).map { it.programada })
+        assertTrue(CmParser.chegadas(fixture("cm-arrivals-060419.json"), Instant.parse("2026-10-26T07:26:00Z")).isEmpty())
+    }
+
+    @Test fun chegadasSemAsObservadasEPelaHoraEmUso() {
+        val json = """[{"line_id":"1","scheduled_arrival_unix":1000,"estimated_arrival_unix":1300},
+            {"line_id":"2","scheduled_arrival_unix":1100},
+            {"line_id":"3","scheduled_arrival_unix":900,"observed_arrival_unix":950}]"""
+        assertEquals(listOf("2", "1"), CmParser.chegadas(json, Instant.ofEpochSecond(1000)).map { it.linhaId })
+    }
+
+    @Test fun gravacaoDe120321TemUmVeiculoDeUmaChegada() {
+        val c = CmParser.chegadas(fixture("cm-arrivals-120321.json"), GRAVADA_120321)
+        val v = CmParser.veiculos(fixture("cm-vehicles-120321.json"))
+        assertTrue(v.all { it.padrao != null && it.estado != null })
+        assertTrue(v.any { x -> c.any { it.idViagem != null && it.idViagem == x.viagem } })
     }
 
     @Test fun paragens() {
@@ -73,6 +91,8 @@ class CarrisMetropolitanaTest {
         assertEquals("[PL3CL][YA15B]3708_0_1_2530_2559_0_ESC_DU", v.viagem) // inteiro: é igual ao das chegadas
         assertEquals("020379", v.paragem)
         assertTrue(v.aChegar) // INCOMING_AT
+        assertEquals("3708_0_1", v.padrao)
+        assertEquals("INCOMING_AT", v.estado)
     }
 
     @Test fun veiculoAChegarSoAChegarOuParado() {
@@ -84,6 +104,8 @@ class CarrisMetropolitanaTest {
         assertFalse(estado(null).aChegar)
         assertEquals("020379", estado(null).paragem)
         assertNull(estado(null).viagem)
+        assertNull(estado(null).padrao)
+        assertEquals("STOPPED_AT", estado("STOPPED_AT").estado)
     }
 
     @Test fun alertasAtivos() {

@@ -26,6 +26,7 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import pt.pixellusitano.paragemcerta.BuildConfig
+import pt.pixellusitano.paragemcerta.core.atraso.aindaPorChegar
 import pt.pixellusitano.paragemcerta.core.comunidade.chaveLinha
 import pt.pixellusitano.paragemcerta.core.comunidade.chaveLinhaValida
 import pt.pixellusitano.paragemcerta.core.comunidade.paragemAFrente
@@ -231,8 +232,10 @@ class ServicoViagem : Service() {
                     is Resultado.Ok -> {
                         falhas = 0
                         proxima = agora().plus(CM_INTERVALO)
-                        chegadas = r.valor
-                        partidaAoVivo(r.valor, etapa)?.let { aplicar(Entrada.Partida(i, it, agora())) }
+                        // O modo viagem fica com a regra dos 30 s: a CM agora manda a última hora inteira.
+                        val vivas = r.valor.filter { aindaPorChegar(it, agora()) }
+                        chegadas = vivas
+                        partidaAoVivo(vivas, etapa)?.let { aplicar(Entrada.Partida(i, it, agora())) }
                     }
                     is Resultado.Falha -> proxima = agora().plus(maxOf(CM_INTERVALO, pausaDepoisDeFalha(Fonte.CM, falhas++)))
                 }
