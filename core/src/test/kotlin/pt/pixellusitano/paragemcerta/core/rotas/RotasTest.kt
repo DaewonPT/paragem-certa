@@ -270,6 +270,11 @@ class RotasTest {
         assertTrue(url(5).contains("maxPreTransitTime=300&maxPostTransitTime=300"))
     }
 
+    @Test fun urlLargaPede12E16() {
+        val url = urlPlano("https://api.transitous.org", de, para, t0, chegarAs = false, Filtros(), largo = true)
+        assertTrue(url, url.contains("time=2026-11-01T08:00:00Z&arriveBy=false&numItineraries=12&maxItineraries=16&"))
+    }
+
     @Test fun paginaUsaOCursor() {
         val url = urlPlano("https://api.transitous.org", de, para, t0, chegarAs = false, Filtros(), cursor = "LATER|1793503740")
         assertTrue("falta o cursor em $url", url.contains("&pageCursor=LATER%7C1793503740"))

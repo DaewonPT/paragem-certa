@@ -186,10 +186,16 @@ private const val MAX_A_PE_MENOS_A_PE_MIN = 10
 /**
  * Pedido de rotas do MOTIS (Transitous) com os filtros da Paragem Certa. O tempo máximo a pé vai sempre (o "menos a pé" nunca
  * passa dos 10 min); a ordem não vai (faz-se na app). [cursor] pede a página "mais cedo" ou "mais tarde" de uma resposta anterior.
+ * [largo] pede 12 rotas (até 16) em vez de 5 (até 8): o MOTIS para no numItineraries, e o pedido que começa antes de agora tem de
+ * deixar rotas futuras.
  */
-fun urlPlano(base: String, de: Lugar, para: Lugar, hora: Instant, chegarAs: Boolean, filtros: Filtros, cursor: String? = null): String = buildString {
+fun urlPlano(
+    base: String, de: Lugar, para: Lugar, hora: Instant, chegarAs: Boolean, filtros: Filtros, cursor: String? = null, largo: Boolean = false,
+): String = buildString {
     append("$base/api/v6/plan?fromPlace=${de.lat},${de.lon}&toPlace=${para.lat},${para.lon}")
-    append("&time=${hora.truncatedTo(ChronoUnit.SECONDS)}&arriveBy=$chegarAs&numItineraries=5&maxItineraries=8&language=pt")
+    append("&time=${hora.truncatedTo(ChronoUnit.SECONDS)}&arriveBy=$chegarAs")
+    append(if (largo) "&numItineraries=12&maxItineraries=16" else "&numItineraries=5&maxItineraries=8")
+    append("&language=pt")
     val aPeSegundos = (if (filtros.menosAPe) minOf(filtros.maxAPeMin, MAX_A_PE_MENOS_A_PE_MIN) else filtros.maxAPeMin) * 60
     append("&maxPreTransitTime=$aPeSegundos&maxPostTransitTime=$aPeSegundos")
     // O normal é o do servidor.
@@ -375,8 +381,10 @@ class Transitous(private val http: Http, private val base: String = "https://api
     suspend fun paragensNaZona(minLat: Double, minLon: Double, maxLat: Double, maxLon: Double): Resultado<List<Paragem>> =
         http.pedir("$base/api/v6/map/stops?min=$minLat,$minLon&max=$maxLat,$maxLon", TransitousParser::paragensNoMapa)
 
-    suspend fun planear(de: Lugar, para: Lugar, hora: Instant, chegarAs: Boolean, filtros: Filtros, cursor: String? = null): Resultado<PlanoRotas> =
-        http.pedir(urlPlano(base, de, para, hora, chegarAs, filtros, cursor), TransitousParser::plano)
+    suspend fun planear(
+        de: Lugar, para: Lugar, hora: Instant, chegarAs: Boolean, filtros: Filtros, cursor: String? = null, largo: Boolean = false,
+    ): Resultado<PlanoRotas> =
+        http.pedir(urlPlano(base, de, para, hora, chegarAs, filtros, cursor, largo), TransitousParser::plano)
 
     suspend fun lugarEm(lat: Double, lon: Double): Resultado<Lugar?> =
         http.pedir("$base/api/v1/reverse-geocode?place=$lat,$lon", TransitousParser::lugarMaisProximo)

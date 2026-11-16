@@ -3,10 +3,13 @@ package pt.pixellusitano.paragemcerta.dados
 import androidx.room.withTransaction
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -48,6 +51,7 @@ import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.modelo.Etapa
 import pt.pixellusitano.paragemcerta.core.modelo.Filtros
 import pt.pixellusitano.paragemcerta.core.modelo.Fonte
+import pt.pixellusitano.paragemcerta.core.modelo.Itinerario
 import pt.pixellusitano.paragemcerta.core.modelo.Linha
 import pt.pixellusitano.paragemcerta.core.modelo.Lugar
 import pt.pixellusitano.paragemcerta.core.modelo.Modo
@@ -62,6 +66,8 @@ import pt.pixellusitano.paragemcerta.core.regras.intervaloNormal
 import pt.pixellusitano.paragemcerta.core.regras.nomeBase
 import pt.pixellusitano.paragemcerta.core.regras.pausaDepoisDeFalha
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
+import pt.pixellusitano.paragemcerta.core.rotas.corrigirComTempoReal
+import pt.pixellusitano.paragemcerta.core.rotas.embarqueCm
 import pt.pixellusitano.paragemcerta.core.rotas.proximasPartidas as proximasDaLinha
 import java.time.Duration
 import java.time.Instant
@@ -74,6 +80,9 @@ data class EstadoChegadas(
     val semLigacao: Boolean,
     val tempoRealIndisponivel: Boolean,
 )
+
+/** O que o Início e as Rotas esperam pelas chegadas da CM para corrigir as rotas ([Repositorio.planearComTempoReal]). */
+internal val PRAZO_CHEGADAS: Duration = Duration.ofSeconds(3)
 
 /** O autocarro ao vivo de uma chegada da Carris: [paragensEmFalta] até à paragem (0 = a chegar; nunca negativo: se já passou não há [AoVivo]). */
 data class AoVivo(val idViagem: String, val paragensEmFalta: Int)
@@ -558,9 +567,9 @@ class Repositorio(
      * [cursor] = a página "mais cedo" ou "mais tarde" de uma resposta anterior (o resto do pedido tem de ser igual).
      */
     suspend fun planear(
-        de: Lugar, para: Lugar, hora: Instant, chegarAs: Boolean, f: Filtros, cursor: String? = null,
+        de: Lugar, para: Lugar, hora: Instant, chegarAs: Boolean, f: Filtros, cursor: String? = null, largo: Boolean = false,
     ): Resultado<PlanoRotas> =
-        when (val r = transitous.planear(de, para, hora, chegarAs, f, cursor)) {
+        when (val r = transitous.planear(de, para, hora, chegarAs, f, cursor, largo)) {
             is Resultado.Ok -> {
                 val itinerarios = r.valor.itinerarios
                 // Aos bocados: o SQLite aceita poucas variáveis por consulta (999 no Android 8).
@@ -568,6 +577,46 @@ class Repositorio(
                     .map { Lugar(it.nome, it.lat, it.lon, TipoLugar.PARAGEM) }
                 Resultado.Ok(r.valor.copy(itinerarios = itinerarios.comNomesAcentuados(daBase + de + para)))
             }
+            is Resultado.Falha -> r
+        }
+
+    /**
+     * As rotas de "agora": o pedido começa [ANTES_DE_AGORA] antes e pede mais rotas, para ficarem as de um autocarro atrasado.
+     * As páginas ([cursor]) repetem a mesma hora: um cursor só vale com o resto do pedido igual.
+     */
+    suspend fun planearLargo(de: Lugar, para: Lugar, agora: Instant, filtros: Filtros, cursor: String? = null): Resultado<PlanoRotas> =
+        planear(de, para, agora.minus(ANTES_DE_AGORA), false, filtros, cursor, largo = true)
+
+    /**
+     * Cada itinerário corrigido pelo atraso ao vivo do 1.º autocarro da CM ([corrigirComTempoReal]), com as chegadas das paragens
+     * de embarque que vierem dentro do prazo (sem elas fica como veio); depois tira os que partem antes de [agora].
+     * [prazoChegadas] lê-se só aqui: o widget só sabe o que lhe sobra depois de as rotas chegarem.
+     */
+    suspend fun comTempoReal(itinerarios: List<Itinerario>, agora: Instant, prazoChegadas: () -> Duration): List<Itinerario> {
+        fun Itinerario.embarque() = etapas.firstOrNull { !it.aPe }?.embarqueCm()
+        val chegadas = ConcurrentHashMap<String, List<Chegada>>()
+        // Prazo zero ou negativo: o withTimeoutOrNull devolve logo null, sem pedir nada.
+        withTimeoutOrNull(prazoChegadas().toMillis()) {
+            coroutineScope {
+                itinerarios.mapNotNullTo(HashSet()) { it.embarque() }.forEach { p ->
+                    launch { (chegadasComSituacao(RefParagem(Fonte.CM, p), agora) as? Resultado.Ok)?.let { chegadas[p] = it.valor } }
+                }
+            }
+        }
+        return itinerarios
+            .mapNotNull { i ->
+                val lista = i.embarque()?.let { chegadas[it] }
+                if (lista == null) i else corrigirComTempoReal(i, lista, agora)
+            }
+            .filter { !it.partida.isBefore(agora) }
+    }
+
+    /** [planearLargo] e depois [comTempoReal]. */
+    suspend fun planearComTempoReal(
+        de: Lugar, para: Lugar, agora: Instant, filtros: Filtros, prazoChegadas: () -> Duration, cursor: String? = null,
+    ): Resultado<PlanoRotas> =
+        when (val r = planearLargo(de, para, agora, filtros, cursor)) {
+            is Resultado.Ok -> Resultado.Ok(r.valor.copy(itinerarios = comTempoReal(r.valor.itinerarios, agora, prazoChegadas)))
             is Resultado.Falha -> r
         }
 
@@ -764,6 +813,7 @@ class Repositorio(
         val VALIDADE_ALERTAS: Duration = Duration.ofMinutes(5)
         val VALIDADE_PARTIDAS: Duration = Duration.ofSeconds(20)
         val VALIDADE_SITUACAO: Duration = Duration.ofMinutes(2)
+        val ANTES_DE_AGORA: Duration = Duration.ofMinutes(20)
         const val MAX_PADROES_NOVOS = 3
         const val RAIO_REPETIDOS_METROS = 400.0
         const val RAIO_PEDACOS_METROS = 2000.0

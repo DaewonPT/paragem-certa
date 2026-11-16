@@ -3,6 +3,7 @@ package pt.pixellusitano.paragemcerta.dados
 import androidx.room.Room
 import app.cash.turbine.test
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
@@ -42,6 +43,7 @@ import pt.pixellusitano.paragemcerta.core.rede.Http
 import pt.pixellusitano.paragemcerta.core.rede.Resposta
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import java.io.IOException
+import java.time.Duration
 import java.time.Instant
 
 /**
@@ -325,6 +327,79 @@ class RepositorioTest {
         assertEquals("EARLIER|1793498820", plano.anterior)
         assertEquals("LATER|1793503740", plano.seguinte)
         assertTrue(http.pedidos.single().contains("pageCursor=LATER%7C1793503740"))
+    }
+
+    // As rotas 1 e 3 do transitous-plan.json apanham o 210 na 060419 da CM às 02:30 e às 03:30 de 2026-11-01.
+    private val comEmbarqueCm = fixture("transitous-plan.json").replace("pt-Carris_3804", "pt-Carris-Metropolitana_360419")
+    private val tres = { Duration.ofSeconds(3) }
+    private val daqui = Lugar("A minha posição", 38.7062, -9.1442, TipoLugar.POSICAO)
+    private val oriente = Lugar("Oriente", 38.7678, -9.0990, TipoLugar.LOCAL)
+    private val as0220 = Instant.parse("2026-11-01T02:20:00Z")
+
+    // O 210 das 02:30 na 060419 com 5 min de atraso.
+    private val atrasoDas0230 = """[{"line_id":"210","headsign":"x","scheduled_arrival_unix":${Instant.parse("2026-11-01T02:30:00Z").epochSecond},""" +
+        """"estimated_arrival_unix":${Instant.parse("2026-11-01T02:35:00Z").epochSecond},"trip_id":"T1","pattern_id":"210_0_1"}]"""
+
+    private suspend fun Repositorio.semCorrecao(agora: Instant = as0220) =
+        (planearLargo(daqui, oriente, agora, Filtros()) as Resultado.Ok).valor.itinerarios
+
+    private suspend fun Repositorio.corrigidas(agora: Instant = as0220, prazo: () -> Duration = tres) =
+        (planearComTempoReal(daqui, oriente, agora, Filtros(), prazo) as Resultado.Ok).valor.itinerarios
+
+    @Test fun planearComTempoRealPede20MinAntesCom12E16() = runTest {
+        val http = HttpPorUrl("plan" to listOf({ Resposta(200, fixture("transitous-plan.json")) }))
+        val r = repo(http)
+        r.planearComTempoReal(daqui, oriente, manha, Filtros(), tres)
+        r.planearComTempoReal(daqui, oriente, manha, Filtros(), tres, cursor = "LATER|1")
+        assertEquals(2, http.pedidos.size)
+        http.pedidos.forEach { assertTrue(it, it.contains("time=2026-10-26T04:40:00Z") && it.contains("numItineraries=12&maxItineraries=16")) }
+        assertTrue(http.pedidos[1], http.pedidos[1].contains("pageCursor=LATER%7C1"))
+    }
+
+    @Test fun partidasPassadasSaemSempre() = runTest {
+        val http = HttpPorUrl("plan" to listOf({ Resposta(200, comEmbarqueCm) }), "arrivals" to listOf({ Resposta(503, "") }))
+        val r = repo(http).corrigidas(Instant.parse("2026-11-01T02:28:30Z"))
+        assertEquals(listOf("2026-11-01T02:29:00Z", "2026-11-01T03:28:00Z").map(Instant::parse), r.map { it.partida })
+    }
+
+    @Test fun atrasoDaCmCorrigeAsRotas() = runTest {
+        val repo = repo(HttpPorUrl("plan" to listOf({ Resposta(200, comEmbarqueCm) }), "arrivals" to listOf({ Resposta(200, atrasoDas0230) })))
+        // O Room guarda as chegadas fora do relógio do teste: com o prazo no relógio virtual, este saltava logo para os 3 s.
+        val r = withContext(Dispatchers.Default) { repo.corrigidas() }
+        assertEquals(Instant.parse("2026-11-01T02:33:00Z"), r[0].partida)
+        assertEquals(Instant.parse("2026-11-01T02:35:00Z"), r[0].etapas[1].partida)
+        assertTrue(r[0].etapas[1].aoVivo)
+        // O 210 das 03:30 não tem chegada na lista: fica como veio.
+        assertEquals(repo.semCorrecao()[2], r[2])
+    }
+
+    @Test fun chegadasLentasDeixamAsRotasSemCorrecaoNoPrazo() = runTest {
+        val http = object : Http {
+            override suspend fun get(url: String): Resposta = when {
+                "plan" in url -> Resposta(200, comEmbarqueCm)
+                "arrivals" in url -> { delay(10_000); Resposta(200, "[]") }
+                else -> Resposta(404, "")
+            }
+        }
+        val repo = repo(http)
+        val r = repo.corrigidas()
+        assertEquals(3_000, testScheduler.currentTime)
+        assertEquals(repo.semCorrecao(), r)
+    }
+
+    @Test fun chegadasEmFalhaDeixamAsRotasSemCorrecao() = runTest {
+        val repo = repo(HttpPorUrl("plan" to listOf({ Resposta(200, comEmbarqueCm) }), "arrivals" to listOf({ Resposta(503, "") })))
+        assertEquals(repo.semCorrecao(), repo.corrigidas())
+    }
+
+    @Test fun prazoGastoNaoPedeChegadas() = runTest {
+        for (prazo in listOf(0L, -1L)) {
+            val http = HttpPorUrl("plan" to listOf({ Resposta(200, comEmbarqueCm) }), "arrivals" to listOf({ Resposta(200, atrasoDas0230) }))
+            val repo = repo(http)
+            val r = repo.corrigidas(prazo = { Duration.ofMillis(prazo) })
+            assertEquals(0, http.pedidos.count { "arrivals" in it })
+            assertEquals(repo.semCorrecao(), r)
+        }
     }
 
     /** Uma etapa em veículo que sai da paragem [id] (null = a fonte não o dá) às [partida]. */
