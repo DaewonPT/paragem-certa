@@ -11,6 +11,7 @@ import pt.pixellusitano.paragemcerta.core.modelo.Modo
 import pt.pixellusitano.paragemcerta.core.modelo.ParagemEtapa
 import pt.pixellusitano.paragemcerta.core.modelo.TipoLugar
 import pt.pixellusitano.paragemcerta.core.modelo.Veiculo
+import pt.pixellusitano.paragemcerta.core.rotas.embarqueCm
 import java.time.Instant
 
 class AutocarroDaEtapaTest {

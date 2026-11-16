@@ -46,6 +46,7 @@ import pt.pixellusitano.paragemcerta.core.rede.emPausa
 import pt.pixellusitano.paragemcerta.core.rede.userAgent
 import pt.pixellusitano.paragemcerta.core.regras.distanciaMetros
 import pt.pixellusitano.paragemcerta.core.regras.pausaDepoisDeFalha
+import pt.pixellusitano.paragemcerta.core.rotas.chegadaDaEtapa
 import pt.pixellusitano.paragemcerta.core.viagem.Entrada
 import pt.pixellusitano.paragemcerta.core.viagem.EstadoViagem
 import pt.pixellusitano.paragemcerta.core.viagem.Evento
@@ -68,7 +69,6 @@ private const val SEM_PRECISAO = 999f
 // O mesmo teto da guarda do motor (2 h de atraso + 30 min): o telemóvel fica acordado enquanto a viagem puder correr.
 private val BLOQUEIO_MAX = Duration.ofHours(2).plusMinutes(30)
 internal val CM_INTERVALO = Duration.ofSeconds(30)
-private const val CM_TOLERANCIA_S = 90L
 private const val CM_VIAGEM_S = 60L
 /** Quem continua à espera 2 min depois da partida ao vivo do autocarro perdeu-o. */
 private val CM_PERDIDO = Duration.ofMinutes(2)
@@ -482,12 +482,7 @@ class ServicoViagem : Service() {
  * A hora a que o autocarro da etapa parte da paragem de embarque segundo o tempo real: a chegada da mesma linha cuja hora
  * programada difere até 90 s da do horário (null se não houver, ou se essa não tiver tempo real).
  */
-internal fun partidaAoVivo(chegadas: List<Chegada>, etapa: Etapa): Instant? =
-    chegadas
-        .filter { it.linhaNome == etapa.linhaNome }
-        .map { it to abs(Duration.between(it.programada, etapa.partidaProgramada).seconds) }
-        .filter { it.second <= CM_TOLERANCIA_S }
-        .minByOrNull { it.second }?.first?.prevista
+internal fun partidaAoVivo(chegadas: List<Chegada>, etapa: Etapa): Instant? = chegadaDaEtapa(chegadas, etapa)?.prevista
 
 /**
  * O trip_id (inteiro, como aparece em vehicles) do autocarro da etapa: o da chegada com tempo real da mesma linha cuja hora

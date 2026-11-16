@@ -1,6 +1,5 @@
 package pt.pixellusitano.paragemcerta.ui.rotas
 
-import pt.pixellusitano.paragemcerta.core.fontes.cm.cmParagemDeTransitous
 import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.modelo.Etapa
 import pt.pixellusitano.paragemcerta.core.modelo.Veiculo
@@ -12,13 +11,6 @@ import kotlin.math.abs
 
 /** O que o detalhe da rota diz do autocarro que se procura: ainda sem resposta, sem posição ao vivo, ou no mapa. */
 enum class EstadoAutocarro { A_PROCURAR, SEM_POSICAO, NO_MAPA }
-
-/**
- * A paragem da Carris Metropolitana onde se entra, nas etapas de autocarro da CM com linha (as únicas com posição ao vivo
- * por trip_id); nas outras, null.
- */
-internal fun Etapa.embarqueCm(): String? =
-    if (aPe || linhaNome == null) null else paragens.firstOrNull()?.id?.let(::cmParagemDeTransitous)
 
 /**
  * O autocarro da etapa: o mesmo que o modo viagem segue (viagemAoVivo) ou, depois de passar na paragem e sair das chegadas, o

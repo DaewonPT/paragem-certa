@@ -8,13 +8,16 @@ import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Assume
 import org.junit.Test
+import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.modelo.Etapa
+import pt.pixellusitano.paragemcerta.core.modelo.Fonte
 import pt.pixellusitano.paragemcerta.core.modelo.Itinerario
 import pt.pixellusitano.paragemcerta.core.modelo.Lugar
 import pt.pixellusitano.paragemcerta.core.modelo.Modo
 import pt.pixellusitano.paragemcerta.core.modelo.ParagemEtapa
 import pt.pixellusitano.paragemcerta.core.modelo.TipoLugar
 import pt.pixellusitano.paragemcerta.core.regras.distanciaMetros
+import pt.pixellusitano.paragemcerta.core.rotas.corrigirComTempoReal
 import pt.pixellusitano.paragemcerta.core.viagem.Evento.CHEGOU
 import pt.pixellusitano.paragemcerta.core.viagem.Evento.ETAPA_SEGUINTE
 import pt.pixellusitano.paragemcerta.core.viagem.Evento.PREPARA_TE
@@ -219,6 +222,18 @@ class ViagemTest {
         // Aos 400 s o autocarro vai onde o horário o punha aos 160 s.
         val aos400 = passos.first { it.entrada is Entrada.Relogio && it.entrada.hora == aos(400.0) }.depois
         assertEquals(Percurso(etapa.desenho, etapa.paragens).progressoEm(aos(160.0)), aos400.progresso, 1.0)
+    }
+
+    @Test fun planoCorrigidoNaoContaOAtrasoDuasVezes() {
+        val base = autocarro(partidaS = 120.0)
+        val etapa = base.copy(paragens = base.paragens.mapIndexed { k, p -> if (k == 0) p.copy(id = "pt-Carris-Metropolitana_360419") else p })
+        val prevista = etapa.partidaProgramada.plusSeconds(240)
+        val corrigido = corrigirComTempoReal(itinerario(etapa), listOf(Chegada(Fonte.CM, "736", "736", "Fim", etapa.partidaProgramada, prevista, "v1", null, Modo.AUTOCARRO, null, null)), t0)!!
+        val viagem = Viagem(corrigido)
+        val passos = Tracos.correr(viagem, t0, emptyList(), listOf(Entrada.Partida(0, prevista, aos(10.0))))
+        val depois = passos.first { it.entrada is Entrada.Partida }.depois
+        assertEquals(0L, depois.atrasoS)
+        assertEquals(etapa.chegada.plusSeconds(240), viagem.eta(depois))
     }
 
     @Test fun etapaDeUmaParagem() {

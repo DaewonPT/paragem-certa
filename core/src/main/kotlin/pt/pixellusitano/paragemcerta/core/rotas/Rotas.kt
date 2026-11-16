@@ -1,6 +1,7 @@
 package pt.pixellusitano.paragemcerta.core.rotas
 
 import pt.pixellusitano.paragemcerta.core.atraso.aindaPorChegar
+import pt.pixellusitano.paragemcerta.core.fontes.cm.cmParagemDeTransitous
 import pt.pixellusitano.paragemcerta.core.modelo.Chegada
 import pt.pixellusitano.paragemcerta.core.modelo.Etapa
 import pt.pixellusitano.paragemcerta.core.modelo.Etiqueta
@@ -9,6 +10,7 @@ import pt.pixellusitano.paragemcerta.core.modelo.Itinerario
 import pt.pixellusitano.paragemcerta.core.modelo.Ordem
 import java.time.Duration
 import java.time.Instant
+import kotlin.math.abs
 
 /** Polilinha codificada (formato público da Google); o Transitous usa precisão 6. */
 fun descodificarPolilinha(texto: String, precisao: Int): List<Pair<Double, Double>> {
@@ -106,4 +108,55 @@ fun proximasPartidas(chegadas: List<Chegada>, etapa: Etapa, agora: Instant, n: I
         }
         .sortedBy { it.prevista ?: it.programada }
         .take(n)
+}
+
+/**
+ * A paragem da Carris Metropolitana onde se entra, nas etapas de autocarro da CM com linha (as únicas com posição ao vivo
+ * por trip_id); nas outras, null.
+ */
+fun Etapa.embarqueCm(): String? =
+    if (aPe || linhaNome == null) null else paragens.firstOrNull()?.id?.let(::cmParagemDeTransitous)
+
+private const val TOLERANCIA_ETAPA_S = 90L
+
+/**
+ * A chegada do autocarro da [etapa]: da mesma linha, com a hora programada até 90 s da do horário, a mais perto (null se
+ * não houver). As [chegadas] são as da paragem de embarque da etapa.
+ */
+fun chegadaDaEtapa(chegadas: List<Chegada>, etapa: Etapa): Chegada? =
+    chegadas
+        .filter { it.linhaNome == etapa.linhaNome }
+        .map { it to abs(Duration.between(it.programada, etapa.partidaProgramada).seconds) }
+        .filter { it.second <= TOLERANCIA_ETAPA_S }
+        .minByOrNull { it.second }?.first
+
+private val FOLGA_A_PE: Duration = Duration.ofSeconds(30)
+
+private fun Etapa.mais(d: Duration) =
+    copy(partida = partida + d, chegada = chegada + d, paragens = paragens.map { it.copy(hora = it.hora + d) })
+
+/**
+ * O [itinerario] com o atraso ao vivo da 1.ª etapa em veículo da CM, tirado das [chegadas] da paragem de embarque. Desloca
+ * a ida a pé inicial, a etapa e, até à etapa em veículo seguinte, o resto; a partidaProgramada fica, porque o modo viagem
+ * casa o autocarro por ela. null se se perde o transbordo ou já não se chega a tempo à paragem; o mesmo itinerário se não
+ * há chegada da etapa com tempo real.
+ */
+fun corrigirComTempoReal(itinerario: Itinerario, chegadas: List<Chegada>, agora: Instant): Itinerario? {
+    val etapas = itinerario.etapas
+    val e = etapas.indexOfFirst { !it.aPe }
+    if (e < 0 || etapas[e].embarqueCm() == null) return itinerario
+    val chegada = chegadaDaEtapa(chegadas, etapas[e]) ?: return itinerario
+    val d = Duration.between(chegada.programada, chegada.prevista ?: return itinerario)
+    val f = (e + 1 until etapas.size).firstOrNull { !etapas[it].aPe }
+    val novas = etapas.mapIndexed { i, x ->
+        when {
+            i == e -> x.mais(d).copy(aoVivo = true)
+            i < (f ?: etapas.size) -> x.mais(d)
+            else -> x
+        }
+    }
+    if (f != null && novas[f - 1].chegada > etapas[f].partida) return null
+    val aPeAntes = etapas.take(e).fold(Duration.ZERO) { a, x -> a + Duration.between(x.partida, x.chegada) }
+    if (novas[e].partida < agora + aPeAntes - FOLGA_A_PE) return null
+    return itinerario.copy(etapas = novas, partida = itinerario.partida + d, chegada = if (f == null) itinerario.chegada + d else itinerario.chegada)
 }

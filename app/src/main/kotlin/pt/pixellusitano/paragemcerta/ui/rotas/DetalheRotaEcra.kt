@@ -71,6 +71,7 @@ import pt.pixellusitano.paragemcerta.core.modelo.Itinerario
 import pt.pixellusitano.paragemcerta.core.modelo.RefParagem
 import pt.pixellusitano.paragemcerta.core.modelo.Veiculo
 import pt.pixellusitano.paragemcerta.core.rede.Resultado
+import pt.pixellusitano.paragemcerta.core.rotas.embarqueCm
 import pt.pixellusitano.paragemcerta.core.viagem.rotaPassou
 import pt.pixellusitano.paragemcerta.dados.Preferencias
 import pt.pixellusitano.paragemcerta.dados.Repositorio
