@@ -58,3 +58,10 @@ fun rotuloAtraso(programada: Instant, prevista: Instant?, l: Limites = Limites()
 /** Falso quando a hora em uso (prevista ou, sem ela, programada) já passou há mais de 30 s. */
 fun aindaPorChegar(c: Chegada, agora: Instant): Boolean =
     !(c.prevista ?: c.programada).plusSeconds(30).isBefore(agora)
+
+/** Quanto tempo depois da hora em uso fica uma chegada da CM com o autocarro ainda antes da paragem. */
+val TETO_CM: Duration = Duration.ofMinutes(30)
+
+/** Com o autocarro a caminho ([Chegada.paragensEmFalta]) fica até [TETO_CM] depois da hora em uso; as outras, como [aindaPorChegar]. */
+fun aindaAMostrar(c: Chegada, agora: Instant): Boolean =
+    if (c.paragensEmFalta != null) !(c.prevista ?: c.programada).plus(TETO_CM).isBefore(agora) else aindaPorChegar(c, agora)

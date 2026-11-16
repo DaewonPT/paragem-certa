@@ -52,4 +52,12 @@ class AtrasoTest {
         assertFalse(aindaPorChegar(c(0), t0.plusSeconds(31)))
         assertTrue(aindaPorChegar(c(0), t0.plusSeconds(29)))
     }
+
+    @Test fun aCaminhoFicaAteAoTetoAsOutrasAos30s() {
+        val aCaminho = c(0).copy(paragensEmFalta = 2)
+        assertTrue(aindaAMostrar(aCaminho, t0.plusSeconds(30 * 60)))
+        assertFalse(aindaAMostrar(aCaminho, t0.plusSeconds(30 * 60 + 1)))
+        assertTrue(aindaAMostrar(c(0), t0.plusSeconds(29)))
+        assertFalse(aindaAMostrar(c(0), t0.plusSeconds(31)))
+    }
 }
