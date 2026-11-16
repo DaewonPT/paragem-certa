@@ -227,10 +227,17 @@ internal fun rememberAutocarro(repositorio: Repositorio, i: Int?, etapa: Etapa?)
     LaunchedEffect(autocarro?.viagem) { autocarro?.viagem?.let { guardada = it } }
     // Só com o autocarro ainda antes da paragem; as leituras em que ele não se mexe não pedem nem cortam outra vez.
     val emFalta = autocarro?.let { a -> chegadas.firstOrNull { it.idViagem == a.viagem }?.paragensEmFalta }
-    val trajeto by produceState(emptyList<Pair<Double, Double>>(), autocarro?.id, autocarro?.lat, autocarro?.lon, emFalta, etapa) {
+    // A forma pede-se pelo percurso, não pela posição: com a rede lenta, cada leitura dos veículos (15 s) recomeçava o pedido e o
+    // caminho nunca aparecia.
+    val padrao = autocarro?.padrao?.takeIf { emFalta != null }
+    val forma by produceState<List<Pair<Double, Double>>?>(null, padrao) {
+        value = null // a de outro percurso não serve para este autocarro
+        value = padrao?.let { repositorio.formaDoPadrao(it) }
+    }
+    val trajeto = remember(forma, autocarro?.id, autocarro?.lat, autocarro?.lon, emFalta, etapa) {
         val a = autocarro
-        value = if (a == null || etapa == null || emFalta == null) emptyList()
-        else a.padrao?.let { repositorio.formaDoPadrao(it) }?.let { troco(it, a.lat to a.lon, etapa.de.lat to etapa.de.lon) }.orEmpty()
+        if (a == null || etapa == null || emFalta == null) emptyList()
+        else forma?.let { troco(it, a.lat to a.lon, etapa.de.lat to etapa.de.lon) }.orEmpty()
     }
     return Triple(autocarro, estadoAutocarro(autocarro, voltas, veiculos != null), trajeto)
 }

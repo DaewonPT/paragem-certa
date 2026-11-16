@@ -8,6 +8,7 @@ import androidx.compose.ui.test.junit4.v2.createComposeRule
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.room.Room
+import kotlinx.coroutines.delay
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -40,12 +41,14 @@ private class RedeDaCm : Http {
     var veiculos = { Resposta(200, "[]") }
     var padrao = { Resposta(404, "") }
     var forma = { Resposta(404, "") }
+    var atrasoDaForma = 0L
     val pedidos = mutableListOf<String>()
 
     fun a(parte: String) = pedidos.filter { parte in it }
 
     override suspend fun get(url: String): Resposta {
         pedidos += url
+        if ("shapes/" in url) delay(atrasoDaForma)
         return when {
             "arrivals/by_stop/" in url -> chegadas()
             url.endsWith("vehicles") -> veiculos()
@@ -199,8 +202,11 @@ class AutocarroNoDetalheTest {
         assertTrue(veiculos() >= 2)
     }
 
-    @Test fun semEstimativaOAutocarroDoPadraoApareceComOCaminho() {
-        // A etapa daqui a 4 min; a CM só dá o horário e o percurso, e o autocarro dele está na paragem antes (020002).
+    /**
+     * A etapa daqui a 4 min; a CM só dá o horário e o percurso, e o autocarro dele está na paragem antes (020002), à latitude
+     * [lat] de cada leitura. Dá o ponto do meio da forma.
+     */
+    private fun autocarroDoPadrao(lat: () -> Double = { 38.7 }): Pair<Double, Double> {
         val partida = inicio.plusSeconds(240)
         rota = rota.copy(etapas = rota.etapas.toMutableList().also { it[2] = it[2].copy(partidaProgramada = partida) })
         val de = rota.etapas[2].de
@@ -211,7 +217,7 @@ class AutocarroNoDetalheTest {
         rede.veiculos = {
             Resposta(
                 200,
-                """[{"id":"41|1234","line_id":"3708","lat":38.7,"lon":-9.1,"timestamp":${System.currentTimeMillis()},""" +
+                """[{"id":"41|1234","line_id":"3708","lat":${lat()},"lon":-9.1,"timestamp":${System.currentTimeMillis()},""" +
                     """"trip_id":"T9","pattern_id":"3708_0_1","stop_id":"020002"}]""",
             )
         }
@@ -226,11 +232,34 @@ class AutocarroNoDetalheTest {
         rede.forma = {
             Resposta(200, """{"geojson":{"geometry":{"coordinates":[[-9.1,38.7],[${meio.second},${meio.first}],[${de.lon},${de.lat}]]}}}""")
         }
+        return meio
+    }
+
+    @Test fun semEstimativaOAutocarroDoPadraoApareceComOCaminho() {
+        val meio = autocarroDoPadrao()
+        val de = rota.etapas[2].de
         regra.mainClock.autoAdvance = false
         seguida = 2
         abrir(Lifecycle.State.STARTED)
         esperarPor { visto?.third.orEmpty().isNotEmpty() }
         assertEquals("41|1234", visto?.first?.id)
         assertEquals(listOf(38.7 to -9.1, meio, de.lat to de.lon), visto?.third)
+    }
+
+    @Test fun formaMaisLentaDoQueOsVeiculosChegaAoMapa() {
+        // Cada leitura dos veículos (15 s) traz o autocarro noutro sítio, e a forma demora mais do que isso a chegar.
+        var leitura = 0
+        autocarroDoPadrao { 38.7 + 0.0001 * leitura++ }
+        rede.atrasoDaForma = 20_000
+        regra.mainClock.autoAdvance = false
+        seguida = 2
+        abrir(Lifecycle.State.STARTED)
+        esperarPor { rede.a("shapes/").isNotEmpty() }
+        val antes = visto?.first?.lat
+        passar(16_000)
+        esperarPor { visto?.first?.lat != antes }
+        passar(6_000)
+        esperarPor { visto?.third.orEmpty().isNotEmpty() }
+        assertEquals(1, rede.a("shapes/").size)
     }
 }
