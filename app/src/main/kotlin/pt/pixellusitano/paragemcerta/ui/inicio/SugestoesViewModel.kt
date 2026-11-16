@@ -26,10 +26,12 @@ import kotlin.coroutines.EmptyCoroutineContext
 
 /**
  * As sugestões do momento dos sítios favoritos, com a entrada do Início na pilha: sobrevivem a trocar de separador, abrir uma paragem
- * e rodar o ecrã, e um pedido a meio acaba e fica guardado mesmo que o Início saia entretanto.
+ * e rodar o ecrã, e um pedido a meio acaba e fica guardado mesmo que o Início saia entretanto. [planear] dá as rotas como vieram e
+ * [corrigir] acerta-as com os atrasos ao vivo (e tira as que já partiram).
  */
 internal class SugestoesViewModel(
     private val planear: suspend (Lugar, Lugar, Instant) -> Resultado<PlanoRotas>,
+    private val corrigir: suspend (List<Itinerario>, Instant) -> List<Itinerario>,
     private val relogio: () -> Instant = Instant::now,
 ) : ViewModel() {
     val sugestoes: SnapshotStateMap<Long, Sugestao> = mutableStateMapOf()
@@ -58,8 +60,9 @@ internal class SugestoesViewModel(
         // Na linha de quem pede (a do ecrã, como antes), mas com a vida do ViewModel: sair do Início não o cancela.
         val pedido = viewModelScope.async(currentCoroutineContext()[ContinuationInterceptor] ?: EmptyCoroutineContext) {
             val partida = Lugar(MINHA_POSICAO, posicao.first, posicao.second, TipoLugar.POSICAO)
-            val i = (melhorLigacao(planear, partida, local.lugar, agora) as? Resultado.Ok)?.valor
-            sugestoes[local.id] = Sugestao(agora, posicao, i)
+            val plano = (planear(partida, local.lugar, agora) as? Resultado.Ok)?.valor?.itinerarios
+            val i = plano?.let { corrigir(it, agora).minByOrNull { c -> c.chegada } }
+            sugestoes[local.id] = Sugestao(agora, posicao, i, plano)
             if (i != null && (local.tipo == "CASA" || local.tipo == "TRABALHO")) avisarWidget(aoSugerir, local, i, posicao)
             i
         }
@@ -72,6 +75,21 @@ internal class SugestoesViewModel(
             }
         }
         return pedido.await()
+    }
+
+    /**
+     * Volta a corrigir as sugestões guardadas com os atrasos de agora e fica com a que chega primeiro, sem novo pedido de rotas.
+     * Corrige-se sempre o plano como veio: um atraso que passa tem de poder devolver a rota que tinha ficado para trás.
+     * Limite: uma correção que muda a linha não vai para o widget; o widget fica com a próxima sugestão nova.
+     */
+    suspend fun recorrigir() {
+        for ((id, s) in sugestoes.toMap()) {
+            val plano = s.plano ?: continue
+            if (id in emCurso) continue // o pedido novo vai substituí-la
+            val i = corrigir(plano, relogio()).minByOrNull { it.chegada }
+            // Só se ninguém a trocou entretanto: um pedido acabado durante a correção é mais novo.
+            if (sugestoes[id] === s) sugestoes[id] = Sugestao(s.em, s.origem, i, plano)
+        }
     }
 
     // À parte e sem deixar sair erros: um widget lento não atrasa o pedido seguinte, e um que falha não deita o Início abaixo.

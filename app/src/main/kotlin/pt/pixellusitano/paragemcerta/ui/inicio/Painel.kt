@@ -70,6 +70,7 @@ import pt.pixellusitano.paragemcerta.dados.EstadoFicheiro
 import pt.pixellusitano.paragemcerta.dados.FicheiroDoServidor
 import pt.pixellusitano.paragemcerta.dados.LinhaFavorita
 import pt.pixellusitano.paragemcerta.dados.LocalGuardado
+import pt.pixellusitano.paragemcerta.dados.PRAZO_CHEGADAS
 import pt.pixellusitano.paragemcerta.dados.ViagemRecente
 import pt.pixellusitano.paragemcerta.ui.Rotas
 import pt.pixellusitano.paragemcerta.ui.rotas.MINHA_POSICAO
@@ -421,8 +422,11 @@ private fun Chegadas(e: EstadoChegadas?, maximo: Int, linhas: Map<String, Linha>
     visiveis.take(maximo).forEach { LinhaChegada(it, linhas[it.linhaId], agora) }
 }
 
-/** A sugestão do momento guardada para um sítio: quando e de onde foi pedida (null = o pedido falhou). */
-internal class Sugestao(val em: Instant, val origem: Pair<Double, Double>, val itinerario: Itinerario?)
+/**
+ * A sugestão do momento guardada para um sítio: quando e de onde foi pedida (null = o pedido falhou). [plano]: as rotas como vieram,
+ * sem correção, para voltar a corrigir com os atrasos de cada momento.
+ */
+internal class Sugestao(val em: Instant, val origem: Pair<Double, Double>, val itinerario: Itinerario?, val plano: List<Itinerario>? = null)
 
 /** A ligação que chega mais cedo de [de] a [para]; Ok(null) = não há transportes, Falha = o pedido falhou. */
 suspend fun melhorLigacao(
@@ -449,6 +453,8 @@ fun Painel(
     aoDefinirLocal: (tipo: String) -> Unit = {},
     /** Uma sugestão nova da Casa ou do Trabalho, com a posição de onde se calculou (para o widget). */
     aoSugerir: suspend (LocalGuardado, Itinerario, Pair<Double, Double>) -> Unit = { _, _, _ -> },
+    /** O relógio das sugestões e do tique de 15 s. */
+    relogio: () -> Instant = Instant::now,
 ) {
     val favoritas by remember { repositorio.favoritas() }.collectAsStateWithLifecycle(initialValue = emptyList())
     val linhasGuardadas by remember { repositorio.linhasFavoritas() }.collectAsStateWithLifecycle(initialValue = emptyList())
@@ -456,16 +462,24 @@ fun Painel(
     val lidos by remember { repositorio.locais() }.collectAsStateWithLifecycle<List<LocalGuardado>?>(initialValue = null)
     val locais = lidos.orEmpty()
     val recentes by remember { repositorio.recentes() }.collectAsStateWithLifecycle(initialValue = emptyList())
-    val agora by produceState(Instant.now()) {
+    val agora by produceState(relogio()) {
         while (true) {
             delay(15_000)
-            value = Instant.now()
+            value = relogio()
         }
     }
     // Com a entrada do Início na pilha: voltar ao Início não volta a pedir. Casa e Trabalho (AUTOMATICO) só voltam a pedir rotas
     // passados 10 min ou se a posição mudou mais de 200 m (e sempre que o último pedido falhou). Os outros sítios (AO_TOQUE) só pedem
     // ao primeiro toque e guardam 15 min.
-    val vm = viewModel { SugestoesViewModel({ de, para, h -> repositorio.planear(de, para, h, false, Filtros()) }) }
+    // A cada tique as sugestões voltam a corrigir-se com os atrasos de agora (as chegadas ficam 20 s em memória), sem pedir rotas.
+    val vm = viewModel {
+        SugestoesViewModel(
+            { de, para, h -> repositorio.planearLargo(de, para, h, Filtros()) },
+            { lista, h -> repositorio.comTempoReal(lista, h) { PRAZO_CHEGADAS } },
+            relogio,
+        )
+    }
+    LaunchedEffect(agora) { vm.recorrigir() }
     val escopo = rememberCoroutineScope()
     LaunchedEffect(locais, posicao) {
         val p = posicao ?: return@LaunchedEffect

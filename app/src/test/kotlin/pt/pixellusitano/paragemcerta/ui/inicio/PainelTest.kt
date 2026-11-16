@@ -74,6 +74,7 @@ import pt.pixellusitano.paragemcerta.dados.HttpComEtag
 import pt.pixellusitano.paragemcerta.dados.HttpPorUrl
 import pt.pixellusitano.paragemcerta.dados.LinhaFavorita
 import pt.pixellusitano.paragemcerta.dados.LocalGuardado
+import pt.pixellusitano.paragemcerta.dados.PRAZO_CHEGADAS
 import pt.pixellusitano.paragemcerta.dados.Repositorio
 import pt.pixellusitano.paragemcerta.dados.fixture
 import pt.pixellusitano.paragemcerta.ui.rotas.MINHA_POSICAO
@@ -114,11 +115,11 @@ class PainelTest {
         ch(3, 0, lisboa), ch(5, 1, costa), ch(12, 0, lisboa), ch(15, 1, costa), ch(30, 1, costa), ch(8, 1, "Fonte da Telha", linha = "3711"),
     )
 
-    private fun repositorio(http: Http): Repositorio {
+    private fun repositorio(http: Http, relogio: () -> Instant = { Instant.parse("2026-10-26T05:00:00Z") }): Repositorio {
         val bd = Room.inMemoryDatabaseBuilder(RuntimeEnvironment.getApplication(), BaseDados::class.java)
             .allowMainThreadQueries().setQueryExecutor { it.run() }.setTransactionExecutor { it.run() }.build()
         bds += bd
-        return Repositorio(bd, CarrisMetropolitana(http), Transitous(http), GeoApi(http), relogio = { Instant.parse("2026-10-26T05:00:00Z") })
+        return Repositorio(bd, CarrisMetropolitana(http), Transitous(http), GeoApi(http), relogio = relogio)
     }
 
     private fun catalogoLinhas() = FicheiroDoServidor(pasta.root, "linhas.json", HttpComEtag({ Resposta(200, fixture("linhas.json"), "\"v1\"") }), "https://exemplo.pt/dados/linhas.json", ler = ::lerCatalogo)
@@ -431,12 +432,14 @@ class PainelTest {
     // Do Saldanha: a Casa e o café ficam a mais de 500 m, por isso a sugestão pede rotas.
     private val saldanha = 38.7369 to -9.1450
     private val sugeridas = mutableListOf<Triple<LocalGuardado, Itinerario, Pair<Double, Double>>>()
+    // Antes das partidas do transitous-plan.json: as que já partiram saem sempre das sugestões.
+    private val antesDasRotas = { Instant.parse("2026-11-01T02:00:00Z") }
 
     private fun painelComSugestoes(repo: Repositorio) {
         val linhas = catalogoLinhas()
         regra.setContent {
             TemaParagemCerta(ModoTema.CLARO) {
-                Painel(repo, saldanha, {}, {}, catalogo = linhas, aoSugerir = { l, i, de -> sugeridas += Triple(l, i, de) })
+                Painel(repo, saldanha, {}, {}, catalogo = linhas, aoSugerir = { l, i, de -> sugeridas += Triple(l, i, de) }, relogio = antesDasRotas)
             }
         }
     }
@@ -455,11 +458,36 @@ class PainelTest {
 
         val casa = runBlocking { repo.locais().first() }.single()
         val de = Lugar(MINHA_POSICAO, saldanha.first, saldanha.second, TipoLugar.POSICAO)
-        val maisCedo = (runBlocking { repo.planear(de, casa.lugar, agora, false, Filtros()) } as Resultado.Ok).valor.itinerarios.minBy { it.chegada }
+        val maisCedo = (runBlocking { repo.planearComTempoReal(de, casa.lugar, antesDasRotas(), Filtros(), { PRAZO_CHEGADAS }) } as Resultado.Ok)
+            .valor.itinerarios.minBy { it.chegada }
         assertEquals(1, sugeridas.size)
         assertEquals(casa, sugeridas[0].first)
         assertEquals(maisCedo, sugeridas[0].second)
         assertEquals(saldanha, sugeridas[0].third)
+    }
+
+    // O 210 das 02:30 na 060419 da CM, com a hora prevista [prevista].
+    private fun o210Previsto(prevista: String) =
+        """[{"line_id":"210","headsign":"x","scheduled_arrival_unix":${Instant.parse("2026-11-01T02:30:00Z").epochSecond},""" +
+            """"estimated_arrival_unix":${Instant.parse(prevista).epochSecond},"trip_id":"T1","pattern_id":"210_0_1"}]"""
+
+    @Test fun sugestaoDaCasaMudaDeLinhaComOAtrasoSemNovoPlano() {
+        val t = { Instant.parse("2026-11-01T02:00:00Z").plusMillis(regra.mainClock.currentTime) }
+        val http = HttpPorUrl(
+            "plan" to listOf({ Resposta(200, fixture("transitous-plan.json").replace("pt-Carris_3804", "pt-Carris-Metropolitana_360419")) }),
+            "map/stops" to listOf({ Resposta(200, "[]") }),
+            "arrivals" to listOf({ Resposta(200, o210Previsto("2026-11-01T02:30:00Z")) }, { Resposta(200, o210Previsto("2026-11-01T03:00:00Z")) }),
+        )
+        val repo = comCasa(repositorio(http, t))
+        val linhas = catalogoLinhas()
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { Painel(repo, saldanha, {}, {}, catalogo = linhas, relogio = t) } }
+        // A horas, o 210 chega às 02:58, antes do 208 (03:23).
+        regra.waitUntil(5_000) { regra.onAllNodesWithText("210").fetchSemanticsNodes().isNotEmpty() }
+        regra.mainClock.advanceTimeBy(31_000) // o tique dos 30 s já encontra a lista das chegadas com mais de 20 s
+        // Com 30 min de atraso, o 210 chega às 03:28: o 208 passa à frente.
+        regra.waitUntil(5_000) { regra.onAllNodesWithText("208").fetchSemanticsNodes().isNotEmpty() }
+        regra.onAllNodesWithText("210").assertCountEquals(0)
+        assertEquals(http.pedidos.toString(), 1, planos(http))
     }
 
     @Test fun widgetQueFalhaNaoDeitaAbaixoOPainel() {
@@ -472,7 +500,7 @@ class PainelTest {
         var tentativas = 0
         regra.setContent {
             TemaParagemCerta(ModoTema.CLARO) {
-                Painel(repo, saldanha, {}, {}, catalogo = linhas, aoSugerir = { _, _, _ -> tentativas++; throw IllegalStateException("o widget rebentou") })
+                Painel(repo, saldanha, {}, {}, catalogo = linhas, aoSugerir = { _, _, _ -> tentativas++; throw IllegalStateException("o widget rebentou") }, relogio = antesDasRotas)
             }
         }
         // As duas sugestões aparecem: a falha do widget na Casa não impede a do Trabalho nem o cartão.
@@ -490,7 +518,7 @@ class PainelTest {
         val linhas = catalogoLinhas()
         regra.setContent {
             TemaParagemCerta(ModoTema.CLARO) {
-                Painel(repo, saldanha, {}, {}, catalogo = linhas, aoSugerir = { _, _, _ -> awaitCancellation() })
+                Painel(repo, saldanha, {}, {}, catalogo = linhas, aoSugerir = { _, _, _ -> awaitCancellation() }, relogio = antesDasRotas)
             }
         }
         regra.waitUntil(5_000) { regra.onAllNodes(hasText("sai às", substring = true)).fetchSemanticsNodes().size == 2 }
@@ -516,7 +544,7 @@ class PainelTest {
         val linhas = catalogoLinhas()
         regra.setContent {
             TemaParagemCerta(ModoTema.CLARO) {
-                if (mostrar) Painel(repo, aqui, {}, {}, catalogo = linhas, aoSugerir = { l, i, de -> sugeridas += Triple(l, i, de) })
+                if (mostrar) Painel(repo, aqui, {}, {}, catalogo = linhas, aoSugerir = { l, i, de -> sugeridas += Triple(l, i, de) }, relogio = antesDasRotas)
             }
         }
     }

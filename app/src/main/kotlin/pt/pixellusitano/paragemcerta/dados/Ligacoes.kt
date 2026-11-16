@@ -47,7 +47,7 @@ class Ligacoes(contexto: Context) {
     val casaTrabalho = AtualizadorCasaTrabalho(
         DadosWidget(contexto.applicationContext),
         lerLocais = { repositorio.locais().first() },
-        planear = { de, para, hora -> repositorio.planear(de, para, hora, false, Filtros()) },
+        planear = { de, para, hora, prazo -> repositorio.planearComTempoReal(de, para, hora, Filtros(), prazo) },
         posicaoAtual = { posicaoAtual(contexto.applicationContext) },
         desenhar = { id, conteudo -> AppWidgetManager.getInstance(contexto).updateAppWidget(id, desenhoDoWidget(contexto.applicationContext, id, conteudo)) },
         todos = { AppWidgetManager.getInstance(contexto).getAppWidgetIds(ComponentName(contexto, WidgetCasaTrabalho::class.java)).toList() },

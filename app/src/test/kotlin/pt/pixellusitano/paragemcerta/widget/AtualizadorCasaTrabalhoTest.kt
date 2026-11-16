@@ -12,6 +12,7 @@ import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -29,6 +30,7 @@ import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import pt.pixellusitano.paragemcerta.dados.LocalGuardado
 import pt.pixellusitano.paragemcerta.ui.inicio.PosicaoComHora
 import java.io.IOException
+import java.time.Duration
 import java.time.Instant
 
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -67,11 +69,11 @@ class AtualizadorCasaTrabalhoTest {
         posicaoAtual: suspend () -> PosicaoComHora? = { null },
         lerLocais: suspend () -> List<LocalGuardado> = { locais },
         despacho: CoroutineDispatcher = StandardTestDispatcher(testScheduler),
-        planear: suspend (Lugar, Lugar, Instant) -> Resultado<PlanoRotas> = responde,
+        planear: suspend (Lugar, Lugar, Instant, () -> Duration) -> Resultado<PlanoRotas> = { de, para, em, _ -> responde(de, para, em) },
     ) = AtualizadorCasaTrabalho(
         dados,
         lerLocais,
-        { de, para, em -> pedidos += de to para; planear(de, para, em) },
+        { de, para, em, prazo -> pedidos += de to para; planear(de, para, em, prazo) },
         posicaoAtual,
         { id, c -> desenhos += id to c },
         { widgets },
@@ -169,7 +171,7 @@ class AtualizadorCasaTrabalhoTest {
 
     @Test fun pedidoQueFalhaFicaSemLigacao() = runTest {
         dados.guardarPosicao(guardada)
-        atualizador { _, para, _ -> if (para == casa.lugar) Resultado.Falha(null, false) else throw IOException("rebentou") }.atualizar()
+        atualizador { _, para, _, _ -> if (para == casa.lugar) Resultado.Falha(null, false) else throw IOException("rebentou") }.atualizar()
         assertEquals(Destino.SemLigacao("Casa"), ultimo.casa)
         assertEquals(Destino.SemLigacao("Trabalho"), ultimo.trabalho)
         assertEquals(EstadoLigacao.FALHOU, dados.ligacao("CASA")?.estado)
@@ -179,7 +181,7 @@ class AtualizadorCasaTrabalhoTest {
 
     @Test fun planoVazioFicaSemTransportes() = runTest {
         dados.guardarPosicao(guardada)
-        atualizador { _, _, _ -> Resultado.Ok(PlanoRotas(emptyList(), null, null)) }.atualizar()
+        atualizador { _, _, _, _ -> Resultado.Ok(PlanoRotas(emptyList(), null, null)) }.atualizar()
         assertEquals(Destino.SemTransportes("Casa"), ultimo.casa)
         assertEquals(EstadoLigacao.SEM_TRANSPORTES, dados.ligacao("TRABALHO")?.estado)
         atualizador().redesenhar()
@@ -191,10 +193,25 @@ class AtualizadorCasaTrabalhoTest {
     fun pedidoLentoCortaAosSeisSegundos() = runTest {
         dados.guardarPosicao(guardada)
         val nunca = CompletableDeferred<Resultado<PlanoRotas>>()
-        atualizador { de, para, em -> if (para == casa.lugar) responde(de, para, em) else withContext(NonCancellable) { nunca.await() } }.atualizar()
+        atualizador { de, para, em, _ -> if (para == casa.lugar) responde(de, para, em) else withContext(NonCancellable) { nunca.await() } }.atualizar()
         assertEquals(6_000, testScheduler.currentTime)
         assertTrue("o que respondeu a tempo conta", ultimo.casa is Destino.Ligacao)
         assertEquals(Destino.SemLigacao("Trabalho"), ultimo.trabalho)
+    }
+
+    @Test fun planoLentoEChegadasLentasMostramAsRotas() = runTest {
+        dados.guardarPosicao(guardada)
+        val prazos = mutableListOf<Duration>()
+        atualizador(planear = { de, para, em, prazo ->
+            delay(4_000)                                              // o pedido das rotas
+            prazos += prazo()
+            withTimeoutOrNull(prazos.last().toMillis()) { delay(10_000) } // as chegadas não chegam a tempo
+            responde(de, para, em)
+        }).atualizar()
+        assertEquals(listOf(Duration.ofMillis(1_700), Duration.ofMillis(1_700)), prazos) // 6 s − 4 s − 300 ms
+        assertTrue(ultimo.casa is Destino.Ligacao)
+        assertTrue(ultimo.trabalho is Destino.Ligacao)
+        assertEquals(5_700, testScheduler.currentTime)
     }
 
     @Test fun destinoPertoNaoPedeRota() = runTest {

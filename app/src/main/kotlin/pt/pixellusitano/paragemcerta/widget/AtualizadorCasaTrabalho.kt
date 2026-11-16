@@ -29,6 +29,8 @@ import java.time.Instant
 private val ENTRE_TOQUES: Duration = Duration.ofSeconds(30)
 private const val MAX_POSICAO_MS = 3_000L
 private const val MAX_PEDIDOS_MS = 6_000L
+// O que as chegadas deixam por gastar dos 6 s: a correção e o fim do pedido têm de caber antes do corte, ou as rotas perdiam-se.
+private const val MARGEM_MS = 300L
 
 /**
  * O widget "Casa e Trabalho". Só vai à rede no ↻ ([atualizar], dentro do receiver: no máximo 3 s de posição e 6 s de pedidos);
@@ -38,7 +40,8 @@ private const val MAX_PEDIDOS_MS = 6_000L
 class AtualizadorCasaTrabalho(
     private val dados: DadosWidget,
     private val lerLocais: suspend () -> List<LocalGuardado>,
-    private val planear: suspend (Lugar, Lugar, Instant) -> Resultado<PlanoRotas>,
+    /** As rotas de um destino; o 4.º argumento diz quanto tempo ainda há para as chegadas ao vivo (o que sobra dos 6 s). */
+    private val planear: suspend (Lugar, Lugar, Instant, () -> Duration) -> Resultado<PlanoRotas>,
     private val posicaoAtual: suspend () -> PosicaoComHora?,
     private val desenhar: (Int, ConteudoCasaTrabalho) -> Unit,
     private val todos: () -> Collection<Int>,
@@ -76,8 +79,12 @@ class AtualizadorCasaTrabalho(
 
         val de = Lugar(MINHA_POSICAO, posicao.lat, posicao.lon, TipoLugar.POSICAO)
         val destinos = casaETrabalho(locais).filterNotNull().filter { estadoDoLocal(it, posicao.lat to posicao.lon) != EstadoLocal.PERTO }
+        val fim = relogio().plusMillis(MAX_PEDIDOS_MS)
+        val prazo = { Duration.between(relogio(), fim).minusMillis(MARGEM_MS) }
         // Cada um no seu âmbito: o OkHttp não pára um pedido a meio, e como filho desta corrotina prendia-a até o pedido acabar.
-        val pedidos = destinos.associateWith { l -> CoroutineScope(despachoDoPedido).async { melhorLigacao(planear, de, l.lugar, agora) } }
+        val pedidos = destinos.associateWith { l ->
+            CoroutineScope(despachoDoPedido).async { melhorLigacao({ d, p, h -> planear(d, p, h, prazo) }, de, l.lugar, agora) }
+        }
         try {
             withTimeoutOrNull(MAX_PEDIDOS_MS) { pedidos.values.joinAll() }
         } finally {

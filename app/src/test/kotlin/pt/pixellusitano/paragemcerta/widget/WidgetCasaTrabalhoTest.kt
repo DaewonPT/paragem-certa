@@ -245,7 +245,7 @@ class WidgetCasaTrabalhoTest {
     /** Um verdadeiro, sobre falsos: a posição atual em Alcântara, longe dos dois. */
     private fun atualizador(lerLocais: suspend () -> List<LocalGuardado> = { listOf(casa, trabalho) }, ids: List<Int> = listOf(1)) = AtualizadorCasaTrabalho(
         dados, lerLocais,
-        planear = { _, _, em -> pedidos.incrementAndGet(); Resultado.Ok(PlanoRotas(listOf(itinerario(em)), null, null)) },
+        planear = { _, _, em, _ -> pedidos.incrementAndGet(); Resultado.Ok(PlanoRotas(listOf(itinerario(em)), null, null)) },
         posicaoAtual = { PosicaoComHora(38.7036, -9.1772, agora.toEpochMilli()) },
         desenhar = { id, c -> desenhados[id] = c },
         todos = { ids },
@@ -285,7 +285,7 @@ class WidgetCasaTrabalhoTest {
     @Test fun trocarRedesenhaComOOutroSemRede() {
         var desenho: View? = null
         val a = AtualizadorCasaTrabalho(
-            dados, { listOf(casa, trabalho) }, { _, _, _ -> pedidos.incrementAndGet(); Resultado.Falha(null, limite = false) }, { null },
+            dados, { listOf(casa, trabalho) }, { _, _, _, _ -> pedidos.incrementAndGet(); Resultado.Falha(null, limite = false) }, { null },
             desenhar = { id, c -> desenho = desenhoDoWidget(contexto, id, c).apply(contexto, FrameLayout(contexto)) },
             todos = { listOf(1, 2) }, relogio = { agora },
         )
