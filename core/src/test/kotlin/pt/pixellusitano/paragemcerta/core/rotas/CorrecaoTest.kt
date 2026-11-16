@@ -84,6 +84,15 @@ class CorrecaoTest {
         assertSame(semParagens, corrigirComTempoReal(semParagens, listOf(chegada("1103", m(7), atrasada)), t))
     }
 
+    @Test fun tempoRealDoTransitousNaoSeSomaOutraVez() {
+        // O Transitous já deu a etapa 10 min atrasada; a CM diz o mesmo atraso.
+        val jaAoVivo = itin(aPe(12, 17), autocarro("1103", 17, 37).copy(partidaProgramada = m(7), aoVivo = true), aPe(37, 42))
+        val atrasada = listOf(chegada("1103", m(7), m(17)))
+        assertEquals(jaAoVivo, corrigirComTempoReal(jaAoVivo, atrasada, t))
+        // Mas pela partida dela continua a sair quando já não se chega a tempo à paragem.
+        assertNull(corrigirComTempoReal(jaAoVivo, atrasada, m(13)))
+    }
+
     @Test fun estimativaPelaPosicaoTambemCorrige() {
         val pelaPosicao = chegada("1103", m(7), m(10)).copy(paragensEmFalta = 2, pelaPosicao = true)
         assertEquals(m(10), corrigirComTempoReal(direta, listOf(pelaPosicao), t)!!.etapas[1].partida)

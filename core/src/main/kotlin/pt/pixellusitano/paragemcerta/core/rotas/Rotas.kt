@@ -146,8 +146,10 @@ fun corrigirComTempoReal(itinerario: Itinerario, chegadas: List<Chegada>, agora:
     val e = etapas.indexOfFirst { !it.aPe }
     if (e < 0 || etapas[e].embarqueCm() == null) return itinerario
     val chegada = chegadaDaEtapa(chegadas, etapas[e]) ?: return itinerario
-    val d = Duration.between(chegada.programada, chegada.prevista ?: return itinerario)
-    val f = (e + 1 until etapas.size).firstOrNull { !etapas[it].aPe }
+    val prevista = chegada.prevista ?: return itinerario
+    // Com o tempo real da CM já no Transitous (aoVivo), a etapa traz o atraso: somá-lo outra vez contava-o a dobrar.
+    val d = if (etapas[e].aoVivo) Duration.ZERO else Duration.between(chegada.programada, prevista)
+    val f =(e + 1 until etapas.size).firstOrNull { !etapas[it].aPe }
     val novas = etapas.mapIndexed { i, x ->
         when {
             i == e -> x.mais(d).copy(aoVivo = true)
