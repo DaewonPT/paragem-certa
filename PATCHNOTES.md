@@ -2,6 +2,13 @@
 
 A versão mais recente aparece primeiro.
 
+## 0.5.7 — Autocarros atrasados à vista
+
+- Um autocarro da Carris Metropolitana atrasado já não desaparece da paragem enquanto vem a caminho. Vês a quantas paragens está.
+- Quando a Carris Metropolitana deixa de dar o tempo de um autocarro que vem a caminho, a app calcula-o pela posição dele.
+- A Casa e o Trabalho escolhem a ligação a contar com os atrasos reais da Carris Metropolitana, mesmo que compense andar até outra paragem. Nas Rotas, as horas já contam com eles.
+- Em 'Onde está o autocarro?' vês o caminho dele até à tua paragem, com setas, e o mapa aproxima-se mais devagar.
+
 ## 0.5.6 — Muitos pequenos acertos
 
 - Ao voltares do detalhe de uma rota, a lista das Rotas fica onde estava. Só volta ao topo com uma procura nova.
