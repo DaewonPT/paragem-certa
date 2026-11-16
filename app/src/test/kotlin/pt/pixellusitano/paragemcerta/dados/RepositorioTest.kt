@@ -9,6 +9,7 @@ import kotlinx.coroutines.async
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.advanceTimeBy
 import kotlinx.coroutines.test.runCurrent
 import kotlinx.coroutines.test.runTest
@@ -510,12 +511,14 @@ class RepositorioTest {
         "patterns" to listOf({ Resposta(200, fixture("cm-pattern-completo.json")) }),
     )
 
-    @Test fun situacaoDaParagemDizAsParagensEmFalta() = runTest {
+    // As leituras que precisam dos veículos correm no relógio de verdade (runBlocking, Dispatchers.Default): converter os veículos
+    // sai do relógio do teste, que saltava logo para o fim do PRAZO_SITUACAO.
+    @Test fun situacaoDaParagemDizAsParagensEmFalta() = runBlocking {
         val c = (repo(httpAoVivo()).chegadasComSituacao(terminal) as Resultado.Ok).valor.single()
         assertEquals(1, c.paragensEmFalta)
     }
 
-    @Test fun veiculosSaoUmaLeituraParaTodos() = runTest {
+    @Test fun veiculosSaoUmaLeituraParaTodos() = runBlocking {
         val http = httpAoVivo()
         val r = repo(http)
         r.chegadasComSituacao(terminal)
@@ -524,7 +527,7 @@ class RepositorioTest {
         assertEquals(1, http.pedidos.count { "vehicles" in it })
     }
 
-    @Test fun padraoPedeSeUmaVezESoComVeiculoCandidato() = runTest {
+    @Test fun padraoPedeSeUmaVezESoComVeiculoCandidato() = runBlocking {
         var agora = manha
         // Um veículo de outra viagem e de outro percurso: nenhuma chegada o pode ter, o percurso não se pede.
         val semCandidato = httpAoVivo("vehicles" to listOf({ Resposta(200, veiculoJson(viagem = "T8", padrao = "9999_0_1")) }))
@@ -539,7 +542,7 @@ class RepositorioTest {
         assertEquals(1, http.pedidos.count { "patterns" in it })
     }
 
-    @Test fun noMaximoTresPadroesNovosPorLeitura() = runTest {
+    @Test fun noMaximoTresPadroesNovosPorLeitura() = runBlocking {
         var agora = manha
         val chegadas = (1..5).joinToString(",", "[", "]") { chegadaJson("T$it", "P${it}_0_1").removeSurrounding("[", "]") }
         val veiculos = (1..5).joinToString(",", "[", "]") { veiculoJson("T$it", "P${it}_0_1").removeSurrounding("[", "]") }
@@ -579,7 +582,7 @@ class RepositorioTest {
     @Test fun ultimaSituacaoGanhaAsGuardadasAoAbrirEDepoisDeUmaFalha() = runTest {
         var agora = manha
         val r = repo(httpAoVivo("arrivals" to listOf({ Resposta(200, chegadaJson()) }, { throw IOException("sem rede") }))) { agora }
-        r.chegadasComSituacao(terminal)
+        withContext(Dispatchers.Default) { r.chegadasComSituacao(terminal) }
         agora = manha.plusSeconds(30)
         r.chegadas(terminal).test {
             val aoAbrir = awaitItem()
@@ -614,6 +617,28 @@ class RepositorioTest {
         }
     }
 
+    @Test fun veiculosSemRespostaNaoSeguramAsChegadas() = runTest {
+        var agora = manha
+        var semResposta = true
+        val aoVivo = httpAoVivo()
+        val http = object : Http {
+            override suspend fun get(url: String): Resposta {
+                // Para lá dos 120 s do OkHttp: na prática, nunca responde.
+                if ("vehicles" in url && semResposta) delay(600_000)
+                return aoVivo.get(url)
+            }
+        }
+        val r = repo(http) { agora }
+        val c = (r.chegadasComSituacao(terminal) as Resultado.Ok).valor.single()
+        assertEquals(PRAZO_SITUACAO.toMillis(), testScheduler.currentTime)
+        assertNull(c.paragensEmFalta)
+        // A leitura cortada não fica guardada: a seguinte, já com resposta (no relógio de verdade), traz a situação.
+        semResposta = false
+        agora = manha.plusSeconds(21)
+        val depois = withContext(Dispatchers.Default) { r.chegadasComSituacao(terminal) }
+        assertEquals(1, (depois as Resultado.Ok).valor.single().paragensEmFalta)
+    }
+
     @Test fun apagarDadosEsqueceASituacao() = runTest {
         val r = repo(httpAoVivo("arrivals" to listOf({ Resposta(200, chegadaJson()) }, { throw IOException("sem rede") })))
         r.chegadasComSituacao(terminal)
@@ -626,7 +651,7 @@ class RepositorioTest {
         }
     }
 
-    @Test fun padraoDeMadrugadaUsaODiaDeServicoAnterior() = runTest {
+    @Test fun padraoDeMadrugadaUsaODiaDeServicoAnterior() = runBlocking {
         val madrugada = Instant.parse("2026-11-16T00:30:00Z") // 00:30 em Lisboa: ainda o dia de serviço de 15/11
         val http = HttpPorUrl(
             "arrivals" to listOf({ Resposta(200, chegadaJson(em = madrugada)) }),

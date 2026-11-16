@@ -84,6 +84,9 @@ data class EstadoChegadas(
 /** O que o Início e as Rotas esperam pelas chegadas da CM para corrigir as rotas ([Repositorio.planearComTempoReal]). */
 internal val PRAZO_CHEGADAS: Duration = Duration.ofSeconds(3)
 
+/** O que as chegadas da CM esperam pelos veículos e pelos percursos ([Repositorio.chegadasComSituacao]) antes de seguirem sem a situação. */
+internal val PRAZO_SITUACAO: Duration = Duration.ofSeconds(4)
+
 /** O autocarro ao vivo de uma chegada da Carris: [paragensEmFalta] até à paragem (0 = a chegar; nunca negativo: se já passou não há [AoVivo]). */
 data class AoVivo(val idViagem: String, val paragensEmFalta: Int)
 
@@ -275,18 +278,23 @@ class Repositorio(
      */
     private suspend fun situar(paragemId: String, chegadas: List<Chegada>, agora: Instant): List<Chegada> {
         if (chegadas.isEmpty()) return chegadas
-        val veiculos = (lerVeiculos() as? Resultado.Ok)?.valor?.second.orEmpty()
         val viagens = chegadas.mapNotNullTo(HashSet()) { it.idViagem }
         val dasChegadas = chegadas.mapNotNullTo(HashSet()) { it.padrao }
-        // Limite: um percurso que falhou não fica guardado; volta a pedir-se na leitura seguinte (no máximo 3 de cada vez).
-        veiculos.asSequence()
-            .filter { abs(Duration.between(it.ultimoSinal, agora).seconds) <= IDADE_PROVA_S && (it.viagem in viagens || it.padrao in dasChegadas) }
-            .mapNotNull { it.padrao }
-            .filter { !padroes.containsKey(it) } // não `in`: o contains do ConcurrentHashMap procura nos valores
-            .distinct()
-            .take(MAX_PADROES_NOVOS)
-            .toList()
-            .forEach { padraoAoVivo(it, agora) }
+        var veiculos = emptyList<Veiculo>()
+        // Com a rede fraca, as chegadas ficavam à espera dos prazos do OkHttp. Passado o prazo seguem como numa falha dos veículos
+        // ou dos percursos; o pedido cortado não fica guardado e volta a fazer-se na leitura seguinte.
+        withTimeoutOrNull(PRAZO_SITUACAO.toMillis()) {
+            veiculos = (lerVeiculos() as? Resultado.Ok)?.valor?.second.orEmpty()
+            // Limite: um percurso que falhou não fica guardado; volta a pedir-se na leitura seguinte (no máximo 3 de cada vez).
+            veiculos.asSequence()
+                .filter { abs(Duration.between(it.ultimoSinal, agora).seconds) <= IDADE_PROVA_S && (it.viagem in viagens || it.padrao in dasChegadas) }
+                .mapNotNull { it.padrao }
+                .filter { !padroes.containsKey(it) } // não `in`: o contains do ConcurrentHashMap procura nos valores
+                .distinct()
+                .take(MAX_PADROES_NOVOS)
+                .toList()
+                .forEach { padraoAoVivo(it, agora) }
+        }
         return situacaoCm(chegadas, veiculos, padroes, paragemId, agora)
     }
 
