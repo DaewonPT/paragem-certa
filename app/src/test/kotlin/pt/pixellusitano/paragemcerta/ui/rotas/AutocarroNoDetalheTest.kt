@@ -62,7 +62,12 @@ class AutocarroNoDetalheTest {
     private val bd = Room.inMemoryDatabaseBuilder(contexto, BaseDados::class.java)
         .allowMainThreadQueries().setQueryExecutor { it.run() }.setTransactionExecutor { it.run() }.build()
     private val rede = RedeDaCm()
-    private val repositorio = Repositorio(bd, CarrisMetropolitana(rede), Transitous(rede), GeoApi(rede))
+    private val inicio = Instant.now()
+
+    // A leitura partilhada dos veículos envelhece pelo relógio do repositório: o do teste, para os 15 s passarem com o mainClock.
+    private val repositorio = Repositorio(
+        bd, CarrisMetropolitana(rede), Transitous(rede), GeoApi(rede), relogio = { inicio.plusMillis(regra.mainClock.currentTime) },
+    )
     private val dono = Dono()
 
     // A rota do detalhe com uma etapa da 3708 da Carris Metropolitana (a 3.ª), que entra na paragem 020047.

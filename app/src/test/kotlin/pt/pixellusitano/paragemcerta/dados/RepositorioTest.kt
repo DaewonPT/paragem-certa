@@ -5,6 +5,7 @@ import app.cash.turbine.test
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.async
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.advanceTimeBy
@@ -43,13 +44,16 @@ import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import java.io.IOException
 import java.time.Instant
 
-/** Http falso por URL: cada pedido usa a próxima resposta da fila do primeiro prefixo que coincide. */
+/**
+ * Http falso por URL: cada pedido usa a próxima resposta da fila do primeiro prefixo que coincide. Um URL sem fila leva 404
+ * (as paragens da CM agora também pedem os veículos e os percursos).
+ */
 class HttpPorUrl(vararg filas: Pair<String, List<() -> Resposta>>) : Http {
     private val filas = filas.map { it.first to it.second.toMutableList() }
     val pedidos = mutableListOf<String>()
     override suspend fun get(url: String): Resposta {
         pedidos += url
-        val fila = filas.first { url.contains(it.first) }.second
+        val fila = filas.firstOrNull { url.contains(it.first) }?.second ?: return Resposta(404, "")
         return (if (fila.size > 1) fila.removeAt(0) else fila.first())()
     }
 }
@@ -68,7 +72,8 @@ class RepositorioTest {
     private val manha = Instant.parse("2026-10-26T05:00:00Z")
     private val terminal = RefParagem(Fonte.CM, "060419")
 
-    private fun repo(http: Http) = Repositorio(bd, CarrisMetropolitana(http), Transitous(http), GeoApi(http), relogio = { manha })
+    private fun repo(http: Http, relogio: () -> Instant = { manha }) =
+        Repositorio(bd, CarrisMetropolitana(http), Transitous(http), GeoApi(http), relogio = relogio)
 
     @After fun fechar() = bd.close()
 
@@ -128,9 +133,9 @@ class RepositorioTest {
         repo(http).chegadas(terminal).test {
             assertEquals(manha.minusSeconds(5), awaitItem().atualizadoEm)
             advanceTimeBy(14_000)
-            assertEquals(0, http.pedidos.size)
+            assertEquals(0, http.pedidos.count { "arrivals" in it })
             advanceTimeBy(2_000)
-            assertEquals(1, http.pedidos.size)
+            assertEquals(1, http.pedidos.count { "arrivals" in it })
             assertEquals(manha, awaitItem().atualizadoEm)
             cancelAndIgnoreRemainingEvents()
         }
@@ -144,9 +149,9 @@ class RepositorioTest {
         repo(http).chegadas(terminal).test {
             assertEquals(manha.plusSeconds(3_600), awaitItem().atualizadoEm)
             advanceTimeBy(19_000)
-            assertEquals(0, http.pedidos.size)
+            assertEquals(0, http.pedidos.count { "arrivals" in it })
             advanceTimeBy(2_000)
-            assertEquals(1, http.pedidos.size)
+            assertEquals(1, http.pedidos.count { "arrivals" in it })
             awaitItem()
             cancelAndIgnoreRemainingEvents()
         }
@@ -342,7 +347,7 @@ class RepositorioTest {
         // A CM não separa por sentido (uma das três vai para a Costa da Caparica); ordem pela hora prevista ou, sem ela, a planeada.
         assertEquals(listOf(1792992540L, 1792992600L, 1792995900L), partidas.map { (it.prevista ?: it.programada).epochSecond })
         assertTrue(partidas.all { it.fonte == Fonte.CM && it.linhaNome == "3708" })
-        assertTrue(http.pedidos.single().contains("arrivals/by_stop/060419"))
+        assertTrue(http.pedidos.single { "arrivals" in it }.contains("arrivals/by_stop/060419"))
     }
 
     @Test fun proximasPartidasDeOutroOperadorUsamOTransitous() = runTest {
@@ -407,6 +412,154 @@ class RepositorioTest {
             assertTrue(e.tempoRealIndisponivel); assertNull(e.atualizadoEm); assertTrue(e.chegadas.isEmpty())
             cancelAndIgnoreRemainingEvents()
         }
+    }
+
+    // A 3708 na 060419 com o veículo T1 em 020002 (a paragem antes, no cm-pattern-completo.json): a 1 paragem.
+    private fun chegadaJson(viagem: String = "T1", padrao: String = "3708_0_1", em: Instant = manha) =
+        """[{"line_id":"3708","headsign":"Lisboa (C. Sodré)","scheduled_arrival_unix":${em.epochSecond + 600},""" +
+            """"estimated_arrival_unix":${em.epochSecond + 660},"trip_id":"$viagem","pattern_id":"[YA15B]$padrao"}]"""
+
+    private fun veiculoJson(viagem: String = "T1", padrao: String = "3708_0_1", em: Instant = manha) =
+        """[{"id":"[YA15B]2261","line_id":"3708","lat":38.7,"lon":-9.1,"timestamp":${em.minusSeconds(10).toEpochMilli()},""" +
+            """"trip_id":"$viagem","stop_id":"020002","pattern_id":"[PL3CL][YA15B]$padrao","current_status":"IN_TRANSIT_TO"}]"""
+
+    // O 3708_0_1 com duas versões: a de 15/11 passa em 020002 antes da 060419; a de 16/11 só tem a 060419.
+    private val VERSOES_DA_MADRUGADA = """[
+     {"id":"3708_0_1","shape_id":"F1","valid_on":["20261115"],"path":[{"stop_id":"020002","stop_sequence":1},{"stop_id":"060419","stop_sequence":2}],
+      "trips":[{"schedule":[{"stop_id":"020002","stop_sequence":1,"arrival_time":"24:20:00"},{"stop_id":"060419","stop_sequence":2,"arrival_time":"24:30:00"}]}]},
+     {"id":"3708_0_1","shape_id":"F2","valid_on":["20261116"],"path":[{"stop_id":"060419","stop_sequence":1}],
+      "trips":[{"schedule":[{"stop_id":"060419","stop_sequence":1,"arrival_time":"08:00:00"}]}]}]"""
+
+    private fun httpAoVivo(vararg extra: Pair<String, List<() -> Resposta>>) = HttpPorUrl(
+        *extra, "arrivals" to listOf({ Resposta(200, chegadaJson()) }), "vehicles" to listOf({ Resposta(200, veiculoJson()) }),
+        "patterns" to listOf({ Resposta(200, fixture("cm-pattern-completo.json")) }),
+    )
+
+    @Test fun situacaoDaParagemDizAsParagensEmFalta() = runTest {
+        val c = (repo(httpAoVivo()).chegadasComSituacao(terminal) as Resultado.Ok).valor.single()
+        assertEquals(1, c.paragensEmFalta)
+    }
+
+    @Test fun veiculosSaoUmaLeituraParaTodos() = runTest {
+        val http = httpAoVivo()
+        val r = repo(http)
+        r.chegadasComSituacao(terminal)
+        r.chegadasComSituacao(RefParagem(Fonte.CM, "060451"))
+        r.veiculos().first()
+        assertEquals(1, http.pedidos.count { "vehicles" in it })
+    }
+
+    @Test fun padraoPedeSeUmaVezESoComVeiculoCandidato() = runTest {
+        var agora = manha
+        // Um veículo de outra viagem e de outro percurso: nenhuma chegada o pode ter, o percurso não se pede.
+        val semCandidato = httpAoVivo("vehicles" to listOf({ Resposta(200, veiculoJson(viagem = "T8", padrao = "9999_0_1")) }))
+        repo(semCandidato) { agora }.chegadasComSituacao(terminal)
+        assertEquals(0, semCandidato.pedidos.count { "patterns" in it })
+        val http = httpAoVivo()
+        val r = repo(http) { agora }
+        r.chegadasComSituacao(terminal)
+        agora = manha.plusSeconds(21)
+        r.chegadasComSituacao(terminal)
+        assertEquals(2, http.pedidos.count { "arrivals" in it })
+        assertEquals(1, http.pedidos.count { "patterns" in it })
+    }
+
+    @Test fun noMaximoTresPadroesNovosPorLeitura() = runTest {
+        var agora = manha
+        val chegadas = (1..5).joinToString(",", "[", "]") { chegadaJson("T$it", "P${it}_0_1").removeSurrounding("[", "]") }
+        val veiculos = (1..5).joinToString(",", "[", "]") { veiculoJson("T$it", "P${it}_0_1").removeSurrounding("[", "]") }
+        val http = HttpPorUrl(
+            "arrivals" to listOf({ Resposta(200, chegadas) }), "vehicles" to listOf({ Resposta(200, veiculos) }),
+            "patterns" to listOf({ Resposta(200, fixture("cm-pattern-completo.json")) }),
+        )
+        val r = repo(http) { agora }
+        val padroes = { http.pedidos.count { "patterns" in it } }
+        r.chegadasComSituacao(terminal)
+        assertEquals(3, padroes())
+        agora = manha.plusSeconds(21)
+        r.chegadasComSituacao(terminal)
+        assertEquals(5, padroes())
+        agora = manha.plusSeconds(42)
+        r.chegadasComSituacao(terminal)
+        assertEquals(5, padroes())
+    }
+
+    @Test fun doisPedidosAoMesmoTempoAMesmaParagemFazemUm() = runTest {
+        val aoVivo = httpAoVivo()
+        val http = object : Http {
+            override suspend fun get(url: String): Resposta {
+                if ("arrivals" in url) delay(1_000)
+                return aoVivo.get(url)
+            }
+        }
+        val r = repo(http)
+        val a = async { r.chegadasComSituacao(terminal) }
+        val b = async { r.chegadasComSituacao(terminal) }
+        val ra = a.await()
+        assertEquals(1, aoVivo.pedidos.count { "arrivals" in it })
+        assertTrue(ra is Resultado.Ok)
+        assertEquals(ra, b.await())
+    }
+
+    @Test fun ultimaSituacaoGanhaAsGuardadasAoAbrirEDepoisDeUmaFalha() = runTest {
+        var agora = manha
+        val r = repo(httpAoVivo("arrivals" to listOf({ Resposta(200, chegadaJson()) }, { throw IOException("sem rede") }))) { agora }
+        r.chegadasComSituacao(terminal)
+        agora = manha.plusSeconds(30)
+        r.chegadas(terminal).test {
+            val aoAbrir = awaitItem()
+            assertEquals(1, aoAbrir.chegadas.single().paragensEmFalta)
+            assertEquals(manha, aoAbrir.atualizadoEm)
+            val depoisDaFalha = awaitItem()
+            assertEquals(1, depoisDaFalha.chegadas.single().paragensEmFalta)
+            assertTrue(depoisDaFalha.semLigacao)
+            cancelAndIgnoreRemainingEvents()
+        }
+        // Com mais de 2 min, ou guardada "no futuro" (o relógio andou para trás), já não serve: ficam as guardadas.
+        for (t in listOf(manha.plusSeconds(121), manha.minusSeconds(60))) {
+            agora = t
+            r.chegadas(terminal).test {
+                assertNull(awaitItem().chegadas.single().paragensEmFalta)
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+    }
+
+    @Test fun veiculosOuPadroesEmBaixoMostramAsChegadas() = runTest {
+        for ((emBaixo, codigo) in listOf("vehicles" to 503, "patterns" to 404)) {
+            // Sem nada guardado: o 1.º item é o da leitura.
+            bd.locais().apagarDadosPessoais()
+            repo(httpAoVivo(emBaixo to listOf({ Resposta(codigo, "") }))).chegadas(terminal).test {
+                val e = awaitItem()
+                assertNull(e.chegadas.single().paragensEmFalta)
+                assertFalse(e.semLigacao)
+                assertFalse(e.tempoRealIndisponivel)
+                cancelAndIgnoreRemainingEvents()
+            }
+        }
+    }
+
+    @Test fun apagarDadosEsqueceASituacao() = runTest {
+        val r = repo(httpAoVivo("arrivals" to listOf({ Resposta(200, chegadaJson()) }, { throw IOException("sem rede") })))
+        r.chegadasComSituacao(terminal)
+        r.apagarDadosDoTelemovel()
+        r.chegadas(terminal).test {
+            val e = awaitItem()
+            assertTrue(e.chegadas.isEmpty())
+            assertNull(e.atualizadoEm)
+            cancelAndIgnoreRemainingEvents()
+        }
+    }
+
+    @Test fun padraoDeMadrugadaUsaODiaDeServicoAnterior() = runTest {
+        val madrugada = Instant.parse("2026-11-16T00:30:00Z") // 00:30 em Lisboa: ainda o dia de serviço de 15/11
+        val http = HttpPorUrl(
+            "arrivals" to listOf({ Resposta(200, chegadaJson(em = madrugada)) }),
+            "vehicles" to listOf({ Resposta(200, veiculoJson(em = madrugada)) }),
+            "patterns" to listOf({ Resposta(200, VERSOES_DA_MADRUGADA) }),
+        )
+        val c = (repo(http) { madrugada }.chegadasComSituacao(terminal) as Resultado.Ok).valor.single()
+        assertEquals(1, c.paragensEmFalta) // com a versão de 16/11, sem a 020002, seria null
     }
 
     @Test fun cmNaZonaDeixaDeForaAsParagensSemLinhas() = runTest {

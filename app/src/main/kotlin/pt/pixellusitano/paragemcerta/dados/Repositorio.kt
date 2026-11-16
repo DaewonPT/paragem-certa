@@ -17,13 +17,17 @@ import kotlinx.coroutines.flow.map
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import pt.pixellusitano.paragemcerta.core.atraso.aindaPorChegar
+import pt.pixellusitano.paragemcerta.core.aovivo.IDADE_PROVA_S
 import pt.pixellusitano.paragemcerta.core.aovivo.paragensEmFalta
+import pt.pixellusitano.paragemcerta.core.aovivo.situacaoCm
 import pt.pixellusitano.paragemcerta.core.aovivo.veiculoDaCarris
 import pt.pixellusitano.paragemcerta.core.aovivo.viagemCarrisDeTransitous
 import pt.pixellusitano.paragemcerta.core.comunidade.chaveLinha
 import pt.pixellusitano.paragemcerta.core.fontes.cm.CarrisMetropolitana
 import pt.pixellusitano.paragemcerta.core.fontes.cm.CmParser
+import pt.pixellusitano.paragemcerta.core.fontes.cm.PadraoAoVivo
 import pt.pixellusitano.paragemcerta.core.fontes.cm.cmParagemDeTransitous
+import pt.pixellusitano.paragemcerta.core.fontes.cm.diaDeServicoCm
 import pt.pixellusitano.paragemcerta.core.fontes.geoapi.CodigoPostal
 import pt.pixellusitano.paragemcerta.core.fontes.geoapi.GeoApi
 import pt.pixellusitano.paragemcerta.core.fontes.geoapi.ehCodigoPostal
@@ -61,6 +65,8 @@ import pt.pixellusitano.paragemcerta.core.rede.Resultado
 import pt.pixellusitano.paragemcerta.core.rotas.proximasPartidas as proximasDaLinha
 import java.time.Duration
 import java.time.Instant
+import java.util.concurrent.ConcurrentHashMap
+import kotlin.math.abs
 
 data class EstadoChegadas(
     val chegadas: List<Chegada>,
@@ -150,11 +156,15 @@ class Repositorio(
     // O catálogo de linhas (se já chegou): dá o nome da linha aos autocarros da Carris ao vivo.
     private val catalogo: () -> Catalogo? = { null },
 ) {
-    /** Consulta ao ritmo da fonte enquanto alguém recolhe o fluxo; sem rede ou com erro, emite o último resultado bom. */
+    /**
+     * Consulta ao ritmo da fonte enquanto alguém recolhe o fluxo, com a situação ao vivo nas da CM; sem rede ou com erro, emite o
+     * último resultado bom (a última situação, se tem menos de [VALIDADE_SITUACAO], senão as guardadas).
+     */
     fun chegadas(ref: RefParagem): Flow<EstadoChegadas> = flow {
         // Mostra logo o que está guardado, para não ficar em branco enquanto a rede responde (até 120 s com rede fraca: o prazo total do OkHttpHttp).
         // Limite: sem nada guardado por chegar (de noite, ou já passou tudo) pede logo a cada regresso, como antes.
-        chegadasGuardadas(ref, relogio())?.takeIf { it.first.isNotEmpty() }?.let { (lista, em) ->
+        val aoAbrir = relogio()
+        (ultimaSituacao(ref, aoAbrir) ?: chegadasGuardadas(ref, aoAbrir))?.takeIf { it.first.isNotEmpty() }?.let { (lista, em) ->
             emit(EstadoChegadas(lista, em, semLigacao = false, tempoRealIndisponivel = false))
             // Voltar ao Início ou abrir a paragem que lá se via não pede outra vez o que se pediu há segundos: espera o resto do
             // intervalo (no máximo um inteiro, se o relógio do telemóvel andou para trás depois de guardar).
@@ -164,14 +174,14 @@ class Repositorio(
         var tentativa = 0
         while (true) {
             val agora = relogio()
-            when (val r = atualizarGuardadas(ref, agora)) {
+            when (val r = chegadasComSituacao(ref, agora, novas = true)) {
                 is Resultado.Ok -> {
                     tentativa = 0
                     emit(EstadoChegadas(r.valor, agora, semLigacao = false, tempoRealIndisponivel = false))
                     delay(intervaloNormal(ref.fonte).toMillis())
                 }
                 is Resultado.Falha -> {
-                    val (anteriores, em) = chegadasGuardadas(ref, agora) ?: (emptyList<Chegada>() to null)
+                    val (anteriores, em) = ultimaSituacao(ref, agora) ?: chegadasGuardadas(ref, agora) ?: (emptyList<Chegada>() to null)
                     emit(EstadoChegadas(anteriores, em.takeIf { anteriores.isNotEmpty() }, semLigacao = r.codigo == null, tempoRealIndisponivel = r.codigo != null))
                     delay(pausaDepoisDeFalha(ref.fonte, tentativa++).toMillis())
                 }
@@ -201,15 +211,93 @@ class Repositorio(
         return lista.filter { aindaPorChegar(it, agora) } to Instant.ofEpochSecond(g.guardadoEm)
     }
 
-    /** Veículos da Carris Metropolitana a cada 15 s; numa falha mantém a última lista e espera mais. */
+    // Um pedido de cada vez por paragem: o widget corre a Casa e o Trabalho em paralelo, e várias rotas saem da mesma paragem.
+    private val vezDasParagens = ConcurrentHashMap<RefParagem, Mutex>()
+
+    // A última lista de cada paragem (as da CM já com a situação ao vivo) e a hora a que chegou.
+    private val situadas = ConcurrentHashMap<RefParagem, Pair<Instant, List<Chegada>>>()
+
+    /**
+     * As chegadas da paragem, as da CM pela [situacaoCm] (a lista larga da fonte, guardada como em [atualizarGuardadas]). Quem
+     * pede a mesma paragem até [VALIDADE_PARTIDAS] depois usa a mesma lista, salvo com [novas]; quem chega com um pedido em voo
+     * espera por ele. Uma falha não fica guardada.
+     */
+    suspend fun chegadasComSituacao(ref: RefParagem, agora: Instant = relogio(), novas: Boolean = false): Resultado<List<Chegada>> =
+        vezDasParagens.getOrPut(ref) { Mutex() }.withLock {
+            if (!novas) situadas[ref]?.takeIf { (em, _) -> !em.isAfter(agora) && Duration.between(em, agora) <= VALIDADE_PARTIDAS }
+                ?.let { return@withLock Resultado.Ok(it.second) }
+            when (val r = atualizarGuardadas(ref, agora)) {
+                is Resultado.Ok -> {
+                    val lista = if (ref.fonte == Fonte.CM) situar(ref.id, r.valor, agora) else r.valor
+                    situadas[ref] = agora to lista
+                    Resultado.Ok(lista)
+                }
+                is Resultado.Falha -> r
+            }
+        }
+
+    /** A última lista de [chegadasComSituacao] da paragem e a hora dela, se tem até [VALIDADE_SITUACAO] (e não é "do futuro"). */
+    private fun ultimaSituacao(ref: RefParagem, agora: Instant): Pair<List<Chegada>, Instant>? =
+        situadas[ref]?.takeIf { (em, _) -> !em.isAfter(agora) && Duration.between(em, agora) <= VALIDADE_SITUACAO }?.let { (em, lista) -> lista to em }
+
+    // Os percursos ao vivo da sessão, pelo id limpo pedido (o Veiculo.padrao, que é também a chave que a situacaoCm procura).
+    private val padroes = ConcurrentHashMap<String, PadraoAoVivo>()
+
+    // Limite: um percurso fica com a versão do dia de serviço em que se leu, mesmo que a app fique aberta para lá das 04:00.
+    private suspend fun padraoAoVivo(id: String, agora: Instant): PadraoAoVivo? =
+        padroes[id] ?: (cm.padraoAoVivo(id, diaDeServicoCm(agora)) as? Resultado.Ok)?.valor?.also { padroes[id] = it }
+
+    /**
+     * As [chegadas] da CM de [paragemId] com a situação ao vivo. Pede só os percursos que faltam dos veículos frescos que podem ser
+     * de uma destas chegadas (pela viagem ou pelo percurso), no máximo [MAX_PADROES_NOVOS] de cada vez. Sem veículos, a regra de hoje.
+     */
+    private suspend fun situar(paragemId: String, chegadas: List<Chegada>, agora: Instant): List<Chegada> {
+        if (chegadas.isEmpty()) return chegadas
+        val veiculos = (lerVeiculos() as? Resultado.Ok)?.valor?.second.orEmpty()
+        val viagens = chegadas.mapNotNullTo(HashSet()) { it.idViagem }
+        val dasChegadas = chegadas.mapNotNullTo(HashSet()) { it.padrao }
+        // Limite: um percurso que falhou não fica guardado; volta a pedir-se na leitura seguinte (no máximo 3 de cada vez).
+        veiculos.asSequence()
+            .filter { abs(Duration.between(it.ultimoSinal, agora).seconds) <= IDADE_PROVA_S && (it.viagem in viagens || it.padrao in dasChegadas) }
+            .mapNotNull { it.padrao }
+            .filter { !padroes.containsKey(it) } // não `in`: o contains do ConcurrentHashMap procura nos valores
+            .distinct()
+            .take(MAX_PADROES_NOVOS)
+            .toList()
+            .forEach { padraoAoVivo(it, agora) }
+        return situacaoCm(chegadas, veiculos, padroes, paragemId, agora)
+    }
+
+    // A última leitura dos veículos da CM e a hora a que chegou: os ecrãs à vista e as paragens usam a mesma durante 15 s.
+    private var leituraVeiculos: Pair<Instant, List<Veiculo>>? = null
+
+    private val vezDosVeiculos = Mutex()
+
+    /** A leitura com menos de [INTERVALO_VEICULOS], se há; senão pede outra. Quem chega com um pedido em voo espera por ele e usa-o. */
+    private suspend fun lerVeiculos(): Resultado<Pair<Instant, List<Veiculo>>> = vezDosVeiculos.withLock {
+        val agora = relogio()
+        leituraVeiculos?.takeIf { (em, _) -> !em.isAfter(agora) && Duration.between(em, agora) < INTERVALO_VEICULOS }
+            ?.let { return@withLock Resultado.Ok(it) }
+        // Limite: uma falha não fica guardada; cada paragem à vista tenta outra vez ao seu ritmo.
+        // Limite: sem NonCancellable (ao contrário da Carris), a leitura de quem sai a meio perde-se e o seguinte pede outra; guardá-la
+        // faria o widget esperar para lá dos seus 6 s.
+        when (val r = cm.veiculos()) {
+            is Resultado.Ok -> Resultado.Ok(relogio() to r.valor).also { leituraVeiculos = it.valor }
+            is Resultado.Falha -> r
+        }
+    }
+
+    /** Veículos da Carris Metropolitana a cada 15 s, da leitura partilhada; numa falha mantém a última lista e espera mais. */
     fun veiculos(): Flow<List<Veiculo>> = flow {
         var tentativa = 0
         while (true) {
-            when (val r = cm.veiculos()) {
+            when (val r = lerVeiculos()) {
                 is Resultado.Ok -> {
                     tentativa = 0
-                    emit(r.valor)
-                    delay(INTERVALO_VEICULOS.toMillis())
+                    val (em, lista) = r.valor
+                    emit(lista)
+                    // Acorda quando a leitura faz 15 s: um ecrã aberto a meio pede a seguinte junto com os outros (um só pedido).
+                    delay(Duration.between(relogio(), em.plus(INTERVALO_VEICULOS)).toMillis().coerceIn(0, INTERVALO_VEICULOS.toMillis()))
                 }
                 is Resultado.Falha -> delay(pausaDepoisDeFalha(Fonte.CM, tentativa++).toMillis())
             }
@@ -483,19 +571,15 @@ class Repositorio(
             is Resultado.Falha -> r
         }
 
-    private val chegadasParaPartidas = mutableMapOf<RefParagem, Pair<Instant, List<Chegada>>>()
-
     /**
      * As próximas partidas da linha da primeira etapa em veículo, a partir das chegadas da paragem onde ela começa (as da
      * Carris Metropolitana pela CM, as dos outros operadores pelo Transitous). null = a etapa não tem id de paragem ou a fonte falhou.
-     * Várias rotas a sair da mesma paragem fazem um só pedido: as chegadas ficam 20 s em memória.
+     * Várias rotas a sair da mesma paragem fazem um só pedido: as chegadas ficam 20 s em memória ([chegadasComSituacao]).
      */
     suspend fun proximasPartidas(etapa: Etapa, agora: Instant = relogio()): List<Chegada>? {
         val id = etapa.paragens.firstOrNull()?.id ?: return null
         val ref = cmParagemDeTransitous(id)?.let { RefParagem(Fonte.CM, it) } ?: RefParagem(Fonte.TRANSITOUS, id)
-        val chegadas = chegadasParaPartidas[ref]?.takeIf { Duration.between(it.first, agora) < VALIDADE_PARTIDAS }?.second
-            ?: (chegadasAgora(ref, agora) as? Resultado.Ok)?.valor?.also { chegadasParaPartidas[ref] = agora to it }
-            ?: return null
+        val chegadas = (chegadasComSituacao(ref, agora) as? Resultado.Ok)?.valor ?: return null
         return proximasDaLinha(chegadas, etapa, agora)
     }
 
@@ -667,7 +751,7 @@ class Repositorio(
     suspend fun apagarDadosDoTelemovel() {
         bd.locais().apagarDadosPessoais()
         alertasEmCache = null
-        chegadasParaPartidas.clear()
+        situadas.clear()
         codigosPostais.clear()
     }
 
@@ -679,6 +763,8 @@ class Repositorio(
         const val MAX_VIAGENS_POR_ECRA = 3
         val VALIDADE_ALERTAS: Duration = Duration.ofMinutes(5)
         val VALIDADE_PARTIDAS: Duration = Duration.ofSeconds(20)
+        val VALIDADE_SITUACAO: Duration = Duration.ofMinutes(2)
+        const val MAX_PADROES_NOVOS = 3
         const val RAIO_REPETIDOS_METROS = 400.0
         const val RAIO_PEDACOS_METROS = 2000.0
         const val TIPO_PARAGEM = "PARAGEM"
