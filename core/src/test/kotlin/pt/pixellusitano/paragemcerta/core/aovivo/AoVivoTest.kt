@@ -69,4 +69,18 @@ class AoVivoTest {
         assertEquals(listOf("Azul", "Amarela", "Verde", "Vermelha"), listOf("AZ", "AM", "VD", "VM").map { nomeLinhaMetro(it) })
         assertNull(nomeLinhaMetro("XX"))
     }
+
+    private fun norte(k: Double) = 38.70 + k * 0.0009 to -9.14 // ~100 m por passo
+    private val reta = (0..10).map { norte(it.toDouble()) }
+
+    @Test fun trocoNumaReta() = assertEquals(listOf(norte(2.1)) + reta.subList(3, 8) + listOf(norte(7.9)), troco(reta, norte(2.1), norte(7.9)))
+
+    @Test fun trocoNumCircularVaiAteAoFim() { // quadrado que volta ao início; a paragem é o terminal
+        val q = listOf(38.70 to -9.14, 38.71 to -9.14, 38.71 to -9.13, 38.70 to -9.13, 38.70 to -9.14)
+        assertEquals(listOf(38.71 to -9.13, 38.70 to -9.13, 38.70 to -9.14), troco(q, 38.71 to -9.13, 38.70 to -9.14))
+    }
+
+    @Test fun autocarroNaParagemDaSoAsPontas() = assertEquals(listOf(norte(5.0), norte(5.0)), troco(reta, norte(5.0), norte(5.0)))
+
+    @Test fun autocarroDepoisDaParagemDaVazio() = assertEquals(emptyList<Pair<Double, Double>>(), troco(reta, norte(8.0), norte(3.0)))
 }

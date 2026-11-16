@@ -4,6 +4,7 @@ import pt.pixellusitano.paragemcerta.core.fontes.servidor.VeiculoCarrisRemoto
 import pt.pixellusitano.paragemcerta.core.fontes.transitous.chaveDoNome
 import pt.pixellusitano.paragemcerta.core.linhas.Catalogo
 import pt.pixellusitano.paragemcerta.core.modelo.Veiculo
+import pt.pixellusitano.paragemcerta.core.regras.distanciaMetros
 import java.time.Instant
 
 private const val PREFIXO_CARRIS = "pt-Carris_"
@@ -41,3 +42,20 @@ fun chaveMetro(nomeLinha: String): String? {
 
 /** "AZ" → "Azul", "AM" → "Amarela", "VD" → "Verde", "VM" → "Vermelha"; outra chave → null. */
 fun nomeLinhaMetro(chave: String): String? = LINHAS_METRO[chave]
+
+// Mais longe do que isto, o ponto da forma não é a paragem: o autocarro já a passou.
+private const val TROCO_PERTO_M = 100.0
+
+/**
+ * O pedaço da [forma] (lat, lon) do autocarro [de] até à paragem [ate], com os dois nas pontas e os pontos pela ordem da marcha.
+ * A paragem procura-se só a partir do ponto do autocarro, para um circular ir até ao fim e não voltar ao início. Vazio sem forma
+ * ou com o autocarro depois da paragem.
+ */
+fun troco(forma: List<Pair<Double, Double>>, de: Pair<Double, Double>, ate: Pair<Double, Double>): List<Pair<Double, Double>> {
+    fun dist(a: Pair<Double, Double>, b: Pair<Double, Double>) = distanciaMetros(a.first, a.second, b.first, b.second)
+    if (forma.isEmpty()) return emptyList()
+    val i = forma.indices.minBy { dist(forma[it], de) }
+    val j = (i..forma.lastIndex).minBy { dist(forma[it], ate) }
+    if (dist(forma[j], ate) > TROCO_PERTO_M) return emptyList()
+    return listOf(de) + forma.subList(minOf(i + 1, j), j) + listOf(ate)
+}
