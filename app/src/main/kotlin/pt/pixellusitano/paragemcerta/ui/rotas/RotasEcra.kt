@@ -66,6 +66,7 @@ import pt.pixellusitano.paragemcerta.core.modelo.Itinerario
 import pt.pixellusitano.paragemcerta.core.modelo.Lugar
 import pt.pixellusitano.paragemcerta.core.modelo.Modo
 import pt.pixellusitano.paragemcerta.dados.Comunidade
+import pt.pixellusitano.paragemcerta.dados.PRAZO_CHEGADAS
 import pt.pixellusitano.paragemcerta.dados.Preferencias
 import pt.pixellusitano.paragemcerta.dados.Repositorio
 import pt.pixellusitano.paragemcerta.ui.AjustarBarraDeEstado
@@ -109,6 +110,7 @@ fun RotasEcra(
         RotasViewModel(
             repositorio::planear, repositorio::registarRecente, repositorio::linhasComAlerta,
             preferencias.filtros, preferencias::definirFiltros, { repositorio.proximasPartidas(it) }, origem = origem, destino = destino,
+            planearAgora = { de, para, agora, f, cursor -> repositorio.planearComTempoReal(de, para, agora, f, { PRAZO_CHEGADAS }, cursor) },
         )
     }
     val pedido by vm.pedido.collectAsStateWithLifecycle()

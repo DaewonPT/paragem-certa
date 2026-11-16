@@ -98,6 +98,8 @@ class RotasViewModel(
     private val relogio: () -> Instant = Instant::now,
     origem: Lugar? = null,
     destino: Lugar? = null,
+    /** Para "partir agora": as rotas já corrigidas com os atrasos da CM; null = [planear], como com hora escolhida. */
+    private val planearAgora: (suspend (Lugar, Lugar, Instant, Filtros, String?) -> Resultado<PlanoRotas>)? = null,
 ) : ViewModel() {
     private val _pedido = MutableStateFlow(PedidoRotas(origem, destino))
     val pedido: StateFlow<PedidoRotas> = _pedido.asStateFlow()
@@ -275,8 +277,13 @@ class RotasViewModel(
                     val hora = p.hora?.let { proximaOcorrencia(it, agora.atZone(LISBOA_FUSO)).toInstant() } ?: agora
                     val chegarAs = p.tipoHora == TipoHora.CHEGAR
                     val filtros = _filtros.value
-                    pedirPagina = { cursor -> planear(origem, destino, hora, chegarAs, filtros, cursor) }
-                    when (val r = planear(origem, destino, hora, chegarAs, filtros, null)) {
+                    // Só "partir agora" se corrige (as chegadas de agora nada dizem de outra hora); as páginas usam o mesmo agora.
+                    val tempoReal = planearAgora.takeIf { p.tipoHora == TipoHora.AGORA }
+                    val pedir: suspend (String?) -> Resultado<PlanoRotas> =
+                        if (tempoReal != null) { cursor -> tempoReal(origem, destino, agora, filtros, cursor) }
+                        else { cursor -> planear(origem, destino, hora, chegarAs, filtros, cursor) }
+                    pedirPagina = pedir
+                    when (val r = pedir(null)) {
                         is Resultado.Ok ->
                             if (r.valor.itinerarios.isEmpty()) _estado.value = EstadoRotas.Vazias(Motivo.SEM_LIGACOES)
                             else {

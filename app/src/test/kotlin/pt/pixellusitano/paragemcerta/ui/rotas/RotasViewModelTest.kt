@@ -57,8 +57,13 @@ class RotasViewModelTest {
     private var partidasDaParagem: List<Chegada>? = null
     private var agora = Instant.parse("2026-11-01T09:00:00Z")
     private val horasPedidas = mutableListOf<Instant>()
+    private val pedidosAgora = mutableListOf<Pair<Instant, String?>>()
 
-    private fun vm(guardados: Flow<Filtros> = filtros) = RotasViewModel(
+    private fun vm(
+        guardados: Flow<Filtros> = filtros,
+        planearAgora: (suspend (String?) -> Resultado<PlanoRotas>)? = null,
+        proximasPartidas: suspend (Etapa) -> List<Chegada>? = { etapa -> etapasPedidas += etapa; partidasDaParagem },
+    ) = RotasViewModel(
         planear = { de, para, hora, _, f, cursor ->
             pedidos += de to para; filtrosUsados += f; cursoresPedidos += cursor; horasPedidas += hora
             if (cursor == null) resposta else respostaPagina
@@ -67,12 +72,26 @@ class RotasViewModelTest {
         linhasComAlerta = { emptySet() },
         filtrosGuardados = guardados,
         guardarFiltros = { filtros.value = it },
-        proximasPartidas = { etapa -> etapasPedidas += etapa; partidasDaParagem },
+        proximasPartidas = proximasPartidas,
         relogio = { agora },
+        planearAgora = if (planearAgora == null) null else { _, _, hora, _, cursor ->
+            pedidosAgora += hora to cursor
+            planearAgora(cursor)
+        },
     )
 
     private fun plano(vararg itinerarios: Itinerario, anterior: String? = null, seguinte: String? = null) =
         Resultado.Ok(PlanoRotas(itinerarios.toList(), anterior, seguinte))
+
+    /** Uma rota só de autocarro da [linha], a sair [partidaMin] minutos depois de agora. */
+    private fun rota(linha: String, partidaMin: Long, duracaoMin: Long): Itinerario {
+        val parte = agora.plusSeconds(partidaMin * 60)
+        val chega = parte.plusSeconds(duracaoMin * 60)
+        val etapa = Etapa(
+            false, Modo.AUTOCARRO, linha, "id$linha", "Oriente", cais, oriente, parte, chega, parte, false, 0, emptyList(), null,
+        )
+        return Itinerario(listOf(etapa), parte, chega, 0)
+    }
 
     private fun partida(linha: String, minutos: Long) = Chegada(
         Fonte.TRANSITOUS, "id$linha", linha, "Oriente", Instant.parse("2026-11-01T09:00:00Z").plusSeconds(minutos * 60), null, null, null,
@@ -310,6 +329,43 @@ class RotasViewModelTest {
         assertEquals(rotas[0], vm.aberto.value)
         assertEquals(1, vm.seguida.value)
         assertTrue(vm.preparar.value)
+    }
+
+    @Test fun agoraCorrigidoOrdenaEPartidasPeloIndiceCerto() = runTest(despachante) {
+        // Já corrigidas: a 1103 sai primeiro mas demora mais, e a lista mostra a 1502 (a mais rápida) à frente.
+        val vm = vm(
+            planearAgora = { plano(rota("1103", 5, 40), rota("1502", 8, 25)) },
+            proximasPartidas = { e -> listOf(partida(e.linhaNome!!, 5)) },
+        )
+        vm.definirOrigem(cais)
+        vm.definirDestino(oriente)
+        advanceUntilIdle()
+        val prontas = vm.estado.value as EstadoRotas.Prontas
+        assertEquals(listOf("1502", "1103"), prontas.itinerarios.map { it.etapas.single().linhaNome })
+        assertEquals("1502", prontas.partidas[0]!!.single().linhaNome)
+        assertTrue(pedidos.isEmpty())
+    }
+
+    @Test fun paginasDeAgoraRepetemAMesmaHora() = runTest(despachante) {
+        val vm = vm(planearAgora = { plano(rota("1103", 5, 40), seguinte = "LATER|1") })
+        vm.definirOrigem(cais)
+        vm.definirDestino(oriente)
+        advanceUntilIdle()
+        val inicio = agora
+        agora = agora.plusSeconds(300)
+        vm.maisTarde()
+        advanceUntilIdle()
+        assertEquals(listOf(inicio to null, inicio to "LATER|1"), pedidosAgora)
+    }
+
+    @Test fun horaEscolhidaNaoUsaOTempoReal() = runTest(despachante) {
+        val vm = vm(planearAgora = { plano(rota("1103", 5, 40)) })
+        vm.definirHora(TipoHora.PARTIR, LocalTime.of(10, 0))
+        vm.definirOrigem(cais)
+        vm.definirDestino(oriente)
+        advanceUntilIdle()
+        assertTrue(pedidosAgora.isEmpty())
+        assertEquals(1, pedidos.size)
     }
 
     @Test fun listaComHoraEscolhidaNaoEnvelhece() = runTest(despachante) {
