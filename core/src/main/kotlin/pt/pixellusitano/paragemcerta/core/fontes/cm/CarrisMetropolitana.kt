@@ -17,6 +17,7 @@ import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
 internal val JSON = Json { ignoreUnknownKeys = true; coerceInputValues = true }
@@ -30,6 +31,12 @@ data class PadraoCm(
 )
 
 /**
+ * A versão do percurso do dia de serviço, para ligar um autocarro a uma chegada pela posição: [paragens] pela ordem do path;
+ * [segundos] (um por paragem) o que uma viagem leva da 1.ª paragem até cada uma, vazio se nenhum horário cobre o path todo.
+ */
+data class PadraoAoVivo(val id: String, val paragens: List<String>, val formaId: String?, val segundos: List<Int>)
+
+/**
  * As horas de um grupo de viagens nas paragens do percurso, nos [dias] ("AAAAMMDD") em que corre. Uma hora do GTFS depois da
  * meia-noite ("25:10:00") passa a 01:10 e a paragem fica em [depoisDaMeiaNoite], para o fim do dia de serviço não voltar ao princípio.
  */
@@ -40,6 +47,15 @@ private fun horaCm(texto: String): Pair<LocalTime, Boolean> {
     val (h, m, s) = texto.split(':').map(String::toInt)
     return LocalTime.of(h % 24, m, s) to (h >= 24)
 }
+
+/** "24:01:00" → 86 460: sem dar a volta à meia-noite, para a diferença entre duas paragens da mesma viagem ficar certa. */
+private fun segundosCm(texto: String): Int {
+    val (h, m, s) = texto.split(':').map(String::toInt)
+    return h * 3600 + m * 60 + s
+}
+
+/** O dia de serviço da CM, que vai das 04:00 às 04:00 de Lisboa (como o site dela): de madrugada ainda é o dia anterior. */
+fun diaDeServicoCm(agora: Instant): LocalDate = agora.atZone(ZoneId.of("Europe/Lisbon")).toLocalDateTime().minusHours(4).toLocalDate()
 
 object CmParser {
     /**
@@ -90,6 +106,20 @@ object CmParser {
                 HorarioCm(g.dias.toSet(), horas.mapValues { it.value.first }, horas.filterValues { it.second }.keys)
             },
         )
+    }
+
+    /** A versão cujo `valid_on` tem o [dia] de serviço (ou a 1.ª), com as horas da 1.ª viagem que passa em todo o path. */
+    fun padraoAoVivo(json: String, dia: LocalDate): PadraoAoVivo {
+        val versoes = JSON.decodeFromString<List<CmPadraoJson>>(json)
+        val d = dia.format(DateTimeFormatter.BASIC_ISO_DATE)
+        val v = versoes.firstOrNull { d in it.dias } ?: versoes.firstOrNull() ?: error("percurso em falta")
+        val path = v.path.sortedBy { it.ordem }
+        // Pelo stop_sequence, não pelo stop_id: um circular passa duas vezes na mesma paragem.
+        val horas = v.trips.firstNotNullOfOrNull { g ->
+            val porOrdem = g.schedule.associate { it.ordem to segundosCm(it.hora) }
+            path.map { porOrdem[it.ordem] ?: return@firstNotNullOfOrNull null }
+        }.orEmpty()
+        return PadraoAoVivo(cmIdLimpo(v.id), path.map { cmIdLimpo(it.paragem) }, v.forma, horas.map { it - horas.first() })
     }
 
     /** Os pontos do GeoJSON do `shapes/{id}`, que dá [lon, lat], como (lat, lon). */
@@ -153,6 +183,10 @@ class CarrisMetropolitana(private val http: Http, private val base: String = "ht
     suspend fun linhasJson(): Resultado<String> = http.pedir("${base}lines") { it }
 
     suspend fun padraoCompleto(id: String): Resultado<PadraoCm> = http.pedir("${base}patterns/${enc(id)}", CmParser::padraoCompleto)
+
+    /** [id] limpo: o `patterns/{id}` só responde assim. */
+    suspend fun padraoAoVivo(id: String, dia: LocalDate): Resultado<PadraoAoVivo> =
+        http.pedir("${base}patterns/${enc(id)}") { CmParser.padraoAoVivo(it, dia) }
 
     /** O id da forma tem "[" e "]" do operador ("[2QDAD]3708_0_1"): vai codificado. */
     suspend fun forma(formaId: String): Resultado<List<Pair<Double, Double>>> = http.pedir("${base}shapes/${enc(formaId)}", CmParser::forma)

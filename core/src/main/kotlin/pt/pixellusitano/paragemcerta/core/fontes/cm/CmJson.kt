@@ -81,6 +81,7 @@ import kotlinx.serialization.Serializable
 @Serializable internal class CmHoraJson(
     @SerialName("stop_id") val paragem: String,
     @SerialName("arrival_time") val hora: String,
+    @SerialName("stop_sequence") val ordem: Int = 0,
 )
 
 /** Um grupo de viagens do percurso com o mesmo horário: `valid_on` são os dias ("20261103") em que corre. */
@@ -94,6 +95,7 @@ import kotlinx.serialization.Serializable
     val headsign: String = "",
     @SerialName("direction_id") val sentido: Int? = null,
     @SerialName("shape_id") val forma: String? = null,
+    @SerialName("valid_on") val dias: List<String> = emptyList(),
     val path: List<CmPontoPercurso> = emptyList(),
     val trips: List<CmGrupoJson> = emptyList(),
 )

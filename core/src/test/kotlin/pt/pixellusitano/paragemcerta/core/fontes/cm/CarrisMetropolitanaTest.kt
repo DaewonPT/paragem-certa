@@ -191,6 +191,49 @@ class CarrisMetropolitanaTest {
         assertTrue(CarrisMetropolitana(HttpFalso({ Resposta(200, "{}") })).padraoCompleto("3708_0_1") is Resultado.Falha)
     }
 
+    private val DUAS_VERSOES = """[
+     {"id":"[X]1103_0_1","shape_id":"S1","valid_on":["20261115"],
+      "path":[{"stop_id":"A","stop_sequence":1},{"stop_id":"B","stop_sequence":2}],
+      "trips":[{"schedule":[{"stop_id":"A","stop_sequence":1,"arrival_time":"08:00:00"},{"stop_id":"B","stop_sequence":2,"arrival_time":"08:03:00"}]}]},
+     {"id":"[X]1103_0_1","shape_id":"S2","valid_on":["20261116"],
+      "path":[{"stop_id":"A","stop_sequence":1},{"stop_id":"C","stop_sequence":2}],
+      "trips":[{"schedule":[{"stop_id":"A","stop_sequence":1,"arrival_time":"23:59:00"},{"stop_id":"C","stop_sequence":2,"arrival_time":"24:01:00"}]}]}]"""
+
+    @Test fun padraoAoVivoDoPercurso() {
+        val p = CmParser.padraoAoVivo(fixture("cm-pattern-completo.json"), LocalDate.of(2026, 11, 3))
+        assertEquals("3708_0_1", p.id)
+        assertEquals(listOf("020735", "020002", "060419"), p.paragens)
+        assertEquals("[2QDAD]3708_0_1", p.formaId)
+        assertEquals(listOf(0, 60, 4200), p.segundos)
+    }
+
+    @Test fun padraoAoVivoEscolheAVersaoDoDia() {
+        val hoje = CmParser.padraoAoVivo(DUAS_VERSOES, LocalDate.of(2026, 11, 16))
+        assertEquals("S2", hoje.formaId)
+        assertEquals(listOf("A", "C"), hoje.paragens)
+        assertEquals(listOf(0, 120), hoje.segundos) // 23:59 → 24:01
+        assertEquals("S1", CmParser.padraoAoVivo(DUAS_VERSOES, LocalDate.of(2026, 11, 20)).formaId) // nenhuma tem o dia: a 1.ª
+    }
+
+    @Test fun padraoAoVivoSemHorarioQueCubraOPathFicaSemSegundos() {
+        val semB = DUAS_VERSOES.replace(
+            """{"stop_id":"B","stop_sequence":2,"arrival_time":"08:03:00"}""", """{"stop_id":"Z","stop_sequence":9,"arrival_time":"08:03:00"}""",
+        )
+        assertEquals(emptyList<Int>(), CmParser.padraoAoVivo(semB, LocalDate.of(2026, 11, 15)).segundos)
+    }
+
+    @Test fun padraoAoVivoPedeOIdLimpo() = runTest {
+        val http = HttpFalso({ Resposta(200, fixture("cm-pattern-completo.json")) })
+        CarrisMetropolitana(http).padraoAoVivo("3708_0_1", LocalDate.of(2026, 11, 3))
+        assertTrue(http.pedidos.single().endsWith("patterns/3708_0_1"))
+    }
+
+    @Test fun diaDeServicoDaCmVaiDas4As4() {
+        assertEquals(LocalDate.of(2026, 11, 15), diaDeServicoCm(Instant.parse("2026-11-16T00:30:00Z")))
+        assertEquals(LocalDate.of(2026, 11, 16), diaDeServicoCm(Instant.parse("2026-11-16T04:00:00Z")))
+        assertEquals(LocalDate.of(2026, 7, 14), diaDeServicoCm(Instant.parse("2026-07-15T02:30:00Z"))) // 03:30 em Lisboa, hora de verão
+    }
+
     @Test fun formaCmDoGeojson() = runTest {
         val http = HttpFalso({ Resposta(200, fixture("cm-shape.json")) })
         val forma = (CarrisMetropolitana(http).forma("[2QDAD]3708_0_1") as Resultado.Ok).valor
