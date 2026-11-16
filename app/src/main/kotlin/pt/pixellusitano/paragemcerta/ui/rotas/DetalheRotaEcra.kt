@@ -78,6 +78,7 @@ import pt.pixellusitano.paragemcerta.core.viagem.rotaPassou
 import pt.pixellusitano.paragemcerta.dados.Preferencias
 import pt.pixellusitano.paragemcerta.dados.Repositorio
 import pt.pixellusitano.paragemcerta.viagem.CM_INTERVALO
+import pt.pixellusitano.paragemcerta.viagem.VEICULOS_INTERVALO
 import pt.pixellusitano.paragemcerta.ui.comum.LISBOA_FUSO
 import pt.pixellusitano.paragemcerta.ui.comum.LocalLimites
 import pt.pixellusitano.paragemcerta.ui.comum.SeloLinha
@@ -227,12 +228,16 @@ internal fun rememberAutocarro(repositorio: Repositorio, i: Int?, etapa: Etapa?)
     LaunchedEffect(autocarro?.viagem) { autocarro?.viagem?.let { guardada = it } }
     // Só com o autocarro ainda antes da paragem; as leituras em que ele não se mexe não pedem nem cortam outra vez.
     val emFalta = autocarro?.let { a -> chegadas.firstOrNull { it.idViagem == a.viagem }?.paragensEmFalta }
-    // A forma pede-se pelo percurso, não pela posição: com a rede lenta, cada leitura dos veículos (15 s) recomeçava o pedido e o
-    // caminho nunca aparecia.
-    val padrao = autocarro?.padrao?.takeIf { emFalta != null }
+    // A forma pede-se só pelo percurso: com a rede lenta, cada leitura dos veículos (15 s) recomeçava o pedido e o caminho nunca
+    // aparecia; uma leitura das chegadas cortada pelo prazo (emFalta nulo) também o cortava.
+    val padrao = autocarro?.padrao
     val forma by produceState<List<Pair<Double, Double>>?>(null, padrao) {
         value = null // a de outro percurso não serve para este autocarro
-        value = padrao?.let { repositorio.formaDoPadrao(it) }
+        // Uma falha tenta-se outra vez a cada leitura dos veículos, até a forma chegar ou o percurso mudar (que cancela isto).
+        while (padrao != null && value == null) {
+            value = repositorio.formaDoPadrao(padrao)
+            if (value == null) delay(VEICULOS_INTERVALO.toMillis())
+        }
     }
     val trajeto = remember(forma, autocarro?.id, autocarro?.lat, autocarro?.lon, emFalta, etapa) {
         val a = autocarro

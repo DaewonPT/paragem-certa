@@ -31,6 +31,7 @@ import pt.pixellusitano.paragemcerta.dados.Repositorio
 import pt.pixellusitano.paragemcerta.dados.fixture
 import pt.pixellusitano.paragemcerta.ui.mapa.Dono
 import java.time.Instant
+import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * O que o detalhe pede à CM: as chegadas da paragem de embarque, os veículos, o percurso e a forma do autocarro; guarda o URL de
@@ -42,7 +43,7 @@ private class RedeDaCm : Http {
     var padrao = { Resposta(404, "") }
     var forma = { Resposta(404, "") }
     var atrasoDaForma = 0L
-    val pedidos = mutableListOf<String>()
+    val pedidos: MutableList<String> = CopyOnWriteArrayList() // os veículos e os percursos das chegadas pedem-se noutro fio
 
     fun a(parte: String) = pedidos.filter { parte in it }
 
@@ -123,12 +124,14 @@ class AutocarroNoDetalheTest {
         regra.waitForIdle()
     }
 
-    // Converter uma resposta corre noutro fio (Dispatchers.Default), que o relógio do teste não espera.
-    private fun esperarPor(condicao: () -> Boolean) {
+    // Converter uma resposta corre noutro fio (Dispatchers.Default), que o relógio do teste não espera. Com [passo], o relógio anda
+    // também isso a cada volta, para chegar às consultas seguintes.
+    private fun esperarPor(passo: Long = 0, condicao: () -> Boolean) {
         repeat(300) {
             if (condicao()) return
             Thread.sleep(10)
             quadro()
+            if (passo > 0) passar(passo)
         }
         fail("não chegou o que se esperava; pedidos: ${rede.pedidos}, visto: $visto")
     }
@@ -260,6 +263,38 @@ class AutocarroNoDetalheTest {
         esperarPor { visto?.first?.lat != antes }
         passar(6_000)
         esperarPor { visto?.third.orEmpty().isNotEmpty() }
+        assertEquals(1, rede.a("shapes/").size)
+    }
+
+    @Test fun formaQueFalhaTentaOutraVezComOsVeiculos() {
+        autocarroDoPadrao()
+        val boa = rede.forma
+        var falhou = false
+        rede.forma = { if (falhou) boa() else Resposta(500, "").also { falhou = true } }
+        regra.mainClock.autoAdvance = false
+        seguida = 2
+        abrir(Lifecycle.State.STARTED)
+        esperarPor { rede.a("shapes/").isNotEmpty() }
+        quadro()
+        assertTrue(visto?.third.orEmpty().isEmpty())
+        passar(15_000)
+        esperarPor { visto?.third.orEmpty().isNotEmpty() }
+        assertEquals(2, rede.a("shapes/").size)
+    }
+
+    @Test fun leituraSemOAutocarroNaoPedeAFormaOutraVez() {
+        // Como uma leitura cortada pelo prazo: a 2.ª consulta às chegadas não o traz (emFalta nulo) com a forma ainda a caminho.
+        autocarroDoPadrao()
+        val comOAutocarro = rede.chegadas
+        var leitura = 0
+        rede.chegadas = { if (leitura++ == 1) Resposta(200, "[]") else comOAutocarro() }
+        rede.atrasoDaForma = 40_000
+        regra.mainClock.autoAdvance = false
+        seguida = 2
+        abrir(Lifecycle.State.STARTED)
+        esperarPor { rede.a("shapes/").isNotEmpty() }
+        esperarPor(passo = 1_000) { visto?.third.orEmpty().isNotEmpty() }
+        assertTrue(chegadas() >= 3)
         assertEquals(1, rede.a("shapes/").size)
     }
 }

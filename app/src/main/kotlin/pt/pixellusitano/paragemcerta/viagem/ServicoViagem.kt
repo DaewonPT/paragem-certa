@@ -73,7 +73,7 @@ private const val CM_VIAGEM_S = 60L
 /** Quem continua à espera 2 min depois da partida ao vivo do autocarro perdeu-o. */
 private val CM_PERDIDO = Duration.ofMinutes(2)
 // vehicles tem 306 KB (42 KB comprimido): só a bordo, na reta final ou sem GPS, e no máximo a cada 15 s.
-private val VEICULOS_INTERVALO = Duration.ofSeconds(15)
+internal val VEICULOS_INTERVALO = Duration.ofSeconds(15)
 internal const val VEICULO_IDADE_S = 60L
 private const val VEICULO_PERTO_M = 150.0
 // Os relatos confirmados e as perturbações nas linhas da viagem: um pedido de cada a cada 5 min; os relatos até 20 linhas
