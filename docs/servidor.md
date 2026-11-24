@@ -22,6 +22,8 @@ A ordem conta: o `wrangler.jsonc` exige cinco segredos (`secrets.required`), e o
 6. Liga os interruptores em `worker/public/dados/config.json` (passos 9 e 16), ajusta os testes do servidor, faz commit e `git push origin main`. Esse push abre sozinho uma corrida do Servidor (só testes): espera que acabe e só então **Servidor → Run workflow**, no `main`. Confirma em `https://paragemcerta.pixellusitano.com/dados/config.json` e só depois liga os mesmos em `app/src/main/assets/config.json` (com os testes da app), faz commit e `git push origin main`. O `carrisAoVivo` fica `false` até haver o OK escrito da Carris (passo 19). Se deixares algum desligado, tira a linha dele do `## 0.4.0` do `PATCHNOTES.md`: esse texto é o do aviso de atualização.
 7. Faz commit do `app/src/main/assets/config.json` e do `PATCHNOTES.md` no `main` e envia-o (`git push`). Espera que o workflow **Android** fique verde no `main`. Depois, no terminal: `git checkout main`, `git pull`, `git tag v0.4.0` e `git push origin v0.4.0`. O CI assina o APK e cria a Release com o texto do `## 0.4.0` do `PATCHNOTES.md`; os telemóveis com a 0.3.2 recebem o aviso de atualização.
 
+**AAB da Play:** cada tag `v*` gera também o `paragem-certa-play-X.Y.Z.aab`, assinado com a mesma chave do APK. Fica nos artefactos da corrida do **Android** durante 30 dias e nunca vai para a Release. Sem tag, usa **Android → Run workflow** com `play_bundle` ligado.
+
 Antes de passar de 720 `/plan` por dia, fala com a equipa do Transitous no Matrix.
 
 ## 1. Entrar na Cloudflare
