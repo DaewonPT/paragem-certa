@@ -7,12 +7,21 @@ import android.hardware.Sensor
 import android.hardware.SensorManager
 import android.location.Location
 import android.location.LocationManager
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.test.DeviceConfigurationOverride
 import androidx.compose.ui.test.FontScale
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.click
 import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performScrollTo
+import androidx.compose.ui.test.performTouchInput
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.test.advanceTimeBy
@@ -49,6 +58,31 @@ class LocalizacaoTest {
             }
         }
         regra.onNodeWithText("Agora não").performScrollTo().assertIsDisplayed()
+    }
+
+    @Test fun botoesRespondemComODedoAMexerUmPouco() {
+        var aceites = 0
+        var recusas = 0
+        regra.setContent { TemaParagemCerta(ModoTema.CLARO) { PedidoLocalizacao(aoAceitar = { aceites++ }, aoRecusar = { recusas++ }) } }
+        // Muitos ecrãs mandam movimentos entre o toque e o levantar, mesmo com o dedo parado.
+        regra.onNodeWithText("Permitir localização").performTouchInput { down(center); moveBy(Offset(1f, 1f)); up() }
+        regra.onNodeWithText("Agora não").performTouchInput { down(center); moveBy(Offset(1f, 1f)); up() }
+        assertEquals(1, aceites)
+        assertEquals(1, recusas)
+    }
+
+    @Test fun pedidoNaoDeixaOsToquesPassarParaOMapa() {
+        var noMapa = 0
+        regra.setContent {
+            TemaParagemCerta(ModoTema.CLARO) {
+                Box(Modifier.fillMaxSize()) {
+                    Box(Modifier.fillMaxSize().testTag("mapa").clickable { noMapa++ })
+                    PedidoLocalizacao(aoAceitar = {}, aoRecusar = {})
+                }
+            }
+        }
+        regra.onNodeWithTag("mapa").performTouchInput { click(Offset(10f, 10f)) }
+        assertEquals(0, noMapa)
     }
 
     @Test fun pedidoDeLocalizacaoNaoPrometeOQueNaoCumpre() {

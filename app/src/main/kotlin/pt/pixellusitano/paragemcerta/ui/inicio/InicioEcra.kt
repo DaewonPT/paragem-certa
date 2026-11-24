@@ -726,8 +726,9 @@ fun CartaoGira(e: EstacaoGira, aoAbrirApp: () -> Unit, aoFechar: () -> Unit) {
 internal fun PedidoLocalizacao(aoAceitar: () -> Unit, aoRecusar: () -> Unit) {
     Box(
         Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background.copy(alpha = 0.96f))
-            // Não deixa os toques passarem para o mapa por baixo.
-            .pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } } },
+            // Basta existir para o mapa por baixo não receber os toques (como no Surface). Consumi-los cancelava os botões
+            // nos ecrãs que mandam movimentos entre o toque e o levantar.
+            .pointerInput(Unit) {},
         contentAlignment = Alignment.Center,
     ) {
         Column(
