@@ -254,10 +254,13 @@ jobs:
           echo "ficheiro=$AAB" >> "$GITHUB_OUTPUT"
 
       # archive: false uploads the .aab as is; the artifact takes the file name (paragem-certa-play-X.Y.Z.aab).
+      # overwrite deletes by the name input, not the file name, so name repeats it: a full re-run then replaces the artifact.
       - name: Upload the bundle
         uses: actions/upload-artifact@v7
         with:
+          name: ${{ steps.aab.outputs.ficheiro }}
           path: ${{ steps.aab.outputs.ficheiro }}
           archive: false
+          overwrite: true
           if-no-files-found: error
           retention-days: 30
