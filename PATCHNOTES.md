@@ -2,6 +2,10 @@
 
 A versão mais recente aparece primeiro.
 
+## 0.5.8 — O primeiro ecrã volta a responder
+
+- Ao abrir a app pela primeira vez, os botões «Permitir localização» e «Agora não» respondem em todos os telemóveis. Em alguns, o toque não chegava aos botões e a app ficava presa nesse ecrã.
+
 ## 0.5.7 — Autocarros atrasados à vista
 
 - Um autocarro da Carris Metropolitana atrasado já não desaparece da paragem enquanto vem a caminho. Vês a quantas paragens está.
